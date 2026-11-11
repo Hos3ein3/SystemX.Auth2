@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SystemX.Auth2.Application/SystemX.Auth2.Application.csproj" />
+    <Project Path="src/SystemX.Auth2.Client/SystemX.Auth2.Client.csproj" />
+    <Project Path="src/SystemX.Auth2.Contracts/SystemX.Auth2.Contracts.csproj" />
+    <Project Path="src/SystemX.Auth2.Domain/SystemX.Auth2.Domain.csproj" />
+    <Project Path="src/SystemX.Auth2.Infrastructure/SystemX.Auth2.Infrastructure.csproj" />
+    <Project Path="src/SystemX.Auth2.Persistence/SystemX.Auth2.Persistence.csproj" />
+    <Project Path="src/SystemX.Auth2.Server/SystemX.Auth2.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+</Solution>

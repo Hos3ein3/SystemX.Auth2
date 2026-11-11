@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+      <ProjectReference Include="..\SystemX.Auth2.Application\SystemX.Auth2.Application.csproj" />
+      <ProjectReference Include="..\SystemX.Auth2.Domain\SystemX.Auth2.Domain.csproj" />
+    </ItemGroup>
+
+  <ItemGroup>
+
+    <PackageReference Include="Microsoft.EntityFrameworkCore"  />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"  />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"  />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore"  />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore"  />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Configurations\" />
+  </ItemGroup>
+
+</Project>

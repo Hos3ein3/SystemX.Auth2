@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+      <ProjectReference Include="..\SystemX.Auth2.Domain\SystemX.Auth2.Domain.csproj" />
+      <ProjectReference Include="..\SystemX.Auth2.Contracts\SystemX.Auth2.Contracts.csproj" />
+    </ItemGroup>
+
+  <ItemGroup>
+    
+    <PackageReference Include="FluentValidation"  />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions"  />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"  />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"  />
+  </ItemGroup>
+
+</Project>
