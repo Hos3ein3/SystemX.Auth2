@@ -72,6 +72,42 @@ public class Auth2UserStore(
 
     // ---- roles are looked up inside the current application
 
+    private bool rolesChanged;
+
+    /// <inheritdoc />
+    public override async Task AddToRoleAsync(AppUser user, string normalizedRoleName, CancellationToken ct = default)
+    {
+        await base.AddToRoleAsync(user, normalizedRoleName, ct);
+        rolesChanged = true;
+    }
+
+    /// <inheritdoc />
+    public override async Task RemoveFromRoleAsync(AppUser user, string normalizedRoleName, CancellationToken ct = default)
+    {
+        await base.RemoveFromRoleAsync(user, normalizedRoleName, ct);
+        rolesChanged = true;
+    }
+
+    /// <summary>
+    /// Saves the user. When roles were added or removed through this store (by anyone, not only by <c>IAccessService</c>),
+    /// the access version is raised after the save, so caches and the <c>pv</c> claim never go stale.
+    /// </summary>
+    public override async Task<IdentityResult> UpdateAsync(AppUser user, CancellationToken ct = default)
+    {
+        var result = await base.UpdateAsync(user, ct);
+        if (result.Succeeded && rolesChanged)
+        {
+            rolesChanged = false;
+            var app = await applications.GetRequiredAsync(ct);
+            if (options.Value.Mode == ServerMode.SingleApplication)
+                await Context.Applications.Where(a => a.Id == app.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.AccessVersion, a => a.AccessVersion + 1), ct);
+            else
+                await Context.UserApplications.Where(x => x.UserId == user.Id && x.ApplicationId == app.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.UserAccessVersion, x => x.UserAccessVersion + 1), ct);
+        }
+        return result;
+    }
+
     /// <summary>Finds a role by normalized name. A role of the current application wins over a global role with the same name.</summary>
     protected override async Task<AppRole?> FindRoleAsync(string normalizedRoleName, CancellationToken ct)
     {

@@ -51,6 +51,7 @@ See [error-codes.md](error-codes.md).
 | `POST /api/auth2/2fa/enable` | user | `auth2.me` | `TwoFactorEnableRequest` | `200 TwoFactorEnableResponse` (recovery codes, once) |
 | `POST /api/auth2/2fa/disable` | user | `auth2.me` | `TwoFactorDisableRequest` | `204` |
 | `POST /api/auth2/2fa/recovery-codes` | user | `auth2.me` | `RecoveryCodesRequest` | `200 RecoveryCodesResponse` (once) |
+| `GET /api/auth2/me` | user | `auth2.me` | none | `200 CurrentUserInfo` |
 
 The DTOs are in `SystemX.Auth2.Contracts.Auth`. JSON uses camelCase.
 
@@ -73,6 +74,10 @@ For a person who exists in another application: `userWasCreated=false`, `joinedA
 
 `returnUrl` goes into the email links only when it is a local path or exactly one of the application's `AllowedRedirectUris`.
 
+### Example: me
+
+`GET /api/auth2/me` returns the roles, permissions, groups, scopes and access version of the token's user in the token's application. It never takes a user id. Details and errors: [authorization.md](authorization.md).
+
 ### Example: change password
 
 ```http
@@ -88,7 +93,6 @@ Authorization: Bearer <user token with auth2.me>
 
 | Endpoint | Phase |
 |---|---|
-| `GET /api/auth2/me` | 7 |
 | `POST /api/auth2/client/handshake` | 8 |
 | `POST /api/auth2/permissions/sync`, `/roles/sync`; `GET /permissions`, `/roles`, `/groups`; `GET /users/{id}/access` | 8 |
 | `/api/auth2/admin/...` | 9 |

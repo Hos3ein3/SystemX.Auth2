@@ -19,7 +19,7 @@ Early development. See [docs/feature-status.md](docs/feature-status.md) (written
 | Part | Status |
 |---|---|
 | Contracts | Done (phase 2) |
-| Server | Data model, identity, login and tokens, accounts (register, join, OTP, reset, 2FA, consent) done (phases 3–6). Access model and sync come next |
+| Server | Data model, identity, login and tokens, accounts (register, join, OTP, reset, 2FA, consent), access model (permissions, roles, groups, `/me`) done (phases 3–7). Sync and handshake come next |
 | Client | Not started |
 | Gateway | Empty project, not implemented in v1 |
 

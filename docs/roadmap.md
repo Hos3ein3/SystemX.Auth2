@@ -32,7 +32,12 @@ Every `TODO` in code must be listed here.
 - Phase 6: the OTP table is the only OTP store. Redis storage comes in phase 10.
 - Phase 6: `InviteOnly` join mode has no invitation mechanism. Admins add people in the admin API (phase 9).
 - Phase 6: no rate limiting on `otp/request`, `password/forgot` or `register` yet (phase 10). Until then, one code per `OtpResendSeconds` and the lockout are the only brakes.
-- Phase 6: the access version is raised by password and two-factor changes. Role, permission and group changes raise it in phase 7.
+- Phase 6: the access version is raised by password and two-factor changes. Role, permission and group changes raise it too (phase 7 done).
 - Phase 6: there is no "remember this device" for two-factor, and no way to list or delete single recovery codes.
 - Phase 6: the `locale` claim is in the tokens, but not in the hosted-UI session cookie yet. So a user's saved culture is not used for the hosted pages until the cookie carries it.
 - Phase 6: `Account/Login` has no link target for `JoinApplication`/`Register` yet: the UI decides (flags `ShowRegisterLink`, `ShowJoinLink`).
+- Phase 7: access services have no HTTP admin routes yet (phase 9) and no sync (phase 8). Until then they are used from code and tests.
+- Phase 7: the `role` claim in an already issued token is not updated when roles change. `/me` is always current; the `pv` claim tells a client when to ask again.
+- Phase 7: changing roles of a global role from a project, and global permissions, are not supported. Permissions are always per application.
+- Phase 7: the access cache is per instance (memory); correct across instances because the version is read from the database each time.
+

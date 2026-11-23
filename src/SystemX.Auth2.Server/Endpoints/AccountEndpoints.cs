@@ -72,6 +72,10 @@ public static class AccountEndpoints
             return result.Succeeded ? Results.Ok(new RecoveryCodesResponse(codes)) : ApiResults.From(http, result);
         }).RequireUser(Auth2Scopes.Me);
 
+        // The user comes from the token only. This route never takes a user id.
+        routes.MapGet(Auth2Routes.Me, async (HttpContext http, IAccessService access) =>
+            Results.Ok(await access.GetCurrentUserAsync(http.CurrentUser(), http.User.GetScopes(), http.RequestAborted))).RequireUser(Auth2Scopes.Me);
+
         return routes;
     }
 

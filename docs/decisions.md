@@ -151,7 +151,26 @@ The effective mode is `ConsentPolicy.Effective`: `RequireConsent` off is implici
 `HttpContext.User` is the hosted-UI session on every page, so anti-forgery tokens are bound to the same user everywhere. API endpoints and `/connect/userinfo` choose their own scheme explicitly. The Manage pages need the cookie (policy `Auth2.Session`); the application comes from the cookie claim `client_id`, never from the query.
 
 ## ADR-050: Access version service
-`IAccessVersionService` raises `user_applications.user_access_version` (or the application version in single mode). Reset, change and two-factor changes call it. Phase 7 adds the roles, permissions and groups calls and the cache.
+`IAccessVersionService` raises `user_applications.user_access_version` (or the application version in single mode). Reset, change and two-factor changes call it. Phase 7 adds `IAccessService` / `IGroupService` that call it (see ADR-052 to ADR-056).
 
 ## ADR-051: Phone and OTP details
 Phone login and OTP request look the user up by exact `PhoneNumber`; two users with one number are treated as unknown. A right login code marks the email or phone confirmed. TOTP is not asked after an OTP login.
+
+## ADR-052: Effective access definition
+Effective permissions are the union of direct grants, permissions of the user's roles, permissions of the roles of the user's groups, and permissions of the user's groups. Effective roles are own roles plus roles of the user's groups; the token and `/me` use these. In multi mode a non-member has no access. Global roles count only in the `_global` project and in single mode (same rule as `GetRolesAsync`). Obsolete permissions stay effective: "obsolete" is a hint for admins, not a switch.
+
+## ADR-053: Access version is a sum and is read from the database
+`accessVersion = Application.AccessVersion + UserAccessVersion`. Both only grow, so each sum belongs to one state. The version is read from the database on each call so other instances see changes at once; only the (heavier) access lists are cached in memory, keyed `(application, user, version)`. User-level changes raise the user version; changes that can reach many users raise the application version. A no-op change raises nothing. A Redis/distributed cache is not needed because the key contains the version.
+
+## ADR-054: Access services work on the current application only
+`IAccessService` and `IGroupService` take no application id. They use `IAuthFlowResolver`, so the global query filters apply and nothing can touch another application. The admin API (phase 9) sets the current application from its route or token before it calls them. Roles of other applications are "not found". Granting to a non-member is "not found".
+
+## ADR-055: Keys are checked without regular expressions
+`AccessKeys.NormalizePermissionKey` is a small loop (lowercase, 1–100 chars, `a-z0-9._:-`, start and end with a letter or digit). No regex means no timeout problem (pitfall 12). Group names use the same rules. Phase 8 sync uses the same method.
+
+## ADR-056: `/me` reads only the token
+`GET /api/auth2/me` has no id parameter; extra query values are ignored. It needs a user token (`auth2.me`); a machine token gets 403 `forbidden`. The answer is computed now, so it is correct even when the token is older than a role change.
+
+
+## ADR-057: The user store raises the access version for role changes
+`Auth2UserStore` remembers that `AddToRoleAsync` / `RemoveFromRoleAsync` ran and raises the access version right after `UpdateAsync` saves. So a role change made with a plain `UserManager` (seeder, scripts, other code) is as safe as one made with `IAccessService`. `IAccessService.AssignRoleAsync` / `RemoveRoleAsync` rely on this and do not bump twice.

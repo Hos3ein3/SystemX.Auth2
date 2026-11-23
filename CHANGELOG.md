@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- Phase 7: access model: `IAccessService` (effective access, access version, cached by version, permissions, roles, role permissions, direct grants) and `IGroupService`
+  (groups, members, roles, permissions), `GET /api/auth2/me`, effective roles in tokens, audit events for every change, `PermissionDto` / `RoleDto` / `GroupDto` in Contracts.
+  Docs: `authorization`.
 - Phase 1: solution skeleton, central package management, CI workflow, docs skeleton.
 - Phase 6: register (idempotent, race-safe), join a second application with proof of ownership, one-time codes (`IOtpService`) and OTP login grant,
   email and phone confirmation, forgot / reset / change password, authenticator-app two-factor with recovery codes, consent (explicit and systematic),

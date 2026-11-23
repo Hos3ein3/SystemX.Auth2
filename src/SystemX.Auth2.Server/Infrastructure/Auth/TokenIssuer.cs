@@ -16,9 +16,10 @@ namespace SystemX.Auth2.Server.Infrastructure.Auth;
 /// Builds the claims of tokens. The token carries the roles of the current application and an access version (<c>pv</c>),
 /// but not the permission list: clients ask <c>/api/auth2/me</c> and cache by <c>pv</c>.
 /// <c>pv</c> is the application access version plus the user's access version in that application (both only grow).
+/// Roles in the token are the effective roles: own roles plus roles of the user's groups.
 /// </summary>
 public sealed class TokenIssuer(
-    UserManager<AppUser> users, Auth2DbContext db, IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options) : ITokenIssuer
+    IAccessService accessService, IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options) : ITokenIssuer
 {
     /// <inheritdoc />
     public async Task<ClaimsPrincipal> CreateUserPrincipalAsync(AppUser user, IEnumerable<string> scopes, IEnumerable<string> amr, string? sessionId, CancellationToken ct = default)
@@ -86,14 +87,9 @@ public sealed class TokenIssuer(
 
     private async Task WriteAccessClaimsAsync(ClaimsPrincipal principal, AppUser user, Auth2Application app, CancellationToken ct)
     {
-        var roles = await users.GetRolesAsync(user);
-        principal.SetClaims(Claims.Role, [.. roles]);
-
-        var userVersion = 0;
-        if (options.Value.Mode == ServerMode.MultiApplication)
-            userVersion = await db.UserApplications.Where(x => x.UserId == user.Id && x.ApplicationId == app.Id)
-                .Select(x => x.UserAccessVersion).FirstOrDefaultAsync(ct);
-        principal.SetClaim(Auth2Claims.AccessVersion, (app.AccessVersion + userVersion).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        var access = await accessService.GetEffectiveAccessAsync(user, ct);
+        principal.SetClaims(Claims.Role, [.. access.Roles]);
+        principal.SetClaim(Auth2Claims.AccessVersion, access.AccessVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     private static string? FullName(AppUser u)
