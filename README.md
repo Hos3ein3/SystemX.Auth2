@@ -19,7 +19,7 @@ Early development. See [docs/feature-status.md](docs/feature-status.md) (written
 | Part | Status |
 |---|---|
 | Contracts | Done (phase 2) |
-| Server | Not started |
+| Server | Data model, settings, seeding and commands done (phase 3). Login and tokens come next |
 | Client | Not started |
 | Gateway | Empty project, not implemented in v1 |
 

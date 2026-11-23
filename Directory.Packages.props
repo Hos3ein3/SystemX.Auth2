@@ -15,6 +15,12 @@
     <PackageVersion Include="Testcontainers.Redis" Version="4.17.0" />
   </ItemGroup>
   <ItemGroup>
-    <!-- SourceLink for GitHub is built into the .NET SDK. -->
+    <!-- Server -->
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.4" />
+    <PackageVersion Include="OpenIddict.AspNetCore" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.9.0" />
   </ItemGroup>
 </Project>

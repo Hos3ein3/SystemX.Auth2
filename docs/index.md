@@ -15,7 +15,11 @@ The map of all documentation pages. Pages marked *(planned)* are written in a la
 | [api-reference.md](api-reference.md) | Public endpoints | Skeleton |
 | [error-codes.md](error-codes.md) | Stable error codes | Written |
 | [roadmap.md](roadmap.md) | Future work and open notes | Written |
-| getting-started.md, concepts.md, server-setup.md, seeding.md, server-settings.md, credential-scope.md, authentication-flows.md, authorization.md, client-setup.md, client-authorization.md, client-current-user.md, permission-sync.md, handshake-and-startup.md, machine-to-machine.md, admin-api.md, localization.md, security.md, deployment-and-scaling.md, observability.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
+| [concepts.md](concepts.md) | Main ideas | Written (grows) |
+| [server-setup.md](server-setup.md) | Run and configure the server | Written (grows) |
+| [seeding.md](seeding.md) | First admin and the seeder | Written |
+| [server-settings.md](server-settings.md) | Every application setting | Written |
+| getting-started.md, credential-scope.md, authentication-flows.md, authorization.md, client-setup.md, client-authorization.md, client-current-user.md, permission-sync.md, handshake-and-startup.md, machine-to-machine.md, admin-api.md, localization.md, security.md, deployment-and-scaling.md, observability.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
 
 ## Related pages
 

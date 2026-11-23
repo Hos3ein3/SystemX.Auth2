@@ -29,6 +29,14 @@ dotnet test --collect:"XPlat Code Coverage"   # with coverage (coverlet)
 - Target: 80% line coverage for Application, Client and Contracts. Do not write empty tests to reach it.
 - Stack: xUnit, Shouldly, NSubstitute, Testcontainers.
 
+## Integration test design
+
+`Server.IntegrationTests` starts one PostgreSQL 15 container (`postgres:15-alpine`) for the whole run.
+Each test class instance creates its own database and its own `WebApplicationFactory<Program>` (environment `Testing`).
+Use `ServerTestBase`: call `MigrateAndSeedAsync()`, then open a scope with `NewScope()`.
+Set `SingleMode => true` to test `ServerWithSingleApplication()`.
+`Factory.Logs` captures log messages, so tests can check that no secret is logged.
+
 ## Common problems
 
 - *Integration tests cannot start:* start Docker first.
