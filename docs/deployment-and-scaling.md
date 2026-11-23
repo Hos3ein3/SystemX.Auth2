@@ -1,5 +1,9 @@
 # Deployment and scaling
 
+## External providers and several instances
+
+Every instance keeps the enabled external providers in memory. A change made on one instance reaches the others through Redis (at once) or by polling the database every `Auth2:ExternalProviders:PollSeconds` (default 30). Without Redis a change can take up to that long to appear on other instances. SAML replay values are stored in the database table `replay_entries`, so all instances share them. See [external-identity.md](external-identity.md).
+
 ## What this is
 
 How to run several instances of the Server, what they share, and what goes wrong when they do not.

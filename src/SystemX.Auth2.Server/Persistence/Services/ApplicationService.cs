@@ -13,6 +13,7 @@ public sealed class ApplicationService(
     IGlobalScope globalScope,
     IClientProvisioner provisioner,
     IApplicationSettingsProvider settingsProvider,
+    Infrastructure.External.IExternalProviderRegistry externalProviders,
     IAuditService audit,
     IOptions<Auth2ServerOptions> options,
     TimeProvider clock) : IApplicationService
@@ -78,6 +79,7 @@ public sealed class ApplicationService(
         await provisioner.EnsureClientAsync(app, ct);   // redirect URIs, scopes and grants follow the settings
         await tx.CommitAsync(ct);
         settingsProvider.Invalidate(applicationId);
+        await externalProviders.RefreshApplicationAsync(applicationId, ct);
         await audit.WriteAsync(new AuditEntry("application.settings_updated", applicationId, TargetType: "application",
             TargetId: applicationId.ToString(), Data: new Dictionary<string, object?> { ["settingsVersion"] = app.SettingsVersion }), ct);
     }

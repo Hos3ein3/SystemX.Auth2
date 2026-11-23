@@ -43,6 +43,16 @@ public sealed class Auth2ServerOptions
 
     /// <summary>Background jobs. Section <c>Auth2:Jobs</c>.</summary>
     public JobsOptions Jobs { get; set; } = new();
+
+    /// <summary>External identity providers. Section <c>Auth2:ExternalProviders</c>.</summary>
+    public ExternalProviderOptions ExternalProviders { get; set; } = new();
+}
+
+/// <summary>How the Server keeps its list of external providers fresh.</summary>
+public sealed class ExternalProviderOptions
+{
+    /// <summary>How often every instance looks for changed provider settings, in seconds. Default 30. Redis makes changes visible at once; the poll is the safety net.</summary>
+    public int PollSeconds { get; set; } = 30;
 }
 
 /// <summary>Redis settings. Redis is on when <see cref="ConnectionString"/> is set.</summary>

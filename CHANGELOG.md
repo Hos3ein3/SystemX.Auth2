@@ -5,6 +5,8 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- External identity step 3: `IExternalProviderRegistry` (enabled providers of all applications in memory), provider URLs per application and provider (`ExternalProviderUrls`), reload on every instance (Redis pub/sub plus polling,
+  option `Auth2:ExternalProviders:PollSeconds`). Docs: `external-identity` (URLs, runtime changes), `deployment-and-scaling`.
 - External identity step 2 (data model): `AppUserLogin` is per application (key `application_id, login_provider, provider_key`), passkey store per application (`user_passkeys`, `AppUserPasskey`),
   `external_group_mappings`, `replay_entries`, polymorphic provider settings (`OidcProviderSettings`, `SamlProviderSettings`, `LdapProviderSettings`) and `PasskeySettings`, `ExternalProviderSettingsValidator`,
   provider descriptors, `IExternalSecretProtector` (encrypt and redact), migration `Phase14ExternalIdentity`, English texts for the new error codes. Docs: `external-identity` (settings reference, data model), `server-settings`, `credential-scope`, `feature-status`.

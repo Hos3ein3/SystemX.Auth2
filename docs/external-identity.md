@@ -100,6 +100,33 @@ Name pattern and uniqueness, at most 20 providers, one provider per email domain
 SAML certificates can be read and are not expired, assertion or response signed, an enabled provider has its client id and secret (or trust material, or bind account).
 An invalid list is refused with the list of paths that are wrong.
 
+## URLs to register at the provider
+
+Every provider of every application has its own URLs. They contain the **project slug** (the project key in multi-application mode, `default` in single mode) and the provider name,
+so a response meant for one provider can never be accepted by another (this blocks "mix-up" attacks). Replace `https://auth.example.com` with your issuer.
+
+| Kind | URL | Enter it as |
+|---|---|---|
+| OIDC (Google, Microsoft, GitHub, Apple, Facebook, generic) | `https://auth.example.com/callback/login/{slug}/{name}` | Redirect URI / callback URL |
+| SAML | `https://auth.example.com/saml/{slug}/{name}/acs` | Assertion Consumer Service (ACS) URL, binding POST |
+| SAML | `https://auth.example.com/saml/{slug}/{name}/metadata` | SP metadata (many identity providers can import it) |
+| SAML | `https://auth.example.com/saml/{slug}/{name}/slo` | Single logout URL (only if you turn SLO on) |
+| LDAP | none | Allow the Server to reach the host and port |
+
+The admin API shows the full URLs of every provider (step 9). The registration name of a provider inside the Server is `ext-{applicationId}-{name}` (unique in the whole server).
+
+## Changing providers at runtime
+
+You do **not** restart the Server when you add, change or remove a provider.
+
+1. The admin API saves the settings and raises `SettingsVersion` of the application.
+2. The instance that saved the change reloads that application at once.
+3. With **Redis**, it also sends a message and every other instance reloads the application within a moment.
+4. Without Redis (or if a message is lost), every instance asks the database for changed `SettingsVersion` values every `Auth2:ExternalProviders:PollSeconds` seconds (default 30) and reloads what changed.
+
+A user who is in the middle of a sign-in during a change may need to start again. If a reload fails (for example the database is down), the old list stays in use and a warning is logged.
+Secrets are decrypted only when a provider is used, never at load time, and are never written to logs.
+
 ## Data model
 
 | Table | What it holds |
@@ -118,7 +145,8 @@ Secrets (client secrets, Apple key, SAML SP key, bind password) are encrypted wi
 - **Secrets**: use `IExternalSecretProtector` (`Protect`, `Unprotect`, `Redact`). Never log or return a `*Protected` field; always call `Redact` before showing a provider.
 - **Stores**: `Auth2UserStore` overrides the login and passkey methods so every call needs a current application; the query filters of `user_logins` and `user_passkeys` do the isolation. Do not use `DbSet<AppUserLogin>` without the filter (`IGlobalScope.Begin()` turns it off).
 - **JSON**: providers are stored in jsonb, which does not keep key order. `SettingsJson` sets `AllowOutOfOrderMetadataProperties` so the `kind` field can be anywhere.
-- **Tests**: `ExternalIdentityDataTests.cs` (stores, passkeys, mappings, secrets, descriptors) and `SettingsTests.cs` (validator, JSON round trip).
+- **Registry**: `IExternalProviderRegistry` (`Infrastructure/External/ExternalProviderRegistry.cs`) answers from memory: `Get`, `ListForApplication`, `FindByEmailDomain`, `FindByUrl`. Use it in endpoints; never read provider settings from the database per request. `ExternalProviderUrls` builds all names and paths in one place. `ExternalProviderRefreshService` loads at start, listens to Redis and polls.
+- **Tests**: `ExternalRegistryTests.cs` (two applications, reload, two instances with and without Redis) and `ExternalIdentityDataTests.cs` (stores, passkeys, mappings, secrets, descriptors) and `SettingsTests.cs` (validator, JSON round trip).
 
 ## Related pages
 

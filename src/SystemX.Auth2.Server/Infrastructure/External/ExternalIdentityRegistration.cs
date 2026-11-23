@@ -16,6 +16,8 @@ internal static class ExternalIdentityRegistration
         services.AddSingleton<IExternalProviderDescriptor, SamlDescriptor>();
         services.AddSingleton<IExternalProviderDescriptor, LdapDescriptor>();
         services.TryAddSingleton<IExternalProviderDescriptors, ExternalProviderDescriptors>();
+        services.TryAddSingleton<IExternalProviderRegistry, ExternalProviderRegistry>();
+        services.AddHostedService<ExternalProviderRefreshService>();
         return services;
     }
 }
