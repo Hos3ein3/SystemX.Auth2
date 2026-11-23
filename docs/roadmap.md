@@ -43,4 +43,7 @@ Every `TODO` in code must be listed here.
 - Phase 8: sync has no rate limit yet (phase 10). The client side (scanners, hosted sync services, `HandshakeHostedService`) is built in phases 11–13.
 - Phase 8: role `displayName` is accepted but not stored. Add a column in a later migration if the admin UI needs it.
 - Phase 8: an unexpected unique-violation inside the sync transaction (for example an admin creating the same role at the same moment) ends that sync with a server error. Calling again fixes it.
+- Phase 9: no rate limit on the admin API yet (phase 10, policy `admin`). User lists compute lock state per user (one query each), so keep page sizes small for big user bases.
+- Phase 9: `external-providers` admin routes come with the experimental features (phase 14). Email and phone changes of a user are not in `PUT /users/{id}` (they need confirmation again).
+- Phase 9: the admin Razor pages (`Admin/*`) are not created yet; the UI hand-over (phase 15) lists them. Permission and role changes by admin do not yet notify other instances (the version is read from the database, so it is correct, only slower to push).
 

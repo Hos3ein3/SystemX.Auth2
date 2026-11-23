@@ -114,6 +114,10 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IPermissionSyncService, PermissionSyncService>();
         services.AddScoped<IRoleSyncService, RoleSyncService>();
         services.AddScoped<IClientHandshakeService, ClientHandshakeService>();
+        services.AddScoped<IAdminUserService, SystemX.Auth2.Server.Infrastructure.Admin.AdminUserService>();
+        services.AddScoped<IAdminApplicationService, SystemX.Auth2.Server.Infrastructure.Admin.AdminApplicationService>();
+        services.AddScoped<IAuditReader, SystemX.Auth2.Server.Infrastructure.Admin.AuditReader>();
+        services.AddScoped<SystemX.Auth2.Server.Endpoints.Q>();
         services.AddScoped<IRegisterService, RegisterService>();
         services.AddScoped<IJoinService, JoinService>();
         services.AddScoped<IPasswordService, PasswordService>();

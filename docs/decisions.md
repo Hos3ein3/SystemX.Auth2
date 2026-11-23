@@ -184,3 +184,18 @@ Validate everything first, then write (all-or-nothing validation). Permissions: 
 ## ADR-060: Handshake compares, it does not select
 The handshake takes the application from the token and compares the body with it. Mode mismatch and name/key mismatch are `409`. Name comparison ignores case and outer spaces; the project key is compared ignoring case too (keys are lowercase anyway). `issuer` comes from `Auth2:Issuer` or the request address. `GET /users/{id}/access` needs the `auth2.admin` scope, which is not allowed to clients by default, and returns `404` for non-members.
 
+## ADR-061: Admin guard is an endpoint filter, roles are read on every call
+Policies `RequireGlobalAdmin` and `RequireProjectAdmin` are implemented by `AdminApiFilter(AdminLevel)`, like the other API filters (ADR-046). It finds the caller in a **separate DI scope** for the home application (the token audience); the request scope then switches to the target application. `GlobalAdmin` counts only for tokens of the `_global` project or the single application (it is a global role). Roles and user state are read on every call, so a revoked admin loses access at once.
+
+## ADR-062: Choosing the application
+A global admin picks the application with `X-Auth2-Application: {projectKey}` (default: the home application). A project admin who names another application gets 403. Objects of other applications are 404 (not 403) so their existence is not shown. Everything below the filter uses the normal services and the EF query filters, so the application rule is enforced twice.
+
+## ADR-063: Admin never sets a password for an existing person
+`POST /admin/users` for an existing person only adds the membership row. A password in the request is ignored. This keeps the rule against account pre-hijacking (5.4): only the person, with proof, sets a password. Admins also cannot lock, remove or de-admin themselves, and only a global admin handles `GlobalAdmin`.
+
+## ADR-064: Settings editing and secrets
+A project admin may change only settings marked `ProjectAdminEditable`; `SettingsEditability` compares old and new values and lists changed `GlobalOnly` paths (403 with the paths). Settings use `ETag: "v<SettingsVersion>"` and optional `If-Match`; users use the Identity concurrency stamp. Client secret rotation is global-only unless `Clients.AllowProjectAdminRotateSecret` is on. Secrets are returned once, never in later reads, never in audit data.
+
+## ADR-065: Audit enrichment and project role creation
+`AuditService` adds the admin id (from `HttpContext.Items`), the IP address and the user agent (cut to 256 characters) to every event written during a web request. The `ProjectAdmin` role is created lazily per application the first time someone is made project admin; deleting an application deletes it with the rest (cascade).
+

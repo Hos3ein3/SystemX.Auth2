@@ -103,9 +103,12 @@ Authorization: Bearer <user token with auth2.me>
 
 `204 No Content`. The other sessions of this user in this application end. The calling session stays.
 
+## Admin endpoints
+
+All routes under `/api/auth2/admin` need the token of a signed-in admin with scope `auth2.admin`. See [admin-api.md](admin-api.md).
+
 ## Not built yet
 
 | Endpoint | Phase |
 |---|---|
-| `/api/auth2/admin/...` | 9 |
 | `GET /health/live`, `/health/ready` | 10 |

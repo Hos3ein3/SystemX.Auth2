@@ -55,6 +55,13 @@ public sealed class OpenIddictClientProvisioner(IOpenIddictApplicationManager ma
         return secret;
     }
 
+    /// <inheritdoc />
+    public async Task DeleteClientAsync(Auth2Application application, CancellationToken ct = default)
+    {
+        var existing = await manager.FindByClientIdAsync(application.ClientId, ct);
+        if (existing is not null) await manager.DeleteAsync(existing, ct);
+    }
+
     private static string NewSecret() => Base64Url(RandomNumberGenerator.GetBytes(32));
 
     private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');

@@ -94,6 +94,9 @@ public interface IClientProvisioner
 
     /// <summary>Creates a new secret for the client and returns it (shown once).</summary>
     Task<string> RotateSecretAsync(Auth2Application application, CancellationToken ct = default);
+
+    /// <summary>Deletes the OpenIddict client of an application, with its tokens and authorizations. Nothing happens when it does not exist.</summary>
+    Task DeleteClientAsync(Auth2Application application, CancellationToken ct = default);
 }
 
 /// <summary>One audit entry. Never put secrets in it.</summary>

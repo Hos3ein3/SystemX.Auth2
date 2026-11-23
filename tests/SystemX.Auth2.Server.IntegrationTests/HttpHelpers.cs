@@ -37,6 +37,16 @@ public sealed class Browser
         return await SendAsync(request, bearer);
     }
 
+    /// <summary>Any method with an optional JSON body and extra headers.</summary>
+    public async Task<HttpResponseMessage> SendJsonAsync(HttpMethod method, string url, object? body, string? bearer, params (string Name, string Value)[] headers)
+    {
+        var request = new HttpRequestMessage(method, url);
+        if (body is string raw) request.Content = new StringContent(raw, Encoding.UTF8, "application/json");
+        else if (body is not null) request.Content = JsonContent.Create(body);
+        foreach (var (name, value) in headers) request.Headers.TryAddWithoutValidation(name, value);
+        return await SendAsync(request, bearer);
+    }
+
     /// <summary>Posts to a Razor Page handler. Adds a valid anti-forgery cookie and token.</summary>
     public async Task<HttpResponseMessage> PostPageAsync(string url, IDictionary<string, string> form)
     {

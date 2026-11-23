@@ -77,3 +77,7 @@ To add more admins, use the `create-admin` command (planned, later phase).
 
 - [server-setup.md](server-setup.md)
 - `security.md` and `getting-started.md` (planned; they will link here)
+
+## Using the admin API
+
+The seeded `globaladmin` can call the [admin API](admin-api.md) after you add the scopes `auth2.admin` and `auth2.admin.global` to the `AllowedScopes` of the `_global` client and sign in there.

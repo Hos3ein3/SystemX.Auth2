@@ -208,6 +208,7 @@ Client behaviour.
 | `RoleSyncAllowed` | `bool` | `true` | GlobalOnly | Role sync is allowed. |
 | `AllowRemovePermissionsFromSync` | `bool` | `null` | GlobalOnly | Sync marks permissions that are missing from the list as obsolete (never deletes). |
 | `DefaultUiMode` | `UiMode` | `Hosted` | GlobalOnly | Default UI mode. |
+| `AllowProjectAdminRotateSecret` | `bool` | `false` | GlobalOnly | A project admin may rotate the client secret of the own application. |
 | `AllowSelfUiLogin` | `bool` | `null` | GlobalOnly | Enables the password grant for this application. |
 | `AllowedCorsOrigins` | `List<string>` | `empty list` | GlobalOnly | Allowed CORS origins. CORS is off when empty. |
 

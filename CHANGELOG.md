@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- Phase 9: admin JSON API under `/api/auth2/admin` (applications, settings with ETag, redirect URIs, secret rotation, users incl. lock / unlock / reset-2fa / sessions / roles / permissions / groups,
+  roles, permissions, groups, audit events), global and project admin guards, project selection header, audit events carry actor, IP and user agent. Docs: `admin-api`.
+  Fixed: a malformed session id no longer throws when revoking a session.
 - Phase 8: client handshake with server-mode check, permission and role sync (idempotent, never deletes, serialized per application), pull routes for permissions, roles and groups,
   `GET /users/{id}/access`. Docs: `permission-sync`, `handshake-and-startup`.
 - Phase 7: access model: `IAccessService` (effective access, access version, cached by version, permissions, roles, role permissions, direct grants) and `IGroupService`

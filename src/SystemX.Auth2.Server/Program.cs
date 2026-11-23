@@ -26,6 +26,7 @@ app.MapGet("/", () => "SystemX.Auth2 Server");
 app.MapAuth2Connect();
 app.MapAuth2Account();
 app.MapAuth2Client();
+app.MapAuth2Admin();
 app.MapRazorPages();
 await app.RunAsync();
 return 0;

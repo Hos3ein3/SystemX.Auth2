@@ -55,6 +55,7 @@ public sealed class SessionService(IOpenIddictTokenManager tokens, IOpenIddictAu
     /// <inheritdoc />
     public async Task<bool> RevokeAsync(AppUser user, Auth2Application application, string authorizationId, CancellationToken ct = default)
     {
+        if (!Guid.TryParse(authorizationId, out _)) return false;   // not an id of ours: same answer as "not found"
         var authorization = await authorizations.FindByIdAsync(authorizationId, ct);
         if (authorization is null) return false;
         // It must be this user's authorization in this application. Otherwise the answer is the same as "not found".

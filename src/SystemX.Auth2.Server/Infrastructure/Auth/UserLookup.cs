@@ -52,6 +52,10 @@ internal sealed class UserLookup(UserManager<AppUser> users, Auth2DbContext db, 
         return await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == app.Id && x.Status == UserApplicationStatus.Active, ct);
     }
 
+    /// <summary>True in single mode, or when a membership row exists (any status).</summary>
+    public async Task<bool> HasRowOrSingleAsync(AppUser user, Auth2Application app, CancellationToken ct) =>
+        options.Value.Mode == ServerMode.SingleApplication || await HasRowAsync(user, app, ct);
+
     /// <summary>True when a membership row exists, whatever its status.</summary>
     public async Task<bool> HasRowAsync(AppUser user, Auth2Application app, CancellationToken ct)
     {

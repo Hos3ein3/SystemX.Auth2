@@ -262,6 +262,8 @@ public sealed class ClientSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public bool RoleSyncAllowed { get; set; } = true;
     /// <summary>Sync may remove permissions.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool AllowRemovePermissionsFromSync { get; set; }
+    /// <summary>A project admin may rotate the client secret of the own application.</summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public bool AllowProjectAdminRotateSecret { get; set; }
     /// <summary>Default UI mode.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public UiMode DefaultUiMode { get; set; } = UiMode.Hosted;
     /// <summary>Enables the password grant for this application.</summary>
