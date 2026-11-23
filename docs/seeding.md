@@ -16,7 +16,7 @@ In one database transaction:
 2. Creates the standard OpenIddict scopes: `openid`, `profile`, `email`, `phone`, `roles`, `offline_access` and all `auth2.*` scopes.
 3. Creates the `GlobalAdmin` role (a system role, global, no application).
 4. Creates the user below **only if no GlobalAdmin user exists**. The email is confirmed. The user is added to `GlobalAdmin`.
-   In multi mode, it also creates the `user_applications` row for `_global`, and the password hash is stored in that row.
+   The user is created through `UserManager`, so the password follows the credential scope: in multi mode with `PerApplication` credentials the hash is in the `user_applications` row for `_global`; otherwise it is in the `users` row. In multi mode the `user_applications` row for `_global` always exists. See [credential-scope.md](credential-scope.md).
 5. In single mode it also creates the one fixed application row.
 6. Writes the audit event `seed.global_admin_created` (it never contains the password) and logs a warning.
 

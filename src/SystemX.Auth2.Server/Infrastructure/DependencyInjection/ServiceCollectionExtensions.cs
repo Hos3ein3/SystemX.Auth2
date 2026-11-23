@@ -6,6 +6,9 @@ using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Infrastructure;
+using SystemX.Auth2.Server.Infrastructure.Identity;
+using SystemX.Auth2.Server.Infrastructure.Localization;
+using SystemX.Auth2.Server.Persistence.Identity;
 using SystemX.Auth2.Server.Persistence;
 using SystemX.Auth2.Server.Persistence.Seeding;
 using SystemX.Auth2.Server.Persistence.Services;
@@ -40,7 +43,7 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IClientIdAccessor>(sp => sp.GetRequiredService<ApplicationScope>());
         services.AddScoped<IApplicationSelection>(sp => sp.GetRequiredService<ApplicationScope>());
         services.TryAddScoped<IApplicationContext, ModeApplicationContext>();
-        services.AddSingleton<IApplicationSettingsProvider, ApplicationSettingsProvider>();
+        services.AddScoped<IApplicationSettingsProvider, ApplicationSettingsProvider>();
 
         services.AddDbContext<Auth2DbContext>(o =>
         {
@@ -51,14 +54,41 @@ public static class Auth2ServerServiceCollectionExtensions
         // Keys live in the database so every instance shares them (scale-out). The application name is fixed.
         services.AddDataProtection().SetApplicationName("SystemX.Auth2").PersistKeysToDbContext<Auth2DbContext>();
 
+        services.AddLocalization();
+        services.AddHttpContextAccessor();
+        services.AddAuthentication();
+
+        services.AddScoped<Auth2IdentityErrorDescriber>();
         services.AddIdentityCore<AppUser>(o =>
             {
-                // Identity rules that depend on the project come from ApplicationSettings (phase 4). These are the global ones.
+                // Rules that depend on the project come from ApplicationSettings through IAuthFlowResolver.
+                // These are the global ones: email is unique, and the standard character and lockout rules are switched off
+                // because Auth2UserValidator and Auth2UserManager apply the project rules.
                 o.User.RequireUniqueEmail = true;
+                o.User.AllowedUserNameCharacters = "";
+                o.Lockout.AllowedForNewUsers = false;
             })
             .AddRoles<AppRole>()
-            .AddEntityFrameworkStores<Auth2DbContext>()
+            .AddUserStore<Auth2UserStore>()
+            .AddRoleStore<Auth2RoleStore>()
+            .AddUserManager<Auth2UserManager>()
+            .AddRoleManager<Auth2RoleManager>()
+            .AddSignInManager<Auth2SignInManager>()
             .AddDefaultTokenProviders();
+        services.Replace(ServiceDescriptor.Scoped<IdentityErrorDescriber>(sp => sp.GetRequiredService<Auth2IdentityErrorDescriber>()));
+        services.RemoveAll<IPasswordValidator<AppUser>>();
+        services.AddScoped<IPasswordValidator<AppUser>, Auth2PasswordValidator>();
+        services.AddScoped<IUserValidator<AppUser>, Auth2UserValidator>();
+        services.RemoveAll<IRoleValidator<AppRole>>();
+        services.AddScoped<IRoleValidator<AppRole>, Auth2RoleValidator>();
+        services.TryAddScoped<IUserClaimsPrincipalFactory<AppUser>, UserClaimsPrincipalFactory<AppUser, AppRole>>();
+
+        services.AddSingleton<ISecretHasher, Sha256SecretHasher>();
+        services.AddScoped<IAuthFlowResolver, AuthFlowResolver>();
+        services.AddScoped<UserRowCredentialState>();
+        services.AddScoped<UserApplicationCredentialState>();
+        services.AddScoped<ICredentialStateProvider, CredentialStateProvider>();
+        services.AddScoped<IAuth2Localizer, Auth2Localizer>();
 
         services.AddOpenIddict().AddCore(o => o
             .UseEntityFrameworkCore().UseDbContext<Auth2DbContext>().ReplaceDefaultEntities<Guid>());

@@ -26,7 +26,7 @@ public sealed partial class Auth2Seeder(
     IClientProvisioner provisioner,
     IOpenIddictScopeManager scopeManager,
     IAuditService audit,
-    IPasswordHasher<AppUser> hasher,
+    IApplicationSelection selection,
     TimeProvider clock)
 {
     // Hard-coded first admin. Change before production (see docs/seeding.md).
@@ -59,21 +59,10 @@ public sealed partial class Auth2Seeder(
     public async Task WarnIfDefaultPasswordAsync(CancellationToken ct = default)
     {
         using var _ = globalScope.Begin();
+        selection.ProjectKey = ProjectKeyRules.GlobalProjectKey;
         var admin = await users.FindByNameAsync(AdminUserName);
         if (admin is null) return;
-
-        var hash = admin.PasswordHash;
-        if (options.Value.Mode == ServerMode.MultiApplication && options.Value.CredentialScope == CredentialScope.PerApplication)
-        {
-            var globalApp = await db.Applications.AsNoTracking().FirstOrDefaultAsync(a => a.ProjectKey == ProjectKeyRules.GlobalProjectKey, ct);
-            if (globalApp is not null)
-                hash = await db.UserApplications.Where(x => x.UserId == admin.Id && x.ApplicationId == globalApp.Id)
-                    .Select(x => x.PasswordHash).FirstOrDefaultAsync(ct);
-        }
-        if (hash is null) return;
-
-        var result = hasher.VerifyHashedPassword(admin, hash, AdminPassword);
-        if (result != PasswordVerificationResult.Failed)
+        if (await users.CheckPasswordAsync(admin, AdminPassword))
             log.LogWarning("The GlobalAdmin user still has the default password. Change it now.");
     }
 
@@ -133,6 +122,8 @@ public sealed partial class Auth2Seeder(
             return false;
         }
 
+        // Credentials are written by the user store, to the place the credential scope says.
+        selection.ProjectKey = ProjectKeyRules.GlobalProjectKey;
         var user = new AppUser
         {
             UserName = AdminUserName,
@@ -145,24 +136,18 @@ public sealed partial class Auth2Seeder(
         EnsureSucceeded(await users.CreateAsync(user, AdminPassword), "create the GlobalAdmin user");
         EnsureSucceeded(await users.AddToRoleAsync(user, Auth2Roles.GlobalAdmin), "add the user to GlobalAdmin");
 
-        if (!single)
+        // In multi mode the user also belongs to the _global project. With per-application credentials the store
+        // already saved this row together with the user; with shared credentials we add it here.
+        if (!single && !await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == globalApp.Id, ct))
         {
-            var ua = new UserApplication
+            db.UserApplications.Add(new UserApplication
             {
                 UserId = user.Id,
                 ApplicationId = globalApp.Id,
                 JoinedAtUtc = clock.GetUtcNow(),
                 Status = UserApplicationStatus.Active,
                 LockoutEnabled = true,
-            };
-            if (options.Value.CredentialScope == CredentialScope.PerApplication)
-            {
-                // Credentials live in user_applications; the user row keeps none.
-                ua.PasswordHash = user.PasswordHash;
-                ua.SecurityStamp = user.SecurityStamp;
-                user.PasswordHash = null;
-            }
-            db.UserApplications.Add(ua);
+            });
             await db.SaveChangesAsync(ct);
         }
 

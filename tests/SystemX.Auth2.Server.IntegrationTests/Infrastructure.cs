@@ -60,7 +60,10 @@ public class Auth2ServerFactory : WebApplicationFactory<Program>
 
     public string ConnectionString => _connectionString;
 
-    protected virtual void ConfigureAuth2(IServiceCollection services) { }
+    protected virtual void ConfigureAuth2(IServiceCollection services) => Customize?.Invoke(services);
+
+    /// <summary>Extra service changes for one test class. Set before the first use of <c>Services</c>.</summary>
+    public Action<IServiceCollection>? Customize { get; set; }
 
     public async Task InitializeAsync() => _connectionString = await SharedPostgres.CreateDatabaseAsync();
 
@@ -88,10 +91,22 @@ public abstract class ServerTestBase : IAsyncLifetime
     public async Task InitializeAsync()
     {
         Factory = SingleMode ? new SingleModeFactory() : new Auth2ServerFactory();
+        Factory.Customize = Customize;
         await Factory.InitializeAsync();
     }
 
     public async Task DisposeAsync() => await Factory.DisposeAsync();
+
+    /// <summary>Override to change services for the whole test class.</summary>
+    protected virtual void Customize(IServiceCollection services) { }
+
+    /// <summary>A scope that works for the application with this client id (like a request with a client token).</summary>
+    protected AsyncServiceScope ScopeFor(string clientId)
+    {
+        var scope = Factory.Services.CreateAsyncScope();
+        scope.ServiceProvider.GetRequiredService<SystemX.Auth2.Server.Application.IClientIdAccessor>().ClientId = clientId;
+        return scope;
+    }
 
     protected AsyncServiceScope NewScope() => Factory.Services.CreateAsyncScope();
 

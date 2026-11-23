@@ -1,5 +1,6 @@
 using SystemX.Auth2.Server.Infrastructure;
 using SystemX.Auth2.Server.Infrastructure.Commands;
+using SystemX.Auth2.Server.Infrastructure.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,8 @@ if (!isCommand) builder.Services.AddHostedService<Auth2StartupService>();
 var app = builder.Build();
 
 if (isCommand) return await Auth2Commands.RunAsync(args, app.Services);
+
+app.UseAuth2Localization();
 
 app.MapGet("/", () => "SystemX.Auth2 Server");
 await app.RunAsync();

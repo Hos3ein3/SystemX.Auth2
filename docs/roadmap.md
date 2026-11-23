@@ -22,3 +22,5 @@ Every `TODO` in code must be listed here.
 - Phase 3: `create-admin`, `rotate-keys`, `convert-to-single`, `convert-to-multi` commands are not built yet (phases 4, 6, 10).
 - Phase 3: row version / `If-Match` for application edits comes with the admin API (phase 9).
 - Phase 3: the settings cache is per instance (memory). Redis and pub/sub invalidation come in phase 10.
+- Phase 4: the claim `locale` (saved user culture) is read by the culture provider, but nothing writes it yet. Phase 5 adds it to tokens and cookies.
+- Phase 4: `convert-to-single` / `convert-to-multi` must move credentials between the two places described in `credential-scope.md`.

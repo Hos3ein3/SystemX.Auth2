@@ -25,7 +25,9 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `application_disabled` | The application is disabled. |
 | `project_key_or_name_mismatch` | Handshake: ProjectKey or application name does not match. |
 | `server_mode_mismatch` | Client and server use different modes (single vs multi). |
-| `password_too_short` and `password_requires_*` | Password rule failed. |
+| `password_too_short`, `password_too_long`, `password_requires_digit`, `password_requires_lower`, `password_requires_upper`, `password_requires_non_alphanumeric`, `password_requires_unique_chars`, `password_banned` | Password rule failed. The rules come from the application settings. |
+| `invalid_user_name`, `invalid_email`, `email_domain_not_allowed`, `invalid_phone_number` | User data rule failed. |
+| `user_not_in_application` | The person has no membership row in this application. |
 | `login_method_not_allowed` | This login method is off for the application. |
 | `registration_disabled` | Registration is closed. |
 | `invalid_token` | Token is missing or invalid. |
@@ -42,6 +44,10 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `too_many_items` | Too many items in one request. |
 | `invalid_redirect_uri` | Redirect URI is not allowed. |
 | `server_error` | Unexpected error. |
+
+## Texts
+
+Every code has an English text in `Errors.resx`. See [localization.md](localization.md).
 
 ## Related pages
 

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="invalid_credentials" xml:space="preserve"><value>The user name or password is wrong.</value></data>
+  <data name="locked_out" xml:space="preserve"><value>This account is locked. Try again later.</value></data>
+  <data name="two_factor_required" xml:space="preserve"><value>A second factor is required.</value></data>
+  <data name="not_registered_in_application" xml:space="preserve"><value>You are not registered in this application.</value></data>
+  <data name="application_not_found" xml:space="preserve"><value>The application was not found.</value></data>
+  <data name="application_disabled" xml:space="preserve"><value>This application is disabled.</value></data>
+  <data name="project_key_or_name_mismatch" xml:space="preserve"><value>The project key or the application name does not match the server.</value></data>
+  <data name="server_mode_mismatch" xml:space="preserve"><value>The client and the server use different modes (single or multi application).</value></data>
+  <data name="password_too_short" xml:space="preserve"><value>The password must be at least {0} characters long.</value></data>
+  <data name="password_too_long" xml:space="preserve"><value>The password must not be longer than {0} characters.</value></data>
+  <data name="password_requires_digit" xml:space="preserve"><value>The password must contain a digit.</value></data>
+  <data name="password_requires_lower" xml:space="preserve"><value>The password must contain a lowercase letter.</value></data>
+  <data name="password_requires_upper" xml:space="preserve"><value>The password must contain an uppercase letter.</value></data>
+  <data name="password_requires_non_alphanumeric" xml:space="preserve"><value>The password must contain a special character.</value></data>
+  <data name="password_requires_unique_chars" xml:space="preserve"><value>The password must contain at least {0} different characters.</value></data>
+  <data name="password_banned" xml:space="preserve"><value>This password is not allowed.</value></data>
+  <data name="invalid_user_name" xml:space="preserve"><value>The user name is not valid.</value></data>
+  <data name="invalid_email" xml:space="preserve"><value>The email address is not valid.</value></data>
+  <data name="email_domain_not_allowed" xml:space="preserve"><value>Email addresses from this domain are not allowed.</value></data>
+  <data name="invalid_phone_number" xml:space="preserve"><value>The phone number is not valid.</value></data>
+  <data name="user_not_in_application" xml:space="preserve"><value>The user does not belong to this application.</value></data>
+  <data name="login_method_not_allowed" xml:space="preserve"><value>This way of signing in is not allowed.</value></data>
+  <data name="registration_disabled" xml:space="preserve"><value>Registration is closed.</value></data>
+  <data name="invalid_token" xml:space="preserve"><value>The token is missing or not valid.</value></data>
+  <data name="insufficient_scope" xml:space="preserve"><value>The token does not have the needed scope.</value></data>
+  <data name="forbidden" xml:space="preserve"><value>You are not allowed to do this.</value></data>
+  <data name="validation_failed" xml:space="preserve"><value>The input is not valid.</value></data>
+  <data name="not_found" xml:space="preserve"><value>The record was not found.</value></data>
+  <data name="conflict" xml:space="preserve"><value>The record was changed by someone else.</value></data>
+  <data name="rate_limited" xml:space="preserve"><value>Too many requests. Try again later.</value></data>
+  <data name="invalid_otp" xml:space="preserve"><value>The code is wrong or has expired.</value></data>
+  <data name="ownership_proof_required" xml:space="preserve"><value>You must prove that you own this account before you can join.</value></data>
+  <data name="sync_not_allowed" xml:space="preserve"><value>Sync is not allowed for this application.</value></data>
+  <data name="invalid_permission_key" xml:space="preserve"><value>A permission key is not valid.</value></data>
+  <data name="too_many_items" xml:space="preserve"><value>There are too many items in this request.</value></data>
+  <data name="invalid_redirect_uri" xml:space="preserve"><value>The redirect address is not allowed.</value></data>
+  <data name="server_error" xml:space="preserve"><value>An unexpected error happened.</value></data>
+  <data name="identity.DefaultError" xml:space="preserve"><value>An unknown failure has occurred.</value></data>
+  <data name="identity.ConcurrencyFailure" xml:space="preserve"><value>The record was changed by someone else.</value></data>
+  <data name="identity.PasswordMismatch" xml:space="preserve"><value>The password is wrong.</value></data>
+  <data name="identity.InvalidToken" xml:space="preserve"><value>The token is not valid.</value></data>
+  <data name="identity.RecoveryCodeRedemptionFailed" xml:space="preserve"><value>The recovery code is not valid.</value></data>
+  <data name="identity.LoginAlreadyAssociated" xml:space="preserve"><value>This external login is already linked to a user.</value></data>
+  <data name="identity.DuplicateUserName" xml:space="preserve"><value>This user name is already taken.</value></data>
+  <data name="identity.DuplicateEmail" xml:space="preserve"><value>This email address is already used.</value></data>
+  <data name="identity.InvalidRoleName" xml:space="preserve"><value>The role name is not valid.</value></data>
+  <data name="identity.DuplicateRoleName" xml:space="preserve"><value>This role name is already used.</value></data>
+  <data name="identity.UserAlreadyHasPassword" xml:space="preserve"><value>The user already has a password.</value></data>
+  <data name="identity.UserLockoutNotEnabled" xml:space="preserve"><value>Lockout is not enabled for this user.</value></data>
+  <data name="identity.UserAlreadyInRole" xml:space="preserve"><value>The user already has this role.</value></data>
+  <data name="identity.UserNotInRole" xml:space="preserve"><value>The user does not have this role.</value></data>
+</root>

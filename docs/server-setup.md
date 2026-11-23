@@ -71,6 +71,15 @@ It switches the server to single mode and registers `SingleApplicationContext`. 
 `convert-to-single` and `convert-to-multi` commands arrive in a later phase.
 They copy credentials between the user row and `user_applications`. Going to single can lose data, because a person with different passwords in several applications can keep only one.
 
+## What `AddSystemXAuth2Server` registers (so far)
+
+- `Auth2DbContext` (PostgreSQL), Data Protection keys in the database.
+- ASP.NET Core Identity core with our own `Auth2UserStore`, `Auth2RoleStore`, `Auth2UserManager`, `Auth2RoleManager`, `Auth2SignInManager`, validators and `Auth2IdentityErrorDescriber`.
+- OpenIddict core (stores only; endpoints come in phase 5).
+- `IApplicationContext`, `IAuthFlowResolver`, credential state strategies, localization (`IAuth2Localizer`).
+
+Add `app.UseAuth2Localization();` to the pipeline for request cultures. See [localization.md](localization.md).
+
 ## Commands
 
 The server executable has commands. Run them with `dotnet run --project src/SystemX.Auth2.Server -- <command>`.

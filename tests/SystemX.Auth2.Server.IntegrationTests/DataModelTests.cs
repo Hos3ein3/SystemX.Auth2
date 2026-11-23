@@ -218,6 +218,7 @@ public class DataModelTests : ServerTestBase
         await using var scope = NewScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
+        scope.ServiceProvider.GetRequiredService<IApplicationSelection>().ProjectKey = "_global";
         (await users.CreateAsync(new AppUser { UserName = "sara", Email = "sara@example.com" }, "Str0ng-Password!")).Succeeded.ShouldBeTrue();
         var sameEmail = await users.CreateAsync(new AppUser { UserName = "sara2", Email = "SARA@example.com" }, "Str0ng-Password!");
         sameEmail.Errors.ShouldContain(e => e.Code == "DuplicateEmail");

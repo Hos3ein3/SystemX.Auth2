@@ -41,7 +41,7 @@ There are two implementations: `SingleApplicationContext` and `MultiApplicationC
 One real person is one `AppUser` row. User name and email are unique on the whole server.
 The `user_applications` row says "this person belongs to this application".
 When credentials are per application, this row also holds the password hash, TOTP key and lockout state.
-See [credential-scope.md](credential-scope.md) *(planned)*.
+See [credential-scope.md](credential-scope.md).
 
 ## Query filters
 

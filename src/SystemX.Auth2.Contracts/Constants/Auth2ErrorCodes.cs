@@ -29,6 +29,22 @@ public static class Auth2ErrorCodes
     public const string PasswordRequiresUpper = "password_requires_upper";
     /// <summary>Password needs a non-alphanumeric character.</summary>
     public const string PasswordRequiresNonAlphanumeric = "password_requires_non_alphanumeric";
+    /// <summary>Password is too long.</summary>
+    public const string PasswordTooLong = "password_too_long";
+    /// <summary>Password needs more different characters.</summary>
+    public const string PasswordRequiresUniqueChars = "password_requires_unique_chars";
+    /// <summary>Password is on the banned list.</summary>
+    public const string PasswordBanned = "password_banned";
+    /// <summary>User name has a wrong length or wrong characters.</summary>
+    public const string InvalidUserName = "invalid_user_name";
+    /// <summary>Email is not valid.</summary>
+    public const string InvalidEmail = "invalid_email";
+    /// <summary>The email domain is not allowed in this application.</summary>
+    public const string EmailDomainNotAllowed = "email_domain_not_allowed";
+    /// <summary>Phone number is not valid.</summary>
+    public const string InvalidPhoneNumber = "invalid_phone_number";
+    /// <summary>The user does not belong to this application (no row yet).</summary>
+    public const string UserNotInApplication = "user_not_in_application";
     /// <summary>Login method not allowed.</summary>
     public const string LoginMethodNotAllowed = "login_method_not_allowed";
     /// <summary>Registration is closed.</summary>

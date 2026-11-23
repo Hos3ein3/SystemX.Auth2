@@ -6,8 +6,11 @@ using SystemX.Auth2.Server.Persistence;
 
 namespace SystemX.Auth2.Server.Infrastructure;
 
-/// <summary>Memory cache of settings. Singleton. Redis and cross-instance invalidation come in phase 10.</summary>
-public sealed class ApplicationSettingsProvider(IServiceScopeFactory scopes, IMemoryCache cache) : IApplicationSettingsProvider
+/// <summary>
+/// Reads settings through the current scope's DbContext (so it sees the caller's open transaction)
+/// and caches them in the shared memory cache. Redis and cross-instance invalidation come in phase 10.
+/// </summary>
+public sealed class ApplicationSettingsProvider(Auth2DbContext db, IMemoryCache cache) : IApplicationSettingsProvider
 {
     private static string Key(Guid id) => $"auth2:settings:{id:N}";
 
@@ -16,8 +19,6 @@ public sealed class ApplicationSettingsProvider(IServiceScopeFactory scopes, IMe
     {
         if (cache.TryGetValue(Key(applicationId), out ApplicationSettings? hit) && hit is not null) return hit;
 
-        await using var scope = scopes.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         var settings = await db.Applications.AsNoTracking()
             .Where(a => a.Id == applicationId).Select(a => a.Settings).FirstOrDefaultAsync(ct)
             ?? throw new ApplicationNotFoundException("Application not found.");

@@ -62,3 +62,27 @@ The OpenIddict client made by the seeder and by `create-application` is a basic 
 
 ## ADR-020: Test host
 Integration tests use one PostgreSQL 15 container per test run and one new database per test. `WebApplicationFactory<Program>` runs with environment `Testing` (no automatic migration). Tests call `DatabaseInitializer`.
+
+## ADR-021: Credential state strategies
+`ICredentialState` has two implementations (`UserRowCredentialState`, `UserApplicationCredentialState`). `Auth2UserStore` overrides every credential member of Identity (password, stamp, 2FA, lockout, TOTP key, recovery codes) and asks `ICredentialStateProvider`. The effective scope is `Shared` in single mode, the application override when the server allows it, else the server option.
+
+## ADR-022: Row-first rule in the store
+A new user's `user_applications` row is held in memory and saved together with the user (`BeforeUserCreated`), so there is never a password without a row and a failed validation leaves no rows. For an existing person without a row, the store throws instead of creating one: joining needs proof of ownership (phase 6). Reading with no row returns "no credentials".
+
+## ADR-023: Per-application lockout in the manager
+`IdentityOptions.Lockout` is global. `Auth2UserManager` overrides `CreateAsync`, `GetLockoutEnabledAsync` and `AccessFailedAsync` to use `Lockout` settings of the current application. `IdentityOptions.Lockout.AllowedForNewUsers` is false. The standard `UserValidator` still checks uniqueness and email format; `AllowedUserNameCharacters` is empty so our validator owns the character rule.
+
+## ADR-024: TOTP key and recovery codes
+The TOTP key is encrypted with Data Protection (purpose `SystemX.Auth2.AuthenticatorKey`) in both strategies. Recovery codes are stored as salted SHA-256 hashes (`ISecretHasher`, format `v1.salt.hash`). Identity's default stores both in plain text. Passwords still use the Identity password hasher. SHA-256 is acceptable here because codes are random and single-use; it is not used for passwords.
+
+## ADR-025: Roles in the store
+Role lookup by name prefers the role of the current application over a global role with the same name. The store makes sure the application is resolved first. `GetRolesAsync` returns roles of the current application only; global roles are included only in the `_global` project and in single-application mode. `Auth2RoleValidator` checks duplicates inside one application (`ApplicationId` + normalized name), including global roles among themselves. Roles created with no `ApplicationId` are global, so services must set it.
+
+## ADR-026: Settings provider is scoped
+`IApplicationSettingsProvider` reads through the scoped DbContext, so it sees uncommitted data (the seeder runs in a transaction). The cache is the shared `IMemoryCache`.
+
+## ADR-027: Localization
+Resx only, marker classes `Errors`, `Validation`, `Pages`, `Emails` in `SystemX.Auth2.Server.Resources`. English is the neutral resx. `fa`, `nl`, `it` are skeletons. Culture order is a pure function (`Auth2CultureResolver`) plus a request provider. A culture needs both a server resx and the application's `SupportedCultures`. The saved user culture is read from the `locale` claim.
+
+## ADR-028: Added error codes
+Added to Contracts: `password_too_long`, `password_requires_unique_chars`, `password_banned`, `invalid_user_name`, `invalid_email`, `email_domain_not_allowed`, `invalid_phone_number`, `user_not_in_application`.
