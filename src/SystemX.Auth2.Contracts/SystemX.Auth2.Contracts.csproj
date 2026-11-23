@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>SystemX.Auth2.Contracts</PackageId>
+    <Description>Shared DTOs, enums and constants for SystemX.Auth2.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />
+  </ItemGroup>
+</Project>

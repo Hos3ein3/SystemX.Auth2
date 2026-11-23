@@ -1,0 +1,19 @@
+using System.Text.Json.Serialization;
+
+namespace SystemX.Auth2.Contracts.Enums;
+
+/// <summary>Ways a user can sign in.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<LoginMethod>))]
+public enum LoginMethod
+{
+    /// <summary>User name and password.</summary>
+    UserNamePassword,
+    /// <summary>Email and password.</summary>
+    EmailPassword,
+    /// <summary>Phone number and password.</summary>
+    PhonePassword,
+    /// <summary>Phone number and one-time code.</summary>
+    PhoneOtp,
+    /// <summary>Email and one-time code.</summary>
+    EmailOtp,
+}

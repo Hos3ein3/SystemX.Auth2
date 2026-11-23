@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>SystemX.Auth2.Gateway</PackageId>
+    <Description>Planned gateway helper for SystemX.Auth2. Not implemented in v1.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,71 @@
+namespace SystemX.Auth2.Contracts.Constants;
+
+/// <summary>Stable error codes. Also used as localization keys.</summary>
+public static class Auth2ErrorCodes
+{
+    /// <summary>Wrong user or wrong password (same code on purpose).</summary>
+    public const string InvalidCredentials = "invalid_credentials";
+    /// <summary>The account is locked.</summary>
+    public const string LockedOut = "locked_out";
+    /// <summary>A second factor is needed.</summary>
+    public const string TwoFactorRequired = "two_factor_required";
+    /// <summary>The user does not belong to this application.</summary>
+    public const string NotRegisteredInApplication = "not_registered_in_application";
+    /// <summary>The application does not exist.</summary>
+    public const string ApplicationNotFound = "application_not_found";
+    /// <summary>The application is disabled.</summary>
+    public const string ApplicationDisabled = "application_disabled";
+    /// <summary>ProjectKey or application name does not match.</summary>
+    public const string ProjectKeyOrNameMismatch = "project_key_or_name_mismatch";
+    /// <summary>Client and server use different modes.</summary>
+    public const string ServerModeMismatch = "server_mode_mismatch";
+    /// <summary>Password is too short.</summary>
+    public const string PasswordTooShort = "password_too_short";
+    /// <summary>Password needs a digit.</summary>
+    public const string PasswordRequiresDigit = "password_requires_digit";
+    /// <summary>Password needs a lowercase letter.</summary>
+    public const string PasswordRequiresLower = "password_requires_lower";
+    /// <summary>Password needs an uppercase letter.</summary>
+    public const string PasswordRequiresUpper = "password_requires_upper";
+    /// <summary>Password needs a non-alphanumeric character.</summary>
+    public const string PasswordRequiresNonAlphanumeric = "password_requires_non_alphanumeric";
+    /// <summary>Login method not allowed.</summary>
+    public const string LoginMethodNotAllowed = "login_method_not_allowed";
+    /// <summary>Registration is closed.</summary>
+    public const string RegistrationDisabled = "registration_disabled";
+    /// <summary>Token is missing or invalid.</summary>
+    public const string InvalidToken = "invalid_token";
+    /// <summary>Scope is missing.</summary>
+    public const string InsufficientScope = "insufficient_scope";
+    /// <summary>The caller may not do this.</summary>
+    public const string Forbidden = "forbidden";
+    /// <summary>Validation failed.</summary>
+    public const string ValidationFailed = "validation_failed";
+    /// <summary>The record was not found.</summary>
+    public const string NotFound = "not_found";
+    /// <summary>The record was changed by someone else.</summary>
+    public const string Conflict = "conflict";
+    /// <summary>Too many requests.</summary>
+    public const string RateLimited = "rate_limited";
+    /// <summary>OTP code is wrong or expired.</summary>
+    public const string InvalidOtp = "invalid_otp";
+    /// <summary>Proof of ownership is needed to join an application.</summary>
+    public const string OwnershipProofRequired = "ownership_proof_required";
+    /// <summary>Sync is not allowed for this application.</summary>
+    public const string SyncNotAllowed = "sync_not_allowed";
+    /// <summary>A permission key is invalid.</summary>
+    public const string InvalidPermissionKey = "invalid_permission_key";
+    /// <summary>Too many items in one request.</summary>
+    public const string TooManyItems = "too_many_items";
+    /// <summary>Redirect URI not allowed.</summary>
+    public const string InvalidRedirectUri = "invalid_redirect_uri";
+    /// <summary>Unexpected server error.</summary>
+    public const string ServerError = "server_error";
+
+    /// <summary>All codes. Each one needs an English text in <c>Errors.resx</c>.</summary>
+    public static IReadOnlyList<string> All { get; } = typeof(Auth2ErrorCodes)
+        .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+        .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+        .Select(f => (string)f.GetRawConstantValue()!)
+        .ToArray();
+}

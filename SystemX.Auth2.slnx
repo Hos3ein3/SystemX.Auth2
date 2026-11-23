@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/SystemX.Auth2.Samples.MinimalApi/SystemX.Auth2.Samples.MinimalApi.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/SystemX.Auth2.Client/SystemX.Auth2.Client.csproj" />
+    <Project Path="src/SystemX.Auth2.Contracts/SystemX.Auth2.Contracts.csproj" />
+    <Project Path="src/SystemX.Auth2.Gateway/SystemX.Auth2.Gateway.csproj" />
+    <Project Path="src/SystemX.Auth2.Server/SystemX.Auth2.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SystemX.Auth2.Client.IntegrationTests/SystemX.Auth2.Client.IntegrationTests.csproj" />
+    <Project Path="tests/SystemX.Auth2.Client.Tests/SystemX.Auth2.Client.Tests.csproj" />
+    <Project Path="tests/SystemX.Auth2.Contracts.Tests/SystemX.Auth2.Contracts.Tests.csproj" />
+    <Project Path="tests/SystemX.Auth2.Server.IntegrationTests/SystemX.Auth2.Server.IntegrationTests.csproj" />
+    <Project Path="tests/SystemX.Auth2.Server.Tests/SystemX.Auth2.Server.Tests.csproj" />
+  </Folder>
+</Solution>
