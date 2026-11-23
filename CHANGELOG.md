@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- Phase 13: Client cookie authentication, hosted UI (OpenID Connect, code + PKCE) and Self UI (`IAuth2WebService`), `/auth2/login` and `/auth2/logout` routes, `OnTokenValidated` access loading (`AccessMode`),
+  cookie lifetime from the server, API-versus-browser answers (401 / 403 or redirect), Blazor helpers (`UseBlazor`, `IAuth2BlazorService`), permission and role scanners, generic catalog sync service,
+  sync hosted service (push, pull, both), `IAuth2Catalog`. Docs: `client-setup` (UI modes and sync), updates to `permission-sync` and `client-current-user`.
 - Phase 12: Client authorization: attributes and Minimal API extensions (`WithAuth2`, `WithAnonymous`, `WithRole`, `WithAllRoles`, `WithPermission`, `WithAllPermissions`, `WithOnlyRolePermission`, `WithOnlyUserPermission`, `WithScope`,
   `WithMachineOnly`, `WithUserOnly`, `WithGroup`, `WithAuth2Policy`, `WithAuth2Audit`), policy provider and handlers, audit sink, `ICurrentUser`, `IAuth2CurrentUserService`, current user stores (memory, distributed),
   `UseApiAuthentication` (JWT bearer with key refresh), `UseDistributedCurrentUserStore`. Server: `/me` returns `DirectPermissions` and `RolePermissions`. Docs: `client-authorization`, `client-current-user`.

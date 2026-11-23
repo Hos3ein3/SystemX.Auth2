@@ -19,7 +19,7 @@ Early development. See [docs/feature-status.md](docs/feature-status.md) (written
 | Part | Status |
 |---|---|
 | Contracts | Done (phase 2) |
-| Server | Data model, identity, login and tokens, accounts (register, join, OTP, reset, 2FA, consent), access model (permissions, roles, groups, `/me`), sync and handshake, admin API, security and operations done (phases 3–10). Client core and client authorization (attributes, current user, API authentication) done (phases 11–12); cookie, OIDC, Blazor and sync come next |
+| Server | Data model, identity, login and tokens, accounts (register, join, OTP, reset, 2FA, consent), access model (permissions, roles, groups, `/me`), sync and handshake, admin API, security and operations done (phases 3–10). Client core, authorization, API / cookie / hosted UI / Self UI / Blazor and sync done (phases 11–13); experimental features come next |
 | Client | Not started |
 | Gateway | Empty project, not implemented in v1 |
 

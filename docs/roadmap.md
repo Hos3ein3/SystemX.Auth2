@@ -53,4 +53,6 @@ Every `TODO` in code must be listed here.
 - Phase 11: the Client does not cache the OIDC discovery document and JWKS yet (needed with API authentication, phase 12).
 - Phase 12: a revoked access token still works on a client until it expires (no introspection). Cookie / OIDC login, Blazor helpers, the redirect-or-401 choice for browser apps, and cookie storage of access data come in phase 13.
 - Phase 12: a role given to a user shows in a **new** token only; permissions and groups follow the cache rules in `client-current-user.md`.
+- Phase 13: access tokens in cookie sessions are not renewed (no refresh-token use). After the access token expires, `Lazy` reads fall back to cached data. `OnSignIn` is the better choice for long sessions.
+- Phase 13: Blazor WebAssembly (browser-side) is not covered: the client package runs on the server side.
 

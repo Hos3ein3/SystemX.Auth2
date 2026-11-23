@@ -55,6 +55,10 @@ What this means in practice: when an admin gives a user a permission, the user's
 
 The server raises the access version for every change that matters, see [authorization.md](authorization.md).
 
+## Cookie sessions
+
+With the hosted UI or the Self UI the user is in a cookie, not a token. `ICurrentUser` works the same way. The access token is kept in the cookie (`SaveTokens`) and used to call `/me`. The `AccessMode` of the cookie options decides when the data is loaded; see [client-setup.md](client-setup.md). Roles checks (`WithRole`) use role claims when there are some; a cookie without role claims (`Lazy` mode) gets its roles from the access data.
+
 ## Fetch by hand
 
 `IAuth2CurrentUserService.FetchAsync(principal)` calls `/me` and **does not cache**. Use it after login if you want to keep the result somewhere yourself (session, Redis, ...). It uses the token of the current request (`Authorization` header, or the token saved by cookie login). A machine token gives the failure `forbidden`.

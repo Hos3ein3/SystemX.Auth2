@@ -28,11 +28,24 @@ internal sealed class Auth2AuthorizationHandler(IAuth2AccessProvider access, ILo
             Auth2RequirementKind.MachineOnly => user.FindFirst(Auth2Claims.Machine)?.Value == "true",
             Auth2RequirementKind.UserOnly => user.FindFirst(Auth2Claims.Machine)?.Value != "true",
             Auth2RequirementKind.Scope => Any(ScopeClaims.Read(user), requirement.Values, StringComparer.Ordinal),
-            Auth2RequirementKind.Role => Check(user.FindAll("role").Select(c => c.Value).Concat(user.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value)).ToList(), requirement, StringComparer.OrdinalIgnoreCase),
+            Auth2RequirementKind.Role => Check(await RolesAsync(user), requirement, StringComparer.OrdinalIgnoreCase),
             _ => await CheckAccessAsync(context, requirement),
         };
         if (ok) context.Succeed(requirement);
         else context.Fail(new AuthorizationFailureReason(this, $"Auth2 requirement {requirement.Kind} not met."));
+    }
+
+    /// <summary>Roles from the claims. A principal with no role claim (a cookie session that loads access lazily) gets its roles from the access data.</summary>
+    private async Task<IReadOnlyList<string>> RolesAsync(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var claims = user.FindAll("role").Concat(user.FindAll(System.Security.Claims.ClaimTypes.Role)).Select(c => c.Value).Distinct().ToList();
+        if (claims.Count > 0 || user.Identity?.IsAuthenticated != true) return claims;
+        try { return (await access.GetAccessAsync(user)).Roles; }
+        catch (Auth2Exception ex)
+        {
+            log.LogWarning("The roles of the user could not be read from the Auth2 server ({Code}).", ex.ErrorCode);
+            return claims;
+        }
     }
 
     private async Task<bool> CheckAccessAsync(AuthorizationHandlerContext context, Auth2Requirement requirement)

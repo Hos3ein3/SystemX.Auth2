@@ -45,7 +45,7 @@ public abstract class ClientAppTestBase : ClientTestBase
     protected ServiceProvider ApiClient = null!;
 
     protected async Task StartAppAsync(Action<IEndpointRouteBuilder> map, Action<IAuth2ClientBuilder>? configure = null, Action<IServiceCollection>? services = null,
-        HttpMessageHandler? apiHandler = null, Action<SystemX.Auth2.Client.Options.Auth2ApiOptions>? api = null)
+        HttpMessageHandler? apiHandler = null, Action<SystemX.Auth2.Client.Options.Auth2ApiOptions>? api = null, bool handshake = false)
     {
         await UpdateSettingsAsync(s => { s.Clients.AllowSelfUiLogin = true; });
         Counting = new CountingHandler(Server.Server.CreateHandler());
@@ -55,7 +55,7 @@ public abstract class ClientAppTestBase : ClientTestBase
             .ConfigureServices(s =>
             {
                 s.AddRouting();
-                var builder = s.AddAuth2Client("http://localhost", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; o.HandshakeOnStartup = false; })
+                var builder = s.AddAuth2Client("http://localhost", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; o.HandshakeOnStartup = handshake; })
                     .ServerWithMultiApplication("blog")
                     .UseApiAuthentication(o => { o.BackchannelHandler = Server.Server.CreateHandler(); o.KeyRefreshInterval = TimeSpan.FromSeconds(1); api?.Invoke(o); });
                 configure?.Invoke(builder);
@@ -67,7 +67,7 @@ public abstract class ClientAppTestBase : ClientTestBase
             {
                 app.UseRouting();
                 app.UseAuth2();
-                app.UseEndpoints(map);
+                app.UseEndpoints(e => { map(e); e.MapAuth2Endpoints(); });
             })).StartAsync();
         Http = App.GetTestClient();
     }

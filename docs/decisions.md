@@ -238,3 +238,18 @@ Tokens carry roles and scopes but not permissions (size, ADR in phase 7). The ca
 ## ADR-078: API authentication uses the JWT bearer handler
 The standard handler gives discovery, a cached key set and a reload on an unknown key id. Claims are not remapped (`sub`, `role`, `scope`). The audience is the client id, so tokens of other applications are refused. Revocation is not checked (no introspection): tokens are short-lived. After a rotation the first token with an unknown key id triggers a read of the keys and a wait of up to 2 seconds (a signing-key resolver, rate limited by `KeyRefreshInterval`), so no request is refused.
 
+## ADR-079: One default scheme "Auth2" chooses bearer or cookie
+When the cookie is used, the default scheme is a policy scheme: a request with `Authorization: Bearer` goes to the JWT handler, every other request to the cookie. A policy scheme can only forward to one scheme per direction, so the difference between "redirect" and "401" is made in the cookie events: `OnRedirectToLogin` / `OnRedirectToAccessDenied` answer 401 / 403 for API-like requests (bearer, JSON `Accept`, AJAX, `[ApiController]`, `AsAuth2Api()`) and redirect otherwise. The hosted UI's `LoginPath` is the package's own `/auth2/login` route, which starts the OpenID Connect challenge.
+
+## ADR-080: Hosted UI = OpenID Connect handler; the hook lives in the package
+`UseHostedUi` configures the standard OIDC handler: code + PKCE with `response_mode=query` (the handler's `form_post` default needs cross-site POST cookies with `SameSite=None; Secure`), `SaveTokens`, no inbound claim mapping. Its `OnTokenValidated` event keeps the `pv` claim (read from the access token) and loads access data by `AccessMode` (store, role claims, or nothing). `returnUrl` goes through `AuthenticationProperties.RedirectUri` and only local paths are accepted.
+
+## ADR-081: Cookie lifetime comes from the server
+`Auth2CookieOptions.ExpireTimeSpan = null` means "use `CookieLifetime` from the handshake" (set when the cookie is signed in), 8 hours when the server has none. Setting the option wins.
+
+## ADR-082: Sync waits for start and handshake, and never blocks start-up
+`Auth2SyncHostedService` is a `BackgroundService`: it waits for `ApplicationStarted` (endpoints exist, so scanning sees them) and for `Auth2ClientState` to be `Ok`, then pushes. Lists are hashed and only sent when changed. Failures are retried (transient only) and then logged; `FailOnSyncError` turns a final failure into a host failure. Pull results go to `IAuth2Catalog`.
+
+## ADR-083: Roles for cookie users
+Role checks read role claims. A signed-in principal with no role claim (cookie, `Lazy` mode) falls back to the access data from the server, so `WithRole` works without putting roles in the cookie. The per-request memo of the access provider lives only 3 seconds, so a Blazor circuit never keeps old data for long.
+

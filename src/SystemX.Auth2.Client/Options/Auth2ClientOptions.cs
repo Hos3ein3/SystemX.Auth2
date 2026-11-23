@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using SystemX.Auth2.Contracts.Enums;
 
 namespace SystemX.Auth2.Client.Options;
@@ -52,6 +53,15 @@ public sealed class Auth2ClientOptions
 
     /// <summary>Time limit of one call to the server (not the handshake). Default 30 seconds.</summary>
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>How often permissions, roles and groups are read again from the server when their policy is <c>Pull</c> or <c>Both</c>. Default 10 minutes.</summary>
+    public TimeSpan CatalogRefreshInterval { get; set; } = TimeSpan.FromMinutes(10);
+
+    /// <summary>How many times a failed sync is tried again (waits grow like the handshake retries). Default 5.</summary>
+    public int SyncMaxRetries { get; set; } = 5;
+
+    /// <summary>When true, a sync that still fails after the retries stops the application. Default false: log it and carry on.</summary>
+    public bool FailOnSyncError { get; set; }
 }
 
 /// <summary>Options of the machine-to-machine (client credentials) feature.</summary>
@@ -108,4 +118,61 @@ public sealed class Auth2CurrentUserOptions
 
     /// <summary>How long access data is kept before it is read again. Default 10 minutes.</summary>
     public TimeSpan CacheTtl { get; set; } = TimeSpan.FromMinutes(10);
+}
+
+/// <summary>Options of the sign-in cookie (<c>UseCookieAuthentication</c>, <c>UseHostedUi</c>, <c>UseSelfUi</c>).</summary>
+public sealed class Auth2CookieOptions
+{
+    /// <summary>Cookie name. Default <c>.SystemX.Auth2.Client</c>.</summary>
+    public string CookieName { get; set; } = ".SystemX.Auth2.Client";
+
+    /// <summary>
+    /// How long the cookie lasts. <b>Null (default) uses the value of the server</b> (<c>Sessions.CookieLifetimeMinutes</c>, read at the handshake),
+    /// and 8 hours when the server has none.
+    /// </summary>
+    public TimeSpan? ExpireTimeSpan { get; set; }
+
+    /// <summary>Renew the cookie while the user is active. Default true.</summary>
+    public bool SlidingExpiration { get; set; } = true;
+
+    /// <summary>SameSite mode. Default <see cref="SameSiteMode.Lax"/> (it must be Lax or None for the sign-in redirect to work).</summary>
+    public SameSiteMode SameSite { get; set; } = SameSiteMode.Lax;
+
+    /// <summary>When the cookie is sent only over https. Default <see cref="CookieSecurePolicy.Always"/>. Use <c>SameAsRequest</c> only in development.</summary>
+    public CookieSecurePolicy SecurePolicy { get; set; } = CookieSecurePolicy.Always;
+
+    /// <summary>Where browsers go to sign in. Default <c>/auth2/login</c> (provided by the package for the hosted UI). With the Self UI, set your own page.</summary>
+    public string LoginPath { get; set; } = "/auth2/login";
+
+    /// <summary>Where signed-in users go when they may not do something. Default <c>/auth2/denied</c>.</summary>
+    public string AccessDeniedPath { get; set; } = "/auth2/denied";
+
+    /// <summary>Keep the access, refresh and identity tokens in the cookie. Default true (needed to call the server for the user's access data later).</summary>
+    public bool SaveTokens { get; set; } = true;
+
+    /// <summary>
+    /// When the user's roles, permissions and groups are loaded. <see cref="AccessLoadMode.Lazy"/> (default): when first needed.
+    /// <see cref="AccessLoadMode.OnSignIn"/>: at sign-in, into the store. <see cref="AccessLoadMode.RolesInCookie"/>: roles go into the cookie as claims (the cookie
+    /// has a 4 KB limit: keep it for small data). <see cref="AccessLoadMode.None"/>: never.
+    /// </summary>
+    public AccessLoadMode AccessMode { get; set; } = AccessLoadMode.Lazy;
+}
+
+/// <summary>Options of the hosted UI (<c>UseHostedUi</c>): sign in on the Auth2 Server with the authorization code flow and PKCE.</summary>
+public sealed class Auth2HostedUiOptions
+{
+    /// <summary>Scopes to ask for. Default: <c>openid profile email offline_access auth2.me</c>.</summary>
+    public List<string> Scopes { get; set; } = ["openid", "profile", "email", "offline_access", "auth2.me"];
+
+    /// <summary>Where the server sends the browser after sign-in. Register it as a redirect URI of the application on the server. Default <c>/signin-oidc</c>.</summary>
+    public string CallbackPath { get; set; } = "/signin-oidc";
+
+    /// <summary>Where the server sends the browser after sign-out. Default <c>/signout-callback-oidc</c>.</summary>
+    public string SignedOutCallbackPath { get; set; } = "/signout-callback-oidc";
+
+    /// <summary>Insist on https for the discovery address. Default: true, except when the server address is http.</summary>
+    public bool? RequireHttpsMetadata { get; set; }
+
+    /// <summary>Handler for the calls to the server (tests, proxies). Default: none.</summary>
+    public HttpMessageHandler? BackchannelHandler { get; set; }
 }

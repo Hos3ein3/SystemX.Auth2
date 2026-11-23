@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SystemX.Auth2.Client.DependencyInjection;
+using SystemX.Auth2.Client.Authentication;
 using SystemX.Auth2.Client.Options;
 
 namespace SystemX.Auth2.Client.Options
@@ -112,6 +113,7 @@ public static class Auth2ApiAuthenticationExtensions
     {
         if (configure is not null) builder.Services.Configure(configure);
         builder.Services.AddOptions<Auth2ApiOptions>();
+        builder.Services.AddOptions<Auth2AuthFlags>().Configure(f => f.HasBearer = true);
         builder.Services.AddAuthentication(o =>
         {
             o.DefaultScheme ??= JwtBearerDefaults.AuthenticationScheme;

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -13,6 +14,7 @@ using SystemX.Auth2.Client.HealthChecks;
 using SystemX.Auth2.Client.Machine;
 using SystemX.Auth2.Client.Options;
 using SystemX.Auth2.Client.Services;
+using SystemX.Auth2.Client.Sync;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -67,6 +69,17 @@ public static class Auth2ClientServiceCollectionExtensions
         services.TryAddSingleton<IAuth2CurrentUserService, CurrentUserService>();
         services.TryAddScoped<IAuth2AccessProvider, AccessProvider>();
         services.TryAddScoped<ICurrentUser, CurrentUserImpl>();
+
+        // Scanners and sync (they do nothing while the policies are None)
+        services.TryAddSingleton<IPermissionScanner, PermissionScanner>();
+        services.TryAddSingleton<IRoleScanner, RoleScanner>();
+        services.TryAddSingleton<Auth2Catalog>();
+        services.TryAddSingleton<IAuth2Catalog>(sp => sp.GetRequiredService<Auth2Catalog>());
+        if (!services.Any(d => d.ServiceType == typeof(Auth2SyncHostedService)))
+        {
+            services.AddSingleton<Auth2SyncHostedService>();
+            services.AddHostedService(sp => sp.GetRequiredService<Auth2SyncHostedService>());
+        }
 
         services.TryAddSingleton<Auth2ClientState>();
         services.TryAddSingleton<IAuth2MachineTokenProvider, MachineTokenProvider>();
@@ -160,11 +173,12 @@ public static class Auth2ClientServiceCollectionExtensions
 /// <summary>Middleware registration of the client.</summary>
 public static class Auth2ClientApplicationBuilderExtensions
 {
-    /// <summary>Adds authentication and authorization to the pipeline. Call it where you would call <c>UseAuthentication()</c> and <c>UseAuthorization()</c>.</summary>
+    /// <summary>Adds authentication and authorization to the pipeline, and the <c>/auth2/...</c> routes of the hosted UI. Call it where you would call <c>UseAuthentication()</c> and <c>UseAuthorization()</c>.</summary>
     public static IApplicationBuilder UseAuth2(this IApplicationBuilder app)
     {
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseAuth2Routes();   // /auth2/login and /auth2/logout when a UI mode is on (minimal hosting)
         return app;
     }
 }

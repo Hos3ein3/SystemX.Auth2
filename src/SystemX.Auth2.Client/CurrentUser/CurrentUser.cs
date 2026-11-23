@@ -182,8 +182,10 @@ public interface IAuth2AccessProvider
 internal sealed class AccessProvider(IAuth2CurrentUserService users, ICurrentUserStore store, IOptions<Auth2CurrentUserOptions> options, IOptions<Auth2ClientOptions> client,
     ILogger<AccessProvider> log, TimeProvider clock) : IAuth2AccessProvider
 {
-    // One instance per request (scoped): a request asks the server at most once per user.
-    private readonly Dictionary<string, Task<Auth2Access>> _perRequest = [];
+    // One instance per request (scoped): a request asks the server at most once per user. In a long-lived scope (a Blazor circuit) the memo
+    // is only kept for a few seconds, so it never hides a change for long.
+    private static readonly TimeSpan MemoLifetime = TimeSpan.FromSeconds(3);
+    private readonly Dictionary<string, (Task<Auth2Access> Task, DateTimeOffset At)> _perRequest = [];
 
     public Task<Auth2Access> GetAccessAsync(ClaimsPrincipal principal, CancellationToken ct = default)
     {
@@ -197,7 +199,10 @@ internal sealed class AccessProvider(IAuth2CurrentUserService users, ICurrentUse
         var key = $"auth2:access:{client.Value.ClientId}:{sub}";
         lock (_perRequest)
         {
-            if (!_perRequest.TryGetValue(key, out var task)) _perRequest[key] = task = LoadAsync(key, principal, ct);
+            var now = clock.GetUtcNow();
+            if (_perRequest.TryGetValue(key, out var memo) && now - memo.At < MemoLifetime && !memo.Task.IsFaulted) return memo.Task;
+            var task = LoadAsync(key, principal, ct);
+            _perRequest[key] = (task, now);
             return task;
         }
     }
@@ -221,7 +226,6 @@ internal sealed class AccessProvider(IAuth2CurrentUserService users, ICurrentUse
         }
         var access = Auth2Access.From(me.Value!);
         await store.SetAsync(key, access, options.Value.CacheTtl, ct);
-        _ = clock;   // the store handles the time limit
         return access;
     }
 

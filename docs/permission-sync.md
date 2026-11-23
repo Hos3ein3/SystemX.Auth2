@@ -69,6 +69,10 @@ POST /api/auth2/roles/sync
 
 For roles, `addedKeys` holds the names of the roles that were created.
 
+## The client side
+
+The Client package does this for you: `EnablePermissions(...)`, `EnableRoles(...)`, `EnableGroups(...)`. It scans your endpoints and attributes, pushes after the application started and after a good handshake, skips unchanged lists, and retries failures. See [client-setup.md](client-setup.md) ("Permission, role and group sync").
+
 ## Common problems
 
 | Problem | Cause |
