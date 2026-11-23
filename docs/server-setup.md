@@ -62,6 +62,29 @@ builder.Services.AddSystemXAuth2Server(builder.Configuration, o =>
 | `Auth2:AutoSeed` | `false` | Seed at startup outside Development |
 | `Auth2:AutoMigrate` | `false` | Migrate at startup in Production |
 | `Auth2:SingleApplication:Name` | `Default` | Name of the one application in single mode |
+| `Auth2:Keys:SigningCertificates` | none | List of `{ "Path": "sign.pfx", "Password": "..." }`. The first signs; all validate |
+| `Auth2:Keys:EncryptionCertificates` | none | Same, for encrypting code and refresh tokens |
+
+## Keys, issuer and the production guard
+
+In `Development` and `Testing` the server makes temporary keys. In every other environment it **refuses to start** unless:
+
+- `Auth2:Keys` has at least one signing and one encryption certificate (PFX files), and
+- `Auth2:Issuer` is an `https://` URL.
+
+```json
+{
+  "Auth2": {
+    "Issuer": "https://auth.example.com",
+    "Keys": {
+      "SigningCertificates":    [ { "Path": "/secrets/sign.pfx", "Password": "..." } ],
+      "EncryptionCertificates": [ { "Path": "/secrets/enc.pfx",  "Password": "..." } ]
+    }
+  }
+}
+```
+
+Keep the passwords in environment variables or a secret store (`Auth2__Keys__SigningCertificates__0__Password`). The session cookie is `Secure` outside Development and Testing.
 
 ## Single-application mode
 
@@ -75,7 +98,9 @@ They copy credentials between the user row and `user_applications`. Going to sin
 
 - `Auth2DbContext` (PostgreSQL), Data Protection keys in the database.
 - ASP.NET Core Identity core with our own `Auth2UserStore`, `Auth2RoleStore`, `Auth2UserManager`, `Auth2RoleManager`, `Auth2SignInManager`, validators and `Auth2IdentityErrorDescriber`.
-- OpenIddict core (stores only; endpoints come in phase 5).
+- OpenIddict server and validation: `/connect/authorize`, `/connect/token`, `/connect/endsession`, `/connect/userinfo`, `/connect/revoke`, `/connect/introspect`, discovery and keys. See [authentication-flows.md](authentication-flows.md).
+- `ILoginService`, `ITokenIssuer`, `ISessionService`, `IReturnUrlValidator`, and the hosted-UI cookie `.SystemX.Auth2.Session`.
+- Razor Pages: `Account/Login`, `Account/TwoFactor`, `Account/Logout`, `Account/Lockout`, `Account/AccessDenied`, `Error`. The `.cshtml` files are empty on purpose.
 - `IApplicationContext`, `IAuthFlowResolver`, credential state strategies, localization (`IAuth2Localizer`).
 
 Add `app.UseAuth2Localization();` to the pipeline for request cultures. See [localization.md](localization.md).
@@ -88,7 +113,8 @@ The server executable has commands. Run them with `dotnet run --project src/Syst
 |---|---|
 | `migrate` | Applies migrations, then seeds |
 | `seed` | Seeds only (see [seeding.md](seeding.md)) |
-| `create-application <projectKey> <name>` | Creates an application and its OpenIddict client |
+| `create-application <projectKey> <name>` | Creates an application and its OpenIddict client. Prints the client secret **once** |
+| `rotate-client-secret <projectKey>` | Makes a new client secret and prints it once. The old one stops working |
 | `create-admin`, `rotate-keys`, `convert-to-single`, `convert-to-multi` | Planned (later phases) |
 
 Exit codes: `0` success, `1` the command failed, `2` wrong usage.

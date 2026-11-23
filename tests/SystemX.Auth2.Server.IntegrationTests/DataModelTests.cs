@@ -17,7 +17,7 @@ public class DataModelTests : ServerTestBase
         await MigrateAndSeedAsync();
         await using var scope = NewScope();
         var svc = scope.ServiceProvider.GetRequiredService<IApplicationService>();
-        return (await svc.CreateAsync("appa", "App A", null, null), await svc.CreateAsync("appb", "App B", null, null));
+        return ((await svc.CreateAsync("appa", "App A", null, null)).Application, (await svc.CreateAsync("appb", "App B", null, null)).Application);
     }
 
     [Fact]

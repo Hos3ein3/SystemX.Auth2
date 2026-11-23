@@ -28,6 +28,9 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `password_too_short`, `password_too_long`, `password_requires_digit`, `password_requires_lower`, `password_requires_upper`, `password_requires_non_alphanumeric`, `password_requires_unique_chars`, `password_banned` | Password rule failed. The rules come from the application settings. |
 | `invalid_user_name`, `invalid_email`, `email_domain_not_allowed`, `invalid_phone_number` | User data rule failed. |
 | `user_not_in_application` | The person has no membership row in this application. |
+| `email_not_confirmed`, `phone_not_confirmed` | Confirmation is required. Shown only after the password was right. |
+| `two_factor_setup_required` | The application requires two-factor and the user has not set it up. |
+| `grant_not_allowed` | The grant type is not allowed for this application. |
 | `login_method_not_allowed` | This login method is off for the application. |
 | `registration_disabled` | Registration is closed. |
 | `invalid_token` | Token is missing or invalid. |
@@ -44,6 +47,16 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `too_many_items` | Too many items in one request. |
 | `invalid_redirect_uri` | Redirect URI is not allowed. |
 | `server_error` | Unexpected error. |
+
+## Token endpoint errors
+
+`/connect/token` returns the standard OAuth fields and our stable code:
+
+```json
+{ "error": "invalid_grant", "error_description": "invalid credentials", "error_code": "invalid_credentials" }
+```
+
+`error` is `invalid_grant` for failed logins, `unauthorized_client` when the grant is off for the client, `invalid_client` for a wrong secret, and `two_factor_required` for the first step of a two-factor login (with a `two_factor_token`). Use `error_code` in your program.
 
 ## Texts
 

@@ -6,8 +6,10 @@ using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Infrastructure;
+using SystemX.Auth2.Server.Infrastructure.Auth;
 using SystemX.Auth2.Server.Infrastructure.Identity;
 using SystemX.Auth2.Server.Infrastructure.Localization;
+using SystemX.Auth2.Server.Infrastructure.OpenIddict;
 using SystemX.Auth2.Server.Persistence.Identity;
 using SystemX.Auth2.Server.Persistence;
 using SystemX.Auth2.Server.Persistence.Seeding;
@@ -56,7 +58,9 @@ public static class Auth2ServerServiceCollectionExtensions
 
         services.AddLocalization();
         services.AddHttpContextAccessor();
-        services.AddAuthentication();
+        services.AddAuthentication().AddAuth2Cookie();
+        services.AddAuthorization();
+        services.AddRazorPages();
 
         services.AddScoped<Auth2IdentityErrorDescriber>();
         services.AddIdentityCore<AppUser>(o =>
@@ -90,8 +94,12 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<ICredentialStateProvider, CredentialStateProvider>();
         services.AddScoped<IAuth2Localizer, Auth2Localizer>();
 
-        services.AddOpenIddict().AddCore(o => o
-            .UseEntityFrameworkCore().UseDbContext<Auth2DbContext>().ReplaceDefaultEntities<Guid>());
+        services.AddSingleton<IReturnUrlValidator, ReturnUrlValidator>();
+        services.AddScoped<ISessionService, SessionService>();
+        services.AddScoped<ITokenIssuer, TokenIssuer>();
+        services.AddScoped<ILoginService, LoginService>();
+
+        services.AddAuth2OpenIddict(configuration);
 
         services.AddScoped<IClientProvisioner, OpenIddictClientProvisioner>();
         services.AddScoped<IAuditService, AuditService>();

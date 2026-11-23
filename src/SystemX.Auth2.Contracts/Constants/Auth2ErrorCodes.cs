@@ -45,6 +45,14 @@ public static class Auth2ErrorCodes
     public const string InvalidPhoneNumber = "invalid_phone_number";
     /// <summary>The user does not belong to this application (no row yet).</summary>
     public const string UserNotInApplication = "user_not_in_application";
+    /// <summary>Email must be confirmed before login.</summary>
+    public const string EmailNotConfirmed = "email_not_confirmed";
+    /// <summary>Phone number must be confirmed before login.</summary>
+    public const string PhoneNotConfirmed = "phone_not_confirmed";
+    /// <summary>Two-factor is required by the application but the user has not set it up yet.</summary>
+    public const string TwoFactorSetupRequired = "two_factor_setup_required";
+    /// <summary>The grant type is not allowed for this application or client.</summary>
+    public const string GrantNotAllowed = "grant_not_allowed";
     /// <summary>Login method not allowed.</summary>
     public const string LoginMethodNotAllowed = "login_method_not_allowed";
     /// <summary>Registration is closed.</summary>

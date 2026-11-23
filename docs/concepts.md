@@ -59,6 +59,15 @@ Global roles (`ApplicationId` is null) are always visible.
 - **Role**: a named set of permissions (`Editor`).
 - **Group**: a set of users that can have roles and permissions.
 
+## Tokens and sign-in
+
+- **Hosted UI**: the browser goes to the server, the user signs in on the server's page, and your app gets a token. Your app never sees the password. This is the recommended way.
+- **Self UI**: your app shows its own form and sends the password to the server. Off by default.
+- **M2M** (machine to machine): one program calls another with a token from the client id and secret. No user.
+- The access token is a signed JWT. It has the roles of one application and a version number (`pv`), not the list of permissions.
+
+See [authentication-flows.md](authentication-flows.md).
+
 ## Related pages
 
 - [architecture.md](architecture.md)

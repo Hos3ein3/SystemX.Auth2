@@ -6,6 +6,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 
 ### Added
 - Phase 1: solution skeleton, central package management, CI workflow, docs skeleton.
+- Phase 5: OpenIddict server (authorization code + PKCE, client credentials, refresh rotation with reuse detection, optional password and two-factor grants),
+  `ILoginService`, `ITokenIssuer`, `ISessionService` (single active session), `IReturnUrlValidator`, the hosted-UI cookie, pages `Account/Login`, `TwoFactor`, `Logout`, `Lockout`, `AccessDenied`, `Error`,
+  client provisioning from settings, `rotate-client-secret` command, production guard for keys and issuer. Docs: `authentication-flows`.
 - Phase 4: Identity customization: `Auth2UserStore` / `Auth2RoleStore`, credential scope strategies (`PerApplication`, `Shared`), per-application password / user / lockout rules,
   `Auth2IdentityErrorDescriber`, role rules per application, resx localization (`en` + `fa`, `nl`, `it` skeletons), culture order. Docs: `credential-scope`, `localization`.
 - Phase 3: Server data model (Domain, `Auth2DbContext`, `InitialCreate` migration, query filters, `ApplicationSettings` jsonb + validator),

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Infrastructure.OpenIddict;
 using SystemX.Auth2.Server.Persistence;
 using SystemX.Auth2.Server.Persistence.Seeding;
 
@@ -14,6 +15,8 @@ public sealed class Auth2StartupService(IServiceProvider services, IOptions<Auth
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken ct)
     {
+        ProductionGuard.Check(env, services.GetRequiredService<IOptions<Auth2KeyOptions>>().Value, options.Value);
+
         var dev = env.IsDevelopment();
         var migrate = dev || options.Value.AutoMigrate;
         var seed = dev || options.Value.AutoSeed;

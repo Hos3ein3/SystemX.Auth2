@@ -99,11 +99,5 @@ public sealed class Auth2RequestCultureProvider : RequestCultureProvider
         return new ProviderCultureResult(culture);
     }
 
-    private static string? FromReturnUrl(string returnUrl, string key)
-    {
-        var q = returnUrl.IndexOf('?', StringComparison.Ordinal);
-        if (q < 0) return null;
-        var values = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(returnUrl[(q + 1)..]);
-        return values.TryGetValue(key, out StringValues v) && v.Count > 0 ? v.ToString() : null;
-    }
+    private static string? FromReturnUrl(string returnUrl, string key) => Auth.ReturnUrlQuery.Get(returnUrl, key);
 }

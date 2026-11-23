@@ -15,14 +15,18 @@ public abstract class IdentityTestBase : ServerTestBase
 
     protected Auth2Application A = null!;
     protected Auth2Application B = null!;
+    protected string ASecret = "";
+    protected string BSecret = "";
 
     protected async Task SetUpAsync()
     {
         await MigrateAndSeedAsync();
         await using var scope = NewScope();
         var svc = scope.ServiceProvider.GetRequiredService<IApplicationService>();
-        A = await svc.CreateAsync("appa", "App A", null, null);
-        B = await svc.CreateAsync("appb", "App B", null, null);
+        var a = await svc.CreateAsync("appa", "App A", null, null);
+        var b = await svc.CreateAsync("appb", "App B", null, null);
+        (A, ASecret) = (a.Application, a.ClientSecret);
+        (B, BSecret) = (b.Application, b.ClientSecret);
     }
 
     protected async Task<AppUser> CreateUserInAsync(string clientId, string name = "sara", string password = PassA)

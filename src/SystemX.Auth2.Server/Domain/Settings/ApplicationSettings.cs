@@ -255,7 +255,7 @@ public sealed class ClientSettings
     public List<ClientType> AllowedClientTypes { get; set; } = [ClientType.Api, ClientType.Mvc, ClientType.RazorPages, ClientType.Blazor, ClientType.Machine];
     /// <summary>Scopes clients may request.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)]
-    public List<string> AllowedScopes { get; set; } = ["openid", "profile", "email", "phone", "roles", "offline_access", "auth2.me", "auth2.client.handshake"];
+    public List<string> AllowedScopes { get; set; } = ["openid", "profile", "email", "phone", "roles", "offline_access", "auth2.me", "auth2.client.handshake", "auth2.register", "auth2.login", "auth2.permissions.sync", "auth2.roles.sync", "auth2.groups.read"];
     /// <summary>Permission sync is allowed.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool PermissionSyncAllowed { get; set; } = true;
     /// <summary>Role sync is allowed.</summary>

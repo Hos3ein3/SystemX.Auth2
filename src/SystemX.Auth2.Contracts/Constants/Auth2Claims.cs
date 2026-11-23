@@ -33,4 +33,8 @@ public static class Auth2Claims
     public const string Amr = "amr";
     /// <summary>Session id.</summary>
     public const string SessionId = "sid";
+    /// <summary>Saved culture of the user.</summary>
+    public const string Locale = "locale";
+    /// <summary>Set to <c>true</c> on machine (client credentials) tokens. User tokens never have it.</summary>
+    public const string Machine = "machine";
 }

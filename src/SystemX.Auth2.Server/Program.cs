@@ -1,3 +1,4 @@
+using SystemX.Auth2.Server.Endpoints;
 using SystemX.Auth2.Server.Infrastructure;
 using SystemX.Auth2.Server.Infrastructure.Commands;
 using SystemX.Auth2.Server.Infrastructure.Localization;
@@ -16,8 +17,14 @@ var app = builder.Build();
 if (isCommand) return await Auth2Commands.RunAsync(args, app.Services);
 
 app.UseAuth2Localization();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/", () => "SystemX.Auth2 Server");
+app.MapAuth2Connect();
+app.MapRazorPages();
 await app.RunAsync();
 return 0;
 

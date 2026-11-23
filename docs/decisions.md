@@ -86,3 +86,39 @@ Resx only, marker classes `Errors`, `Validation`, `Pages`, `Emails` in `SystemX.
 
 ## ADR-028: Added error codes
 Added to Contracts: `password_too_long`, `password_requires_unique_chars`, `password_banned`, `invalid_user_name`, `invalid_email`, `email_domain_not_allowed`, `invalid_phone_number`, `user_not_in_application`.
+
+## ADR-029: Token format
+Access tokens are signed JWTs, **not encrypted** (`DisableAccessTokenEncryption`), so remote APIs can validate them with the public keys and no shared secret. Token entries are stored, so revocation works at the server (userinfo, introspection, refresh). APIs that only check the signature accept a revoked access token until it expires (15 minutes by default). Authorization codes and refresh tokens stay encrypted. Reference tokens were not chosen: they need a server call for every request.
+
+## ADR-030: Every client is confidential
+Each application has one OpenIddict client with a secret (shown once, stored hashed). There are no public clients, so the password grant can never be used by a public client. Browser-only apps (SPA without a backend) are out of scope for v1. The secret of the seeded `_global` and single-application clients is generated and not shown; `rotate-client-secret` makes a known one.
+
+## ADR-031: Settings drive the OpenIddict client
+`IClientProvisioner` copies redirect URIs, scope permissions, the password and two-factor grant permissions and the consent type from `ApplicationSettings` into the client. It is called on create and on every settings update, in the same transaction. Updates copy the stored descriptor (with the hashed secret), so the secret is never changed or double hashed.
+
+## ADR-032: Passthrough endpoints, one issuing path
+`/connect/authorize`, `/token`, `/endsession`, `/userinfo` are Minimal API handlers in passthrough mode. There is no `/api/auth2/login`. Error bodies on the token endpoint are `error` + `error_description` + `error_code`; `two_factor_required` also carries `two_factor_token`.
+
+## ADR-033: Hosted session cookie is per application
+The cookie `.SystemX.Auth2.Session` carries the claim `app`. The authorize endpoint uses it only for the same application. A user who signed in for application A signs in again for B, because credentials can differ. One cookie holds one login at a time (the last one).
+
+## ADR-034: No user enumeration in login
+Unknown user, inactive user, wrong password and "not in this application" return `invalid_credentials`; the audit log keeps the real reason. A dummy password hash is verified for unknown users to even out timing. `login_method_not_allowed` and `application_disabled` are config answers and are returned as they are.
+
+## ADR-035: Two-factor token
+The `two_factor_token` is a Data Protection time-limited token (5 minutes) that holds the user id and the application id. It is stateless; replay inside 5 minutes still needs the second factor, and wrong codes count as failed attempts (lockout).
+
+## ADR-036: pv claim
+`pv` = application `AccessVersion` + the user's `UserAccessVersion` in that application (single mode: application only). Both only grow, so the sum only grows. Phase 7 raises them.
+
+## ADR-037: SingleActiveSession and the security stamp
+Revoking tokens and authorizations is per OpenIddict client, so it is per application. The security stamp is changed only with per-application credentials. With shared credentials the stamp is global, and changing it would sign the user out of other applications too. `ActiveSessionId` in `user_applications` is not used: we revoke all earlier sessions at login, so no session id has to be remembered (and single mode has no such table).
+
+## ADR-038: Keys
+In Development and Testing the server creates temporary keys (RSA signing key and a symmetric encryption key). We do not use `AddDevelopmentSigningCertificate`, because it writes to the machine's certificate store. Other environments need PFX certificates in `Auth2:Keys` and an HTTPS issuer, or the startup guard stops the app. Rotation (`IKeyRing`, `rotate-keys`) is phase 10.
+
+## ADR-039: Only S256
+`plain` is removed from `CodeChallengeMethods`. PKCE is required for the authorization code flow.
+
+## ADR-040: Consent and OTP grant move to phase 6
+The spec puts the consent service and the OTP service in phase 6. Phase 5 has the `ConsentMode` setting mapped to the OpenIddict consent type, but no consent page. The OTP grant constant exists (`Auth2GrantTypes.Otp`) but is not registered yet.

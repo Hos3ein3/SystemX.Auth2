@@ -64,21 +64,36 @@ public interface IApplicationSettingsProvider
 /// <summary>Creates and updates applications.</summary>
 public interface IApplicationService
 {
-    /// <summary>Creates an application and its OpenIddict client.</summary>
-    Task<Auth2Application> CreateAsync(string projectKey, string name, string? description, string? clientId, CancellationToken ct = default);
+    /// <summary>Creates an application and its OpenIddict client. The client secret is in the result and is shown only once.</summary>
+    Task<ApplicationCreationResult> CreateAsync(string projectKey, string name, string? description, string? clientId, CancellationToken ct = default);
 
     /// <summary>Finds an application by project key (global scope).</summary>
     Task<Auth2Application?> FindByProjectKeyAsync(string projectKey, CancellationToken ct = default);
+
+    /// <summary>Makes a new client secret. The old one stops working. The new one is shown only once.</summary>
+    Task<string> RotateClientSecretAsync(string projectKey, CancellationToken ct = default);
 
     /// <summary>Replaces the settings after validation. Raises the settings version and clears the cache.</summary>
     Task UpdateSettingsAsync(Guid applicationId, ApplicationSettings settings, CancellationToken ct = default);
 }
 
-/// <summary>Creates or updates the OpenIddict client that belongs to an application.</summary>
+/// <summary>A new application and its client secret (plain text, shown once).</summary>
+public sealed record ApplicationCreationResult(Auth2Application Application, string ClientSecret);
+
+/// <summary>Result of making sure the OpenIddict client exists. <c>NewClientSecret</c> is set only when the client was just created.</summary>
+public sealed record ClientProvisionResult(Guid Id, string? NewClientSecret);
+
+/// <summary>
+/// Creates or updates the OpenIddict client that belongs to an application: client id, hashed secret, permissions,
+/// redirect URIs and consent type, all from the application settings.
+/// </summary>
 public interface IClientProvisioner
 {
-    /// <summary>Ensures the OpenIddict client exists. Returns its id.</summary>
-    Task<Guid> EnsureClientAsync(Auth2Application application, CancellationToken ct = default);
+    /// <summary>Ensures the OpenIddict client exists and matches the settings. Secrets are never changed on update.</summary>
+    Task<ClientProvisionResult> EnsureClientAsync(Auth2Application application, CancellationToken ct = default);
+
+    /// <summary>Creates a new secret for the client and returns it (shown once).</summary>
+    Task<string> RotateSecretAsync(Auth2Application application, CancellationToken ct = default);
 }
 
 /// <summary>One audit entry. Never put secrets in it.</summary>

@@ -9,6 +9,7 @@ using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Domain.Settings;
 using SystemX.Auth2.Server.Infrastructure;
+using SystemX.Auth2.Server.Infrastructure.OpenIddict;
 
 namespace SystemX.Auth2.Server.Persistence.Seeding;
 
@@ -84,7 +85,7 @@ public sealed partial class Auth2Seeder(
         }
         if (app.OpenIddictApplicationId is null)
         {
-            app.OpenIddictApplicationId = await provisioner.EnsureClientAsync(app, ct);
+            app.OpenIddictApplicationId = (await provisioner.EnsureClientAsync(app, ct)).Id;   // the secret of a seeded client is not shown; rotate it with the rotate-client-secret command
             await db.SaveChangesAsync(ct);
         }
         return app;

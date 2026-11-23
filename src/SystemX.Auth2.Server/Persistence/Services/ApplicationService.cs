@@ -18,7 +18,7 @@ public sealed class ApplicationService(
     TimeProvider clock) : IApplicationService
 {
     /// <inheritdoc />
-    public async Task<Auth2Application> CreateAsync(string projectKey, string name, string? description, string? clientId, CancellationToken ct = default)
+    public async Task<ApplicationCreationResult> CreateAsync(string projectKey, string name, string? description, string? clientId, CancellationToken ct = default)
     {
         if (options.Value.Mode == ServerMode.SingleApplication)
             throw new InvalidOperationException("The server is single-application. It has exactly one application, created by the seeder.");
@@ -39,11 +39,23 @@ public sealed class ApplicationService(
         };
         db.Applications.Add(app);
         await db.SaveChangesAsync(ct);
-        app.OpenIddictApplicationId = await provisioner.EnsureClientAsync(app, ct);
+        var client = await provisioner.EnsureClientAsync(app, ct);
+        app.OpenIddictApplicationId = client.Id;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(new AuditEntry("application.created", app.Id, TargetType: "application", TargetId: app.Id.ToString()), ct);
         await tx.CommitAsync(ct);
-        return app;
+        return new ApplicationCreationResult(app, client.NewClientSecret!);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> RotateClientSecretAsync(string projectKey, CancellationToken ct = default)
+    {
+        using var _ = globalScope.Begin();
+        var app = await db.Applications.FirstOrDefaultAsync(a => a.ProjectKey == projectKey, ct)
+            ?? throw new ApplicationNotFoundException($"No application with project key '{projectKey}'.");
+        var secret = await provisioner.RotateSecretAsync(app, ct);
+        await audit.WriteAsync(new AuditEntry("application.secret_rotated", app.Id, TargetType: "application", TargetId: app.Id.ToString()), ct);
+        return secret;
     }
 
     /// <inheritdoc />
@@ -61,7 +73,10 @@ public sealed class ApplicationService(
         app.SettingsVersion++;
         // The value comparer sees no change when the JSON is identical, so we force the property state.
         db.Entry(app).Property(a => a.Settings).IsModified = true;
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
         await db.SaveChangesAsync(ct);
+        await provisioner.EnsureClientAsync(app, ct);   // redirect URIs, scopes and grants follow the settings
+        await tx.CommitAsync(ct);
         settingsProvider.Invalidate(applicationId);
         await audit.WriteAsync(new AuditEntry("application.settings_updated", applicationId, TargetType: "application",
             TargetId: applicationId.ToString(), Data: new Dictionary<string, object?> { ["settingsVersion"] = app.SettingsVersion }), ct);

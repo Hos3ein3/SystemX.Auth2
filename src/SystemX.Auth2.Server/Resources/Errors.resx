@@ -76,4 +76,8 @@
   <data name="identity.UserLockoutNotEnabled" xml:space="preserve"><value>Lockout is not enabled for this user.</value></data>
   <data name="identity.UserAlreadyInRole" xml:space="preserve"><value>The user already has this role.</value></data>
   <data name="identity.UserNotInRole" xml:space="preserve"><value>The user does not have this role.</value></data>
+  <data name="email_not_confirmed" xml:space="preserve"><value>Please confirm your email address before you sign in.</value></data>
+  <data name="phone_not_confirmed" xml:space="preserve"><value>Please confirm your phone number before you sign in.</value></data>
+  <data name="two_factor_setup_required" xml:space="preserve"><value>This application requires two-factor authentication. Set it up first.</value></data>
+  <data name="grant_not_allowed" xml:space="preserve"><value>This way of getting a token is not allowed for this application.</value></data>
 </root>
