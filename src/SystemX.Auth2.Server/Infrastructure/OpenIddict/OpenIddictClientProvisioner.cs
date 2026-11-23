@@ -24,6 +24,17 @@ public sealed class OpenIddictClientProvisioner(IOpenIddictApplicationManager ma
     /// <inheritdoc />
     public async Task<ClientProvisionResult> EnsureClientAsync(Auth2Application application, CancellationToken ct = default)
     {
+        // Two updates of the same client at the same moment (parallel syncs, an admin change) can meet the OpenIddict concurrency token.
+        // The client is read again and the settings are applied again: the result is the same, because Apply copies the whole state.
+        for (var attempt = 0; ; attempt++)
+        {
+            try { return await EnsureOnceAsync(application, ct); }
+            catch (OpenIddictExceptions.ConcurrencyException) when (attempt < 5) { await Task.Delay(20 * (attempt + 1), ct); }
+        }
+    }
+
+    private async Task<ClientProvisionResult> EnsureOnceAsync(Auth2Application application, CancellationToken ct)
+    {
         var existing = await manager.FindByClientIdAsync(application.ClientId, ct);
         if (existing is null)
         {

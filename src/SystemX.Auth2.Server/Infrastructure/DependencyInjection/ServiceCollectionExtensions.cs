@@ -118,6 +118,8 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IPermissionSyncService, PermissionSyncService>();
         services.AddScoped<IRoleSyncService, RoleSyncService>();
+        services.AddScoped<IGroupSyncService, GroupSyncService>();
+        services.AddScoped<IScopeSyncService, ScopeSyncService>();
         services.AddScoped<IClientHandshakeService, ClientHandshakeService>();
         services.AddScoped<IAdminUserService, SystemX.Auth2.Server.Infrastructure.Admin.AdminUserService>();
         services.AddScoped<IAdminApplicationService, SystemX.Auth2.Server.Infrastructure.Admin.AdminApplicationService>();

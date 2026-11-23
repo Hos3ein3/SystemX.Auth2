@@ -26,6 +26,17 @@ public static class Auth2Keys
         return k.All(c => Alnum(c) || c is '.' or '_' or ':' or '-') ? k : null;
     }
 
+    /// <summary>
+    /// True for scopes that belong to the server (<c>auth2.*</c> and the standard OpenID Connect scopes). They are never sent by sync.
+    /// </summary>
+    public static bool IsReservedScope(string name) => name.StartsWith("auth2.", StringComparison.Ordinal) || name is "openid" or "profile" or "email" or "phone" or "roles" or "offline_access";
+
+    /// <summary>Scope names follow the rules of permission keys. Returns null when the name is invalid.</summary>
+    public static string? NormalizeScopeName(string? name) => NormalizePermissionKey(name);
+
+    /// <summary>Group names follow the rules of permission keys (lowercase). Returns null when the name is invalid.</summary>
+    public static string? NormalizeGroupName(string? name) => NormalizePermissionKey(name);
+
     /// <summary>Role names: 1–100 letters, digits, space or <c>. _ : -</c>. Returns the trimmed name, or null.</summary>
     public static string? NormalizeRoleName(string? name)
     {
@@ -47,6 +58,20 @@ public interface IRoleScanner
 {
     /// <summary>The roles, sorted by name. Manual entries win over scanned ones.</summary>
     IReadOnlyList<RoleDefinition> Scan();
+}
+
+/// <summary>Finds the custom scopes of this application (for example <c>reports.read</c>). Reserved scopes are skipped.</summary>
+public interface IScopeScanner
+{
+    /// <summary>The scopes, sorted by name. Manual entries win over scanned ones.</summary>
+    IReadOnlyList<ScopeDefinition> Scan();
+}
+
+/// <summary>Finds the groups of this application (for <c>GroupSyncPolicy.Push</c> and <c>Both</c>).</summary>
+public interface IGroupScanner
+{
+    /// <summary>The groups, sorted by name. Manual entries win over scanned ones.</summary>
+    IReadOnlyList<GroupDefinition> Scan();
 }
 
 internal static class ScanSupport
@@ -126,5 +151,66 @@ internal sealed class RoleScanner(IEnumerable<EndpointDataSource> endpoints, IOp
             foreach (var d in o.RoleList) Add(d, manual: true);
 
         return [.. result.Values.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
+    }
+}
+
+internal sealed class ScopeScanner(IEnumerable<EndpointDataSource> endpoints, IOptions<Auth2ScopeOptions> options, ILogger<ScopeScanner> log) : IScopeScanner
+{
+    public IReadOnlyList<ScopeDefinition> Scan()
+    {
+        var o = options.Value;
+        var result = new Dictionary<string, ScopeDefinition>(StringComparer.Ordinal);
+
+        void Add(ScopeDefinition d, bool manual)
+        {
+            var name = Auth2Keys.NormalizeScopeName(d.Name);
+            if (name is null) { log.LogWarning("The scope '{Name}' is not valid and is skipped. Use lowercase letters, digits and . _ : - (1 to 100 characters).", d.Name); return; }
+            if (Auth2Keys.IsReservedScope(name))
+            {
+                if (manual) log.LogWarning("The scope '{Name}' is reserved (auth2.* and the standard OpenID Connect scopes) and is skipped.", name);
+                return;   // endpoints often ask for auth2.me and similar: that is normal and silent
+            }
+            if (manual || !result.ContainsKey(name)) result[name] = d with { Name = name };
+        }
+
+        if (o.ScanningPolicy is ScanningPolicy.AssemblyScan or ScanningPolicy.Both)
+        {
+            foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2ScopeMetadata>())
+                foreach (var name in meta.Scopes) Add(new ScopeDefinition(name), manual: false);
+            foreach (var attribute in ScanSupport.AttributesIn<Auth2ScopeAttribute>(o.AssembliesToScan))
+                foreach (var name in attribute.Scopes) Add(new ScopeDefinition(name), manual: false);
+        }
+        if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
+            foreach (var d in o.ScopeList) Add(d, manual: true);
+
+        return [.. result.Values.OrderBy(d => d.Name, StringComparer.Ordinal)];
+    }
+}
+
+internal sealed class GroupScanner(IEnumerable<EndpointDataSource> endpoints, IOptions<Auth2GroupOptions> options, ILogger<GroupScanner> log) : IGroupScanner
+{
+    public IReadOnlyList<GroupDefinition> Scan()
+    {
+        var o = options.Value;
+        var result = new Dictionary<string, GroupDefinition>(StringComparer.Ordinal);
+
+        void Add(GroupDefinition d, bool manual)
+        {
+            var name = Auth2Keys.NormalizeGroupName(d.Name);
+            if (name is null) { log.LogWarning("The group '{Name}' is not valid and is skipped. Use lowercase letters, digits and . _ : - (1 to 100 characters).", d.Name); return; }
+            if (manual || !result.ContainsKey(name)) result[name] = d with { Name = name };
+        }
+
+        if (o.ScanningPolicy is ScanningPolicy.AssemblyScan or ScanningPolicy.Both)
+        {
+            foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2GroupMetadata>())
+                foreach (var name in meta.Groups) Add(new GroupDefinition(name), manual: false);
+            foreach (var attribute in ScanSupport.AttributesIn<Auth2GroupAttribute>(o.AssembliesToScan))
+                foreach (var name in attribute.Groups) Add(new GroupDefinition(name), manual: false);
+        }
+        if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
+            foreach (var d in o.GroupList) Add(d, manual: true);
+
+        return [.. result.Values.OrderBy(d => d.Name, StringComparer.Ordinal)];
     }
 }

@@ -58,6 +58,15 @@ public interface IAuth2ApiClientService
     /// <summary>Sends roles to the server (adds and updates, never deletes).</summary>
     Task<Result<SyncResponse>> SyncRolesAsync(RoleSyncRequest request, CancellationToken ct = default);
 
+    /// <summary>Sends groups to the server. They are only added when missing. Needs <c>Clients.GroupSyncAllowed</c> on the server.</summary>
+    Task<Result<SyncResponse>> SyncGroupsAsync(GroupSyncRequest request, CancellationToken ct = default);
+
+    /// <summary>Sends custom scopes to the server: they are registered and allowed for this application.</summary>
+    Task<Result<SyncResponse>> SyncScopesAsync(ScopeSyncRequest request, CancellationToken ct = default);
+
+    /// <summary>Reads the custom scopes this application allows.</summary>
+    Task<Result<IReadOnlyList<ScopeDto>>> GetScopesAsync(CancellationToken ct = default);
+
     /// <summary>Reads the permissions of this application.</summary>
     Task<Result<IReadOnlyList<PermissionDto>>> GetPermissionsAsync(CancellationToken ct = default);
 

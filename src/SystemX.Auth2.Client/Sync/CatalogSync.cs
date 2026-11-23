@@ -21,6 +21,8 @@ public interface IAuth2Catalog
     IReadOnlyList<RoleDto> Roles { get; }
     /// <summary>Groups with their roles and permission keys.</summary>
     IReadOnlyList<GroupDto> Groups { get; }
+    /// <summary>Custom scopes this application allows.</summary>
+    IReadOnlyList<ScopeDto> Scopes { get; }
     /// <summary>When the last successful read finished, or null.</summary>
     DateTimeOffset? LastReadUtc { get; }
 }
@@ -30,18 +32,21 @@ internal sealed class Auth2Catalog : IAuth2Catalog
     private volatile IReadOnlyList<PermissionDto> _permissions = [];
     private volatile IReadOnlyList<RoleDto> _roles = [];
     private volatile IReadOnlyList<GroupDto> _groups = [];
+    private volatile IReadOnlyList<ScopeDto> _scopes = [];
     private long _last;
 
     public IReadOnlyList<PermissionDto> Permissions => _permissions;
     public IReadOnlyList<RoleDto> Roles => _roles;
     public IReadOnlyList<GroupDto> Groups => _groups;
+    public IReadOnlyList<ScopeDto> Scopes => _scopes;
     public DateTimeOffset? LastReadUtc => Interlocked.Read(ref _last) is var t and > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(t) : null;
 
-    public void Set(IReadOnlyList<PermissionDto>? permissions, IReadOnlyList<RoleDto>? roles, IReadOnlyList<GroupDto>? groups, DateTimeOffset now)
+    public void Set(IReadOnlyList<PermissionDto>? permissions, IReadOnlyList<RoleDto>? roles, IReadOnlyList<GroupDto>? groups, IReadOnlyList<ScopeDto>? scopes, DateTimeOffset now)
     {
         if (permissions is not null) _permissions = permissions;
         if (roles is not null) _roles = roles;
         if (groups is not null) _groups = groups;
+        if (scopes is not null) _scopes = scopes;
         Interlocked.Exchange(ref _last, now.ToUnixTimeMilliseconds());
     }
 }
@@ -94,12 +99,13 @@ public sealed class CatalogSyncService<TItem>(string name, Func<IReadOnlyList<TI
 
 /// <summary>
 /// Runs the sync <b>after the application started</b> (so every endpoint is mapped and can be scanned) and after a successful handshake.
-/// Push: sends permissions, then roles. Pull: reads permissions, roles and groups now and every <c>CatalogRefreshInterval</c>.
+/// Push: sends scopes, permissions, roles, then groups. Pull: reads scopes, permissions, roles and groups now and every <c>CatalogRefreshInterval</c>.
 /// A failure is logged and the application carries on, unless <c>FailOnSyncError</c> is true.
 /// </summary>
-public sealed class Auth2SyncHostedService(IHostApplicationLifetime lifetime, Auth2ClientState state, IPermissionScanner permissionScanner, IRoleScanner roleScanner,
+public sealed class Auth2SyncHostedService(IHostApplicationLifetime lifetime, Auth2ClientState state,
+    IPermissionScanner permissionScanner, IRoleScanner roleScanner, IScopeScanner scopeScanner, IGroupScanner groupScanner,
     IAuth2ApiClientService api, IOptions<Auth2ClientOptions> client, IOptions<Auth2PermissionOptions> permissions, IOptions<Auth2RoleOptions> roles,
-    IOptions<Auth2GroupOptions> groups, IAuth2Catalog catalog, TimeProvider clock, ILoggerFactory loggers) : BackgroundService
+    IOptions<Auth2GroupOptions> groups, IOptions<Auth2ScopeOptions> scopes, IAuth2Catalog catalog, TimeProvider clock, ILoggerFactory loggers) : BackgroundService
 {
     private readonly ILogger _log = loggers.CreateLogger<Auth2SyncHostedService>();
 
@@ -109,30 +115,46 @@ public sealed class Auth2SyncHostedService(IHostApplicationLifetime lifetime, Au
         var p = permissions.Value.SyncPolicy;
         var r = roles.Value.SyncPolicy;
         var g = groups.Value.SyncPolicy;
-        if (p == PermissionSyncPolicy.None && r == RoleSyncPolicy.None && g == GroupSyncPolicy.None) return;
+        var s = scopes.Value.SyncPolicy;
+        if (p == PermissionSyncPolicy.None && r == RoleSyncPolicy.None && g == GroupSyncPolicy.None && s == ScopeSyncPolicy.None) return;
+
+        var pushScopes = s is ScopeSyncPolicy.Push or ScopeSyncPolicy.Both;
+        var pushPermissions = p is PermissionSyncPolicy.Push or PermissionSyncPolicy.Both;
+        var pushRoles = r is RoleSyncPolicy.Push or RoleSyncPolicy.Both;
+        var pushGroups = g is GroupSyncPolicy.Push or GroupSyncPolicy.Both;
+        var pullScopes = s is ScopeSyncPolicy.Pull or ScopeSyncPolicy.Both;
+        var pullPermissions = p is PermissionSyncPolicy.Pull or PermissionSyncPolicy.Both;
+        var pullRoles = r is RoleSyncPolicy.Pull or RoleSyncPolicy.Both;
+        var pullGroups = g is GroupSyncPolicy.Pull or GroupSyncPolicy.Both;
+        var pulls = pullScopes || pullPermissions || pullRoles || pullGroups;
 
         try
         {
             await WaitForStartedAsync(stoppingToken);
             await state.WaitUntilReadyAsync(stoppingToken);   // no sync before a good handshake
 
+            var scopeSync = new CatalogSyncService<ScopeDefinition>("scopes", () => scopeScanner.Scan(),
+                async (items, ct) => await api.SyncScopesAsync(new ScopeSyncRequest(items), ct), client, clock, _log);
             var permissionSync = new CatalogSyncService<PermissionDefinition>("permissions", () => permissionScanner.Scan(),
                 async (items, ct) => await api.SyncPermissionsAsync(new PermissionSyncRequest(items), ct), client, clock, _log);
             var roleSync = new CatalogSyncService<RoleDefinition>("roles", () => roleScanner.Scan(),
                 async (items, ct) => await api.SyncRolesAsync(new RoleSyncRequest(items), ct), client, clock, _log);
+            var groupSync = new CatalogSyncService<GroupDefinition>("groups", () => groupScanner.Scan(),
+                async (items, ct) => await api.SyncGroupsAsync(new GroupSyncRequest(null, items), ct), client, clock, _log);
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 var ok = true;
-                if (p is PermissionSyncPolicy.Push or PermissionSyncPolicy.Both) ok &= await permissionSync.PushAsync(stoppingToken);
-                if (r is RoleSyncPolicy.Push or RoleSyncPolicy.Both) ok &= await roleSync.PushAsync(stoppingToken);
-                if (p is PermissionSyncPolicy.Pull or PermissionSyncPolicy.Both || r is RoleSyncPolicy.Pull or RoleSyncPolicy.Both || g == GroupSyncPolicy.Pull)
-                    ok &= await PullAsync(p, r, g, stoppingToken);
+                // Order matters: scopes and permissions first, roles can refer to permissions, groups last.
+                if (pushScopes) ok &= await scopeSync.PushAsync(stoppingToken);
+                if (pushPermissions) ok &= await permissionSync.PushAsync(stoppingToken);
+                if (pushRoles) ok &= await roleSync.PushAsync(stoppingToken);
+                if (pushGroups) ok &= await groupSync.PushAsync(stoppingToken);
+                if (pulls) ok &= await PullAsync(pullScopes, pullPermissions, pullRoles, pullGroups, stoppingToken);
                 if (!ok && client.Value.FailOnSyncError)
-                    throw new Auth2StartupException("Syncing permissions, roles or groups with the Auth2 server failed (FailOnSyncError is on).", HandshakeStatus.ServerUnavailable);
+                    throw new Auth2StartupException("Syncing with the Auth2 server failed (FailOnSyncError is on).", HandshakeStatus.ServerUnavailable);
 
                 // Push once per start (an unchanged list is skipped anyway); keep reading the catalogs when asked to.
-                var pulls = p is PermissionSyncPolicy.Pull or PermissionSyncPolicy.Both || r is RoleSyncPolicy.Pull or RoleSyncPolicy.Both || g == GroupSyncPolicy.Pull;
                 if (!pulls) return;
                 await Task.Delay(client.Value.CatalogRefreshInterval, clock, stoppingToken);
             }
@@ -140,28 +162,34 @@ public sealed class Auth2SyncHostedService(IHostApplicationLifetime lifetime, Au
         catch (OperationCanceledException) { /* stopping */ }
     }
 
-    private async Task<bool> PullAsync(PermissionSyncPolicy p, RoleSyncPolicy r, GroupSyncPolicy g, CancellationToken ct)
+    private async Task<bool> PullAsync(bool scopes, bool permissions, bool roles, bool groups, CancellationToken ct)
     {
-        IReadOnlyList<PermissionDto>? perms = null; IReadOnlyList<RoleDto>? rolesRead = null; IReadOnlyList<GroupDto>? groupsRead = null;
-        if (p is PermissionSyncPolicy.Pull or PermissionSyncPolicy.Both)
+        IReadOnlyList<ScopeDto>? scopesRead = null; IReadOnlyList<PermissionDto>? perms = null; IReadOnlyList<RoleDto>? rolesRead = null; IReadOnlyList<GroupDto>? groupsRead = null;
+        if (scopes)
+        {
+            var result = await api.GetScopesAsync(ct);
+            if (!result.IsSuccess) return Failed("scopes", result.Error!.Code);
+            scopesRead = result.Value;
+        }
+        if (permissions)
         {
             var result = await api.GetPermissionsAsync(ct);
             if (!result.IsSuccess) return Failed("permissions", result.Error!.Code);
             perms = result.Value;
         }
-        if (r is RoleSyncPolicy.Pull or RoleSyncPolicy.Both)
+        if (roles)
         {
             var result = await api.GetRolesAsync(ct);
             if (!result.IsSuccess) return Failed("roles", result.Error!.Code);
             rolesRead = result.Value;
         }
-        if (g == GroupSyncPolicy.Pull)
+        if (groups)
         {
             var result = await api.GetGroupsAsync(ct);
             if (!result.IsSuccess) return Failed("groups", result.Error!.Code);
             groupsRead = result.Value;
         }
-        ((Auth2Catalog)catalog).Set(perms, rolesRead, groupsRead, clock.GetUtcNow());
+        ((Auth2Catalog)catalog).Set(perms, rolesRead, groupsRead, scopesRead, clock.GetUtcNow());
         return true;
     }
 

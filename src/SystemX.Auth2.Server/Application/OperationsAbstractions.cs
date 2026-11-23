@@ -31,6 +31,9 @@ public interface IDistributedLock
 {
     /// <summary>Runs <paramref name="work"/> when the lock is free. Returns false (and does nothing) when another instance holds it.</summary>
     Task<bool> TryRunAsync(string name, Func<CancellationToken, Task> work, CancellationToken ct = default);
+
+    /// <summary>Waits for the lock, then runs <paramref name="work"/>. Only one caller (in any instance) runs it at a time.</summary>
+    Task RunExclusiveAsync(string name, Func<CancellationToken, Task> work, CancellationToken ct = default);
 }
 
 /// <summary>Tells every instance that the settings of an application changed (Redis pub/sub when Redis is on).</summary>

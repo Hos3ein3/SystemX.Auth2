@@ -17,6 +17,10 @@ public static class Auth2Scopes
     public const string RolesSync = "auth2.roles.sync";
     /// <summary>Read groups.</summary>
     public const string GroupsRead = "auth2.groups.read";
+    /// <summary>Send groups (only when the application allows group sync).</summary>
+    public const string GroupsSync = "auth2.groups.sync";
+    /// <summary>Send and read the custom scopes of an application.</summary>
+    public const string ScopesSync = "auth2.scopes.sync";
     /// <summary>Project admin.</summary>
     public const string Admin = "auth2.admin";
     /// <summary>Global admin.</summary>
@@ -24,5 +28,5 @@ public static class Auth2Scopes
 
     /// <summary>All SystemX.Auth2 scopes.</summary>
     public static readonly IReadOnlyList<string> All =
-        [Register, Login, Me, ClientHandshake, PermissionsSync, RolesSync, GroupsRead, Admin, AdminGlobal];
+        [Register, Login, Me, ClientHandshake, PermissionsSync, RolesSync, GroupsRead, GroupsSync, ScopesSync, Admin, AdminGlobal];
 }

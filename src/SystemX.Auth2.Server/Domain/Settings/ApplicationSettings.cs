@@ -255,9 +255,13 @@ public sealed class ClientSettings
     public List<ClientType> AllowedClientTypes { get; set; } = [ClientType.Api, ClientType.Mvc, ClientType.RazorPages, ClientType.Blazor, ClientType.Machine];
     /// <summary>Scopes clients may request.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)]
-    public List<string> AllowedScopes { get; set; } = ["openid", "profile", "email", "phone", "roles", "offline_access", "auth2.me", "auth2.client.handshake", "auth2.register", "auth2.login", "auth2.permissions.sync", "auth2.roles.sync", "auth2.groups.read"];
+    public List<string> AllowedScopes { get; set; } = ["openid", "profile", "email", "phone", "roles", "offline_access", "auth2.me", "auth2.client.handshake", "auth2.register", "auth2.login", "auth2.permissions.sync", "auth2.roles.sync", "auth2.groups.read", "auth2.groups.sync", "auth2.scopes.sync"];
     /// <summary>Permission sync is allowed.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool PermissionSyncAllowed { get; set; } = true;
+    /// <summary>Custom scope sync is allowed. A client can then register its own scopes (not <c>auth2.*</c>, not the standard ones) and allow them for itself.</summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public bool ScopeSyncAllowed { get; set; } = true;
+    /// <summary>Group sync (push) is allowed. Off by default: admins normally decide groups. Push only adds missing groups.</summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public bool GroupSyncAllowed { get; set; }
     /// <summary>Role sync is allowed.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool RoleSyncAllowed { get; set; } = true;
     /// <summary>Sync may remove permissions.</summary>

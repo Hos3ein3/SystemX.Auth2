@@ -134,6 +134,45 @@ public class SyncIntegrationTests : ClientAppTestBase
     }
 
     [Fact]
+    public async Task ScopesAndGroups_ArePushed_TheNewScopeWorksAtOnce_AndAnAdminGroupIsNotTouched()
+    {
+        await UpdateSettingsAsync(s => s.Clients.GroupSyncAllowed = true);
+        await using (var scope = ServerScope())
+            await scope.ServiceProvider.GetRequiredService<IGroupService>().CreateAsync("finance", "Admin's name");
+
+        await StartAppAsync(e =>
+        {
+            e.MapGet("/reports", () => "ok").WithScope("reports.read").WithMachineOnly().WithGroup("hr");
+            e.MapGet("/me-only", () => "ok").WithScope("auth2.me");   // reserved: never sent
+        }, b => b
+            .EnableScopes(o => { o.SyncPolicy = ScopeSyncPolicy.Both; o.ScanningPolicy = ScanningPolicy.Both; o.ScopeList = [new ScopeDefinition("reports.write", "Write reports")]; })
+            .EnableGroups(o =>
+            {
+                o.SyncPolicy = GroupSyncPolicy.Both; o.ScanningPolicy = ScanningPolicy.Both;
+                o.GroupList = [new GroupDefinition("finance", "Client's name"), new GroupDefinition("payroll", "Payroll")];
+            }), handshake: true);
+
+        var api = ApiClient.GetRequiredService<IAuth2ApiClientService>();
+        for (var i = 0; i < 100 && (await api.GetGroupsAsync()).Value!.Count < 3; i++) await Task.Delay(100);
+        var groups = (await api.GetGroupsAsync()).Value!;
+        groups.Select(g => g.Name).ShouldBe(["finance", "hr", "payroll"]);
+        groups.Single(g => g.Name == "finance").DisplayName.ShouldBe("Admin's name");   // the admin's text stays
+
+        var scopes = (await api.GetScopesAsync()).Value!;
+        scopes.Select(s => s.Name).ShouldBe(["reports.read", "reports.write"]);          // no auth2.me
+        scopes.Single(s => s.Name == "reports.write").DisplayName.ShouldBe("Write reports");
+
+        // the client can ask for the new scope straight away, and an endpoint that needs it accepts the token
+        ApiClient.GetRequiredService<SystemX.Auth2.Client.Machine.IAuth2MachineTokenProvider>().Invalidate();
+        var token = await MachineTokenAsync("reports.read");
+        (await GetAsync("/me-only", token)).ShouldBe(System.Net.HttpStatusCode.Forbidden);   // the token has reports.read, not auth2.me
+        var catalog = App.Services.GetRequiredService<IAuth2Catalog>();
+        for (var i = 0; i < 50 && catalog.Scopes.Count < 2; i++) await Task.Delay(100);
+        catalog.Scopes.Select(s => s.Name).ShouldBe(["reports.read", "reports.write"]);
+        catalog.Groups.Select(g => g.Name).ShouldBe(["finance", "hr", "payroll"]);
+    }
+
+    [Fact]
     public async Task Pull_ReadsTheGroupsAndRolesOfTheServerIntoTheCatalog()
     {
         await using (var scope = ServerScope())

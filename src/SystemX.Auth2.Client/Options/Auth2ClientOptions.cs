@@ -103,11 +103,36 @@ public sealed class Auth2RoleOptions
     public List<System.Reflection.Assembly> AssembliesToScan { get; set; } = [];
 }
 
-/// <summary>Options of group handling. Groups are decided by admins, so they can only be read.</summary>
+/// <summary>Options of group handling. Pushing groups needs <c>Clients.GroupSyncAllowed</c> on the server (off by default); it only adds missing groups.</summary>
 public sealed class Auth2GroupOptions
 {
-    /// <summary>Default <see cref="GroupSyncPolicy.None"/>.</summary>
+    /// <summary>How groups move between this application and the server. Default <see cref="GroupSyncPolicy.None"/>.</summary>
     public GroupSyncPolicy SyncPolicy { get; set; } = GroupSyncPolicy.None;
+
+    /// <summary>Where groups come from when they are pushed. Default <see cref="ScanningPolicy.Manual"/>.</summary>
+    public ScanningPolicy ScanningPolicy { get; set; } = ScanningPolicy.Manual;
+
+    /// <summary>Groups you list by hand.</summary>
+    public List<SystemX.Auth2.Contracts.Access.GroupDefinition> GroupList { get; set; } = [];
+
+    /// <summary>Assemblies to scan for <c>[Auth2Group]</c> attributes.</summary>
+    public List<System.Reflection.Assembly> AssembliesToScan { get; set; } = [];
+}
+
+/// <summary>Options of custom scopes (for example <c>reports.read</c>). Names starting with <c>auth2.</c> and the standard OpenID Connect scopes are never sent.</summary>
+public sealed class Auth2ScopeOptions
+{
+    /// <summary>How scopes move between this application and the server. Default <see cref="ScopeSyncPolicy.None"/>.</summary>
+    public ScopeSyncPolicy SyncPolicy { get; set; } = ScopeSyncPolicy.None;
+
+    /// <summary>Where scopes come from. Default <see cref="ScanningPolicy.Manual"/>.</summary>
+    public ScanningPolicy ScanningPolicy { get; set; } = ScanningPolicy.Manual;
+
+    /// <summary>Scopes you list by hand.</summary>
+    public List<SystemX.Auth2.Contracts.Access.ScopeDefinition> ScopeList { get; set; } = [];
+
+    /// <summary>Assemblies to scan for <c>[Auth2Scope]</c> attributes.</summary>
+    public List<System.Reflection.Assembly> AssembliesToScan { get; set; } = [];
 }
 
 /// <summary>Options of the current-user feature.</summary>

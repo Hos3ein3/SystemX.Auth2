@@ -46,6 +46,12 @@ public static class Auth2Routes
     public const string RolesSync = Base + "/roles/sync";
     /// <summary>Groups (GET pull).</summary>
     public const string Groups = Base + "/groups";
+    /// <summary>Group sync (POST).</summary>
+    public const string GroupsSync = Base + "/groups/sync";
+    /// <summary>Custom scopes of the application (GET pull).</summary>
+    public const string Scopes = Base + "/scopes";
+    /// <summary>Scope sync (POST).</summary>
+    public const string ScopesSync = Base + "/scopes/sync";
     /// <summary>Access of one user. Replace <c>{id}</c>.</summary>
     public const string UserAccess = Base + "/users/{id}/access";
     /// <summary>Base path of the admin API.</summary>

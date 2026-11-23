@@ -28,6 +28,12 @@ public sealed class ScanFixturePage
 
     [Auth2Permission("Bad Key!")]
     public void Broken() { }
+
+    [Auth2Scope("scanned.scope")]
+    public void Scoped() { }
+
+    [Auth2Group("scanned-group")]
+    public void Grouped() { }
 }
 
 public class KeyRulesTests
@@ -194,6 +200,57 @@ public class CatalogSyncServiceTests
     }
 }
 
+public class ScopeAndGroupScannerTests
+{
+    private static EndpointDataSource Endpoints(params object[][] metadata) =>
+        new DefaultEndpointDataSource(metadata.Select((m, i) =>
+            (Endpoint)new RouteEndpoint(_ => Task.CompletedTask, RoutePatternFactory.Parse("/e" + i), 0, new EndpointMetadataCollection(m), "e" + i)));
+
+    [Fact]
+    public void Scopes_SkipReservedOnes_Silently_KeepCustomOnes_AndManualWins()
+    {
+        var endpoints = Endpoints([new Auth2ScopeAttribute("auth2.me", "reports.read")], [new Auth2ScopeAttribute("openid", "Reports.Write"), new Auth2ScopeAttribute("reports.read")]);
+        var o = new Auth2ScopeOptions
+        {
+            ScanningPolicy = ScanningPolicy.Both, AssembliesToScan = [typeof(ScanFixturePage).Assembly],
+            ScopeList = [new("reports.read", "Read reports", "Lets you read reports"), new("auth2.admin"), new("bad scope"), new("manual.only")],
+        };
+        var result = new ScopeScanner([endpoints], MsOptions.Create(o), NullLogger<ScopeScanner>.Instance).Scan();
+        result.Select(x => x.Name).ShouldBe(["manual.only", "reports.read", "reports.write", "scanned.scope"]);
+        result.Single(x => x.Name == "reports.read").DisplayName.ShouldBe("Read reports");
+    }
+
+    [Fact]
+    public void Scopes_ManualOnly_IgnoresEndpoints()
+    {
+        var o = new Auth2ScopeOptions { ScanningPolicy = ScanningPolicy.Manual, ScopeList = [new("a.b")] };
+        new ScopeScanner([Endpoints([new Auth2ScopeAttribute("x.y")])], MsOptions.Create(o), NullLogger<ScopeScanner>.Instance).Scan().Select(x => x.Name).ShouldBe(["a.b"]);
+    }
+
+    [Fact]
+    public void Groups_AreReadFromEndpointsAndAttributes_Lowercased_ManualWins_InvalidSkipped()
+    {
+        var endpoints = Endpoints([new Auth2GroupAttribute("Finance", "hr")], [new Auth2GroupAttribute("bad group")]);
+        var o = new Auth2GroupOptions
+        {
+            ScanningPolicy = ScanningPolicy.Both, AssembliesToScan = [typeof(ScanFixturePage).Assembly],
+            GroupList = [new("finance", "Finance team"), new("manual")],
+        };
+        var result = new GroupScanner([endpoints], MsOptions.Create(o), NullLogger<GroupScanner>.Instance).Scan();
+        result.Select(x => x.Name).ShouldBe(["finance", "hr", "manual", "scanned-group"]);
+        result.Single(x => x.Name == "finance").DisplayName.ShouldBe("Finance team");
+    }
+
+    [Theory]
+    [InlineData("auth2.me", true)]
+    [InlineData("auth2.admin.global", true)]
+    [InlineData("openid", true)]
+    [InlineData("offline_access", true)]
+    [InlineData("reports.read", false)]
+    [InlineData("auth2", false)]
+    public void ReservedScopes(string name, bool reserved) => Auth2Keys.IsReservedScope(name).ShouldBe(reserved);
+}
+
 public class SyncHostedServiceTests
 {
     private sealed class FakeLifetime : IHostApplicationLifetime
@@ -207,7 +264,7 @@ public class SyncHostedServiceTests
     }
 
     private static (Auth2SyncHostedService Service, IAuth2ApiClientService Api, Auth2ClientState State, FakeLifetime Lifetime, Auth2Catalog Catalog, FakeTimeProvider Time) Make(
-        PermissionSyncPolicy p = PermissionSyncPolicy.Push, RoleSyncPolicy r = RoleSyncPolicy.Push, GroupSyncPolicy g = GroupSyncPolicy.None, Action<Auth2ClientOptions>? client = null)
+        PermissionSyncPolicy p = PermissionSyncPolicy.Push, RoleSyncPolicy r = RoleSyncPolicy.Push, GroupSyncPolicy g = GroupSyncPolicy.None, Action<Auth2ClientOptions>? client = null, ScopeSyncPolicy sc = ScopeSyncPolicy.None)
     {
         var api = Substitute.For<IAuth2ApiClientService>();
         api.SyncPermissionsAsync(Arg.Any<PermissionSyncRequest>(), Arg.Any<CancellationToken>()).Returns(Result<SyncResponse>.Success(new SyncResponse(1, 0, 0, [])));
@@ -220,6 +277,13 @@ public class SyncHostedServiceTests
         permissionScanner.Scan().Returns([new PermissionDefinition("a.b")]);
         var roleScanner = Substitute.For<IRoleScanner>();
         roleScanner.Scan().Returns([new RoleDefinition("Editor", null, null, ["a.b"])]);
+        var scopeScanner = Substitute.For<IScopeScanner>();
+        scopeScanner.Scan().Returns([new ScopeDefinition("reports.read", "Read reports")]);
+        var groupScanner = Substitute.For<IGroupScanner>();
+        groupScanner.Scan().Returns([new GroupDefinition("finance", "Finance")]);
+        api.SyncScopesAsync(Arg.Any<ScopeSyncRequest>(), Arg.Any<CancellationToken>()).Returns(Result<SyncResponse>.Success(new SyncResponse(1, 0, 0, [])));
+        api.SyncGroupsAsync(Arg.Any<GroupSyncRequest>(), Arg.Any<CancellationToken>()).Returns(Result<SyncResponse>.Success(new SyncResponse(1, 0, 0, [])));
+        api.GetScopesAsync(Arg.Any<CancellationToken>()).Returns(Result<IReadOnlyList<ScopeDto>>.Success([new ScopeDto("reports.read", "Read reports", null)]));
 
         var state = new Auth2ClientState();
         var lifetime = new FakeLifetime();
@@ -227,9 +291,9 @@ public class SyncHostedServiceTests
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var options = new Auth2ClientOptions { CatalogRefreshInterval = TimeSpan.FromMinutes(5) };
         client?.Invoke(options);
-        var service = new Auth2SyncHostedService(lifetime, state, permissionScanner, roleScanner, api, MsOptions.Create(options),
+        var service = new Auth2SyncHostedService(lifetime, state, permissionScanner, roleScanner, scopeScanner, groupScanner, api, MsOptions.Create(options),
             MsOptions.Create(new Auth2PermissionOptions { SyncPolicy = p }), MsOptions.Create(new Auth2RoleOptions { SyncPolicy = r }),
-            MsOptions.Create(new Auth2GroupOptions { SyncPolicy = g }), catalog, time, NullLoggerFactory.Instance);
+            MsOptions.Create(new Auth2GroupOptions { SyncPolicy = g }), MsOptions.Create(new Auth2ScopeOptions { SyncPolicy = sc }), catalog, time, NullLoggerFactory.Instance);
         return (service, api, state, lifetime, catalog, time);
     }
 
@@ -286,6 +350,59 @@ public class SyncHostedServiceTests
         var calls = api.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(IAuth2ApiClientService.GetPermissionsAsync));
         for (var i = 0; i < 20; i++) { time.Advance(TimeSpan.FromMinutes(1)); await Task.Delay(10); }
         api.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(IAuth2ApiClientService.GetPermissionsAsync)).ShouldBeGreaterThan(calls);
+        await service.StopAsync(default);
+    }
+
+    [Fact]
+    public async Task ScopesAndGroups_ArePushed_InOrder_ScopesFirstGroupsLast()
+    {
+        var (service, api, state, lifetime, _, _) = Make(PermissionSyncPolicy.Push, RoleSyncPolicy.Push, GroupSyncPolicy.Push, sc: ScopeSyncPolicy.Push);
+        lifetime.Start(); state.Set(HandshakeStatus.Ok);
+        await service.StartAsync(default);
+        await SettleAsync(() => api.ReceivedCalls().Any(c => c.GetMethodInfo().Name == nameof(IAuth2ApiClientService.SyncGroupsAsync)));
+        Received.InOrder(() =>
+        {
+            api.SyncScopesAsync(Arg.Any<ScopeSyncRequest>(), Arg.Any<CancellationToken>());
+            api.SyncPermissionsAsync(Arg.Any<PermissionSyncRequest>(), Arg.Any<CancellationToken>());
+            api.SyncRolesAsync(Arg.Any<RoleSyncRequest>(), Arg.Any<CancellationToken>());
+            api.SyncGroupsAsync(Arg.Is<GroupSyncRequest>(r => r.Groups!.Single().Name == "finance" && r.Groups!.Single().DisplayName == "Finance"), Arg.Any<CancellationToken>());
+        });
+        await service.StopAsync(default);
+    }
+
+    [Fact]
+    public async Task GroupsPush_DoesNotPullThem_AndGroupsBoth_PushesThenPulls()
+    {
+        var (pushOnly, api, state, lifetime, catalog, _) = Make(PermissionSyncPolicy.None, RoleSyncPolicy.None, GroupSyncPolicy.Push);
+        lifetime.Start(); state.Set(HandshakeStatus.Ok);
+        await pushOnly.StartAsync(default);
+        await SettleAsync(() => api.ReceivedCalls().Any(c => c.GetMethodInfo().Name == nameof(IAuth2ApiClientService.SyncGroupsAsync)));
+        await Task.Delay(100);
+        await api.DidNotReceive().GetGroupsAsync(Arg.Any<CancellationToken>());
+        await pushOnly.StopAsync(default);
+
+        var (both, api2, state2, lifetime2, catalog2, _) = Make(PermissionSyncPolicy.None, RoleSyncPolicy.None, GroupSyncPolicy.Both);
+        lifetime2.Start(); state2.Set(HandshakeStatus.Ok);
+        await both.StartAsync(default);
+        await SettleAsync(() => catalog2.LastReadUtc is not null);
+        Received.InOrder(() =>
+        {
+            api2.SyncGroupsAsync(Arg.Any<GroupSyncRequest>(), Arg.Any<CancellationToken>());
+            api2.GetGroupsAsync(Arg.Any<CancellationToken>());
+        });
+        catalog2.Groups.Single().Name.ShouldBe("finance");
+        await both.StopAsync(default);
+        _ = catalog;
+    }
+
+    [Fact]
+    public async Task ScopePull_FillsTheCatalog()
+    {
+        var (service, _, state, lifetime, catalog, _) = Make(PermissionSyncPolicy.None, RoleSyncPolicy.None, GroupSyncPolicy.None, sc: ScopeSyncPolicy.Pull);
+        lifetime.Start(); state.Set(HandshakeStatus.Ok);
+        await service.StartAsync(default);
+        await SettleAsync(() => catalog.LastReadUtc is not null);
+        catalog.Scopes.Single().Name.ShouldBe("reports.read");
         await service.StopAsync(default);
     }
 

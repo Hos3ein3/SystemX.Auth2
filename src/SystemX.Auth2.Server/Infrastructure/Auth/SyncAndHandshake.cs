@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using SystemX.Auth2.Contracts.Access;
 using SystemX.Auth2.Contracts.Applications;
 using SystemX.Auth2.Contracts.Constants;
+using OpenIddict.Abstractions;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
@@ -222,4 +223,130 @@ internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Au
         return (OperationResult.Ok, new ClientHandshakeResponse(app.Id, multi ? app.ProjectKey : null, app.Name, options.Value.Mode,
             issuer, app.SettingsVersion, cookie, settings.Sessions.SingleActiveSession));
     }
+}
+
+internal sealed class GroupSyncService(Auth2DbContext db, IAuthFlowResolver flow, IAuditService audit) : IGroupSyncService
+{
+    public const int MaxItems = 2000;
+
+    public async Task<SyncOutcome> SyncAsync(GroupSyncRequest request, CancellationToken ct = default)
+    {
+        var app = await flow.GetApplicationAsync(ct);
+        var settings = await flow.GetSettingsAsync(ct);
+        if (!settings.Clients.GroupSyncAllowed) return Fail(Auth2ErrorCodes.SyncNotAllowed);
+
+        var items = request?.Groups ?? [.. (request?.Names ?? []).Select(n => new Contracts.Access.GroupDefinition(n))];
+        if (items.Count > MaxItems) return Fail(Auth2ErrorCodes.TooManyItems);
+        var wanted = new Dictionary<string, Contracts.Access.GroupDefinition>(StringComparer.Ordinal);
+        foreach (var item in items)
+        {
+            var name = AccessKeys.NormalizeGroupName(item?.Name);
+            if (name is null) return Fail(Auth2ErrorCodes.ValidationFailed);
+            wanted.TryAdd(name, item!);
+        }
+
+        for (var attempt = 0; ; attempt++)
+        {
+            try { return await AccessSupport.SerializedAsync(db, app.Id, () => ApplyAsync(app, wanted, ct), ct); }
+            catch (Exception ex) when (attempt == 0 && AccessSupport.IsUniqueViolation(ex)) { db.ChangeTracker.Clear(); }
+        }
+    }
+
+    private async Task<SyncOutcome> ApplyAsync(Auth2Application app, Dictionary<string, Contracts.Access.GroupDefinition> wanted, CancellationToken ct)
+    {
+        var existing = await db.Groups.Select(g => g.Name).ToListAsync(ct);
+        var have = new HashSet<string>(existing, StringComparer.Ordinal);
+        var addedKeys = new List<string>();
+        foreach (var (name, def) in wanted)
+        {
+            if (have.Contains(name)) continue;
+            // New groups only. The display name of an existing group is the admin's and is never changed by sync.
+            db.Groups.Add(new Group { ApplicationId = app.Id, Name = name, DisplayName = def.DisplayName });
+            addedKeys.Add(name);
+        }
+        if (addedKeys.Count > 0)
+        {
+            await db.SaveChangesAsync(ct);
+            await audit.WriteAsync(new AuditEntry("groups.synced", app.Id, TargetType: "application", TargetId: app.Id.ToString(),
+                Data: new Dictionary<string, object?> { ["added"] = addedKeys.Count }), ct);
+        }
+        addedKeys.Sort(StringComparer.Ordinal);
+        Operations.Auth2Metrics.SyncChanges.Add(addedKeys.Count, new KeyValuePair<string, object?>("kind", "groups"));
+        return new SyncOutcome(OperationResult.Ok, new SyncResponse(addedKeys.Count, 0, wanted.Count - addedKeys.Count, addedKeys));
+    }
+
+    private static SyncOutcome Fail(string code) => new(OperationResult.Fail(code), null);
+}
+
+internal sealed class ScopeSyncService(IServiceScopeFactory scopeFactory, IAuthFlowResolver flow, IOpenIddictScopeManager scopes,
+    IDistributedLock locks, IAuditService audit) : IScopeSyncService
+{
+    public const int MaxItems = 500;
+
+    public async Task<SyncOutcome> SyncAsync(ScopeSyncRequest request, CancellationToken ct = default)
+    {
+        var app = await flow.GetApplicationAsync(ct);
+        var settings = await flow.GetSettingsAsync(ct);
+        if (!settings.Clients.ScopeSyncAllowed) return Fail(Auth2ErrorCodes.SyncNotAllowed);
+        var items = request?.Scopes ?? [];
+        if (items.Count > MaxItems) return Fail(Auth2ErrorCodes.TooManyItems);
+
+        var wanted = new Dictionary<string, Contracts.Access.ScopeDefinition>(StringComparer.Ordinal);
+        foreach (var item in items)
+        {
+            var name = AccessKeys.NormalizeScopeName(item?.Name);
+            if (name is null) return Fail(Auth2ErrorCodes.InvalidScopeName);
+            wanted.TryAdd(name, item!);
+        }
+
+        var added = new List<string>();
+        // One at a time per application: two syncs must not both read the settings and overwrite each other's additions.
+        await locks.RunExclusiveAsync($"scopes:{app.Id:N}", async token =>
+        {
+            foreach (var (name, def) in wanted)
+            {
+                if (await scopes.FindByNameAsync(name, token) is not null) continue;   // the registry is shared; the first text stays
+                try
+                {
+                    await scopes.CreateAsync(new OpenIddictScopeDescriptor { Name = name, DisplayName = def.DisplayName, Description = def.Description }, token);
+                }
+                catch (Exception)
+                {
+                    if (await scopes.FindByNameAsync(name, token) is null) throw;   // not a race: a real error
+                }
+            }
+
+            // A new DI scope: its own DbContext, so no old copy of the settings or of the OpenIddict client is tracked.
+            await using var inner = scopeFactory.CreateAsyncScope();
+            var current = await inner.ServiceProvider.GetRequiredService<Auth2DbContext>().Applications.AsNoTracking()
+                .Where(a => a.Id == app.Id).Select(a => a.Settings).FirstAsync(token);
+            var missing = wanted.Keys.Where(n => !current.Clients.AllowedScopes.Contains(n, StringComparer.Ordinal)).ToList();
+            if (missing.Count == 0) return;
+            var copy = SettingsJson.Clone(current);
+            copy.Clients.AllowedScopes.AddRange(missing);
+            await inner.ServiceProvider.GetRequiredService<IApplicationService>().UpdateSettingsAsync(app.Id, copy, token);   // also gives the client permission for the new scopes
+            added.AddRange(missing);
+        }, ct);
+
+        if (added.Count > 0)
+            await audit.WriteAsync(new AuditEntry("scopes.synced", app.Id, TargetType: "application", TargetId: app.Id.ToString(),
+                Data: new Dictionary<string, object?> { ["added"] = added.Count }), ct);
+        added.Sort(StringComparer.Ordinal);
+        Operations.Auth2Metrics.SyncChanges.Add(added.Count, new KeyValuePair<string, object?>("kind", "scopes"));
+        return new SyncOutcome(OperationResult.Ok, new SyncResponse(added.Count, 0, wanted.Count - added.Count, added));
+    }
+
+    public async Task<IReadOnlyList<ScopeDto>> ListAsync(CancellationToken ct = default)
+    {
+        var settings = await flow.GetSettingsAsync(ct);
+        var result = new List<ScopeDto>();
+        foreach (var name in settings.Clients.AllowedScopes.Where(n => AccessKeys.NormalizeScopeName(n) == n).Order(StringComparer.Ordinal))
+        {
+            var scope = await scopes.FindByNameAsync(name, ct);
+            result.Add(new ScopeDto(name, scope is null ? null : await scopes.GetDisplayNameAsync(scope, ct), scope is null ? null : await scopes.GetDescriptionAsync(scope, ct)));
+        }
+        return result;
+    }
+
+    private static SyncOutcome Fail(string code) => new(OperationResult.Fail(code), null);
 }

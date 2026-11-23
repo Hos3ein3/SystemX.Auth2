@@ -88,7 +88,7 @@ public class EnumTests
         .Where(t => t.IsEnum && t.Namespace == "SystemX.Auth2.Contracts.Enums");
 
     [Fact]
-    public void Enums_AllExpectedTypesExist() => Enums().Count().ShouldBe(14);
+    public void Enums_AllExpectedTypesExist() => Enums().Count().ShouldBe(15);
 
     [Fact]
     public void Enums_EveryValue_RoundTripsAsString()
@@ -104,7 +104,7 @@ public class EnumTests
     }
 
     [Fact]
-    public void GroupSyncPolicy_HasNoPush() => Enum.GetNames<GroupSyncPolicy>().ShouldBe(["None", "Pull"]);
+    public void GroupSyncPolicy_HasPushAndBoth_ButNoneAndPullKeepTheirNumbers() { Enum.GetNames<GroupSyncPolicy>().ShouldBe(["None", "Pull", "Push", "Both"]); ((int)GroupSyncPolicy.Pull).ShouldBe(1); }
 
     [Fact]
     public void DefaultValues_AreSafe()

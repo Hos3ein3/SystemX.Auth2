@@ -67,3 +67,5 @@ Every code has an English text in `Errors.resx`. See [localization.md](localizat
 ## Related pages
 
 - [api-reference.md](api-reference.md)
+
+| `invalid_scope_name` | 400 | A scope name is invalid or reserved (`auth2.*` and the standard OpenID Connect scopes) |

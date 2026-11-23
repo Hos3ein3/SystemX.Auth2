@@ -85,6 +85,8 @@ public static class Auth2ErrorCodes
     public const string SyncNotAllowed = "sync_not_allowed";
     /// <summary>A permission key is invalid.</summary>
     public const string InvalidPermissionKey = "invalid_permission_key";
+    /// <summary>A scope name is invalid, or it is reserved (<c>auth2.*</c> and the standard OpenID Connect scopes).</summary>
+    public const string InvalidScopeName = "invalid_scope_name";
     /// <summary>Too many items in one request.</summary>
     public const string TooManyItems = "too_many_items";
     /// <summary>Redirect URI not allowed.</summary>

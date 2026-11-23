@@ -132,6 +132,15 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
     public Task<Result<SyncResponse>> SyncRolesAsync(RoleSyncRequest request, CancellationToken ct = default) =>
         CallAsync<SyncResponse>(HttpMethod.Post, Auth2Routes.RolesSync, request, [Auth2Scopes.RolesSync], null, idempotent: true, ct);
 
+    public Task<Result<SyncResponse>> SyncGroupsAsync(GroupSyncRequest request, CancellationToken ct = default) =>
+        CallAsync<SyncResponse>(HttpMethod.Post, Auth2Routes.GroupsSync, request, [Auth2Scopes.GroupsSync], null, idempotent: true, ct);
+
+    public Task<Result<SyncResponse>> SyncScopesAsync(ScopeSyncRequest request, CancellationToken ct = default) =>
+        CallAsync<SyncResponse>(HttpMethod.Post, Auth2Routes.ScopesSync, request, [Auth2Scopes.ScopesSync], null, idempotent: true, ct);
+
+    public async Task<Result<IReadOnlyList<ScopeDto>>> GetScopesAsync(CancellationToken ct = default) =>
+        ToList(await CallAsync<List<ScopeDto>>(HttpMethod.Get, Auth2Routes.Scopes, null, [Auth2Scopes.ScopesSync], null, idempotent: true, ct));
+
     public async Task<Result<IReadOnlyList<PermissionDto>>> GetPermissionsAsync(CancellationToken ct = default) =>
         ToList(await CallAsync<List<PermissionDto>>(HttpMethod.Get, Auth2Routes.Permissions, null, [Auth2Scopes.PermissionsSync], null, idempotent: true, ct));
 

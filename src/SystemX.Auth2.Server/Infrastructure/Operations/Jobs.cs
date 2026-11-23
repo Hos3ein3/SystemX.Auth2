@@ -34,6 +34,28 @@ public sealed class PostgresDistributedLock(IServiceScopeFactory scopes) : IDist
         }
         return true;
     }
+
+    /// <inheritdoc />
+    public async Task RunExclusiveAsync(string name, Func<CancellationToken, Task> work, CancellationToken ct = default)
+    {
+        string connectionString;
+        await using (var scope = scopes.CreateAsyncScope())
+            connectionString = scope.ServiceProvider.GetRequiredService<Auth2DbContext>().Database.GetConnectionString()!;
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+        await using (var cmd = new NpgsqlCommand("SELECT pg_advisory_lock(hashtextextended(@name, 0))", conn))
+        {
+            cmd.Parameters.AddWithValue("name", "auth2.excl:" + name);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        try { await work(ct); }
+        finally
+        {
+            await using var unlock = new NpgsqlCommand("SELECT pg_advisory_unlock(hashtextextended(@name, 0))", conn);
+            unlock.Parameters.AddWithValue("name", "auth2.excl:" + name);
+            await unlock.ExecuteScalarAsync(CancellationToken.None);
+        }
+    }
 }
 
 /// <summary>The cleanup jobs. Each one runs under a lock, so with several instances only one does the work.</summary>

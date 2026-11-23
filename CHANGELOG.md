@@ -5,6 +5,8 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- Scope and group sync: `ScopeScanner`, `GroupScanner`, `EnableScopes`, `ScopeSyncPolicy`; `GroupSyncPolicy.Push` and `Both`; server routes `POST /groups/sync`, `POST /scopes/sync`, `GET /scopes`;
+  settings `Clients.ScopeSyncAllowed` and `Clients.GroupSyncAllowed`; scopes `auth2.groups.sync` and `auth2.scopes.sync`; error code `invalid_scope_name`.
 - Phase 13: Client cookie authentication, hosted UI (OpenID Connect, code + PKCE) and Self UI (`IAuth2WebService`), `/auth2/login` and `/auth2/logout` routes, `OnTokenValidated` access loading (`AccessMode`),
   cookie lifetime from the server, API-versus-browser answers (401 / 403 or redirect), Blazor helpers (`UseBlazor`, `IAuth2BlazorService`), permission and role scanners, generic catalog sync service,
   sync hosted service (push, pull, both), `IAuth2Catalog`. Docs: `client-setup` (UI modes and sync), updates to `permission-sync` and `client-current-user`.

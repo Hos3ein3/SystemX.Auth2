@@ -35,6 +35,22 @@ public static class AccessKeys
     /// <summary>Group names follow the same rules as permission keys (lowercase, max 100).</summary>
     public static string? NormalizeGroupName(string? name) => NormalizePermissionKey(name);
 
+    /// <summary>Scopes that clients may not register: the OpenID Connect standard ones.</summary>
+    private static readonly HashSet<string> StandardScopes = new(StringComparer.Ordinal) { "openid", "profile", "email", "phone", "roles", "offline_access" };
+
+    /// <summary>
+    /// True for scopes that belong to the server: <c>auth2.*</c> and the standard OpenID Connect scopes.
+    /// A client cannot create or change these through sync.
+    /// </summary>
+    public static bool IsReservedScope(string name) => name.StartsWith("auth2.", StringComparison.Ordinal) || StandardScopes.Contains(name);
+
+    /// <summary>Trims a scope name (the same characters as permission keys, 1–100) and returns null when it is invalid or reserved.</summary>
+    public static string? NormalizeScopeName(string? name)
+    {
+        var n = NormalizePermissionKey(name);
+        return n is null || IsReservedScope(n) ? null : n;
+    }
+
     private static bool IsAlnum(char c) => c is >= 'a' and <= 'z' or >= '0' and <= '9';
 }
 

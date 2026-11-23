@@ -45,6 +45,7 @@ public static class Auth2ClientServiceCollectionExtensions
         services.AddOptions<Auth2PermissionOptions>();
         services.AddOptions<Auth2RoleOptions>();
         services.AddOptions<Auth2GroupOptions>();
+        services.AddOptions<Auth2ScopeOptions>();
         services.AddOptions<Auth2CurrentUserOptions>();
 
         // Two named clients with the same address: one for calls that must never be repeated by themselves, one for calls that can be.
@@ -73,6 +74,8 @@ public static class Auth2ClientServiceCollectionExtensions
         // Scanners and sync (they do nothing while the policies are None)
         services.TryAddSingleton<IPermissionScanner, PermissionScanner>();
         services.TryAddSingleton<IRoleScanner, RoleScanner>();
+        services.TryAddSingleton<IScopeScanner, ScopeScanner>();
+        services.TryAddSingleton<IGroupScanner, GroupScanner>();
         services.TryAddSingleton<Auth2Catalog>();
         services.TryAddSingleton<IAuth2Catalog>(sp => sp.GetRequiredService<Auth2Catalog>());
         if (!services.Any(d => d.ServiceType == typeof(Auth2SyncHostedService)))
@@ -118,7 +121,14 @@ public static class Auth2ClientServiceCollectionExtensions
         return builder;
     }
 
-    /// <summary>Sets how groups are read.</summary>
+    /// <summary>Sets how custom scopes (for example <c>reports.read</c>) are found and moved. The sync registers them on the server and allows them for this application.</summary>
+    public static IAuth2ClientBuilder EnableScopes(this IAuth2ClientBuilder builder, Action<Auth2ScopeOptions>? configure = null)
+    {
+        if (configure is not null) builder.Services.Configure(configure);
+        return builder;
+    }
+
+    /// <summary>Sets how groups are found and moved (read, and with <c>Push</c> / <c>Both</c> also sent).</summary>
     public static IAuth2ClientBuilder EnableGroups(this IAuth2ClientBuilder builder, Action<Auth2GroupOptions>? configure = null)
     {
         if (configure is not null) builder.Services.Configure(configure);

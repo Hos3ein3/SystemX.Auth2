@@ -59,6 +59,7 @@
   <data name="ownership_proof_required" xml:space="preserve"><value>You must prove that you own this account before you can join.</value></data>
   <data name="sync_not_allowed" xml:space="preserve"><value>Sync is not allowed for this application.</value></data>
   <data name="invalid_permission_key" xml:space="preserve"><value>A permission key is not valid.</value></data>
+  <data name="invalid_scope_name" xml:space="preserve"><value>A scope name is not valid or is reserved.</value></data>
   <data name="too_many_items" xml:space="preserve"><value>There are too many items in this request.</value></data>
   <data name="invalid_redirect_uri" xml:space="preserve"><value>The redirect address is not allowed.</value></data>
   <data name="server_error" xml:space="preserve"><value>An unexpected error happened.</value></data>

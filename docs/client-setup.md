@@ -272,13 +272,16 @@ Set the policies:
     o.AssembliesToScan = [typeof(Program).Assembly]; // for [Auth2Permission] on components and services
 })
 .EnableRoles(o => { o.SyncPolicy = RoleSyncPolicy.Push; o.ScanningPolicy = ScanningPolicy.AssemblyScan; })
-.EnableGroups(o => o.SyncPolicy = GroupSyncPolicy.Pull)
+.EnableScopes(o => { o.SyncPolicy = ScopeSyncPolicy.Push; o.ScanningPolicy = ScanningPolicy.Both; o.ScopeList = [new("reports.read", "Read reports")]; })
+.EnableGroups(o => { o.SyncPolicy = GroupSyncPolicy.Both; o.ScanningPolicy = ScanningPolicy.Both; o.GroupList = [new("finance", "Finance team")]; })
 ```
 
 - **Scanning** finds `WithPermission` / `WithRole` on your endpoints (Minimal API, controllers, Razor Pages) and `[Auth2Permission]` / `[Auth2Role]` on types and methods of `AssembliesToScan`. With `Both` the lists are merged and **your manual entries win** (they have names and descriptions). Invalid keys are skipped with a warning.
 - **Sync runs after the application started** (all endpoints are mapped) and after a good handshake. With `HandshakeOnStartup = false` it waits until you call `HandshakeAsync()`.
-- **Push** sends permissions, then roles. The list is hashed: it is sent again only when it changed since the last success. A failure is retried with growing waits (`SyncMaxRetries`, default 5). By default a failure is only logged (`FailOnSyncError = false`).
+- **Push** sends scopes, permissions, roles, then groups. The list is hashed: it is sent again only when it changed since the last success. A failure is retried with growing waits (`SyncMaxRetries`, default 5). By default a failure is only logged (`FailOnSyncError = false`).
 - **Pull** reads the catalogs at start and every `CatalogRefreshInterval` (10 minutes) into `IAuth2Catalog` (`Permissions`, `Roles`, `Groups`, `LastReadUtc`).
-- **Both** pushes first, then pulls. **Groups** can only be pulled: admins decide them.
+- **Both** pushes first, then pulls.
+- **Scopes** (custom ones such as `reports.read`) are found in `.WithScope(...)` / `[Auth2Scope]` and your `ScopeList`. `auth2.*` and the standard scopes are never sent. The server registers them and allows them for your application, so the client can ask for them at once.
+- **Groups** are found in `.WithGroup(...)` / `[Auth2Group]` and your `GroupList`. Pushing groups needs `Clients.GroupSyncAllowed` on the server (off by default), and only adds **missing** groups; admins keep control of display names, members, roles and permissions.
 
 The server rules (never deletes, admin text wins) are in [permission-sync.md](permission-sync.md).

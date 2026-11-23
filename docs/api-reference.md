@@ -63,6 +63,9 @@ See [error-codes.md](error-codes.md).
 | `GET /api/auth2/permissions` | client | `auth2.permissions.sync` | none | `200 PermissionDto[]` |
 | `GET /api/auth2/roles` | client | `auth2.roles.sync` | none | `200 RoleDto[]` |
 | `GET /api/auth2/groups` | client | `auth2.groups.read` | none | `200 GroupDto[]` |
+| `POST /api/auth2/groups/sync` | client | `auth2.groups.sync` | `GroupSyncRequest` | `200 SyncResponse` (needs `Clients.GroupSyncAllowed`) |
+| `POST /api/auth2/scopes/sync` | client | `auth2.scopes.sync` | `ScopeSyncRequest` | `200 SyncResponse` |
+| `GET /api/auth2/scopes` | client | `auth2.scopes.sync` | none | `200 ScopeDto[]` |
 | `GET /api/auth2/users/{id}/access` | client | `auth2.admin` | none | `200 CurrentUserInfo` (no scopes) |
 
 Details: [handshake-and-startup.md](handshake-and-startup.md), [permission-sync.md](permission-sync.md). `users/{id}/access` answers `404` when the user does not exist or is not a member of the token's application. The scope `auth2.admin` is not in the default `AllowedScopes`: add it only for trusted back-end programs.
