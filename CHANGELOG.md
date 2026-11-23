@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- Phase 11: Client core (`SystemX.Auth2.Client`): `AddAuth2Client` (URL or configuration section), builder methods (`ServerWithMultiApplication`, `EnablePermissions`, `EnableRoles`, `EnableGroups`,
+  `EnableMachineToMachine`, `EnableCurrentUser`, `EnableResilience`, `EnableHealthCheck`), validated options, machine token provider and handler, handshake with the server-mode check, start-up behaviour and
+  background retries, `Auth2ClientState`, health check, `IAuth2ApiClientService`. Docs: `client-setup`, `machine-to-machine`.
 - Phase 10: rate limiting (named policies, memory or Redis), optional Redis (counters, one-time codes, settings pub/sub), key ring in the database with `rotate-keys` command and admin route,
   `create-admin` command, background jobs under a database lock, health checks (`/health/live`, `/health/ready`), HTTP hardening (headers, HSTS, forwarded headers, CORS from settings),
   Serilog with redaction and correlation ids, OpenTelemetry traces and metrics. Docs: `security`, `deployment-and-scaling`, `observability`.

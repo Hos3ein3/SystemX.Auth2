@@ -29,7 +29,9 @@ The map of all documentation pages. Pages marked *(planned)* are written in a la
 | [security.md](security.md) | Threat model, rate limits, keys, checklist | Written |
 | [deployment-and-scaling.md](deployment-and-scaling.md) | Several instances, Redis, probes | Written |
 | [observability.md](observability.md) | Logs, traces, metrics, health | Written |
-| getting-started.md, client-setup.md, client-authorization.md, client-current-user.md, machine-to-machine.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
+| [client-setup.md](client-setup.md) | Add the Client package, handshake, options | Written (grows) |
+| [machine-to-machine.md](machine-to-machine.md) | Client credentials tokens | Written |
+| getting-started.md, client-authorization.md, client-current-user.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
 
 ## Related pages
 

@@ -214,3 +214,15 @@ One lock per job name (`pg_try_advisory_lock`), so with several instances only o
 ## ADR-070: Logging and telemetry choices
 Serilog is added as one logging provider (not replacing the others), so tests and other providers keep working. Request logging has no body and no query string. A redaction enricher masks properties with secret-like names. OTLP export is on only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. EF Core and Redis instrumentation are pre-release packages. Metrics carry no personal data. CORS is decided per origin from the settings of all enabled applications (cache 60 s), never with credentials. Security headers are added to every answer; `/api` and `/connect` are `no-store`.
 
+## ADR-071: Client returns Result, building blocks throw
+`IAuth2ApiClientService` returns `Result` / `Result<T>` (code and message from `ApiError`), so a wrong password or a server that is down is a normal answer. Low-level pieces (`IAuth2MachineTokenProvider`, `MachineTokenHandler`) throw `Auth2Exception(statusCode, errorCode, message, isTransient)` because a `DelegatingHandler` cannot return a result. Exceptions and results never hold secrets. A server that cannot be reached is the client code `server_unavailable`.
+
+## ADR-072: Two named HTTP clients, resilience only where it is safe
+`SystemX.Auth2` (never repeated by itself: register, login, password calls, refresh, because a repeated login counts twice towards lockout and a refresh token works once) and `SystemX.Auth2.Resilient` (machine token, handshake, sync, reads; gets retry, timeout and circuit breaker with `EnableResilience()`). A machine token that gets a 401 is dropped and renewed once, for calls that are safe to repeat.
+
+## ADR-073: The handshake decides the server mode
+The client never guesses the mode. It sends the project key (or none) and also checks `ServerMode` of a 200 answer. A `409 server_mode_mismatch` becomes a message for the client's side ("Remove ServerWithMultiApplication" or "Call ServerWithMultiApplication(projectKey)"). `Throw` / `Continue` decide start-up; `Continue` + unreachable server retries in the background with a doubling delay (2 s to 60 s, 6 tries). A wrong configuration (not found, rejected) is never retried. The delay uses `TimeProvider`, so tests control time.
+
+## ADR-074: Machine token cache
+One cache entry per sorted scope set, kept until `expires_in - 60 s` (at least 30 s), one request at a time per scope set (single flight), failures not cached. The default login scope of the client is `openid offline_access auth2.me`, so `GetMeAsync` works with the tokens it gets.
+

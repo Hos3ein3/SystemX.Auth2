@@ -49,4 +49,6 @@ Every `TODO` in code must be listed here.
 - Phase 10: no distributed lock or cache through Redis (the database lock is enough). Rate limiting uses fixed windows (a burst at the window edge is possible). The key ring is protected by Data Protection keys that sit unencrypted in the database unless the operator adds a certificate.
 - Phase 10: `Auth2:Security:UseForwardedHeaders` is off by default; behind a proxy the operator must turn it on. The admin API still has no Razor pages.
 - Phase 10: Serilog sinks other than console and OTLP are configured by the operator through the `Serilog` section (extra sink packages are not included).
+- Phase 11: `UseApiAuthentication`, `UseCookieAuthentication`, `UseBlazor`, `UseHostedUi`, `UseSelfUi`, `EnableTokenForwarding`, `UseDistributedCurrentUserStore`, `IAuth2WebService` and `IAuth2BlazorService` are built in phases 12 and 13. `EnablePermissions`, `EnableRoles`, `EnableGroups` and `EnableCurrentUser` only store their options for now (sync and current user come in phases 12-13).
+- Phase 11: the Client does not cache the OIDC discovery document and JWKS yet (needed with API authentication, phase 12).
 
