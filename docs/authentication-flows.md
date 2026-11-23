@@ -244,6 +244,32 @@ The authorize endpoint sends the browser to `Account/Consent` with the authorize
 
 `Manage/Sessions` lists the sign-ins (OpenIddict authorizations) of the user in this application and ends one of them. Ending a session revokes its tokens. A session of another user, or of another application, is answered like "not found".
 
+## External sign-in (social, OIDC, SAML, LDAP, passkeys)
+
+External sign-in is another way to prove who the user is. It ends in the **same** `ILoginService` pipeline as a password login (application enabled, login method allowed, user is a member, lockout, two-factor rule, consent, single active session),
+through `ExternalLoginAsync`. See [external-identity.md](external-identity.md) for the whole feature.
+
+1. The login page asks `GET /connect/external/providers?client_id=...&hint=...` and shows one button per provider. The `hint` (an email or a provider name) lets the Server suggest one provider (home-realm discovery).
+2. The button posts to `/Account/External/Challenge` (or `/connect/external/challenge`) with an anti-forgery token. The Server answers with a redirect to the provider and a short-lived state cookie.
+3. The provider sends the browser to `/callback/login/{slug}/{name}`. The Server checks the answer and runs the **decision table**:
+
+| Situation | Result |
+|---|---|
+| A link exists for this provider and subject in this application | Sign in |
+| No link, a user with the same email exists, the provider proved the email and `AllowLink` is on | Link, add the membership if needed, sign in |
+| No link, a user with the same email exists, the email is **not** proven | Refused: `external_email_exists_not_verified` |
+| No link, no user, registration allowed | Create the user (no password), link, sign in |
+| No link, no user, registration not allowed | Refused: `external_registration_not_allowed` |
+| No email and the application needs a confirmed email | Ask for the email, send a confirmation mail, finish when the link is used |
+
+4. Claims are mapped (`ClaimMappings`, `ProfileSyncMode`) and group mappings are applied ([group-mapping.md](external-identity/group-mapping.md)).
+5. The login method must be allowed: add `External` to `Methods.AllowedLoginMethods` of the application (also `Ldap`, `Passkey` for those kinds). Otherwise `login_method_not_allowed`.
+6. Tokens carry `idp` (the provider name) and `amr` (`fed`, plus `mfa` when the provider says the user used several factors; `pwd` for LDAP). The upstream tokens are never given to your app and are not stored unless `StoreProviderTokens` is on.
+
+**Two-factor**: the local second factor is still asked, unless the provider has `TrustProviderMfa` on and does not say the user skipped MFA.
+
+**Logout** is always local. Upstream logout is not called for OpenID Connect providers.
+
 ## What is in the tokens
 
 Access tokens are **signed JWTs** (not encrypted), so APIs can validate them with the public keys from `/.well-known/jwks`. The server also stores token entries, so tokens can be revoked. Code and refresh tokens are encrypted.
@@ -257,7 +283,8 @@ Access tokens are **signed JWTs** (not encrypted), so APIs can validate them wit
 | `app` | Application id |
 | `projectkey` | Project key. **Omitted in single-application mode** |
 | `pv` | Access version: application version plus the user's version in the application. Both only grow |
-| `amr` | `pwd`, `otp` |
+| `amr` | `pwd`, `otp`, `fed` (external sign-in), `mfa` (the provider reports several factors) |
+| `idp` | Name of the external provider the user signed in with. Only for external sign-ins |
 | `sid` | Session id (user tokens only) |
 | `machine` | `true` on client-credentials tokens only |
 

@@ -35,7 +35,12 @@ public sealed class ExternalLoginException(string errorCode, string reason, Exce
 }
 
 /// <summary>Input of a challenge (the start of a redirect sign-in).</summary>
-public sealed record ExternalChallengeContext(RegisteredProvider Provider, string Issuer, string ReturnUrl, string? LoginHint);
+/// <param name="Provider">The provider.</param>
+/// <param name="Issuer">Public address of this Server.</param>
+/// <param name="ReturnUrl">Where to go afterwards.</param>
+/// <param name="LoginHint">Email or name to prefill at the provider.</param>
+/// <param name="LinkUserId">Set when a signed-in user links the provider instead of signing in.</param>
+public sealed record ExternalChallengeContext(RegisteredProvider Provider, string Issuer, string ReturnUrl, string? LoginHint, string? LinkUserId = null);
 
 /// <summary>Where to send the browser, and the protected state the endpoint must keep in a short-lived cookie until the callback.</summary>
 public sealed record ExternalChallenge(Uri RedirectUri, string ProtectedState, TimeSpan StateLifetime);
@@ -44,7 +49,7 @@ public sealed record ExternalChallenge(Uri RedirectUri, string ProtectedState, T
 public sealed record ExternalCallbackContext(RegisteredProvider Provider, string Issuer, IReadOnlyDictionary<string, string> Parameters, string? ProtectedState);
 
 /// <summary>Result of a callback: the identity and the return URL that was chosen at the start.</summary>
-public sealed record ExternalCallbackResult(ExternalIdentity Identity, string ReturnUrl);
+public sealed record ExternalCallbackResult(ExternalIdentity Identity, string ReturnUrl, string? LinkUserId = null);
 
 /// <summary>A source of external identities.</summary>
 public interface IExternalIdentitySource

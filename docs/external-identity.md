@@ -164,8 +164,20 @@ Example: add "GitLab".
 6. Add the fake endpoints to `FakeOidcProvider` if needed and a test class like `GoogleOidcTests`.
 7. Write the setup guide in `docs/external-identity/gitlab.md` and add it to the list above.
 
+## Signing in, linking and unlinking
+
+See [authentication-flows.md](authentication-flows.md#external-sign-in-social-oidc-saml-ldap-passkeys) for the decision table. In short:
+
+- A user is found by the link `(provider name, provider key)` in the application. Without a link, the **verified email** decides: a proven email links to the existing user, an unproven email never does (`external_email_exists_not_verified`).
+- Which emails count as proven: Google, Microsoft and Apple (when the token says `email_verified`) by default; every other type only when a global admin turns on `TrustProviderEmailVerification` for the provider.
+- Joining an application through a proven email counts as proof of ownership: the membership row is added.
+- Users can link more providers in `Manage/ExternalLogins` and remove them, except the last way to sign in (a password, another link, a passkey, or a confirmed email or phone with an allowed OTP method).
+- Settings that must be on for external sign-in to work: the provider `Enabled`, and `External` in `Methods.AllowedLoginMethods`.
+- Brokering: [external-identity/brokering.md](external-identity/brokering.md). Mapping: [external-identity/group-mapping.md](external-identity/group-mapping.md). Pages for the UI: [ui-handover.md](ui-handover.md).
+
 ## How to implement or extend
 
+- **Sign-in decisions**: `IExternalLoginService` (`ExternalLoginService`) is the only place with the decision table. Sources (OIDC, SAML, LDAP) only produce an `ExternalIdentity`. `ExternalFlow` is the browser side (state cookie, redirects). Pages: `Pages/Account/External/*`, `Pages/Manage/ExternalLogins`. Routes: `Endpoints/ExternalEndpoints.cs`.
 - **Settings classes**: `Domain/Settings/ExternalProviders.cs`. A new kind needs a `[JsonDerivedType]` and a validator branch in `Application/ExternalProviderSettingsValidator.cs`.
 - **Descriptors**: `Infrastructure/External/ExternalProviderDescriptors.cs`. One descriptor per type lists its fields, default scopes, setup guide and the URLs the admin must enter at the provider. Add a class and register it in `ExternalIdentityRegistration`.
 - **Secrets**: use `IExternalSecretProtector` (`Protect`, `Unprotect`, `Redact`). Never log or return a `*Protected` field; always call `Redact` before showing a provider.
@@ -178,4 +190,5 @@ Example: add "GitLab".
 
 - [decisions.md](decisions.md) (ADR-085 to ADR-088: the four design spikes)
 - [authentication-flows.md](authentication-flows.md)
+- [ui-handover.md](ui-handover.md)
 - [security.md](security.md)

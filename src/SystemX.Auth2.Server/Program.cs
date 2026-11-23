@@ -44,6 +44,7 @@ app.MapHealthChecks(Auth2Routes.HealthLive, new HealthCheckOptions { Predicate =
 app.MapHealthChecks(Auth2Routes.HealthReady, new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });   // database (and Redis) answer
 app.MapAuth2Connect();
 app.MapAuth2Account();
+app.MapAuth2External();
 app.MapAuth2Client();
 app.MapAuth2Admin();
 app.MapRazorPages();

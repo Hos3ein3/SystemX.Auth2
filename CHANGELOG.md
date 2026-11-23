@@ -5,6 +5,10 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- External identity step 5: `IExternalLoginService` (decision table: link, link by verified email, register, email confirmation step), claim and group mapping (`IExternalMappingService`: add, remove only mapped, never GlobalAdmin or system roles, same application only),
+  `IExternalLinkService` (list, link, unlink with `cannot_remove_last_login_method`), `ILoginService.ExternalLoginAsync` (same pipeline as password login), `idp` and `amr` token claims, home-realm discovery,
+  `GET /connect/external/providers`, `POST /connect/external/challenge`, pages `Account/External/{Challenge,Callback,Confirm}` and `Manage/ExternalLogins`, rate limit policies `external`, `ldap`, `saml-acs`, `passkey`.
+  Docs: `authentication-flows`, `ui-handover`, `error-codes`, brokering and group mapping guides.
 - External identity step 4: OpenID Connect / OAuth 2.0 engine (`OidcIdentitySource`) for Google, Microsoft, GitHub, Apple, Facebook and generic OIDC (code flow, PKCE, state, nonce, single-use state through `IReplayCache`,
   provider rules: Google `HostedDomain`, Microsoft `AllowedTenants`, GitHub organizations and verified email, Apple signed client secret, generic `AllowedIssuers`), endpoint discovery with cache, SSRF guard for all provider calls,
   `ExternalIdentity` and source abstractions. Docs: setup guide per provider, engine description, how to add a provider type.

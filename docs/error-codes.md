@@ -69,3 +69,15 @@ Every code has an English text in `Errors.resx`. See [localization.md](localizat
 - [api-reference.md](api-reference.md)
 
 | `invalid_scope_name` | 400 | A scope name is invalid or reserved (`auth2.*` and the standard OpenID Connect scopes) |
+| `external_email_exists_not_verified` | 400 | A user with this email exists, but the provider could not prove the email (or linking is off). Nothing was linked. The user signs in with the usual method and links the provider in *Manage external logins* |
+| `external_registration_not_allowed` | 400 | A new account cannot be made from this provider (`AllowRegister` off, or the join mode is not `AutoJoin`) |
+| `external_provider_disabled` | 400 | The provider is unknown, disabled, or the application is disabled |
+| `external_claims_invalid` | 400 | The provider's answer is missing something or failed a check (state, nonce, signature, tenant, domain). The reason is only in the audit log |
+| `cannot_remove_last_login_method` | 400 | The user tried to unlink the last way to sign in |
+| `saml_response_invalid` | 400 | A SAML response did not pass validation |
+| `saml_replay_detected` | 400 | A SAML response, assertion or request id was used before |
+| `ldap_unavailable` | 503 | The directory cannot be reached |
+| `ldap_account_disabled` | 400 | The directory account is disabled (shown only when the application reveals it) |
+| `passkey_not_allowed` | 400 | Passkeys are off for this application |
+| `passkey_limit_reached` | 400 | The user has the most passkeys that are allowed |
+| `passkey_blocked_authenticator` | 400 | This authenticator model is on the block list |

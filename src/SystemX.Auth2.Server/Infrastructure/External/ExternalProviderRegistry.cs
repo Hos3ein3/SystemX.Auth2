@@ -14,7 +14,7 @@ namespace SystemX.Auth2.Server.Infrastructure.External;
 /// and are decrypted only at the moment of use (<see cref="IExternalSecretProtector"/>).
 /// </summary>
 public sealed record RegisteredProvider(
-    Guid ApplicationId, string ProjectSlug, ExternalProviderSettings Settings, int SettingsVersion)
+    Guid ApplicationId, string ProjectSlug, ExternalProviderSettings Settings, int SettingsVersion, string ClientId = "")
 {
     /// <summary>Provider name inside the application.</summary>
     public string Name => Settings.Name;
@@ -144,7 +144,7 @@ public sealed class ExternalProviderRegistry(IServiceScopeFactory scopes, IOptio
     {
         var slug = options.Value.Mode == ServerMode.SingleApplication ? ExternalProviderUrls.SingleModeSlug : app.ProjectKey;
         IReadOnlyList<RegisteredProvider> list = app.IsEnabled
-            ? [.. app.Settings.ExternalProviders.Where(p => p.Enabled).Select(p => new RegisteredProvider(app.Id, slug, p, app.SettingsVersion))]
+            ? [.. app.Settings.ExternalProviders.Where(p => p.Enabled).Select(p => new RegisteredProvider(app.Id, slug, p, app.SettingsVersion, app.ClientId))]
             : [];
         return (app.SettingsVersion, slug, app.IsEnabled, list);
     }

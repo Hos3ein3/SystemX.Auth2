@@ -10,7 +10,7 @@ What works today. "Done" means: code, tests, docs and a CHANGELOG entry exist.
 | External identity: data model, settings, descriptors, secrets | Done | Work package step 2 |
 | External identity: provider registry and reload | Done | Step 3 |
 | Social login and generic OIDC (engine, PKCE, SSRF guard, setup guides) | Done | Step 4. Endpoints that call the engine come in step 5 |
-| Login service, mapping, brokering, unlink rules | Planned | Step 5 |
+| Login service, mapping, brokering, unlink rules, pages | Done | Step 5 |
 | SAML 2.0 service provider | Planned | Step 6 |
 | LDAP and Active Directory | Planned | Step 7 |
 | Passkeys | Planned | Step 8 |

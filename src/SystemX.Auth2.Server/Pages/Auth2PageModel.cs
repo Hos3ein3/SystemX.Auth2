@@ -83,7 +83,7 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     /// <summary>Signs the user into the hosted-UI session and returns the redirect to the first safe target.</summary>
     protected async Task<IActionResult> SignInAndRedirectAsync(LoginResult result, string? applicationFallback)
     {
-        await Auth2Cookie.SignInAsync(HttpContext, result.User!, Application!, Settings, result.Amr, result.SessionId);
+        await Auth2Cookie.SignInAsync(HttpContext, result.User!, Application!, Settings, result.Amr, result.SessionId, result.IdentityProvider);
         return Redirect(ResolveRedirect(applicationFallback));
     }
 

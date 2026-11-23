@@ -43,7 +43,7 @@ public static class Auth2Cookie
     }
 
     /// <summary>Signs the user into the hosted UI session.</summary>
-    public static async Task SignInAsync(HttpContext http, AppUser user, Auth2Application app, ApplicationSettings settings, IEnumerable<string> amr, string? sessionId)
+    public static async Task SignInAsync(HttpContext http, AppUser user, Auth2Application app, ApplicationSettings settings, IEnumerable<string> amr, string? sessionId, string? identityProvider = null)
     {
         var identity = new ClaimsIdentity(Scheme, "name", "role");
         identity.AddClaim(new Claim("sub", user.Id.ToString("D")));
@@ -52,6 +52,7 @@ public static class Auth2Cookie
         identity.AddClaim(new Claim(Auth2Claims.ClientId, app.ClientId));
         if (sessionId is not null) identity.AddClaim(new Claim(Auth2Claims.SessionId, sessionId));
         foreach (var a in amr) identity.AddClaim(new Claim(Auth2Claims.Amr, a));
+        if (!string.IsNullOrEmpty(identityProvider)) identity.AddClaim(new Claim(Auth2Claims.IdentityProvider, identityProvider));
 
         var props = new AuthenticationProperties { IsPersistent = false };
         if (settings.Sessions.CookieLifetimeMinutes is { } minutes)

@@ -29,6 +29,10 @@ internal static class ExternalIdentityRegistration
         services.TryAddSingleton<IOidcEndpointResolver, OidcEndpointResolver>();
         services.TryAddSingleton<OidcIdentitySource>();
         services.AddSingleton<IExternalIdentitySource>(sp => sp.GetRequiredService<OidcIdentitySource>());
+        services.AddScoped<ExternalFlow>();
+        services.AddScoped<IExternalLoginService, ExternalLoginService>();
+        services.AddScoped<IExternalMappingService, ExternalMappingService>();
+        services.AddScoped<IExternalLinkService, ExternalLinkService>();
         services.TryAddSingleton<IExternalProviderRegistry, ExternalProviderRegistry>();
         services.AddHostedService<ExternalProviderRefreshService>();
         return services;

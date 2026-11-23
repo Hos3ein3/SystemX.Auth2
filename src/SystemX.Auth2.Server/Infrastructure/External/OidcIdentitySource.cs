@@ -24,7 +24,7 @@ public sealed class OidcIdentitySource(
 {
     private readonly IDataProtector _state = protection.CreateProtector("SystemX.Auth2.ExternalLoginState.v1");
 
-    private sealed record StatePayload(string R, string S, string N, string V, string U, long E);
+    private sealed record StatePayload(string R, string S, string N, string V, string U, long E, string? L = null);
 
     /// <inheritdoc />
     public bool Handles(ExternalProviderType type) => type is not (ExternalProviderType.Saml or ExternalProviderType.Ldap);
@@ -42,7 +42,7 @@ public sealed class OidcIdentitySource(
         var nonce = Random(32);
         var verifier = Random(48);
         var challenge = Base64Url.EncodeToString(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
-        var payload = new StatePayload(p.RegistrationName, state, nonce, verifier, ctx.ReturnUrl, clock.GetUtcNow().Add(lifetime).ToUnixTimeSeconds());
+        var payload = new StatePayload(p.RegistrationName, state, nonce, verifier, ctx.ReturnUrl, clock.GetUtcNow().Add(lifetime).ToUnixTimeSeconds(), ctx.LinkUserId);
 
         var scopes = o.Scopes.Count > 0 ? o.Scopes : Descriptor(o.Type);
         var query = new List<(string, string)>
@@ -104,7 +104,7 @@ public sealed class OidcIdentitySource(
             : o.Type == ExternalProviderType.GitHub ? await FromGitHubAsync(p, o, ep, token, ct) : await FromFacebookAsync(p, o, ep, token, ct);
         if (o.StoreProviderTokens)
             identity = identity with { Tokens = new ExternalProviderTokens(token.Access, token.Refresh, token.ExpiresIn is { } s ? clock.GetUtcNow().AddSeconds(s) : null) };
-        return new ExternalCallbackResult(identity, payload.U);
+        return new ExternalCallbackResult(identity, payload.U, payload.L);
     }
 
     private sealed record TokenResponse(string? Access, string? Refresh, string? IdToken, int? ExpiresIn);

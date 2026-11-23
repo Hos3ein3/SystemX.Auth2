@@ -89,7 +89,8 @@ public static class ConnectEndpoints
         }
 
         var amr = cookie.Principal!.FindAll(Auth2Claims.Amr).Select(c => c.Value).DefaultIfEmpty("pwd");
-        var principal = await issuer.CreateUserPrincipalAsync(user!, scopes, amr, cookie.Principal.FindFirst(Auth2Claims.SessionId)?.Value, http.RequestAborted);
+        var principal = await issuer.CreateUserPrincipalAsync(user!, scopes, amr, cookie.Principal.FindFirst(Auth2Claims.SessionId)?.Value, http.RequestAborted,
+            cookie.Principal.FindFirst(Auth2Claims.IdentityProvider)?.Value);
         if (mode == ConsentMode.Explicit)
         {
             // Remember the agreement, so the user is not asked again for the same scopes. The tokens belong to this authorization.

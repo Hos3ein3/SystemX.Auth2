@@ -139,6 +139,37 @@ internal sealed class LoginService(
     }
 
     /// <inheritdoc />
+    public async Task<LoginResult> ExternalLoginAsync(ExternalSignInRequest request, CancellationToken ct = default)
+    {
+        var app = await flow.GetApplicationAsync(ct);
+        var settings = await flow.GetSettingsAsync(ct);
+        var user = request.User;
+        var data = new Dictionary<string, object?> { ["method"] = request.Method.ToString(), ["provider"] = request.ProviderName };
+
+        if (!app.IsEnabled) return await FailAsync(app, user, Auth2ErrorCodes.ApplicationDisabled, null, ct, data, ipAddress: request.IpAddress);
+        if (!settings.Methods.AllowedLoginMethods.Contains(request.Method))
+            return await FailAsync(app, user, Auth2ErrorCodes.LoginMethodNotAllowed, null, ct, data, ipAddress: request.IpAddress);
+        if (!user.IsActive || !await lookup.IsMemberAsync(user, app, ct))
+            return await FailAsync(app, user, Auth2ErrorCodes.InvalidCredentials, null, ct, new(data) { ["reason"] = user.IsActive ? "not_member" : "inactive_user" }, ipAddress: request.IpAddress);
+        if (await users.IsLockedOutAsync(user))
+            return await FailAsync(app, user, Auth2ErrorCodes.LockedOut, null, ct, data, ipAddress: request.IpAddress);
+        if (settings.Email.RequireConfirmedEmail && !user.EmailConfirmed)
+            return await FailAsync(app, user, Auth2ErrorCodes.EmailNotConfirmed, null, ct, data, ipAddress: request.IpAddress);
+        if (settings.Phone.RequireConfirmedPhone && !user.PhoneNumberConfirmed)
+            return await FailAsync(app, user, Auth2ErrorCodes.PhoneNotConfirmed, null, ct, data, ipAddress: request.IpAddress);
+
+        if (!request.SkipLocalTwoFactor && settings.TwoFactor.Mode != TwoFactorMode.Off && settings.TwoFactor.AllowTotp)
+        {
+            if (await users.GetTwoFactorEnabledAsync(user))
+                return new LoginResult { ErrorCode = Auth2ErrorCodes.TwoFactorRequired, TwoFactorToken = CreateTwoFactorToken(user, app), Application = app, IdentityProvider = request.ProviderName };
+            if (settings.TwoFactor.Mode == TwoFactorMode.Required)
+                return await FailAsync(app, user, Auth2ErrorCodes.TwoFactorSetupRequired, null, ct, data, ipAddress: request.IpAddress);
+        }
+        var result = await SucceedAsync(user, app, settings, [.. request.Amr], request.IpAddress, request.UserAgent, ct);
+        return result with { IdentityProvider = request.ProviderName };
+    }
+
+    /// <inheritdoc />
     public async Task<LoginResult> CompleteTwoFactorAsync(string twoFactorToken, string? code, string? recoveryCode, string? ipAddress = null, CancellationToken ct = default)
     {
         var app = await flow.GetApplicationAsync(ct);

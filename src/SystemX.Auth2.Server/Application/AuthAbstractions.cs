@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Domain.Settings;
 
@@ -18,6 +19,20 @@ public sealed record PasswordLoginRequest(string Login, string Password, string?
 /// <param name="UserAgent">Caller user agent (for the audit log).</param>
 public sealed record OtpLoginRequest(string Login, string Code, string? IpAddress = null, string? UserAgent = null);
 
+/// <summary>
+/// Input of a login that an external source already proved (social, OIDC, SAML, LDAP, passkey). The user is known; this request
+/// only asks the one login pipeline (application, method, membership, lockout, two-factor, session) whether the user may enter.
+/// </summary>
+/// <param name="User">The user that the external source identified.</param>
+/// <param name="Method">The login method: <c>External</c>, <c>Ldap</c> or <c>Passkey</c>.</param>
+/// <param name="ProviderName">Name of the provider (becomes the <c>idp</c> claim). Null for passkeys.</param>
+/// <param name="Amr">Authentication method references for the <c>amr</c> claim.</param>
+/// <param name="SkipLocalTwoFactor">The source already used several factors (trusted provider MFA, passkey with user verification).</param>
+/// <param name="IpAddress">Caller IP (for the audit log).</param>
+/// <param name="UserAgent">Caller user agent (for the audit log).</param>
+public sealed record ExternalSignInRequest(AppUser User, LoginMethod Method, string? ProviderName, IReadOnlyList<string> Amr, bool SkipLocalTwoFactor,
+    string? IpAddress = null, string? UserAgent = null);
+
 /// <summary>Result of a login step.</summary>
 public sealed record LoginResult
 {
@@ -35,6 +50,8 @@ public sealed record LoginResult
     public IReadOnlyList<string> Amr { get; init; } = [];
     /// <summary>Id of the new session (<c>sid</c> claim).</summary>
     public string? SessionId { get; init; }
+    /// <summary>Name of the external provider the user came from (<c>idp</c> claim), or null for local logins.</summary>
+    public string? IdentityProvider { get; init; }
 
     /// <summary>Failure result.</summary>
     public static LoginResult Fail(string code) => new() { ErrorCode = code };
@@ -56,6 +73,9 @@ public interface ILoginService
     /// </summary>
     Task<LoginResult> OtpLoginAsync(OtpLoginRequest request, CancellationToken ct = default);
 
+    /// <summary>Login of a user that an external source proved (see <see cref="ExternalSignInRequest"/>). Same rules as every other login.</summary>
+    Task<LoginResult> ExternalLoginAsync(ExternalSignInRequest request, CancellationToken ct = default);
+
     /// <summary>Second step: checks a TOTP code or a recovery code.</summary>
     Task<LoginResult> CompleteTwoFactorAsync(string twoFactorToken, string? code, string? recoveryCode, string? ipAddress = null, CancellationToken ct = default);
 
@@ -67,7 +87,7 @@ public interface ILoginService
 public interface ITokenIssuer
 {
     /// <summary>Creates the principal of a user for the current application.</summary>
-    Task<ClaimsPrincipal> CreateUserPrincipalAsync(AppUser user, IEnumerable<string> scopes, IEnumerable<string> amr, string? sessionId, CancellationToken ct = default);
+    Task<ClaimsPrincipal> CreateUserPrincipalAsync(AppUser user, IEnumerable<string> scopes, IEnumerable<string> amr, string? sessionId, CancellationToken ct = default, string? identityProvider = null);
 
     /// <summary>Creates the principal of a machine client (client credentials).</summary>
     Task<ClaimsPrincipal> CreateMachinePrincipalAsync(IEnumerable<string> scopes, CancellationToken ct = default);

@@ -22,7 +22,7 @@ public sealed class TokenIssuer(
     IAccessService accessService, IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options) : ITokenIssuer
 {
     /// <inheritdoc />
-    public async Task<ClaimsPrincipal> CreateUserPrincipalAsync(AppUser user, IEnumerable<string> scopes, IEnumerable<string> amr, string? sessionId, CancellationToken ct = default)
+    public async Task<ClaimsPrincipal> CreateUserPrincipalAsync(AppUser user, IEnumerable<string> scopes, IEnumerable<string> amr, string? sessionId, CancellationToken ct = default, string? identityProvider = null)
     {
         var app = await flow.GetApplicationAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
@@ -40,6 +40,7 @@ public sealed class TokenIssuer(
         identity.SetClaim(Auth2Claims.ApplicationId, app.Id.ToString("D"));
         if (options.Value.Mode == ServerMode.MultiApplication) identity.SetClaim(Auth2Claims.ProjectKey, app.ProjectKey);
         identity.SetClaim(Auth2Claims.SessionId, sessionId);
+        identity.SetClaim(Auth2Claims.IdentityProvider, identityProvider);
         foreach (var a in amr) identity.AddClaim(new Claim(Claims.AuthenticationMethodReference, a));
 
         var principal = new ClaimsPrincipal(identity);
@@ -111,7 +112,7 @@ public sealed class TokenIssuer(
             Claims.Email or Claims.EmailVerified when claim.Subject!.HasScope(Scopes.Email) => [Destinations.AccessToken, Destinations.IdentityToken],
             Claims.PhoneNumber when claim.Subject!.HasScope(Scopes.Phone) => [Destinations.AccessToken, Destinations.IdentityToken],
             Claims.Role when claim.Subject!.HasScope(Scopes.Roles) => [Destinations.AccessToken, Destinations.IdentityToken],
-            Claims.AuthenticationMethodReference => [Destinations.AccessToken, Destinations.IdentityToken],
+            Claims.AuthenticationMethodReference or Auth2Claims.IdentityProvider => [Destinations.AccessToken, Destinations.IdentityToken],
             _ => [Destinations.AccessToken],
         });
     }

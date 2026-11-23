@@ -82,7 +82,11 @@ internal static class RateLimitPolicyMap
         var post = HttpMethods.IsPost(r.Method);
 
         if (path.StartsWith(Auth2Routes.Admin, StringComparison.OrdinalIgnoreCase)) return "admin";
+        if (path.StartsWith("/callback/login/", StringComparison.OrdinalIgnoreCase)) return "external";
+        if (path.StartsWith("/saml/", StringComparison.OrdinalIgnoreCase) && path.EndsWith("/acs", StringComparison.OrdinalIgnoreCase)) return post ? "saml-acs" : null;
         if (!post) return null;
+        if (Is(path, "/account/external/challenge") || Is(path, "/connect/external/challenge")) return "external";
+        if (path.StartsWith("/account/passkey/", StringComparison.OrdinalIgnoreCase)) return "passkey";
 
         if (path.Equals(Auth2Routes.Token, StringComparison.OrdinalIgnoreCase))
         {

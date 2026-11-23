@@ -107,6 +107,10 @@ public sealed class RateLimitingOptions
         "register" => new RateLimitRule { PermitLimit = 10, WindowSeconds = 60 },
         "otp" => new RateLimitRule { PermitLimit = 10, WindowSeconds = 60 },
         "password-reset" => new RateLimitRule { PermitLimit = 5, WindowSeconds = 60 },
+        "external" => new RateLimitRule { PermitLimit = 30, WindowSeconds = 60 },
+        "ldap" => new RateLimitRule { PermitLimit = 10, WindowSeconds = 60 },
+        "saml-acs" => new RateLimitRule { PermitLimit = 30, WindowSeconds = 60 },
+        "passkey" => new RateLimitRule { PermitLimit = 20, WindowSeconds = 60 },
         "handshake" => new RateLimitRule { PermitLimit = 30, WindowSeconds = 60 },
         "permission-sync" => new RateLimitRule { PermitLimit = 30, WindowSeconds = 60 },
         _ => new RateLimitRule { PermitLimit = 120, WindowSeconds = 60 },   // admin
