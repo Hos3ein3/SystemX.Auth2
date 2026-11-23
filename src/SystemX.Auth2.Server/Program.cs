@@ -1,10 +1,16 @@
+using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Server.Endpoints;
 using SystemX.Auth2.Server.Infrastructure;
 using SystemX.Auth2.Server.Infrastructure.Commands;
 using SystemX.Auth2.Server.Infrastructure.Localization;
+using SystemX.Auth2.Server.Infrastructure.Operations;
+using SystemX.Auth2.Server.Application;
+using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddAuth2Observability();
 builder.Services.AddSystemXAuth2Server(builder.Configuration);
 
 // builder.Services.ServerWithSingleApplication();   // optional. Without it the server is multi-application.
@@ -16,13 +22,26 @@ var app = builder.Build();
 
 if (isCommand) return await Auth2Commands.RunAsync(args, app.Services);
 
+var server = app.Services.GetRequiredService<IOptions<Auth2ServerOptions>>().Value;
+if (server.Security.UseForwardedHeaders) app.UseForwardedHeaders();   // first: the client address and scheme come from the proxy
+app.UseAuth2RequestLogging();
+if (HardeningSetup.RequireHttps(app.Environment, server))
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseAuth2Localization();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseCors();
+app.UseMiddleware<RateLimitMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => "SystemX.Auth2 Server");
+app.MapHealthChecks(Auth2Routes.HealthLive, new HealthCheckOptions { Predicate = _ => false });   // the process runs
+app.MapHealthChecks(Auth2Routes.HealthReady, new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });   // database (and Redis) answer
 app.MapAuth2Connect();
 app.MapAuth2Account();
 app.MapAuth2Client();

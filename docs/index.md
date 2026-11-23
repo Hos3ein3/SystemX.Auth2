@@ -26,7 +26,10 @@ The map of all documentation pages. Pages marked *(planned)* are written in a la
 | [permission-sync.md](permission-sync.md) | Push and pull of permissions and roles | Written |
 | [handshake-and-startup.md](handshake-and-startup.md) | Startup check and server mode | Written |
 | [admin-api.md](admin-api.md) | Global and project admin API | Written |
-| getting-started.md, client-setup.md, client-authorization.md, client-current-user.md, machine-to-machine.md, security.md, deployment-and-scaling.md, observability.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
+| [security.md](security.md) | Threat model, rate limits, keys, checklist | Written |
+| [deployment-and-scaling.md](deployment-and-scaling.md) | Several instances, Redis, probes | Written |
+| [observability.md](observability.md) | Logs, traces, metrics, health | Written |
+| getting-started.md, client-setup.md, client-authorization.md, client-current-user.md, machine-to-machine.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
 
 ## Related pages
 

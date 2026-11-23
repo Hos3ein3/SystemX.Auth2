@@ -30,6 +30,8 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
     public DbSet<UserApplication> UserApplications => Set<UserApplication>();
     /// <summary>Recovery codes.</summary>
     public DbSet<UserApplicationRecoveryCode> RecoveryCodes => Set<UserApplicationRecoveryCode>();
+    /// <summary>Signing and encryption keys.</summary>
+    public DbSet<KeyRingEntry> KeyRing => Set<KeyRingEntry>();
     /// <summary>Permissions.</summary>
     public DbSet<Permission> Permissions => Set<Permission>();
     /// <summary>Direct user permissions.</summary>
@@ -205,6 +207,13 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
             e.HasIndex(x => x.ExpiresAtUtc);
             e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+        });
+        b.Entity<KeyRingEntry>(e =>
+        {
+            e.ToTable("key_ring");
+            e.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.Thumbprint).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => new { x.Purpose, x.RetiredAtUtc });
         });
         b.Entity<DataProtectionKey>().ToTable("data_protection_keys");
 

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using SystemX.Auth2.Server.Persistence;
 using Testcontainers.PostgreSql;
+using Testcontainers.Redis;
 
 namespace SystemX.Auth2.Server.IntegrationTests;
 
@@ -32,6 +33,19 @@ internal static class SharedPostgres
         }
         return new NpgsqlConnectionStringBuilder(container.GetConnectionString()) { Database = name, Pooling = false }.ConnectionString;
     }
+}
+
+/// <summary>One Redis container for the whole test run. Tests use their own key prefix, so they do not meet each other.</summary>
+internal static class SharedRedis
+{
+    private static readonly Lazy<Task<RedisContainer>> Container = new(async () =>
+    {
+        var c = new RedisBuilder("redis:7-alpine").Build();
+        await c.StartAsync();
+        return c;
+    });
+
+    public static async Task<string> ConnectionStringAsync() => (await Container.Value).GetConnectionString();
 }
 
 /// <summary>Collects log messages so tests can check that no secret was logged.</summary>
@@ -87,12 +101,23 @@ public class Auth2ServerFactory : WebApplicationFactory<Program>
     /// <summary>Extra service changes for one test class. Set before the first use of <c>Services</c>.</summary>
     public Action<IServiceCollection>? Customize { get; set; }
 
+    /// <summary>Extra configuration values (for example the Redis connection string). Set before the first use of <c>Services</c>.</summary>
+    public Dictionary<string, string?> Settings { get; } = [];
+
     public async Task InitializeAsync() => _connectionString = await SharedPostgres.CreateDatabaseAsync();
+
+    /// <summary>Makes this instance use the database of another one, like a second server behind the same load balancer.</summary>
+    public void ShareDatabaseWith(Auth2ServerFactory other)
+    {
+        _connectionString = other.ConnectionString;
+        foreach (var (key, value) in other.Settings) Settings[key] = value;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Auth2", _connectionString);
+        foreach (var (key, value) in Settings) builder.UseSetting(key, value);
         builder.ConfigureLogging(l => l.AddProvider(Logs));
         builder.ConfigureTestServices(ConfigureAuth2);
     }
@@ -112,12 +137,19 @@ public sealed class SingleModeFactory : Auth2ServerFactory
 public abstract class ServerTestBase : IAsyncLifetime
 {
     protected virtual bool SingleMode => false;
+    /// <summary>True to run the server with Redis (a container shared by the test run, with a private key prefix).</summary>
+    protected virtual bool UseRedis => false;
     protected Auth2ServerFactory Factory { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
         Factory = SingleMode ? new SingleModeFactory() : new Auth2ServerFactory();
         Factory.Customize = Customize;
+        if (UseRedis)
+        {
+            Factory.Settings["Auth2:Redis:ConnectionString"] = await SharedRedis.ConnectionStringAsync();
+            Factory.Settings["Auth2:Redis:KeyPrefix"] = "t" + Guid.NewGuid().ToString("N");
+        }
         await Factory.InitializeAsync();
     }
 

@@ -72,7 +72,10 @@ internal sealed class LoginService(
         {
             await users.AccessFailedAsync(user);
             if (await users.IsLockedOutAsync(user))
+            {
+                Operations.Auth2Metrics.Lockouts.Add(1);
                 await audit.WriteAsync(Entry("login.locked_out", app, user, request.IpAddress, request.UserAgent), ct);
+            }
             return await FailAsync(app, user, Auth2ErrorCodes.InvalidCredentials, request, ct, new() { ["reason"] = "wrong_password" });
         }
 
@@ -192,6 +195,7 @@ internal sealed class LoginService(
                 await users.UpdateSecurityStampAsync(user);
         }
 
+        Operations.Auth2Metrics.Logins.Add(1, new KeyValuePair<string, object?>("result", "success"));
         await audit.WriteAsync(Entry("login.success", app, user, ip, ua, new() { ["amr"] = amr }), ct);
         return new LoginResult { Succeeded = true, User = user, Application = app, Amr = amr, SessionId = Guid.NewGuid().ToString("N") };
     }
@@ -202,6 +206,7 @@ internal sealed class LoginService(
     {
         data ??= [];
         data["code"] = reasonCode;   // never the login name or the password
+        Operations.Auth2Metrics.Logins.Add(1, new KeyValuePair<string, object?>("result", "failure"));
         await audit.WriteAsync(Entry(FailedAction, app, user, request?.IpAddress ?? ipAddress, request?.UserAgent, data), ct);
         return LoginResult.Fail(publicCode ?? reasonCode);
     }

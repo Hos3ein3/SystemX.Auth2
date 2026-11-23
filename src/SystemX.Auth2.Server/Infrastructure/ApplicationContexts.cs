@@ -20,7 +20,7 @@ public sealed class SingleApplicationContext(Auth2DbContext db, IApplicationScop
         var app = await db.Applications.AsNoTracking()
             .FirstOrDefaultAsync(a => a.ProjectKey != ProjectKeyRules.GlobalProjectKey && a.Name == name, ct)
             ?? throw new ApplicationNotFoundException($"The single application '{name}' does not exist. Run the 'seed' command.");
-        scope.Set(app.Id);
+        scope.Set(app.Id, null);
         return _cached = app;
     }
 }
@@ -52,7 +52,7 @@ public sealed class MultiApplicationContext(Auth2DbContext db, IApplicationScope
         }
 
         if (app is null) throw new ApplicationNotFoundException("No application matches this request.");
-        scope.Set(app.Id);
+        scope.Set(app.Id, app.ProjectKey);
         return _cached = app;
     }
 }

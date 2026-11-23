@@ -810,6 +810,55 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.ToTable("group_roles", (string)null);
                 });
 
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.KeyRingEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset>("NotAfterUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("not_after_utc");
+
+                    b.Property<string>("ProtectedPfx")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_pfx");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("purpose");
+
+                    b.Property<DateTimeOffset?>("RemoveAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("remove_at_utc");
+
+                    b.Property<DateTimeOffset?>("RetiredAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("retired_at_utc");
+
+                    b.Property<string>("Thumbprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("thumbprint");
+
+                    b.HasKey("Id")
+                        .HasName("pk_key_ring");
+
+                    b.HasIndex("Purpose", "RetiredAtUtc")
+                        .HasDatabaseName("ix_key_ring_purpose_retired_at_utc");
+
+                    b.ToTable("key_ring", (string)null);
+                });
+
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.OtpCode", b =>
                 {
                     b.Property<Guid>("Id")

@@ -199,3 +199,18 @@ A project admin may change only settings marked `ProjectAdminEditable`; `Setting
 ## ADR-065: Audit enrichment and project role creation
 `AuditService` adds the admin id (from `HttpContext.Items`), the IP address and the user agent (cut to 256 characters) to every event written during a web request. The `ProjectAdmin` role is created lazily per application the first time someone is made project admin; deleting an application deletes it with the rest (cascade).
 
+## ADR-066: Rate limiting is our own middleware with a small store interface
+ASP.NET's built-in limiter cannot count in Redis, so `RateLimitMiddleware` maps a request to a named policy (`login`, `token`, `register`, `otp`, `password-reset`, `handshake`, `permission-sync`, `admin`) and counts with `IRateLimiter` (memory or Redis, fixed window). Each request is counted for "address + client id + login" and for the address alone (5x the limit). The identity part is the client id and the login together (a client serves many users). Bearer tokens are hashed, never stored. Over the limit: 429, `Retry-After`, `rate_limited`.
+
+## ADR-067: Keys live in a key ring in the database; no temporary keys any more
+When no certificate files are configured, the Server creates a signing and an encryption certificate on first start, stores them protected by Data Protection (`key_ring` table) and every instance uses them. Rotation adds a pair and retires the old one (kept `RetiredKeyDays`=35 for checking and decrypting, then removed by a job). OpenIddict prefers the key with the latest "not after" date, so a new key always gets a strictly later date. Each instance re-reads the table every 30 s; a change fires an options change token so OpenIddict rebuilds its options. The **validation** options copy the server keys when they are built, so a post-configure step refreshes them too (found by a test: new tokens were refused after a rotation). If the table does not exist yet (not migrated), temporary keys keep the server answering until the real keys can be read. The production guard now only requires an HTTPS issuer.
+
+## ADR-068: Redis scope
+With Redis on: rate-limit counters, one-time codes and settings invalidation (pub/sub). Data Protection keys and the key ring stay in the database, because Redis may lose data and without those keys cookies, tokens and TOTP keys become unreadable. The access cache stays in memory: its key contains the access version, which is read from the database each time, so it is correct on every instance. Redis down does not stop the start-up (`AbortOnConnectFail=false`); `/health/ready` reports it.
+
+## ADR-069: Jobs use a PostgreSQL advisory lock on a dedicated connection
+One lock per job name (`pg_try_advisory_lock`), so with several instances only one runs a job; others skip it. Jobs: old one-time codes, audit retention (default 365 days), OpenIddict pruning, retired key removal. No Redis needed.
+
+## ADR-070: Logging and telemetry choices
+Serilog is added as one logging provider (not replacing the others), so tests and other providers keep working. Request logging has no body and no query string. A redaction enricher masks properties with secret-like names. OTLP export is on only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. EF Core and Redis instrumentation are pre-release packages. Metrics carry no personal data. CORS is decided per origin from the settings of all enabled applications (cache 60 s), never with credentials. Security headers are added to every answer; `/api` and `/connect` are `no-store`.
+

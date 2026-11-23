@@ -19,19 +19,19 @@ DocFX is not planned.
 Every `TODO` in code must be listed here.
 
 - Client.Tests and Client.IntegrationTests have no tests yet. They get tests in phase 11.
-- Phase 3: `create-admin`, `rotate-keys`, `convert-to-single`, `convert-to-multi` commands are not built yet (phases 4, 6, 10).
+- Phase 3: `convert-to-single` and `convert-to-multi` commands are not built yet. (`create-admin` and `rotate-keys` exist since phase 10.)
 - Phase 3: row version / `If-Match` for application edits comes with the admin API (phase 9).
-- Phase 3: the settings cache is per instance (memory). Redis and pub/sub invalidation come in phase 10.
+- Phase 3: the settings cache is per instance; with Redis, pub/sub clears it on all instances (phase 10).
 - Phase 4: the claim `locale` (saved user culture) is read by the culture provider, but nothing writes it yet. Phase 5 adds it to tokens and cookies.
 - Phase 4: `convert-to-single` / `convert-to-multi` must move credentials between the two places described in `credential-scope.md`.
 - Pages still to come: `Admin/*` (phase 9), `External/Callback` and `Manage/Passkeys` (phase 14).
-- Phase 5: rate limiting of `/connect/token` and the login page (phase 10). Do not expose the password grant on the internet before that.
-- Phase 5: temporary keys in Development only; `rotate-keys` and `IKeyRing` in phase 10.
+- Phase 5: rate limiting of `/connect/token` and the login page: done in phase 10.
+- Phase 5: temporary keys are replaced by the key ring; `rotate-keys` and `IKeyRing` exist (phase 10).
 - Phase 5: the `locale` claim is now written to tokens. The culture provider reads it from the hosted session cookie only after the cookie also carries it (phase 6, with the user culture setting).
 - Phone numbers are not unique in the database. If two users share one, phone login, OTP and join treat the number as unknown. A unique-phone rule is a possible later setting.
-- Phase 6: the OTP table is the only OTP store. Redis storage comes in phase 10.
+- Phase 6: OTP can be stored in Redis (phase 10).
 - Phase 6: `InviteOnly` join mode has no invitation mechanism. Admins add people in the admin API (phase 9).
-- Phase 6: no rate limiting on `otp/request`, `password/forgot` or `register` yet (phase 10). Until then, one code per `OtpResendSeconds` and the lockout are the only brakes.
+- Phase 6: rate limiting of `otp/request`, `password/forgot`, `register`: done in phase 10.
 - Phase 6: the access version is raised by password and two-factor changes. Role, permission and group changes raise it too (phase 7 done).
 - Phase 6: there is no "remember this device" for two-factor, and no way to list or delete single recovery codes.
 - Phase 6: the `locale` claim is in the tokens, but not in the hosted-UI session cookie yet. So a user's saved culture is not used for the hosted pages until the cookie carries it.
@@ -46,4 +46,7 @@ Every `TODO` in code must be listed here.
 - Phase 9: no rate limit on the admin API yet (phase 10, policy `admin`). User lists compute lock state per user (one query each), so keep page sizes small for big user bases.
 - Phase 9: `external-providers` admin routes come with the experimental features (phase 14). Email and phone changes of a user are not in `PUT /users/{id}` (they need confirmation again).
 - Phase 9: the admin Razor pages (`Admin/*`) are not created yet; the UI hand-over (phase 15) lists them. Permission and role changes by admin do not yet notify other instances (the version is read from the database, so it is correct, only slower to push).
+- Phase 10: no distributed lock or cache through Redis (the database lock is enough). Rate limiting uses fixed windows (a burst at the window edge is possible). The key ring is protected by Data Protection keys that sit unencrypted in the database unless the operator adds a certificate.
+- Phase 10: `Auth2:Security:UseForwardedHeaders` is off by default; behind a proxy the operator must turn it on. The admin API still has no Razor pages.
+- Phase 10: Serilog sinks other than console and OTLP are configured by the operator through the `Serilog` section (extra sink packages are not included).
 

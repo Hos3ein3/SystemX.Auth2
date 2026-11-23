@@ -22,6 +22,12 @@ public interface IApplicationScope
 
     /// <summary>Selects the current application.</summary>
     void Set(Guid applicationId);
+
+    /// <summary>Selects the current application and remembers its project key (for logs). Multi mode only; pass null in single mode.</summary>
+    void Set(Guid applicationId, string? projectKey) => Set(applicationId);
+
+    /// <summary>Project key of the current application, when known.</summary>
+    string? CurrentProjectKey => null;
 }
 
 /// <summary>

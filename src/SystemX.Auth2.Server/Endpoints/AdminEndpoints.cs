@@ -123,6 +123,15 @@ public static class AdminEndpoints
         MapUsers(g);
         MapAccess(g);
 
+        // Keys (global admin only). Rotation: new keys sign from now on, old keys keep checking old tokens until they are removed.
+        g.MapGet("/keys", async (HttpContext http, IKeyRing keys) => Results.Ok(await keys.ListAsync(http.RequestAborted))).Require(AdminLevel.Global);
+        g.MapPost("/keys/rotate", async (HttpContext http, IKeyRing keys, IAuditService audit) =>
+        {
+            var list = await keys.RotateAsync(http.RequestAborted);
+            await audit.WriteAsync(new AuditEntry("keys.rotated", null, TargetType: "keys"), http.RequestAborted);
+            return Results.Ok(list);
+        }).Require(AdminLevel.Global);
+
         g.MapGet("/audit-events", async (HttpContext http, IAuditReader reader, string? action, Guid? actorUserId, string? targetType, DateTimeOffset? from, DateTimeOffset? to, bool? all) =>
         {
             if (all == true && !http.Ctx().IsGlobalAdmin) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.Forbidden);

@@ -129,11 +129,15 @@ public static class ConnectEndpoints
                 return OAuthError(Errors.InvalidGrant, Auth2ErrorCodes.InvalidCredentials);
 
             if (request.IsRefreshTokenGrantType()) await issuer.RefreshUserClaimsAsync(principal, user, ct);
+            Issued(request);
             return Results.SignIn(principal, properties: null, OpenIddictScheme);
         }
 
         if (request.IsClientCredentialsGrantType())
+        {
+            Issued(request);
             return Results.SignIn(await issuer.CreateMachinePrincipalAsync(request.GetScopes(), ct), properties: null, OpenIddictScheme);
+        }
 
         if (request.IsPasswordGrantType())
         {
@@ -165,11 +169,15 @@ public static class ConnectEndpoints
         return OAuthError(Errors.UnsupportedGrantType, Auth2ErrorCodes.GrantNotAllowed);
     }
 
+    private static void Issued(OpenIddictRequest request) =>
+        Infrastructure.Operations.Auth2Metrics.TokensIssued.Add(1, new KeyValuePair<string, object?>("grant_type", request.GrantType ?? "unknown"));
+
     private static async Task<IResult> ToTokenResultAsync(LoginResult result, OpenIddictRequest request, ITokenIssuer issuer, CancellationToken ct)
     {
         if (result.Succeeded)
         {
             var principal = await issuer.CreateUserPrincipalAsync(result.User!, request.GetScopes(), result.Amr, result.SessionId, ct);
+            Issued(request);
             return Results.SignIn(principal, properties: null, OpenIddictScheme);
         }
         if (result.ErrorCode == Auth2ErrorCodes.TwoFactorRequired)

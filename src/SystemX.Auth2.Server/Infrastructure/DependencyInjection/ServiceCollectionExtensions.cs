@@ -10,6 +10,10 @@ using SystemX.Auth2.Server.Infrastructure.Auth;
 using SystemX.Auth2.Server.Infrastructure.Identity;
 using SystemX.Auth2.Server.Infrastructure.Localization;
 using SystemX.Auth2.Server.Infrastructure.OpenIddict;
+using SystemX.Auth2.Server.Infrastructure.Operations;
+using Microsoft.Extensions.Options;
+using OpenIddict.Server;
+using Microsoft.AspNetCore.HttpOverrides;
 using SystemX.Auth2.Server.Persistence.Identity;
 using SystemX.Auth2.Server.Persistence;
 using SystemX.Auth2.Server.Persistence.Seeding;
@@ -104,6 +108,7 @@ public static class Auth2ServerServiceCollectionExtensions
 
         services.AddScoped<UserLookup>();
         services.AddScoped<IOtpService, OtpService>();
+        AddOperations(services, configuration);
         services.AddScoped<IServerUrls, ServerUrls>();
         services.TryAddScoped<IEmailSender, LoggingEmailSender>();   // replace with your own sender in production
         services.TryAddScoped<ISmsSender, LoggingSmsSender>();
@@ -134,6 +139,47 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<Auth2Seeder>();
         services.AddScoped<DatabaseInitializer>();
         return services;
+    }
+
+    /// <summary>Rate limiting, Redis (optional), key ring, background jobs, health checks, CORS and hardening.</summary>
+    private static void AddOperations(IServiceCollection services, IConfiguration configuration)
+    {
+        var redisOn = !string.IsNullOrWhiteSpace(configuration["Auth2:Redis:ConnectionString"]);
+        if (redisOn)
+        {
+            services.AddSingleton<RedisConnection>();
+            services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp => sp.GetRequiredService<RedisConnection>().Multiplexer);
+            services.AddSingleton<IRateLimiter, RedisRateLimiter>();
+            services.AddScoped<IOtpService, RedisOtpService>();   // replaces the table version registered before
+            services.AddSingleton<ISettingsInvalidationBus, RedisSettingsInvalidationBus>();
+            services.AddHostedService<SettingsInvalidationListener>();
+        }
+        else
+        {
+            services.AddSingleton<IRateLimiter, MemoryRateLimiter>();
+            services.AddSingleton<ISettingsInvalidationBus, NoOpSettingsInvalidationBus>();
+        }
+
+        // The key ring in the database: used when no certificate files are configured.
+        services.AddSingleton<KeyRing>();
+        services.AddSingleton<IKeyRing>(sp => sp.GetRequiredService<KeyRing>());
+        services.AddSingleton<IOptionsChangeTokenSource<OpenIddictServerOptions>>(sp => sp.GetRequiredService<KeyRing>());
+        services.AddSingleton<IOptionsChangeTokenSource<global::OpenIddict.Validation.OpenIddictValidationOptions>, KeyRingValidationChangeSource>();
+        services.AddSingleton<IConfigureOptions<OpenIddictServerOptions>, KeyRingOptionsConfigurator>();
+        services.AddSingleton<IPostConfigureOptions<global::OpenIddict.Validation.OpenIddictValidationOptions>, KeyRingValidationConfigurator>();
+        services.AddHostedService<KeyRingRefreshService>();
+
+        services.AddSingleton<IDistributedLock, PostgresDistributedLock>();
+        services.AddSingleton<MaintenanceJobs>();
+        services.AddHostedService<MaintenanceService>();
+
+        var health = services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+        if (redisOn) health.AddCheck<RedisHealthCheck>("redis", tags: ["ready"]);
+
+        services.AddCors();
+        services.AddSingleton<Microsoft.AspNetCore.Cors.Infrastructure.ICorsPolicyProvider, Auth2CorsPolicyProvider>();
+        HardeningSetup.ConfigureForwardedHeaders(services);
+        services.AddHsts(o => o.MaxAge = TimeSpan.FromDays(365));
     }
 
     /// <summary>

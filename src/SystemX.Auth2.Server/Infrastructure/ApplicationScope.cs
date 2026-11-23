@@ -23,7 +23,17 @@ public sealed class ApplicationScope : IApplicationScope, IGlobalScope, IClientI
     public string? ProjectKey { get; set; }
 
     /// <inheritdoc />
+    public string? CurrentProjectKey { get; private set; }
+
+    /// <inheritdoc />
     public void Set(Guid applicationId) => ApplicationId = applicationId;
+
+    /// <inheritdoc />
+    public void Set(Guid applicationId, string? projectKey)
+    {
+        ApplicationId = applicationId;
+        CurrentProjectKey = projectKey;
+    }
 
     /// <inheritdoc />
     public IDisposable Begin()

@@ -28,15 +28,14 @@ public class ProductionGuardTests
     [Theory]
     [InlineData("Development")]
     [InlineData("Testing")]
-    public void Check_DevelopmentLike_AllowsTemporaryKeysAndHttp(string env) =>
+    public void Check_DevelopmentLike_AllowsHttp(string env) =>
         Should.NotThrow(() => ProductionGuard.Check(Env(env), Keys(), new Auth2ServerOptions { Issuer = "http://localhost" }));
 
     [Theory]
     [InlineData("Production")]
     [InlineData("Staging")]
-    public void Check_NoCertificates_Throws(string env) =>
-        Should.Throw<InvalidOperationException>(() => ProductionGuard.Check(Env(env), Keys(), new Auth2ServerOptions { Issuer = "https://auth.example.com" }))
-            .Message.ShouldContain("Auth2:Keys");
+    public void Check_NoCertificates_IsFine_TheKeyRingInTheDatabaseIsUsed(string env) =>
+        Should.NotThrow(() => ProductionGuard.Check(Env(env), Keys(), new Auth2ServerOptions { Issuer = "https://auth.example.com" }));
 
     [Fact]
     public void Check_HttpIssuer_Throws() =>

@@ -77,6 +77,7 @@ internal sealed class PermissionSyncService(Auth2DbContext db, IAuthFlowResolver
                 Data: new Dictionary<string, object?> { ["added"] = added, ["updated"] = updated }), ct);
         }
         addedKeys.Sort(StringComparer.Ordinal);
+        Operations.Auth2Metrics.SyncChanges.Add(added + updated, new KeyValuePair<string, object?>("kind", "permissions"));
         return new SyncOutcome(OperationResult.Ok, new SyncResponse(added, updated, unchanged, addedKeys));
     }
 
@@ -181,6 +182,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
             await audit.WriteAsync(new AuditEntry("roles.synced", app.Id, TargetType: "application", TargetId: app.Id.ToString(),
                 Data: new Dictionary<string, object?> { ["added"] = added, ["updated"] = updated, ["permissionsCreated"] = unknown.Count }), ct);
         addedNames.Sort(StringComparer.Ordinal);
+        Operations.Auth2Metrics.SyncChanges.Add(added + updated, new KeyValuePair<string, object?>("kind", "roles"));
         return new SyncOutcome(OperationResult.Ok, new SyncResponse(added, updated, unchanged, addedNames));
     }
 
@@ -204,12 +206,16 @@ internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Au
         var multi = options.Value.Mode == ServerMode.MultiApplication;
         var hasKey = !string.IsNullOrWhiteSpace(request?.ProjectKey);
 
-        if (multi && !hasKey) return (OperationResult.Fail(Auth2ErrorCodes.ServerModeMismatch), null);
-        if (!multi && hasKey) return (OperationResult.Fail(Auth2ErrorCodes.ServerModeMismatch), null);
-        if (multi && !string.Equals(request!.ProjectKey!.Trim(), app.ProjectKey, StringComparison.OrdinalIgnoreCase))
-            return (OperationResult.Fail(Auth2ErrorCodes.ProjectKeyOrNameMismatch), null);
-        if (!string.Equals(request?.ApplicationName?.Trim(), app.Name, StringComparison.OrdinalIgnoreCase))
-            return (OperationResult.Fail(Auth2ErrorCodes.ProjectKeyOrNameMismatch), null);
+        static (OperationResult, ClientHandshakeResponse?) Reject(string code)
+        {
+            Operations.Auth2Metrics.Handshakes.Add(1, new KeyValuePair<string, object?>("result", code));
+            return (OperationResult.Fail(code), null);
+        }
+        if (multi && !hasKey) return Reject(Auth2ErrorCodes.ServerModeMismatch);
+        if (!multi && hasKey) return Reject(Auth2ErrorCodes.ServerModeMismatch);
+        if (multi && !string.Equals(request!.ProjectKey!.Trim(), app.ProjectKey, StringComparison.OrdinalIgnoreCase)) return Reject(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
+        if (!string.Equals(request?.ApplicationName?.Trim(), app.Name, StringComparison.OrdinalIgnoreCase)) return Reject(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
+        Operations.Auth2Metrics.Handshakes.Add(1, new KeyValuePair<string, object?>("result", "ok"));
 
         var issuer = urls.Build("", []);
         TimeSpan? cookie = settings.Sessions.CookieLifetimeMinutes is { } m ? TimeSpan.FromMinutes(m) : null;

@@ -82,15 +82,7 @@ public static class OpenIddictSetup
                 foreach (var c in keys.Value.EncryptionCertificates)
                     o.EncryptionCredentials.Add(new EncryptingCredentials(new X509SecurityKey(Load(c)), SecurityAlgorithms.RsaOAEP, SecurityAlgorithms.Aes256CbcHmacSha512));
             }
-            else if (IsDevelopmentLike(env))
-            {
-                // Temporary keys: tokens stop working when the app restarts, and two instances do not share them.
-                o.SigningCredentials.Add(new SigningCredentials(new RsaSecurityKey(RSA.Create(2048)) { KeyId = Guid.NewGuid().ToString("N") }, SecurityAlgorithms.RsaSha256));
-                o.EncryptionCredentials.Add(new EncryptingCredentials(
-                    new SymmetricSecurityKey(RandomNumberGenerator.GetBytes(32)) { KeyId = Guid.NewGuid().ToString("N") },
-                    SecurityAlgorithms.Aes256KW, SecurityAlgorithms.Aes256CbcHmacSha512));
-            }
-            // Otherwise OpenIddict has no keys and the startup guard (ProductionGuard) stops the application with a clear message.
+            // Otherwise the keys come from the key ring (database), see KeyRingOptionsConfigurator.
         });
 
         services.AddOptions<OpenIddictServerAspNetCoreOptions>().Configure<IHostEnvironment>((o, env) =>
@@ -101,21 +93,19 @@ public static class OpenIddictSetup
     }
 
     private static X509Certificate2 Load(CertificateFileOptions c) =>
-        X509CertificateLoader.LoadPkcs12FromFile(c.Path, c.Password, X509KeyStorageFlags.EphemeralKeySet);
+        X509CertificateLoader.LoadPkcs12FromFile(c.Path, c.Password, Operations.KeyRing.KeyStorageFlags);
 }
 
 /// <summary>Stops the application at startup when it is not safe to run in Production.</summary>
 public static class ProductionGuard
 {
     /// <summary>
-    /// Outside Development and Testing, the server needs configured keys and an HTTPS issuer.
-    /// (Development certificates and an HTTP-only issuer are refused.)
+    /// Outside Development and Testing, the server needs an HTTPS issuer. Keys are either configured certificates or the key ring in the database
+    /// (temporary keys that vanish at restart do not exist any more).
     /// </summary>
     public static void Check(IHostEnvironment env, Auth2KeyOptions keys, Auth2ServerOptions server)
     {
         if (OpenIddictSetup.IsDevelopmentLike(env)) return;
-        if (!keys.HasCertificates)
-            throw new InvalidOperationException("No signing and encryption certificates are configured (Auth2:Keys). Temporary keys are only allowed in Development. See docs/security.md.");
         if (string.IsNullOrWhiteSpace(server.Issuer) || !server.Issuer.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Auth2:Issuer must be set to an https:// URL outside Development.");
     }

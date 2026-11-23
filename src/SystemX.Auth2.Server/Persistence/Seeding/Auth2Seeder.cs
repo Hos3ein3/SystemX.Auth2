@@ -156,6 +156,29 @@ public sealed partial class Auth2Seeder(
         return true;
     }
 
+    /// <summary>
+    /// Adds one more GlobalAdmin (the <c>create-admin</c> command). Fails when the user name or email is taken or the password is weak.
+    /// The password is never logged or written to the audit log.
+    /// </summary>
+    public async Task CreateAdminAsync(string userName, string email, string password, CancellationToken ct = default)
+    {
+        using var _ = globalScope.Begin();
+        var single = options.Value.Mode == SystemX.Auth2.Contracts.Enums.ServerMode.SingleApplication;
+        var globalApp = await db.Applications.FirstAsync(a => a.ProjectKey == ProjectKeyRules.GlobalProjectKey, ct);
+        selection.ProjectKey = ProjectKeyRules.GlobalProjectKey;
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var user = new AppUser { UserName = userName, Email = email, EmailConfirmed = true, IsActive = true, DisplayName = "Global admin", CreatedAtUtc = clock.GetUtcNow() };
+        EnsureSucceeded(await users.CreateAsync(user, password), "create the admin user");
+        EnsureSucceeded(await users.AddToRoleAsync(user, Auth2Roles.GlobalAdmin), "add the user to GlobalAdmin");
+        if (!single && !await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == globalApp.Id, ct))
+        {
+            db.UserApplications.Add(new UserApplication { UserId = user.Id, ApplicationId = globalApp.Id, JoinedAtUtc = clock.GetUtcNow(), Status = UserApplicationStatus.Active, LockoutEnabled = true });
+            await db.SaveChangesAsync(ct);
+        }
+        await audit.WriteAsync(new AuditEntry("admin.created", globalApp.Id, TargetType: "user", TargetId: user.Id.ToString()), ct);
+        await tx.CommitAsync(ct);
+    }
+
     private static void EnsureSucceeded(IdentityResult result, string what)
     {
         if (!result.Succeeded)

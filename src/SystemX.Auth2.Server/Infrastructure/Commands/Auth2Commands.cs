@@ -4,10 +4,10 @@ using SystemX.Auth2.Server.Persistence.Seeding;
 
 namespace SystemX.Auth2.Server.Infrastructure.Commands;
 
-/// <summary>Command line commands of the Server executable: <c>migrate</c>, <c>seed</c>, <c>create-application</c>, <c>rotate-client-secret</c>.</summary>
+/// <summary>Command line commands of the Server executable: <c>migrate</c>, <c>seed</c>, <c>create-application</c>, <c>rotate-client-secret</c>, <c>rotate-keys</c>, <c>create-admin</c>.</summary>
 public static class Auth2Commands
 {
-    private static readonly string[] Known = ["migrate", "seed", "create-application", "rotate-client-secret"];
+    private static readonly string[] Known = ["migrate", "seed", "create-application", "rotate-client-secret", "rotate-keys", "create-admin"];
 
     /// <summary>True when the first argument is a command.</summary>
     public static bool IsCommand(string[] args) => args.Length > 0 && Known.Contains(args[0], StringComparer.Ordinal);
@@ -49,6 +49,27 @@ public static class Auth2Commands
                     }
                     Console.WriteLine($"New client secret (shown once): {await sp.GetRequiredService<IApplicationService>().RotateClientSecretAsync(args[1], ct)}");
                     return 0;
+                case "rotate-keys":
+                {
+                    var keys = await sp.GetRequiredService<IKeyRing>().RotateAsync(ct);
+                    await sp.GetRequiredService<IAuditService>().WriteAsync(new AuditEntry("keys.rotated", null, TargetType: "keys"), ct);
+                    log.LogInformation("Keys rotated. {Count} keys exist now; the old keys keep checking old tokens until they are removed.", keys.Count);
+                    foreach (var k in keys) Console.WriteLine($"{k.Purpose,-10} {k.Thumbprint}  until {k.NotAfterUtc:u}  {(k.RetiredAtUtc is null ? "current" : "retired, removed after " + k.RemoveAtUtc?.ToString("u"))}");
+                    return 0;
+                }
+                case "create-admin":
+                {
+                    // create-admin <userName> <email>   (the password is read from the AUTH2_ADMIN_PASSWORD variable, never from the command line)
+                    var password = Environment.GetEnvironmentVariable("AUTH2_ADMIN_PASSWORD");
+                    if (args.Length < 3 || string.IsNullOrEmpty(password))
+                    {
+                        Console.Error.WriteLine("Usage: create-admin <userName> <email>   (set the password in the AUTH2_ADMIN_PASSWORD environment variable)");
+                        return 2;
+                    }
+                    await sp.GetRequiredService<Auth2Seeder>().CreateAdminAsync(args[1], args[2], password, ct);
+                    log.LogInformation("GlobalAdmin {UserName} created.", args[1]);
+                    return 0;
+                }
                 default:
                     return 2;
             }

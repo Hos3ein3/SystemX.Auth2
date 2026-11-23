@@ -4,7 +4,7 @@ using SystemX.Auth2.Server.Persistence.Seeding;
 namespace SystemX.Auth2.Server.Persistence;
 
 /// <summary>Runs migrations and the seeder. A PostgreSQL advisory lock keeps several instances from doing it at the same time.</summary>
-public sealed class DatabaseInitializer(Auth2DbContext db, Auth2Seeder seeder, ILogger<DatabaseInitializer> log)
+public sealed class DatabaseInitializer(Auth2DbContext db, Auth2Seeder seeder, SystemX.Auth2.Server.Application.IKeyRing keyRing, ILogger<DatabaseInitializer> log)
 {
     private const long LockKey = 0x5359_5358_4155_5432; // "SYSXAUT2"
 
@@ -37,5 +37,7 @@ public sealed class DatabaseInitializer(Auth2DbContext db, Auth2Seeder seeder, I
         {
             await db.Database.CloseConnectionAsync();
         }
+        // The first signing and encryption keys. (Its own lock; does nothing when keys exist or certificates are configured and unused.)
+        if (migrate || seed) await keyRing.EnsureAsync(ct);
     }
 }

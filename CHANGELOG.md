@@ -5,6 +5,10 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- Phase 10: rate limiting (named policies, memory or Redis), optional Redis (counters, one-time codes, settings pub/sub), key ring in the database with `rotate-keys` command and admin route,
+  `create-admin` command, background jobs under a database lock, health checks (`/health/live`, `/health/ready`), HTTP hardening (headers, HSTS, forwarded headers, CORS from settings),
+  Serilog with redaction and correlation ids, OpenTelemetry traces and metrics. Docs: `security`, `deployment-and-scaling`, `observability`.
+  Changed: temporary development keys are gone (the key ring is used); the production guard needs only an HTTPS issuer.
 - Phase 9: admin JSON API under `/api/auth2/admin` (applications, settings with ETag, redirect URIs, secret rotation, users incl. lock / unlock / reset-2fa / sessions / roles / permissions / groups,
   roles, permissions, groups, audit events), global and project admin guards, project selection header, audit events carry actor, IP and user agent. Docs: `admin-api`.
   Fixed: a malformed session id no longer throws when revoking a session.

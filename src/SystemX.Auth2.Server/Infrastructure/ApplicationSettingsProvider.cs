@@ -8,11 +8,12 @@ namespace SystemX.Auth2.Server.Infrastructure;
 
 /// <summary>
 /// Reads settings through the current scope's DbContext (so it sees the caller's open transaction)
-/// and caches them in the shared memory cache. Redis and cross-instance invalidation come in phase 10.
+/// and caches them in the shared memory cache. A change is announced to other instances through <see cref="ISettingsInvalidationBus"/> (Redis pub/sub).
 /// </summary>
-public sealed class ApplicationSettingsProvider(Auth2DbContext db, IMemoryCache cache) : IApplicationSettingsProvider
+public sealed class ApplicationSettingsProvider(Auth2DbContext db, IMemoryCache cache, ISettingsInvalidationBus bus, ILogger<ApplicationSettingsProvider> log) : IApplicationSettingsProvider
 {
-    private static string Key(Guid id) => $"auth2:settings:{id:N}";
+    internal static string CacheKey(Guid id) => $"auth2:settings:{id:N}";
+    private static string Key(Guid id) => CacheKey(id);
 
     /// <inheritdoc />
     public async Task<ApplicationSettings> GetAsync(Guid applicationId, CancellationToken ct = default)
@@ -27,5 +28,11 @@ public sealed class ApplicationSettingsProvider(Auth2DbContext db, IMemoryCache 
     }
 
     /// <inheritdoc />
-    public void Invalidate(Guid applicationId) => cache.Remove(Key(applicationId));
+    public void Invalidate(Guid applicationId)
+    {
+        cache.Remove(Key(applicationId));
+        // Other instances (Redis pub/sub) drop their copy too. A failure here only means they refresh after the cache time (10 minutes).
+        _ = bus.PublishAsync(applicationId).ContinueWith(t => log.LogWarning(t.Exception, "Could not tell other instances about the settings change."),
+            TaskContinuationOptions.OnlyOnFaulted);
+    }
 }
