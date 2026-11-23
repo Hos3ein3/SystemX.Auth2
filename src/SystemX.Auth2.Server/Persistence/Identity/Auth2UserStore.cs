@@ -19,7 +19,7 @@ public class Auth2UserStore(
     IApplicationScope scope,
     IOptions<Auth2ServerOptions> options,
     IdentityErrorDescriber? describer = null)
-    : UserStore<AppUser, AppRole, Auth2DbContext, Guid, IdentityUserClaim<Guid>, IdentityUserRole<Guid>, AppUserLogin, AppUserToken, IdentityRoleClaim<Guid>>(context, describer)
+    : UserStore<AppUser, AppRole, Auth2DbContext, Guid, IdentityUserClaim<Guid>, IdentityUserRole<Guid>, AppUserLogin, AppUserToken, IdentityRoleClaim<Guid>, AppUserPasskey>(context, describer)
 {
     private Task<ICredentialState> State(CancellationToken ct) => credentials.GetAsync(ct);
 
@@ -68,6 +68,91 @@ public class Auth2UserStore(
     {
         (await State(ct)).BeforeUserCreated(user);
         return await base.CreateAsync(user, ct);
+    }
+
+    // ---- external logins and passkeys belong to the current application
+
+    private async Task<Guid> CurrentApplicationIdAsync(CancellationToken ct) => (await applications.GetRequiredAsync(ct)).Id;
+
+    /// <inheritdoc />
+    public override async Task AddLoginAsync(AppUser user, UserLoginInfo login, CancellationToken ct = default)
+    {
+        await applications.GetRequiredAsync(ct);
+        await base.AddLoginAsync(user, login, ct);
+    }
+
+    /// <inheritdoc />
+    protected override AppUserLogin CreateUserLogin(AppUser user, UserLoginInfo login) => new()
+    {
+        UserId = user.Id,
+        ApplicationId = scope.ApplicationId ?? throw new InvalidOperationException("A login needs an application."),
+        ProviderKey = login.ProviderKey,
+        LoginProvider = login.LoginProvider,
+        ProviderDisplayName = login.ProviderDisplayName,
+    };
+
+    /// <inheritdoc />
+    public override async Task RemoveLoginAsync(AppUser user, string loginProvider, string providerKey, CancellationToken ct = default)
+    {
+        await applications.GetRequiredAsync(ct);
+        await base.RemoveLoginAsync(user, loginProvider, providerKey, ct);
+    }
+
+    /// <inheritdoc />
+    public override async Task<IList<UserLoginInfo>> GetLoginsAsync(AppUser user, CancellationToken ct = default)
+    {
+        await applications.GetRequiredAsync(ct);
+        return await base.GetLoginsAsync(user, ct);
+    }
+
+    /// <inheritdoc />
+    public override async Task<AppUser?> FindByLoginAsync(string loginProvider, string providerKey, CancellationToken ct = default)
+    {
+        await applications.GetRequiredAsync(ct);
+        return await base.FindByLoginAsync(loginProvider, providerKey, ct);
+    }
+
+    /// <inheritdoc />
+    protected override AppUserPasskey CreateUserPasskey(AppUser user, UserPasskeyInfo passkey)
+    {
+        var p = base.CreateUserPasskey(user, passkey);
+        p.ApplicationId = scope.ApplicationId ?? throw new InvalidOperationException("A passkey needs an application.");
+        return p;
+    }
+
+    /// <inheritdoc />
+    public override async Task<AppUser?> FindByPasskeyIdAsync(byte[] credentialId, CancellationToken ct)
+    {
+        await applications.GetRequiredAsync(ct);
+        return await base.FindByPasskeyIdAsync(credentialId, ct);
+    }
+
+    /// <inheritdoc />
+    public override async Task<UserPasskeyInfo?> FindPasskeyAsync(AppUser user, byte[] credentialId, CancellationToken ct)
+    {
+        await applications.GetRequiredAsync(ct);
+        return await base.FindPasskeyAsync(user, credentialId, ct);
+    }
+
+    /// <inheritdoc />
+    public override async Task AddOrUpdatePasskeyAsync(AppUser user, UserPasskeyInfo passkey, CancellationToken ct)
+    {
+        await applications.GetRequiredAsync(ct);
+        await base.AddOrUpdatePasskeyAsync(user, passkey, ct);
+    }
+
+    /// <inheritdoc />
+    public override async Task RemovePasskeyAsync(AppUser user, byte[] credentialId, CancellationToken ct)
+    {
+        await applications.GetRequiredAsync(ct);
+        await base.RemovePasskeyAsync(user, credentialId, ct);
+    }
+
+    /// <inheritdoc />
+    public override async Task<IList<UserPasskeyInfo>> GetPasskeysAsync(AppUser user, CancellationToken ct)
+    {
+        await applications.GetRequiredAsync(ct);
+        return await base.GetPasskeysAsync(user, ct);
     }
 
     // ---- roles are looked up inside the current application

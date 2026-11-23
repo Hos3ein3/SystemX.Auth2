@@ -41,11 +41,24 @@ public class AppRole : IdentityRole<Guid>
     public bool IsSystem { get; set; }
 }
 
-/// <summary>External login. <c>ApplicationId</c> makes it per application when set.</summary>
+/// <summary>
+/// A link between a user and an external identity (social, OIDC, SAML or LDAP). Always per application:
+/// the same Google account in two applications gives two rows. <c>LoginProvider</c> is the provider <b>name</b> inside the application,
+/// <c>ProviderKey</c> is the stable id at the provider (never a user name or DN).
+/// </summary>
 public class AppUserLogin : IdentityUserLogin<Guid>
 {
-    /// <summary>Optional application.</summary>
-    public Guid? ApplicationId { get; set; }
+    /// <summary>The application of this link.</summary>
+    public Guid ApplicationId { get; set; }
+}
+
+/// <summary>A passkey (WebAuthn credential). Per application: a passkey of one application is never found in another.</summary>
+public class AppUserPasskey : IdentityUserPasskey<Guid>
+{
+    /// <summary>The application of this passkey.</summary>
+    public Guid ApplicationId { get; set; }
+    /// <summary>Authenticator model id (AAGUID), read at registration. Used by the block list.</summary>
+    public Guid? Aaguid { get; set; }
 }
 
 /// <summary>User token. <c>ApplicationId</c> makes it per application when set.</summary>

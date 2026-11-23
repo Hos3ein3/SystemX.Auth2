@@ -84,4 +84,16 @@
   <data name="two_factor_not_enabled" xml:space="preserve"><value>Two-factor authentication is not turned on.</value></data>
   <data name="two_factor_not_allowed" xml:space="preserve"><value>This application does not allow authenticator apps.</value></data>
   <data name="consent_required" xml:space="preserve"><value>You must agree before the application can continue.</value></data>
+  <data name="external_email_exists_not_verified" xml:space="preserve"><value>An account with this email already exists, but the provider did not confirm the email. Sign in with your usual method and link the account there.</value></data>
+  <data name="external_registration_not_allowed" xml:space="preserve"><value>New accounts cannot be created with this sign-in method.</value></data>
+  <data name="external_provider_disabled" xml:space="preserve"><value>This sign-in method is not available.</value></data>
+  <data name="external_claims_invalid" xml:space="preserve"><value>The sign-in provider did not send the information we need.</value></data>
+  <data name="cannot_remove_last_login_method" xml:space="preserve"><value>You cannot remove your last way to sign in.</value></data>
+  <data name="saml_response_invalid" xml:space="preserve"><value>The sign-in response could not be accepted.</value></data>
+  <data name="saml_replay_detected" xml:space="preserve"><value>This sign-in response was already used.</value></data>
+  <data name="ldap_unavailable" xml:space="preserve"><value>The directory is not available right now. Try again later.</value></data>
+  <data name="ldap_account_disabled" xml:space="preserve"><value>Your directory account is disabled.</value></data>
+  <data name="passkey_not_allowed" xml:space="preserve"><value>Passkeys are not allowed in this application.</value></data>
+  <data name="passkey_limit_reached" xml:space="preserve"><value>You have reached the maximum number of passkeys.</value></data>
+  <data name="passkey_blocked_authenticator" xml:space="preserve"><value>This type of passkey device is not allowed.</value></data>
 </root>

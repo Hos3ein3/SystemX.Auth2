@@ -1,12 +1,12 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using SystemX.Auth2.Contracts.Constants;
+using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Endpoints;
 using SystemX.Auth2.Server.Infrastructure;
 using SystemX.Auth2.Server.Infrastructure.Commands;
 using SystemX.Auth2.Server.Infrastructure.Localization;
 using SystemX.Auth2.Server.Infrastructure.Operations;
-using SystemX.Auth2.Server.Application;
-using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 

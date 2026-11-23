@@ -84,8 +84,59 @@ public class ApplicationSettingsValidatorTests
 
     [Fact]
     public void Validate_EnabledGenericOidcWithoutAuthority_IsRejected() =>
-        Check(s => s.ExternalProviders.Add(new ExternalProviderSettings { Name = "x", Type = ExternalProviderType.GenericOidc, ClientId = "c", Enabled = true }))
+        Check(s => s.ExternalProviders.Add(new OidcProviderSettings { Name = "x", Type = ExternalProviderType.GenericOidc, ClientId = "c", ClientSecretProtected = "s", Enabled = true }))
             .ShouldContain(e => e.Path == "ExternalProviders[0].Authority");
+
+    [Fact]
+    public void Validate_ProviderNames_MustBeUniqueAndSafe()
+    {
+        var errors = Check(s =>
+        {
+            s.ExternalProviders.Add(new OidcProviderSettings { Name = "a", Type = ExternalProviderType.Google });
+            s.ExternalProviders.Add(new OidcProviderSettings { Name = "a", Type = ExternalProviderType.GitHub });
+            s.ExternalProviders.Add(new OidcProviderSettings { Name = "Bad Name", Type = ExternalProviderType.GitHub });
+        });
+        errors.ShouldContain(e => e.Path == "ExternalProviders[1].Name");
+        errors.ShouldContain(e => e.Path == "ExternalProviders[2].Name");
+    }
+
+    [Fact]
+    public void Validate_MoreThanTwentyProviders_IsRejected() =>
+        Check(s => { for (var i = 0; i < 21; i++) s.ExternalProviders.Add(new OidcProviderSettings { Name = "p" + i, Type = ExternalProviderType.Google }); })
+            .ShouldContain(e => e.Path == "ExternalProviders");
+
+    [Fact]
+    public void Validate_EmailDomain_BelongsToOneProvider() =>
+        Check(s =>
+        {
+            s.ExternalProviders.Add(new OidcProviderSettings { Name = "a", Type = ExternalProviderType.Google, EmailDomains = ["corp.com"] });
+            s.ExternalProviders.Add(new OidcProviderSettings { Name = "b", Type = ExternalProviderType.GitHub, EmailDomains = ["CORP.com"] });
+        }).ShouldContain(e => e.Path == "ExternalProviders[1].EmailDomains");
+
+    [Fact]
+    public void Validate_LdapFilterNeedsPlaceholderOnce_AndBindPassword()
+    {
+        var errors = Check(s => s.ExternalProviders.Add(new LdapProviderSettings
+        { Name = "d", Type = ExternalProviderType.Ldap, Enabled = true, Host = "h", BindDn = "cn=x", UserSearchBase = "dc=a", UserSearchFilter = "(uid={0})(cn={0})" }));
+        errors.ShouldContain(e => e.Path == "ExternalProviders[0].UserSearchFilter");
+        errors.ShouldContain(e => e.Path == "ExternalProviders[0].BindPassword");
+    }
+
+    [Fact]
+    public void Validate_SamlWithoutSignedAssertionOrResponse_IsRejected() =>
+        Check(s => s.ExternalProviders.Add(new SamlProviderSettings
+        { Name = "s", Type = ExternalProviderType.Saml, Enabled = true, IdpMetadataUrl = "https://idp.test/m", WantAssertionsSigned = false }))
+            .ShouldContain(e => e.Path == "ExternalProviders[0].WantAssertionsSigned");
+
+    [Fact]
+    public void Validate_HttpAuthority_IsRejected() =>
+        Check(s => s.ExternalProviders.Add(new OidcProviderSettings { Name = "o", Type = ExternalProviderType.GenericOidc, Enabled = true, ClientId = "c", ClientSecretProtected = "s", Authority = "http://idp.test" }))
+            .ShouldContain(e => e.Path == "ExternalProviders[0].Authority");
+
+    [Fact]
+    public void Validate_BadPasskeyLimits_AreRejected() =>
+        Check(s => { s.Passkeys.MaxPasskeysPerUser = 0; s.Passkeys.PasskeyUserVerification = "no"; })
+            .Select(e => e.Path).ShouldBe(["Passkeys.PasskeyUserVerification", "Passkeys.MaxPasskeysPerUser"], ignoreOrder: true);
 
     [Fact]
     public void ValidateOrThrow_BadSettings_ThrowsWithErrors()
@@ -105,7 +156,10 @@ public class ApplicationSettingsModelTests
             var t = p.PropertyType;
             var element = t.IsGenericType ? t.GetGenericArguments()[0] : t;
             if (element == typeof(ExternalProviderSettings))
-                foreach (var inner in LeafProperties(element)) yield return inner;
+            {
+                foreach (var kind in new[] { typeof(ExternalProviderSettings), typeof(OidcProviderSettings), typeof(SamlProviderSettings), typeof(LdapProviderSettings) })
+                    foreach (var inner in kind.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)) yield return inner;
+            }
             else if (t.Namespace == typeof(ApplicationSettings).Namespace && t.IsClass && !t.IsGenericType)
                 foreach (var inner in LeafProperties(t)) yield return inner;
             else yield return p;
@@ -127,14 +181,22 @@ public class ApplicationSettingsModelTests
         var s = new ApplicationSettings();
         s.Password.MinLength = 14;
         s.Methods.AllowedLoginMethods = [LoginMethod.PhoneOtp];
-        s.ExternalProviders.Add(new ExternalProviderSettings { Name = "g", Type = ExternalProviderType.Google, ClientId = "id" });
+        s.ExternalProviders.Add(new OidcProviderSettings { Name = "g", Type = ExternalProviderType.Google, ClientId = "id", ClientSecretProtected = "enc", HostedDomain = "corp.com" });
+        s.ExternalProviders.Add(new SamlProviderSettings { Name = "s", Type = ExternalProviderType.Saml, IdpMetadataUrl = "https://idp.test/m", AttributeMappings = { ["mail"] = "email" } });
+        s.ExternalProviders.Add(new LdapProviderSettings { Name = "d", Type = ExternalProviderType.Ldap, Host = "ldap.test", Mode = LdapMode.LdapThenLocal });
+        s.Passkeys.AllowPasskeys = true;
         var json = SettingsJson.Serialize(s);
         json.ShouldContain("\"PhoneOtp\"");
         json.ShouldContain("\"schemaVersion\":1");
         var back = SettingsJson.Deserialize(json);
         back.Password.MinLength.ShouldBe(14);
         back.Methods.AllowedLoginMethods.ShouldBe([LoginMethod.PhoneOtp]);
-        back.ExternalProviders.Single().Type.ShouldBe(ExternalProviderType.Google);
+        back.ExternalProviders.Count.ShouldBe(3);
+        back.ExternalProviders[0].ShouldBeOfType<OidcProviderSettings>().HostedDomain.ShouldBe("corp.com");
+        back.ExternalProviders[1].ShouldBeOfType<SamlProviderSettings>().AttributeMappings["mail"].ShouldBe("email");
+        back.ExternalProviders[2].ShouldBeOfType<LdapProviderSettings>().Mode.ShouldBe(LdapMode.LdapThenLocal);
+        back.Passkeys.AllowPasskeys.ShouldBeTrue();
+        json.ShouldContain("\"kind\":\"saml\"");
     }
 
     [Fact]

@@ -70,6 +70,11 @@ var result = await userManager.CreateAsync(new AppUser { UserName = "sara", Emai
 - *`InvalidOperationException: user_not_in_application`:* the person exists but has no membership row in this application. Use the join flow (phase 6).
 - *Passwords stopped working after I changed the scope:* see step 3.
 
+## External logins and passkeys
+
+Links to external identities (`user_logins`) and passkeys (`user_passkeys`) always belong to **one application**. The same Google account linked in application A is not known in application B:
+the user links it again there. Reason: the applications can have different providers, different rules and different credentials, so they must not share logins. See [external-identity.md](external-identity.md).
+
 ## Related pages
 
 - [concepts.md](concepts.md)

@@ -41,19 +41,6 @@ public enum TwoFactorMode
     Required = 2,
 }
 
-/// <summary>External provider type (experimental).</summary>
-public enum ExternalProviderType
-{
-    /// <summary>Google.</summary>
-    Google,
-    /// <summary>Microsoft.</summary>
-    Microsoft,
-    /// <summary>GitHub.</summary>
-    GitHub,
-    /// <summary>Any OpenID Connect provider.</summary>
-    GenericOidc,
-}
-
 /// <summary>
 /// All settings of one application. Stored as jsonb. Every field has a safe default.
 /// See <c>docs/server-settings.md</c>.
@@ -90,8 +77,13 @@ public sealed class ApplicationSettings
     public ClientSettings Clients { get; set; } = new();
     /// <summary>Localization and branding.</summary>
     public LocalizationSettings Localization { get; set; } = new();
-    /// <summary>External providers (experimental).</summary>
+    /// <summary>
+    /// External identity providers (social login, OIDC, SAML, LDAP). Changed only through the provider admin routes (they check each field):
+    /// the generic settings route ignores this list.
+    /// </summary>
     public List<ExternalProviderSettings> ExternalProviders { get; set; } = [];
+    /// <summary>Passkey rules.</summary>
+    public PasskeySettings Passkeys { get; set; } = new();
 
     /// <summary>Per-application override of the server credential scope. Only used if the server allows it.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public CredentialScope? CredentialScope { get; set; }
@@ -287,23 +279,4 @@ public sealed class LocalizationSettings
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string? BrandName { get; set; }
     /// <summary>Support email.</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string? SupportEmail { get; set; }
-}
-
-/// <summary>External login provider (experimental).</summary>
-public sealed class ExternalProviderSettings
-{
-    /// <summary>Provider name.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public string Name { get; set; } = "";
-    /// <summary>Provider type.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public ExternalProviderType Type { get; set; }
-    /// <summary>Client id.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public string ClientId { get; set; } = "";
-    /// <summary>Client secret, encrypted with Data Protection.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public string? ClientSecretProtected { get; set; }
-    /// <summary>Authority URL (generic OIDC).</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public string? Authority { get; set; }
-    /// <summary>Scopes to request.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public List<string> Scopes { get; set; } = [];
-    /// <summary>Enabled.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public bool Enabled { get; set; }
 }

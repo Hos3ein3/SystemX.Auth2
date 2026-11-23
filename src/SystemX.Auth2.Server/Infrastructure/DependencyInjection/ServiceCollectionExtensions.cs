@@ -7,6 +7,7 @@ using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Infrastructure;
 using SystemX.Auth2.Server.Infrastructure.Auth;
+using SystemX.Auth2.Server.Infrastructure.External;
 using SystemX.Auth2.Server.Infrastructure.Identity;
 using SystemX.Auth2.Server.Infrastructure.Localization;
 using SystemX.Auth2.Server.Infrastructure.OpenIddict;
@@ -50,6 +51,7 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IApplicationSelection>(sp => sp.GetRequiredService<ApplicationScope>());
         services.TryAddScoped<IApplicationContext, ModeApplicationContext>();
         services.AddScoped<IApplicationSettingsProvider, ApplicationSettingsProvider>();
+        services.AddExternalIdentityCore();
 
         services.AddDbContext<Auth2DbContext>(o =>
         {

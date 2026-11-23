@@ -227,17 +227,21 @@ Localization and branding.
 
 ### ExternalProviders[]
 
-External login provider (experimental).
+External sign-in providers: Google, Microsoft, GitHub, Apple, Facebook, generic OIDC, SAML and LDAP. Every field is **GlobalOnly**: only a global admin (the developer) changes them.
+The list is a list of three shapes, told apart by a `kind` field (`oidc`, `saml`, `ldap`). Secrets are stored encrypted and are never returned.
+The generic settings route does not edit this list; use the provider routes of the admin API (see [external-identity.md](external-identity.md)).
+All fields of every type are explained in [external-identity.md](external-identity.md#settings-reference).
+
+### Passkeys
 
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
-| `Name` | `string` | `""` | GlobalOnly | Provider name. |
-| `Type` | `ExternalProviderType` | `null` | GlobalOnly | Provider type. |
-| `ClientId` | `string` | `""` | GlobalOnly | Client id. |
-| `ClientSecretProtected` | `string?` | `null` | GlobalOnly | Client secret, encrypted with Data Protection. |
-| `Authority` | `string?` | `null` | GlobalOnly | Authority URL (generic OIDC). |
-| `Scopes` | `List<string>` | `empty list` | GlobalOnly | Scopes to request. |
-| `Enabled` | `bool` | `null` | GlobalOnly | Enabled. |
+| `AllowPasskeys` | `bool` | `false` | GlobalOnly | Users may register and use passkeys. |
+| `PasskeyUserVerification` | `string` | `"required"` | GlobalOnly | `required` or `preferred`. |
+| `PasskeyResidentKey` | `string` | `"preferred"` | GlobalOnly | `required`, `preferred` or `discouraged`. |
+| `MaxPasskeysPerUser` | `int` | `10` | GlobalOnly | Most passkeys of one user (1 to 50). |
+| `PasskeyNameMaxLength` | `int` | `50` | GlobalOnly | Longest passkey name (1 to 200). |
+| `RequirePasskeyBackupMethod` | `bool` | `true` | GlobalOnly | A user may not remove the last way to sign in. |
 
 ## Risks
 

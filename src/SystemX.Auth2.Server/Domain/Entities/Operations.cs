@@ -47,3 +47,69 @@ public class OtpCode
     /// <summary>When it was used.</summary>
     public DateTimeOffset? ConsumedAtUtc { get; set; }
 }
+
+/// <summary>What the mapping reads from the external source.</summary>
+public enum MappingSourceType
+{
+    /// <summary>A group name of the source.</summary>
+    Group = 0,
+    /// <summary>A claim value (OIDC).</summary>
+    Claim = 1,
+    /// <summary>An attribute value (SAML, LDAP).</summary>
+    Attribute = 2,
+}
+/// <summary>How the value is compared. No regex: only exact and prefix, case-insensitive.</summary>
+public enum MappingMatchType
+{
+    /// <summary>Same text (ignoring case).</summary>
+    Exact = 0,
+    /// <summary>Starts with the text (ignoring case).</summary>
+    Prefix = 1,
+}
+/// <summary>What the mapping gives.</summary>
+public enum MappingTargetType
+{
+    /// <summary>A role.</summary>
+    Role = 0,
+    /// <summary>A group.</summary>
+    Group = 1,
+    /// <summary>A direct permission.</summary>
+    Permission = 2,
+}
+
+/// <summary>One rule that turns a group, claim or attribute of an external provider into a role, group or permission of the same application.</summary>
+public class ExternalGroupMapping
+{
+    /// <summary>Id.</summary>
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    /// <summary>Application. A mapping can only give things of this application.</summary>
+    public Guid ApplicationId { get; set; }
+    /// <summary>Provider name. Null means all providers of the application.</summary>
+    public string? ProviderName { get; set; }
+    /// <summary>Source kind.</summary>
+    public MappingSourceType SourceType { get; set; }
+    /// <summary>Claim or attribute name. Empty for groups.</summary>
+    public string SourceName { get; set; } = "";
+    /// <summary>Comparison.</summary>
+    public MappingMatchType MatchType { get; set; }
+    /// <summary>Value to compare.</summary>
+    public string SourceValue { get; set; } = "";
+    /// <summary>Kind of target.</summary>
+    public MappingTargetType TargetType { get; set; }
+    /// <summary>Id of the role, group or permission.</summary>
+    public Guid TargetId { get; set; }
+}
+
+/// <summary>
+/// A value that may be used only once until it expires: a SAML request id, an assertion id or a login state nonce.
+/// Stored in the database so that all server instances see it.
+/// </summary>
+public class ReplayEntry
+{
+    /// <summary>Kind and value, for example <c>saml-assertion:_abc</c>. Unique.</summary>
+    public string Key { get; set; } = "";
+    /// <summary>Application.</summary>
+    public Guid ApplicationId { get; set; }
+    /// <summary>Remove after this time.</summary>
+    public DateTimeOffset ExpiresAtUtc { get; set; }
+}

@@ -79,14 +79,7 @@ public static class ApplicationSettingsValidator
         else if (!lo.SupportedCultures.Contains(lo.DefaultCulture, StringComparer.OrdinalIgnoreCase))
             Err("Localization.DefaultCulture", "Must be one of SupportedCultures.");
 
-        for (var i = 0; i < s.ExternalProviders.Count; i++)
-        {
-            var x = s.ExternalProviders[i];
-            if (string.IsNullOrWhiteSpace(x.Name)) Err($"ExternalProviders[{i}].Name", "Is required.");
-            if (x.Enabled && string.IsNullOrWhiteSpace(x.ClientId)) Err($"ExternalProviders[{i}].ClientId", "Is required when enabled.");
-            if (x.Type == ExternalProviderType.GenericOidc && x.Enabled && !IsSafeAbsoluteUri(x.Authority))
-                Err($"ExternalProviders[{i}].Authority", "Must be an absolute http(s) URL.");
-        }
+        ExternalProviderSettingsValidator.Validate(s, Err);
 
         return e;
     }

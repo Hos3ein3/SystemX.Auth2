@@ -17,7 +17,7 @@ namespace SystemX.Auth2.Server.Persistence;
 /// Only <see cref="IGlobalScope"/> bypasses it. Table and column names use snake_case.
 /// </summary>
 public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicationScope scope)
-    : IdentityDbContext<AppUser, AppRole, Guid, IdentityUserClaim<Guid>, IdentityUserRole<Guid>, AppUserLogin, IdentityRoleClaim<Guid>, AppUserToken>(options),
+    : IdentityDbContext<AppUser, AppRole, Guid, IdentityUserClaim<Guid>, IdentityUserRole<Guid>, AppUserLogin, IdentityRoleClaim<Guid>, AppUserToken, AppUserPasskey>(options),
       IDataProtectionKeyContext
 {
     // Read by the query filters. EF turns them into per-context parameters.
@@ -50,6 +50,10 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     /// <summary>OTP codes.</summary>
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
+    /// <summary>Rules that turn external groups, claims and attributes into roles, groups and permissions.</summary>
+    public DbSet<ExternalGroupMapping> ExternalGroupMappings => Set<ExternalGroupMapping>();
+    /// <summary>One-time values (SAML ids, login nonces).</summary>
+    public DbSet<ReplayEntry> ReplayEntries => Set<ReplayEntry>();
     /// <summary>Data Protection keys (scale-out).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -93,7 +97,47 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
         b.Entity<IdentityUserRole<Guid>>().ToTable("user_roles");
         b.Entity<IdentityUserClaim<Guid>>().ToTable("user_claims");
         b.Entity<IdentityRoleClaim<Guid>>().ToTable("role_claims");
-        b.Entity<AppUserLogin>().ToTable("user_logins");
+        b.Entity<AppUserLogin>(e =>
+        {
+            e.ToTable("user_logins");
+            e.HasKey(x => new { x.ApplicationId, x.LoginProvider, x.ProviderKey });
+            e.HasIndex(x => new { x.ApplicationId, x.UserId });
+            e.Property(x => x.LoginProvider).HasMaxLength(64);
+            e.Property(x => x.ProviderKey).HasMaxLength(512);
+            e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+        });
+        b.Entity<AppUserPasskey>(e =>
+        {
+            e.ToTable("user_passkeys");
+            e.HasKey(x => new { x.ApplicationId, x.CredentialId });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.CredentialId).HasMaxLength(1024);
+            e.OwnsOne(x => x.Data).ToJson("data");
+            e.HasIndex(x => new { x.ApplicationId, x.UserId });
+            e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+        });
+        b.Entity<ExternalGroupMapping>(e =>
+        {
+            e.ToTable("external_group_mappings");
+            e.Property(x => x.ProviderName).HasMaxLength(64);
+            e.Property(x => x.SourceName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.SourceValue).HasMaxLength(500).IsRequired();
+            e.Property(x => x.SourceType).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.MatchType).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.TargetType).HasConversion<string>().HasMaxLength(16);
+            e.HasIndex(x => new { x.ApplicationId, x.ProviderName });
+            e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+        });
+        b.Entity<ReplayEntry>(e =>
+        {
+            e.ToTable("replay_entries");
+            e.HasKey(x => x.Key);
+            e.Property(x => x.Key).HasMaxLength(400);
+            e.HasIndex(x => x.ExpiresAtUtc);
+        });
         b.Entity<AppUserToken>().ToTable("user_tokens");
 
         // ---- Applications
@@ -231,6 +275,7 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
     {
         foreach (var entity in b.Model.GetEntityTypes())
         {
+            if (entity.IsMappedToJson()) continue; // owned JSON data keeps its own names
             var table = entity.GetTableName();
             if (table is null) continue;
             var schema = entity.GetSchema();
@@ -240,7 +285,7 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
             var id = StoreObjectIdentifier.Table(tableName, schema);
             foreach (var p in entity.GetProperties())
                 p.SetColumnName(Snake(p.GetColumnName(StoreObjectIdentifier.Table(table, schema)) ?? p.Name));
-            foreach (var k in entity.GetKeys()) k.SetName(Snake(k.GetName() ?? ""));
+            foreach (var k in entity.GetKeys()) if (k.GetName() is { Length: > 0 } kn) k.SetName(Snake(kn));
             foreach (var fk in entity.GetForeignKeys()) fk.SetConstraintName(Snake(fk.GetConstraintName(id, StoreObjectIdentifier.Table(fk.PrincipalEntityType.GetTableName()!, fk.PrincipalEntityType.GetSchema())) ?? ""));
             foreach (var ix in entity.GetIndexes()) ix.SetDatabaseName(Snake(ix.GetDatabaseName(id) ?? ""));
         }

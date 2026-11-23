@@ -88,7 +88,7 @@ public class EnumTests
         .Where(t => t.IsEnum && t.Namespace == "SystemX.Auth2.Contracts.Enums");
 
     [Fact]
-    public void Enums_AllExpectedTypesExist() => Enums().Count().ShouldBe(15);
+    public void Enums_AllExpectedTypesExist() => Enums().Count().ShouldBe(16);
 
     [Fact]
     public void Enums_EveryValue_RoundTripsAsString()

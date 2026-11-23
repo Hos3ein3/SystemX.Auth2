@@ -5,6 +5,10 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- External identity step 2 (data model): `AppUserLogin` is per application (key `application_id, login_provider, provider_key`), passkey store per application (`user_passkeys`, `AppUserPasskey`),
+  `external_group_mappings`, `replay_entries`, polymorphic provider settings (`OidcProviderSettings`, `SamlProviderSettings`, `LdapProviderSettings`) and `PasskeySettings`, `ExternalProviderSettingsValidator`,
+  provider descriptors, `IExternalSecretProtector` (encrypt and redact), migration `Phase14ExternalIdentity`, English texts for the new error codes. Docs: `external-identity` (settings reference, data model), `server-settings`, `credential-scope`, `feature-status`.
+  Changed: the old experimental `ExternalProviderSettings` (single class) is replaced; the settings JSON reader accepts out-of-order `kind` (jsonb reorders keys).
 - Scope and group sync: `ScopeScanner`, `GroupScanner`, `EnableScopes`, `ScopeSyncPolicy`; `GroupSyncPolicy.Push` and `Both`; server routes `POST /groups/sync`, `POST /scopes/sync`, `GET /scopes`;
   settings `Clients.ScopeSyncAllowed` and `Clients.GroupSyncAllowed`; scopes `auth2.groups.sync` and `auth2.scopes.sync`; error code `invalid_scope_name`.
 - Phase 13: Client cookie authentication, hosted UI (OpenID Connect, code + PKCE) and Self UI (`IAuth2WebService`), `/auth2/login` and `/auth2/logout` routes, `OnTokenValidated` access loading (`AccessMode`),
