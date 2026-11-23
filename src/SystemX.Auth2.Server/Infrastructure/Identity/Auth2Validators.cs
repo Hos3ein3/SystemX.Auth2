@@ -52,7 +52,10 @@ public sealed class Auth2UserValidator(IAuthFlowResolver flow, Auth2IdentityErro
 
         if (!string.IsNullOrEmpty(user.Email))
         {
-            // The format is checked by the standard validator. Here only the domain rules.
+            // The format is checked by the standard validator. Here: one email, one person (on the whole server), and the domain rules.
+            var owner = await manager.FindByEmailAsync(user.Email);
+            if (owner is not null && owner.Id != user.Id) errors.Add(describer.DuplicateEmail(user.Email));
+
             var at = user.Email.LastIndexOf('@');
             if (at > 0 && at < user.Email.Length - 1)
             {

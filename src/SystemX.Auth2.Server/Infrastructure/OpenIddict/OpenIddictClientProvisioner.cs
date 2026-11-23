@@ -66,7 +66,7 @@ public sealed class OpenIddictClientProvisioner(IOpenIddictApplicationManager ma
         d.ClientId = app.ClientId;
         d.DisplayName = app.Name;
         d.ClientType = ClientTypes.Confidential;
-        d.ConsentType = s.Sessions.ConsentMode switch
+        d.ConsentType = ConsentPolicy.Effective(s) switch
         {
             ConsentMode.Explicit => ConsentTypes.Explicit,
             ConsentMode.Systematic => ConsentTypes.Systematic,
@@ -93,6 +93,7 @@ public sealed class OpenIddictClientProvisioner(IOpenIddictApplicationManager ma
         {
             d.Permissions.Add(Permissions.GrantTypes.Password);
             d.Permissions.Add(Permissions.Prefixes.GrantType + Auth2GrantTypes.TwoFactor);
+            d.Permissions.Add(Permissions.Prefixes.GrantType + Auth2GrantTypes.Otp);
         }
 
         foreach (var scope in s.Clients.AllowedScopes.Distinct(StringComparer.Ordinal))

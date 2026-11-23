@@ -14,7 +14,7 @@ using SystemX.Auth2.Server.Persistence;
 namespace SystemX.Auth2.Server.Infrastructure.Auth;
 
 /// <summary>See <see cref="ILoginService"/>. This class is the only place that decides if a login is valid.</summary>
-public sealed class LoginService(
+internal sealed class LoginService(
     UserManager<AppUser> users,
     Auth2DbContext db,
     IAuthFlowResolver flow,
@@ -23,6 +23,8 @@ public sealed class LoginService(
     IOptions<Auth2ServerOptions> options,
     IDataProtectionProvider protection,
     IPasswordHasher<AppUser> hasher,
+    UserLookup lookup,
+    IOtpService otp,
     TimeProvider clock) : ILoginService
 {
     private static readonly TimeSpan TwoFactorTokenLifetime = TimeSpan.FromMinutes(5);
@@ -43,11 +45,11 @@ public sealed class LoginService(
         if (!app.IsEnabled) return await FailAsync(app, null, Auth2ErrorCodes.ApplicationDisabled, request, ct);
 
         // 2. which login method is this, and is it allowed?
-        var method = Classify(request.Login, settings);
+        var method = MethodOf(lookup.KindOf(request.Login, settings));
         if (!settings.Methods.AllowedLoginMethods.Contains(method))
             return await FailAsync(app, null, Auth2ErrorCodes.LoginMethodNotAllowed, request, ct, new() { ["method"] = method.ToString() });
 
-        var user = await FindUserAsync(request.Login, method, settings, ct);
+        var user = await lookup.FindAsync(request.Login, settings, ct);
 
         // 3. user exists, is active, and belongs to the application (multi mode). Otherwise: the same error as a wrong password.
         if (user is null || !user.IsActive)
@@ -55,7 +57,7 @@ public sealed class LoginService(
             _ = hasher.VerifyHashedPassword(new AppUser(), DummyHash.Value, request.Password);
             return await FailAsync(app, user, Auth2ErrorCodes.InvalidCredentials, request, ct, new() { ["reason"] = user is null ? "unknown_user" : "inactive_user" }, publicCode: Auth2ErrorCodes.InvalidCredentials);
         }
-        if (!await IsMemberAsync(user, app, ct))
+        if (!await lookup.IsMemberAsync(user, app, ct))
         {
             _ = hasher.VerifyHashedPassword(user, DummyHash.Value, request.Password);
             return await FailAsync(app, user, Auth2ErrorCodes.NotRegisteredInApplication, request, ct, publicCode: Auth2ErrorCodes.InvalidCredentials);
@@ -100,6 +102,40 @@ public sealed class LoginService(
     }
 
     /// <inheritdoc />
+    public async Task<LoginResult> OtpLoginAsync(OtpLoginRequest request, CancellationToken ct = default)
+    {
+        var app = await flow.GetApplicationAsync(ct);
+        var settings = await flow.GetSettingsAsync(ct);
+        if (!app.IsEnabled) return await FailAsync(app, null, Auth2ErrorCodes.ApplicationDisabled, null, ct, ipAddress: request.IpAddress);
+
+        // A code can only be sent to an email address or a phone number, never to a user name.
+        var kind = lookup.KindOf(request.Login, settings);
+        var method = kind switch { IdentifierKind.Email => LoginMethod.EmailOtp, IdentifierKind.Phone => LoginMethod.PhoneOtp, _ => (LoginMethod?)null };
+        if (method is null || !settings.Methods.AllowedLoginMethods.Contains(method.Value))
+            return await FailAsync(app, null, Auth2ErrorCodes.LoginMethodNotAllowed, null, ct, ipAddress: request.IpAddress);
+
+        var user = await lookup.FindAsync(request.Login, settings, ct);
+        if (user is null || !user.IsActive || !await lookup.IsMemberAsync(user, app, ct))
+            return await FailAsync(app, user, Auth2ErrorCodes.InvalidOtp, null, ct, new() { ["reason"] = user is null ? "unknown_user" : "not_member_or_inactive" }, ipAddress: request.IpAddress);
+        if (await users.IsLockedOutAsync(user))
+            return await FailAsync(app, user, Auth2ErrorCodes.LockedOut, null, ct, ipAddress: request.IpAddress);
+
+        var check = await otp.VerifyAsync(user, Auth2OtpPurposes.Login, request.Code.Trim(), ct);
+        if (check != OtpVerifyResult.Ok)
+        {
+            await users.AccessFailedAsync(user);   // guessing codes leads to lockout
+            if (await users.IsLockedOutAsync(user)) await audit.WriteAsync(Entry("login.locked_out", app, user, request.IpAddress, request.UserAgent), ct);
+            return await FailAsync(app, user, Auth2ErrorCodes.InvalidOtp, null, ct, new() { ["reason"] = check.ToString() }, ipAddress: request.IpAddress);
+        }
+
+        // The code went to this address or number, so it is proven now.
+        if (kind == IdentifierKind.Email && !user.EmailConfirmed) { user.EmailConfirmed = true; await users.UpdateAsync(user); }
+        if (kind == IdentifierKind.Phone && !user.PhoneNumberConfirmed) { user.PhoneNumberConfirmed = true; await users.UpdateAsync(user); }
+
+        return await SucceedAsync(user, app, settings, ["otp"], request.IpAddress, request.UserAgent, ct);
+    }
+
+    /// <inheritdoc />
     public async Task<LoginResult> CompleteTwoFactorAsync(string twoFactorToken, string? code, string? recoveryCode, string? ipAddress = null, CancellationToken ct = default)
     {
         var app = await flow.GetApplicationAsync(ct);
@@ -131,7 +167,7 @@ public sealed class LoginService(
     public async Task<bool> IsSubjectValidAsync(AppUser user, CancellationToken ct = default)
     {
         var app = await flow.GetApplicationAsync(ct);
-        return app.IsEnabled && user.IsActive && await IsMemberAsync(user, app, ct) && !await users.IsLockedOutAsync(user);
+        return app.IsEnabled && user.IsActive && await lookup.IsMemberAsync(user, app, ct) && !await users.IsLockedOutAsync(user);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -149,7 +185,7 @@ public sealed class LoginService(
         // 7. single active session: revoke the other sessions of THIS application only.
         if (settings.Sessions.SingleActiveSession)
         {
-            await sessions.RevokeAllAsync(user, app, "session.revoked_others", ct);
+            await sessions.RevokeAllAsync(user, app, "session.revoked_others", ct: ct);
             // With per-application credentials the stamp belongs to this application. A shared stamp would also log the
             // user out of the other applications, so it is left alone in that case.
             if (await flow.GetCredentialScopeAsync(ct) == CredentialScope.PerApplication)
@@ -173,33 +209,12 @@ public sealed class LoginService(
     private AuditEntry Entry(string action, Auth2Application app, AppUser? user, string? ip, string? ua, Dictionary<string, object?>? data = null) =>
         new(action, app.Id, ActorUserId: user?.Id, TargetType: user is null ? null : "user", TargetId: user?.Id.ToString(), IpAddress: ip, UserAgent: ua, Data: data);
 
-    private static LoginMethod Classify(string login, ApplicationSettings settings)
+    private static LoginMethod MethodOf(IdentifierKind kind) => kind switch
     {
-        if (login.Contains('@')) return LoginMethod.EmailPassword;
-        var timeout = TimeSpan.FromMilliseconds(Math.Clamp(settings.Phone.RegexTimeoutMs, 1, 1000));
-        return Auth2UserValidator.SafeMatch(settings.Phone.PhoneNumberRegex, login, timeout) ? LoginMethod.PhonePassword : LoginMethod.UserNamePassword;
-    }
-
-    private async Task<AppUser?> FindUserAsync(string login, LoginMethod method, ApplicationSettings settings, CancellationToken ct)
-    {
-        login = login.Trim();
-        switch (method)
-        {
-            case LoginMethod.EmailPassword:
-                return await users.FindByEmailAsync(login);
-            case LoginMethod.PhonePassword:
-                var matches = await db.Users.Where(u => u.PhoneNumber == login).Take(2).ToListAsync(ct);
-                return matches.Count == 1 ? matches[0] : null;   // two users with one number: refuse (treated as unknown)
-            default:
-                return await users.FindByNameAsync(login);
-        }
-    }
-
-    private async Task<bool> IsMemberAsync(AppUser user, Auth2Application app, CancellationToken ct)
-    {
-        if (options.Value.Mode == ServerMode.SingleApplication) return true;   // user_applications is not used in single mode
-        return await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == app.Id && x.Status == UserApplicationStatus.Active, ct);
-    }
+        IdentifierKind.Email => LoginMethod.EmailPassword,
+        IdentifierKind.Phone => LoginMethod.PhonePassword,
+        _ => LoginMethod.UserNamePassword,
+    };
 
     private string CreateTwoFactorToken(AppUser user, Auth2Application app) =>
         TokenProtector.Protect($"{user.Id:N}|{app.Id:N}", TwoFactorTokenLifetime);

@@ -41,7 +41,8 @@ public static class OpenIddictSetup
                  .AllowClientCredentialsFlow()
                  .AllowRefreshTokenFlow()
                  .AllowPasswordFlow()
-                 .AllowCustomFlow(Auth2GrantTypes.TwoFactor);
+                 .AllowCustomFlow(Auth2GrantTypes.TwoFactor)
+                 .AllowCustomFlow(Auth2GrantTypes.Otp);
 
                 o.RegisterScopes(OpenIddictClientProvisioner.StandardScopes.ToArray());
 

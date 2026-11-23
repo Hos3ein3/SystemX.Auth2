@@ -80,4 +80,7 @@
   <data name="phone_not_confirmed" xml:space="preserve"><value>Please confirm your phone number before you sign in.</value></data>
   <data name="two_factor_setup_required" xml:space="preserve"><value>This application requires two-factor authentication. Set it up first.</value></data>
   <data name="grant_not_allowed" xml:space="preserve"><value>This way of getting a token is not allowed for this application.</value></data>
+  <data name="two_factor_not_enabled" xml:space="preserve"><value>Two-factor authentication is not turned on.</value></data>
+  <data name="two_factor_not_allowed" xml:space="preserve"><value>This application does not allow authenticator apps.</value></data>
+  <data name="consent_required" xml:space="preserve"><value>You must agree before the application can continue.</value></data>
 </root>

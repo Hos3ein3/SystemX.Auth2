@@ -14,7 +14,7 @@ Flows in this version:
 | Refresh token | Long sessions | Implemented (rotation + reuse detection) |
 | Password grant | Self UI, mobile apps | Implemented, **off by default** |
 | Two-factor grant | Second step of the password grant | Implemented |
-| OTP grant (`urn:systemx:auth2:grant:otp`) | Login with a one-time code | Phase 6 |
+| OTP grant (`urn:systemx:auth2:grant:otp`) | Login with a one-time code (email or SMS) | Implemented, same rules as the password grant |
 | External login, passkeys | Social login, passkeys | Phase 14 (experimental) |
 
 *PKCE* (Proof Key for Code Exchange) protects the authorization code. *M2M* means machine to machine. *TOTP* is the six-digit code from an authenticator app.
@@ -49,7 +49,7 @@ The order of the checks:
 7. Two-factor, if it is on for this user in this application.
 8. Single active session.
 
-Consent is checked by the authorize endpoint. The consent page and service come in phase 6.
+Consent is checked by the authorize endpoint (see "Consent" below).
 
 **No user enumeration.** Unknown user, wrong password, inactive user and "not registered in this application" all return `invalid_credentials`. For an unknown user the server still spends the time of a password check. The real reason is written to the audit log (`login.failed`, field `code`).
 The errors that are allowed to differ are the ones that do not tell if an account exists: `application_disabled`, `login_method_not_allowed`, `locked_out` (the account is real, and was locked by many failures), and the confirmation and two-factor-setup errors (shown only after the password was right).
@@ -156,7 +156,93 @@ After login the server goes to the first valid item of:
 Logout: `post_logout_redirect_uri` (checked by OpenIddict against the registered list) → `Redirects.RedirectAfterLogout` → `/`.
 
 `IReturnUrlValidator` also rejects spaces, control characters and backslashes, and it checks the URL again after decoding it (up to three times), so `/%2Fevil.com` and `/%5Cevil.com` do not pass.
-`ReturnUrl` is carried through login, two-factor and logout. Register, confirm-email, forgot-password and consent will carry it in phase 6.
+`ReturnUrl` is carried through login, register, confirm email, forgot password, reset password, two-factor, consent and logout. In emails it is added to the link **only if it passes the same checks** as every redirect. Otherwise it is left out.
+
+## Accounts: register, join, confirm, reset, OTP, two-factor
+
+These flows have JSON endpoints (for your backend) and pages (for the hosted UI). Both call the same services. Every endpoint is listed in [api-reference.md](api-reference.md).
+
+### Register
+
+`POST /api/auth2/register` with a client-credentials token that has the scope `auth2.register`. **The application is the one in the token.** The body never chooses it.
+
+- Which identifiers are accepted (`UserName`, `Email`, `PhoneNumber`) depends on `Methods.AllowedRegisterMethods`.
+- A new person is created together with the membership row in one transaction. The password follows the [credential scope](credential-scope.md).
+- A confirmation email (link) and, for a phone number, a confirmation code (SMS) are sent. They are sent even when the application does not force confirmation.
+- It is **idempotent**: calling it again for the same person creates nothing and **never changes the password**. Many parallel calls create one person.
+- The answer says `userWasCreated`, `joinedApplication` and `confirmationRequired`. These are for your **trusted backend**. Do not show them to the end user. That would tell a stranger whether an account exists. The hosted `Account/Register` page gives every visitor the same answer.
+- `Registration.RegistrationEnabled=false` closes registration (`registration_disabled`).
+
+### Joining a second application (proof of ownership)
+
+One person is one account on the whole server. When that person registers in another application, the server does **not** add them and does **not** take the password from the request. Otherwise a stranger could register an existing email in a new application, set their own password, and take over that application's login for the real owner (*account pre-hijacking*).
+
+What happens instead:
+
+1. The register call finds the existing person. The answer is `joinedApplication=false`, `confirmationRequired=true`.
+2. The server sends a one-time **proof code** to the person's **confirmed** email (or, if none, confirmed phone). An unconfirmed address proves nothing, so nothing is sent (audit event `join.no_proof_channel`).
+3. The person sends the code and a **new password for this application**: `POST /api/auth2/join/complete` (or the page `Account/JoinApplication`).
+4. The server checks the password rules first (so a weak password does not use up the code), checks the code, then creates the membership row and sets the password in one transaction.
+
+With shared credentials, no new password is asked: only the membership is added. `Registration.JoinMode` must be `AutoJoin`. In single-application mode there is nothing to join.
+
+### One-time codes (OTP)
+
+- A code has the length `TwoFactor.OtpLength`, lives `OtpLifetimeSeconds`, allows `OtpMaxAttempts` wrong tries, and can be asked again after `OtpResendSeconds`.
+- It is stored **hashed**, compared in constant time, and works **once** (even with parallel requests). A code is only good for its **purpose** (`login`, `confirm_phone`, `join`, `password_reset`) and its **application**.
+- Asking for a code looks the same for known and unknown users. Asking too soon looks the same too.
+
+**Login with a code.** Allowed methods: `EmailOtp`, `PhoneOtp` in `Methods.AllowedLoginMethods`. A user name cannot get a code.
+
+```http
+POST /api/auth2/otp/request        (client token, scope auth2.login)
+{ "login": "sara@example.com", "purpose": "login" }      ->  202 Accepted
+
+POST /connect/token                (needs AllowSelfUiLogin, like the password grant)
+grant_type=urn:systemx:auth2:grant:otp&username=sara@example.com&code=123456&client_id=...&client_secret=...
+```
+
+Every failure is `invalid_otp`, and wrong codes count as failed attempts, so too many lead to a lockout. A right code also proves the address, so the email or phone is marked confirmed. The tokens have `amr` = `otp`. The hosted page is `Account/VerifyOtp`. TOTP is not asked after an OTP login (the code already proves the mailbox or phone).
+
+### Confirm email and phone
+
+- Email: the mail has a link to `Account/ConfirmEmail?userId=...&token=...&ClientId=...&ReturnUrl=...`. The API is `POST /api/auth2/email/confirm`. A resend (`POST /api/auth2/email/confirm/resend`) looks the same for everybody.
+- Phone: a code by SMS. Ask for a new one with `otp/request` and `purpose=confirm_phone`. Confirm with `POST /api/auth2/phone/confirm`.
+- `Email.RequireConfirmedEmail` / `Phone.RequireConfirmedPhone` block the login with `email_not_confirmed` / `phone_not_confirmed`. The error is shown only after the password was right.
+
+### Forgot, reset and change password
+
+- **Forgot** (`/password/forgot`, page `Account/ForgotPassword`) always answers `202`. Only **members** of the application get a message: a link by email, or a code by SMS for a person with a confirmed phone and no email. A person who is not a member must use the join flow.
+- **Reset** (`/password/reset`, page `Account/ResetPassword`) takes the token (or the SMS code) and the new password. A weak password does not use up the token. The token works once. A token made in one application does not work in another when credentials are per application (the security stamp is per application).
+  After a reset the server clears the lockout, ends all sessions of that application and raises the access version.
+- **Change** (`/password/change`, a **user** token with the scope `auth2.me`, page `Manage/ChangePassword`) needs the current password. A wrong current password counts as a failed attempt. All other sessions of this application end; the session that made the call stays.
+
+### Two-factor (authenticator app)
+
+Endpoints for a signed-in user (token scope `auth2.me`), or the pages `Manage/TwoFactor/Enable` and `Manage/TwoFactor/RecoveryCodes`:
+
+1. `POST /api/auth2/2fa/setup` makes a key and returns `sharedKey` (to type) and `authenticatorUri` (an `otpauth://` URI for a QR code). Calling it again before turning it on makes a new key.
+2. `POST /api/auth2/2fa/enable` with the first code. It returns the **recovery codes once** (`TwoFactor.RecoveryCodeCount`). From now on a login needs the second step ([above](#two-factor-step)).
+3. `POST /api/auth2/2fa/recovery-codes` with a current code makes new recovery codes. The old ones stop working.
+4. `POST /api/auth2/2fa/disable` needs the **password**. It is refused (`forbidden`) when `TwoFactor.Mode=Required`.
+
+The key, the on/off state and the recovery codes belong to the application when credentials are per application. The key is encrypted and the recovery codes are hashed.
+
+### Consent
+
+`Sessions.RequireConsent` and `Sessions.ConsentMode` decide:
+
+| `RequireConsent` | `ConsentMode` | Effect |
+|---|---|---|
+| off | any | No consent page |
+| on | `Implicit` or `Explicit` | The user agrees **once** for a set of scopes. The server saves a permanent authorization. More scopes later: ask again |
+| on | `Systematic` | The user agrees **every time** |
+
+The authorize endpoint sends the browser to `Account/Consent` with the authorize URL as `ReturnUrl`. **Accept** goes back to that URL with a short-lived `consent` token that is bound to the **user, the application and the exact scopes**. **Deny** returns `error=access_denied` (and the `state`) to the client, but only to a registered redirect URI. `prompt=none` returns `consent_required` to the client. A saved authorization is also what shows up in `Manage/Sessions`. A new login with `SingleActiveSession` revokes it, so the user is asked again.
+
+### Sessions
+
+`Manage/Sessions` lists the sign-ins (OpenIddict authorizations) of the user in this application and ends one of them. Ending a session revokes its tokens. A session of another user, or of another application, is answered like "not found".
 
 ## What is in the tokens
 

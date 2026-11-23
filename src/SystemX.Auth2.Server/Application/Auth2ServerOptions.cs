@@ -28,6 +28,19 @@ public sealed class Auth2ServerOptions
 
     /// <summary>Single-application options.</summary>
     public SingleApplicationOptions SingleApplication { get; set; } = new();
+
+    /// <summary>Options that only work in Development.</summary>
+    public DevelopmentOptions Development { get; set; } = new();
+}
+
+/// <summary>Development helpers. Section <c>Auth2:Development</c>. They are ignored outside Development.</summary>
+public sealed class DevelopmentOptions
+{
+    /// <summary>
+    /// The development email and SMS senders log the full message (links and codes) when this is true.
+    /// That puts secrets in the log, so it works only in Development. Default: false (only a masked recipient and the subject are logged).
+    /// </summary>
+    public bool LogMessageBodies { get; set; }
 }
 
 /// <summary>Options for single-application mode. Section <c>Auth2:SingleApplication</c>.</summary>

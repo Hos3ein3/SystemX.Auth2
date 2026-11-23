@@ -41,7 +41,8 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     /// <summary>Finds the application of this request and loads its settings. Returns false when there is none.</summary>
     protected async Task<bool> LoadApplicationAsync()
     {
-        clientIdAccessor.ClientId ??= string.IsNullOrEmpty(ClientId) ? ReturnUrlQuery.Get(ReturnUrl, "client_id") : ClientId;
+        clientIdAccessor.ClientId ??= !string.IsNullOrEmpty(ClientId) ? ClientId
+            : ReturnUrlQuery.Get(ReturnUrl, "client_id") ?? ReturnUrlQuery.Get(ReturnUrl, "ClientId");
         try
         {
             Application = await flow.GetApplicationAsync(HttpContext.RequestAborted);
@@ -61,6 +62,29 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
         ErrorCode = code;
         ErrorMessage = text.Error(code);
         Response.StatusCode = statusCode;
+    }
+
+    /// <summary>A service of the request. Pages use this to keep their constructors short.</summary>
+    protected T Svc<T>() where T : notnull => HttpContext.RequestServices.GetRequiredService<T>();
+
+    /// <summary><see cref="ReturnUrl"/> if it is safe, otherwise null. Use it for links in emails.</summary>
+    protected string? SafeReturnUrl() => urls.IsAllowed(ReturnUrl, Settings.Redirects.AllowedRedirectUris) ? ReturnUrl : null;
+
+    /// <summary>Messages of every broken rule (for example the password rules), localized.</summary>
+    public IReadOnlyList<string> ErrorMessages { get; protected set; } = [];
+
+    /// <summary>Sets the error from an operation result.</summary>
+    protected void Fail(Application.OperationResult result, int statusCode = StatusCodes.Status400BadRequest)
+    {
+        Fail(result.ErrorCode ?? SystemX.Auth2.Contracts.Constants.Auth2ErrorCodes.ValidationFailed, statusCode);
+        ErrorMessages = [.. result.Errors.Select(e => e.Description)];
+    }
+
+    /// <summary>Signs the user into the hosted-UI session and returns the redirect to the first safe target.</summary>
+    protected async Task<IActionResult> SignInAndRedirectAsync(LoginResult result, string? applicationFallback)
+    {
+        await Auth2Cookie.SignInAsync(HttpContext, result.User!, Application!, Settings, result.Amr, result.SessionId);
+        return Redirect(ResolveRedirect(applicationFallback));
     }
 
     /// <summary>The URL to go to after success: valid return URL, then the application fallback, then <paramref name="home"/>.</summary>

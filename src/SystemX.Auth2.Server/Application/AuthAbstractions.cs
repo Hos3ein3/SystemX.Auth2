@@ -11,6 +11,13 @@ namespace SystemX.Auth2.Server.Application;
 /// <param name="UserAgent">Caller user agent (for the audit log).</param>
 public sealed record PasswordLoginRequest(string Login, string Password, string? IpAddress = null, string? UserAgent = null);
 
+/// <summary>Input of a login with a one-time code.</summary>
+/// <param name="Login">Email or phone number.</param>
+/// <param name="Code">The one-time code. Never logged.</param>
+/// <param name="IpAddress">Caller IP (for the audit log).</param>
+/// <param name="UserAgent">Caller user agent (for the audit log).</param>
+public sealed record OtpLoginRequest(string Login, string Code, string? IpAddress = null, string? UserAgent = null);
+
 /// <summary>Result of a login step.</summary>
 public sealed record LoginResult
 {
@@ -43,6 +50,12 @@ public interface ILoginService
     /// <summary>Checks a login and password.</summary>
     Task<LoginResult> PasswordLoginAsync(PasswordLoginRequest request, CancellationToken ct = default);
 
+    /// <summary>
+    /// Login with a one-time code (<c>PhoneOtp</c> or <c>EmailOtp</c>). Every failure is <c>invalid_otp</c>.
+    /// A right code also proves the email or phone, so it is marked as confirmed.
+    /// </summary>
+    Task<LoginResult> OtpLoginAsync(OtpLoginRequest request, CancellationToken ct = default);
+
     /// <summary>Second step: checks a TOTP code or a recovery code.</summary>
     Task<LoginResult> CompleteTwoFactorAsync(string twoFactorToken, string? code, string? recoveryCode, string? ipAddress = null, CancellationToken ct = default);
 
@@ -66,8 +79,17 @@ public interface ITokenIssuer
 /// <summary>Single active session and session revoking.</summary>
 public interface ISessionService
 {
-    /// <summary>Revokes all tokens and authorizations of the user in the application. Returns the number of revoked tokens.</summary>
-    Task<int> RevokeAllAsync(AppUser user, Auth2Application application, string reason, CancellationToken ct = default);
+    /// <summary>
+    /// Revokes all tokens and authorizations of the user in the application. Returns the number of revoked tokens.
+    /// An authorization id in <paramref name="keepAuthorizationId"/> is left alone (the session that asked).
+    /// </summary>
+    Task<int> RevokeAllAsync(AppUser user, Auth2Application application, string reason, string? keepAuthorizationId = null, CancellationToken ct = default);
+
+    /// <summary>Lists the open sessions of the user in the application.</summary>
+    Task<IReadOnlyList<SessionInfo>> ListAsync(AppUser user, Auth2Application application, CancellationToken ct = default);
+
+    /// <summary>Revokes one session of the user. Returns false when it is not theirs.</summary>
+    Task<bool> RevokeAsync(AppUser user, Auth2Application application, string authorizationId, CancellationToken ct = default);
 }
 
 /// <summary>Checks return URLs. Open redirect protection.</summary>

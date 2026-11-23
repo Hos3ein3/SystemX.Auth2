@@ -59,6 +59,10 @@ Global roles (`ApplicationId` is null) are always visible.
 - **Role**: a named set of permissions (`Editor`).
 - **Group**: a set of users that can have roles and permissions.
 
+## Proof of ownership
+
+A person who already has an account on the server cannot be added to a second application just because somebody typed their email there. The server sends a one-time code to the person's **confirmed** email or phone. Only with that code can they join and set a password for the new application. See [authentication-flows.md](authentication-flows.md).
+
 ## Tokens and sign-in
 
 - **Hosted UI**: the browser goes to the server, the user signs in on the server's page, and your app gets a token. Your app never sees the password. This is the recommended way.

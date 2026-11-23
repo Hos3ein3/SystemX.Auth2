@@ -20,6 +20,10 @@ public static class Auth2Routes
     public const string EmailConfirm = Base + "/email/confirm";
     /// <summary>Confirm phone.</summary>
     public const string PhoneConfirm = Base + "/phone/confirm";
+    /// <summary>Send the email confirmation again.</summary>
+    public const string EmailConfirmResend = Base + "/email/confirm/resend";
+    /// <summary>Finish joining a second application (proof of ownership + new password).</summary>
+    public const string JoinComplete = Base + "/join/complete";
     /// <summary>Start TOTP setup.</summary>
     public const string TwoFactorSetup = Base + "/2fa/setup";
     /// <summary>Enable TOTP.</summary>

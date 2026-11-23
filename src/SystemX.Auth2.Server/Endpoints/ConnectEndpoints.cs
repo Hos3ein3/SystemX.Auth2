@@ -6,6 +6,7 @@ using Microsoft.Extensions.Primitives;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using SystemX.Auth2.Contracts.Constants;
+using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Infrastructure.Auth;
@@ -35,7 +36,7 @@ public static class ConnectEndpoints
     // ---------------------------------------------------------------- authorize
 
     private static async Task<IResult> AuthorizeAsync(HttpContext http, IClientIdAccessor clientId, IAuthFlowResolver flow,
-        UserManager<AppUser> users, ITokenIssuer issuer, ILoginService login)
+        UserManager<AppUser> users, ITokenIssuer issuer, ILoginService login, IConsentService consent)
     {
         var request = http.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
         clientId.ClientId = request.ClientId;
@@ -62,14 +63,47 @@ public static class ConnectEndpoints
                 }), [OpenIddictScheme]);
 
             // Come back here after the login page. "prompt=login" is removed, or we would loop forever.
-            var parameters = http.Request.HasFormContentType ? http.Request.Form.ToList() : http.Request.Query.ToList();
-            var returnUrl = http.Request.PathBase + http.Request.Path + QueryString.Create(parameters.Where(p => p.Key != Parameters.Prompt));
-            return Results.Challenge(new AuthenticationProperties { RedirectUri = returnUrl }, [Auth2Cookie.Scheme]);
+            return Results.Challenge(new AuthenticationProperties { RedirectUri = ReturnUrl(http, Parameters.Prompt) }, [Auth2Cookie.Scheme]);
+        }
+
+        // Consent: none (implicit), once per user and scopes (explicit), or every time (systematic).
+        var settings = await flow.GetSettingsAsync(http.RequestAborted);
+        var scopes = request.GetScopes();
+        var mode = ConsentPolicy.Effective(settings);
+        string? authorizationId = null;
+        if (mode != ConsentMode.Implicit)
+        {
+            if (await consent.IsConsentNeededAsync(user!, app, settings, scopes, (string?)request["consent"], http.RequestAborted))
+            {
+                if (request.HasPromptValue(PromptValues.None))
+                    return Results.Forbid(new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ConsentRequired,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The user must agree first.",
+                    }), [OpenIddictScheme]);
+                // The consent page gets the authorize URL (without prompt and without an old consent token) and comes back to it.
+                var back = ReturnUrl(http, Parameters.Prompt, "consent");
+                return Results.Redirect($"/Account/Consent?ClientId={Uri.EscapeDataString(app.ClientId)}&ReturnUrl={Uri.EscapeDataString(back)}");
+            }
+            if (mode == ConsentMode.Explicit) authorizationId = await consent.FindAuthorizationIdAsync(user!, app, scopes, http.RequestAborted);
         }
 
         var amr = cookie.Principal!.FindAll(Auth2Claims.Amr).Select(c => c.Value).DefaultIfEmpty("pwd");
-        var principal = await issuer.CreateUserPrincipalAsync(user!, request.GetScopes(), amr, cookie.Principal.FindFirst(Auth2Claims.SessionId)?.Value, http.RequestAborted);
+        var principal = await issuer.CreateUserPrincipalAsync(user!, scopes, amr, cookie.Principal.FindFirst(Auth2Claims.SessionId)?.Value, http.RequestAborted);
+        if (mode == ConsentMode.Explicit)
+        {
+            // Remember the agreement, so the user is not asked again for the same scopes. The tokens belong to this authorization.
+            authorizationId ??= await consent.SaveAuthorizationAsync(user!, app, principal, scopes, http.RequestAborted);
+            principal.SetAuthorizationId(authorizationId);
+        }
         return Results.SignIn(principal, properties: null, OpenIddictScheme);
+    }
+
+    /// <summary>The URL of the current authorize request, without the listed parameters.</summary>
+    private static string ReturnUrl(HttpContext http, params string[] without)
+    {
+        var parameters = http.Request.HasFormContentType ? http.Request.Form.ToList() : http.Request.Query.ToList();
+        return http.Request.PathBase + http.Request.Path + QueryString.Create(parameters.Where(p => !without.Contains(p.Key)));
     }
 
     // ---------------------------------------------------------------- token
@@ -117,6 +151,14 @@ public static class ConnectEndpoints
             if (!settings.Clients.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
             var result = await login.CompleteTwoFactorAsync((string?)request["two_factor_token"] ?? "", (string?)request["code"], (string?)request["recovery_code"],
                 http.Connection.RemoteIpAddress?.ToString(), ct);
+            return await ToTokenResultAsync(result, request, issuer, ct);
+        }
+
+        if (request.GrantType == Auth2GrantTypes.Otp)
+        {
+            if (!settings.Clients.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
+            var result = await login.OtpLoginAsync(new OtpLoginRequest(request.Username ?? "", (string?)request["code"] ?? "",
+                http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString()), ct);
             return await ToTokenResultAsync(result, request, issuer, ct);
         }
 

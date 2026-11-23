@@ -62,6 +62,7 @@ builder.Services.AddSystemXAuth2Server(builder.Configuration, o =>
 | `Auth2:AutoSeed` | `false` | Seed at startup outside Development |
 | `Auth2:AutoMigrate` | `false` | Migrate at startup in Production |
 | `Auth2:SingleApplication:Name` | `Default` | Name of the one application in single mode |
+| `Auth2:Development:LogMessageBodies` | `false` | Development only: log full emails and SMS (secrets!) |
 | `Auth2:Keys:SigningCertificates` | none | List of `{ "Path": "sign.pfx", "Password": "..." }`. The first signs; all validate |
 | `Auth2:Keys:EncryptionCertificates` | none | Same, for encrypting code and refresh tokens |
 
@@ -104,6 +105,31 @@ They copy credentials between the user row and `user_applications`. Going to sin
 - `IApplicationContext`, `IAuthFlowResolver`, credential state strategies, localization (`IAuth2Localizer`).
 
 Add `app.UseAuth2Localization();` to the pipeline for request cultures. See [localization.md](localization.md).
+
+## Sending email and SMS
+
+The server sends confirmation links, reset links and one-time codes through two interfaces:
+
+```csharp
+public interface IEmailSender { Task SendAsync(EmailMessage message, CancellationToken ct = default); }
+public interface ISmsSender   { Task SendAsync(SmsMessage message, CancellationToken ct = default); }
+```
+
+The built-in implementations (`LoggingEmailSender`, `LoggingSmsSender`) **send nothing**. They write one log line with a **masked** recipient (`s***@example.com`, `+31*******78`) and, for email, the subject. They never log the body, a link, a token or a code.
+
+For local work you can see the full messages: set `Auth2:Development:LogMessageBodies=true`. It works **only in the `Development` environment**, and it writes links and codes to the log, so never use it elsewhere.
+
+In production, register your own senders **after** `AddSystemXAuth2Server`:
+
+```csharp
+builder.Services.AddSystemXAuth2Server(builder.Configuration);
+builder.Services.AddScoped<IEmailSender, MySmtpEmailSender>();
+builder.Services.AddScoped<ISmsSender, MySmsGatewaySender>();
+```
+
+`EmailMessage.Data` / `SmsMessage.Data` hold the raw token or code (for tests and custom templates). Do not log them.
+
+Message texts are in `Resources/Emails.resx` (see [localization.md](localization.md)). A message is written in the language the user saved, when the server has it. Links use `Auth2:Issuer` (or the address of the current request).
 
 ## Commands
 

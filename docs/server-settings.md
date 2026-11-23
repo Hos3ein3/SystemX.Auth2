@@ -43,6 +43,14 @@ await applicationService.UpdateSettingsAsync(app.Id, settings);
 
 The client secret is never changed by a settings update.
 
+## How some settings work together
+
+- **Consent.** `Sessions.RequireConsent=false` means no consent page, whatever `ConsentMode` says. With `RequireConsent=true`, `Implicit` is treated as `Explicit` (ask once). `Systematic` asks every time. See [authentication-flows.md](authentication-flows.md#consent).
+- **Joining.** `Registration.JoinMode=AutoJoin` lets a person who already has an account join with proof of ownership. `InviteOnly` and `Closed` refuse. (Admins will be able to add people in the admin API, phase 9.) `RegistrationEnabled=false` closes registration of new people.
+- **OTP.** `TwoFactor.OtpLength`, `OtpLifetimeSeconds`, `OtpMaxAttempts` and `OtpResendSeconds` rule **every** one-time code: login, phone confirmation, join and password reset by SMS.
+- **Lockout.** Wrong passwords, wrong OTP codes, wrong TOTP codes and a wrong current password all count as failed attempts.
+- **Confirmation.** `Email.RequireConfirmedEmail` and `Phone.RequireConfirmedPhone` block the login only after the password (or code) was right.
+
 ## Validation rules
 
 The validator rejects:

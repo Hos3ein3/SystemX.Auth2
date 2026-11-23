@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -29,11 +30,22 @@ public sealed class Browser
     public async Task<HttpResponseMessage> PostFormAsync(string url, IDictionary<string, string> form, string? bearer = null) =>
         await SendAsync(new HttpRequestMessage(HttpMethod.Post, url) { Content = new FormUrlEncodedContent(form) }, bearer);
 
+    public async Task<HttpResponseMessage> PostJsonAsync(string url, object? body, string? bearer = null, string? acceptLanguage = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(body ?? new { }) };
+        if (acceptLanguage is not null) request.Headers.TryAddWithoutValidation("Accept-Language", acceptLanguage);
+        return await SendAsync(request, bearer);
+    }
+
     /// <summary>Posts to a Razor Page handler. Adds a valid anti-forgery cookie and token.</summary>
     public async Task<HttpResponseMessage> PostPageAsync(string url, IDictionary<string, string> form)
     {
         using var scope = _services.CreateScope();
         var ctx = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        // An anti-forgery token is bound to the signed-in user, so build it as the user of the session cookie (if there is one).
+        if (_cookies.Count > 0) ctx.Request.Headers.Cookie = string.Join("; ", _cookies.Select(c => $"{c.Key}={c.Value}"));
+        var session = await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.AuthenticateAsync(ctx, SystemX.Auth2.Server.Infrastructure.Auth.Auth2Cookie.Scheme);
+        if (session.Succeeded) ctx.User = session.Principal!;
         var tokens = scope.ServiceProvider.GetRequiredService<IAntiforgery>().GetAndStoreTokens(ctx);
         foreach (var header in ctx.Response.Headers.SetCookie) Remember(header!);
         var fields = new Dictionary<string, string>(form) { [tokens.FormFieldName] = tokens.RequestToken! };

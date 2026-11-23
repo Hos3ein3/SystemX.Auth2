@@ -53,6 +53,12 @@ public static class Auth2ErrorCodes
     public const string TwoFactorSetupRequired = "two_factor_setup_required";
     /// <summary>The grant type is not allowed for this application or client.</summary>
     public const string GrantNotAllowed = "grant_not_allowed";
+    /// <summary>Two-factor is not on for this user.</summary>
+    public const string TwoFactorNotEnabled = "two_factor_not_enabled";
+    /// <summary>The application does not allow authenticator-app two-factor.</summary>
+    public const string TwoFactorNotAllowed = "two_factor_not_allowed";
+    /// <summary>Consent is needed (OIDC <c>prompt=none</c> cannot ask).</summary>
+    public const string ConsentRequired = "consent_required";
     /// <summary>Login method not allowed.</summary>
     public const string LoginMethodNotAllowed = "login_method_not_allowed";
     /// <summary>Registration is closed.</summary>

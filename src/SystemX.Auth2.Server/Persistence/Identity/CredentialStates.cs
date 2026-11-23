@@ -121,7 +121,13 @@ public sealed class UserApplicationCredentialState(
     /// <inheritdoc />
     public async Task SetPasswordHashAsync(AppUser u, string? hash, CancellationToken ct) => (await RowAsync(u, true, ct))!.PasswordHash = hash;
     /// <inheritdoc />
-    public async Task<string?> GetSecurityStampAsync(AppUser u, CancellationToken ct) => (await RowAsync(u, false, ct))?.SecurityStamp;
+    public async Task<string?> GetSecurityStampAsync(AppUser u, CancellationToken ct)
+    {
+        var row = await RowAsync(u, false, ct);
+        if (row is null) return null;
+        // A member without credentials yet (for example added by an admin) still needs a stamp, or Identity refuses to save the user.
+        return row.SecurityStamp ??= Guid.NewGuid().ToString("N");
+    }
     /// <inheritdoc />
     public async Task SetSecurityStampAsync(AppUser u, string stamp, CancellationToken ct) => (await RowAsync(u, true, ct))!.SecurityStamp = stamp;
     /// <inheritdoc />

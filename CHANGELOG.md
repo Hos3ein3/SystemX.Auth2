@@ -6,6 +6,11 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 
 ### Added
 - Phase 1: solution skeleton, central package management, CI workflow, docs skeleton.
+- Phase 6: register (idempotent, race-safe), join a second application with proof of ownership, one-time codes (`IOtpService`) and OTP login grant,
+  email and phone confirmation, forgot / reset / change password, authenticator-app two-factor with recovery codes, consent (explicit and systematic),
+  sessions (list, revoke), email and SMS sender interfaces with safe development implementations, access version service, JSON endpoints under `/api/auth2`,
+  pages `Register`, `ForgotPassword`, `ResetPassword`, `ConfirmEmail`, `ConfirmPhone`, `VerifyOtp`, `JoinApplication`, `Consent`, `Manage/*`.
+  Fixed: phone-only users (email is no longer required), stale OTP attempt counts, localized texts with placeholders.
 - Phase 5: OpenIddict server (authorization code + PKCE, client credentials, refresh rotation with reuse detection, optional password and two-factor grants),
   `ILoginService`, `ITokenIssuer`, `ISessionService` (single active session), `IReturnUrlValidator`, the hosted-UI cookie, pages `Account/Login`, `TwoFactor`, `Logout`, `Lockout`, `AccessDenied`, `Error`,
   client provisioning from settings, `rotate-client-secret` command, production guard for keys and issuer. Docs: `authentication-flows`.

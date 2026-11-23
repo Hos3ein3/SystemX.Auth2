@@ -31,6 +31,8 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `email_not_confirmed`, `phone_not_confirmed` | Confirmation is required. Shown only after the password was right. |
 | `two_factor_setup_required` | The application requires two-factor and the user has not set it up. |
 | `grant_not_allowed` | The grant type is not allowed for this application. |
+| `two_factor_not_enabled`, `two_factor_not_allowed` | Two-factor is off for the user, or the application does not allow authenticator apps. |
+| `consent_required` | Consent is needed and the request used `prompt=none`. |
 | `login_method_not_allowed` | This login method is off for the application. |
 | `registration_disabled` | Registration is closed. |
 | `invalid_token` | Token is missing or invalid. |

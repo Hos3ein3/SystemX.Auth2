@@ -49,6 +49,7 @@ public static class Auth2Cookie
         identity.AddClaim(new Claim("sub", user.Id.ToString("D")));
         identity.AddClaim(new Claim("name", user.UserName ?? ""));
         identity.AddClaim(new Claim(Auth2Claims.ApplicationId, app.Id.ToString("D")));
+        identity.AddClaim(new Claim(Auth2Claims.ClientId, app.ClientId));
         if (sessionId is not null) identity.AddClaim(new Claim(Auth2Claims.SessionId, sessionId));
         foreach (var a in amr) identity.AddClaim(new Claim(Auth2Claims.Amr, a));
 

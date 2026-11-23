@@ -58,9 +58,11 @@ public static class Auth2ServerServiceCollectionExtensions
 
         services.AddLocalization();
         services.AddHttpContextAccessor();
-        services.AddAuthentication().AddAuth2Cookie();
-        services.AddAuthorization();
-        services.AddRazorPages();
+        // The session cookie is the default way to know who is on a page (HttpContext.User), so every page, and its anti-forgery token,
+        // sees the same user. API endpoints and /connect/userinfo name their own scheme (the OpenIddict validation or server scheme).
+        services.AddAuthentication(o => o.DefaultAuthenticateScheme = Auth2Cookie.Scheme).AddAuth2Cookie();
+        services.AddAuthorization(o => o.AddPolicy("Auth2.Session", p => p.AddAuthenticationSchemes(Auth2Cookie.Scheme).RequireAuthenticatedUser()));
+        services.AddRazorPages(o => o.Conventions.AuthorizeFolder("/Manage", "Auth2.Session"));
 
         services.AddScoped<Auth2IdentityErrorDescriber>();
         services.AddIdentityCore<AppUser>(o =>
@@ -68,7 +70,8 @@ public static class Auth2ServerServiceCollectionExtensions
                 // Rules that depend on the project come from ApplicationSettings through IAuthFlowResolver.
                 // These are the global ones: email is unique, and the standard character and lockout rules are switched off
                 // because Auth2UserValidator and Auth2UserManager apply the project rules.
-                o.User.RequireUniqueEmail = true;
+                // Email uniqueness is checked by Auth2UserValidator (and the unique index), so a person may also have no email (phone only).
+                o.User.RequireUniqueEmail = false;
                 o.User.AllowedUserNameCharacters = "";
                 o.Lockout.AllowedForNewUsers = false;
             })
@@ -98,6 +101,21 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<ITokenIssuer, TokenIssuer>();
         services.AddScoped<ILoginService, LoginService>();
+
+        services.AddScoped<UserLookup>();
+        services.AddScoped<IOtpService, OtpService>();
+        services.AddScoped<IServerUrls, ServerUrls>();
+        services.TryAddScoped<IEmailSender, LoggingEmailSender>();   // replace with your own sender in production
+        services.TryAddScoped<ISmsSender, LoggingSmsSender>();
+        services.AddScoped<IUserNotifier, UserNotifier>();
+        services.AddScoped<IAccessVersionService, AccessVersionService>();
+        services.AddScoped<IRegisterService, RegisterService>();
+        services.AddScoped<IJoinService, JoinService>();
+        services.AddScoped<IPasswordService, PasswordService>();
+        services.AddScoped<IConfirmationService, ConfirmationService>();
+        services.AddScoped<IOtpRequestService, OtpRequestService>();
+        services.AddScoped<ITwoFactorService, TwoFactorService>();
+        services.AddScoped<IConsentService, ConsentService>();
 
         services.AddAuth2OpenIddict(configuration);
 

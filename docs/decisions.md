@@ -122,3 +122,36 @@ In Development and Testing the server creates temporary keys (RSA signing key an
 
 ## ADR-040: Consent and OTP grant move to phase 6
 The spec puts the consent service and the OTP service in phase 6. Phase 5 has the `ConsentMode` setting mapped to the OpenIddict consent type, but no consent page. The OTP grant constant exists (`Auth2GrantTypes.Otp`) but is not registered yet.
+
+## ADR-041: Email uniqueness moved into our validator
+`IdentityOptions.User.RequireUniqueEmail` is now **false**: with `true`, Identity demands an email for every user, and phone-only users (the spec supports them) could not exist. `Auth2UserValidator` reports `DuplicateEmail`, and the unique index on `NormalizedEmail` stays as the last guard (nulls are allowed). This replaces the setting in ADR-015.
+
+## ADR-042: Register never changes an existing person
+`IRegisterService` creates a person only when no user matches the user name, email or phone. If one matches, nothing is changed: a member gets `JoinedApplication=true`; a non-member gets a proof code (`IJoinService`). If the identifiers match two different people, nothing happens and the answer looks the same. A duplicate-key race (parallel calls) is handled by catching the unique violation or the `DuplicateEmail` / `DuplicateUserName` error and treating the call as "the person exists". `UserWasCreated` and `JoinedApplication` are for the trusted client backend; the hosted register page hides them.
+
+## ADR-043: Join needs a code to an address that was confirmed before
+The proof channel is the confirmed email, else the confirmed phone. An address that is not confirmed is never used (the audit event `join.no_proof_channel` is written). The new password is checked against the rules **before** the code is used. The membership row and the password are saved in one transaction. With shared credentials only the row is added.
+
+## ADR-044: OTP in a table, one open code per user, purpose and application
+`otp_codes` stores a salted hash (ISecretHasher). Issuing a new code closes the older open one. "Works once" is one conditional UPDATE, so parallel requests cannot both succeed. Reads use `AsNoTracking`, because `ExecuteUpdate` does not refresh tracked entities. A Redis implementation behind `IOtpService` comes in phase 10. The creation time is derived from the expiry minus the lifetime in the settings at that time.
+
+## ADR-045: Notification senders are interfaces; the defaults only log a masked line
+`IEmailSender` / `ISmsSender` have logging implementations that never write a body. `Auth2:Development:LogMessageBodies` works only in `Development`. Messages are built by `IUserNotifier` from `Emails.resx` in the user's saved culture. `EmailMessage.Data` carries the raw token or code for tests and must not be logged.
+
+## ADR-046: API authentication by an endpoint filter
+Account endpoints use `Auth2ApiFilter(scope, TokenKind)`: it authenticates with the OpenIddict validation scheme, checks the token kind (`machine` claim) and the scope, sets the application from the token audience, and answers with `ApiError` JSON. `invalid_token` is 401 only from this filter; for a bad confirmation or reset token it is 400. Users of user endpoints are loaded and checked with `IsSubjectValidAsync` on every call.
+
+## ADR-047: Password change and reset end sessions
+Reset ends all sessions of the application and clears the lockout. Change ends all except the session of the caller (kept by the authorization id of the access token). Both raise the user access version and write audit events. A wrong current password counts as a failed attempt.
+
+## ADR-048: Consent
+The effective mode is `ConsentPolicy.Effective`: `RequireConsent` off is implicit; on, `Implicit` means explicit. The consent page returns to the authorize URL with a `consent` token (Data Protection, 10 minutes) bound to the user, the application and the exact scope set. Explicit mode saves a permanent OpenIddict authorization and links the tokens to it (so it shows as a session). Systematic mode asks every time. `prompt=none` returns `consent_required`. Deny redirects with `access_denied` only to a registered redirect URI.
+
+## ADR-049: Session cookie is the default authenticate scheme
+`HttpContext.User` is the hosted-UI session on every page, so anti-forgery tokens are bound to the same user everywhere. API endpoints and `/connect/userinfo` choose their own scheme explicitly. The Manage pages need the cookie (policy `Auth2.Session`); the application comes from the cookie claim `client_id`, never from the query.
+
+## ADR-050: Access version service
+`IAccessVersionService` raises `user_applications.user_access_version` (or the application version in single mode). Reset, change and two-factor changes call it. Phase 7 adds the roles, permissions and groups calls and the cache.
+
+## ADR-051: Phone and OTP details
+Phone login and OTP request look the user up by exact `PhoneNumber`; two users with one number are treated as unknown. A right login code marks the email or phone confirmed. TOTP is not asked after an OTP login.

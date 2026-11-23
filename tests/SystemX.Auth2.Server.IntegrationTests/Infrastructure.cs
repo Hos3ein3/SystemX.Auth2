@@ -51,6 +51,21 @@ public sealed class CapturingLoggerProvider : ILoggerProvider
     }
 }
 
+/// <summary>Replaces the email and SMS senders. Tests read the links and codes from <see cref="Emails"/> and <see cref="Texts"/>.</summary>
+public sealed class CapturingSender : SystemX.Auth2.Server.Application.IEmailSender, SystemX.Auth2.Server.Application.ISmsSender
+{
+    public ConcurrentQueue<SystemX.Auth2.Server.Application.EmailMessage> Emails { get; } = new();
+    public ConcurrentQueue<SystemX.Auth2.Server.Application.SmsMessage> Texts { get; } = new();
+
+    public Task SendAsync(SystemX.Auth2.Server.Application.EmailMessage message, CancellationToken ct = default) { Emails.Enqueue(message); return Task.CompletedTask; }
+    public Task SendAsync(SystemX.Auth2.Server.Application.SmsMessage message, CancellationToken ct = default) { Texts.Enqueue(message); return Task.CompletedTask; }
+
+    /// <summary>The newest message sent to this address or number, with its data (token, link, code).</summary>
+    public IReadOnlyDictionary<string, string>? LastEmailTo(string to) => Emails.LastOrDefault(e => e.To.Equals(to, StringComparison.OrdinalIgnoreCase))?.Data;
+    public IReadOnlyDictionary<string, string>? LastTextTo(string to) => Texts.LastOrDefault(e => e.To == to)?.Data;
+    public int CountTo(string to) => Emails.Count(e => e.To.Equals(to, StringComparison.OrdinalIgnoreCase)) + Texts.Count(t => t.To == to);
+}
+
 /// <summary>The Server in memory with its own fresh database. Use <see cref="InitializeAsync"/> before first use.</summary>
 public class Auth2ServerFactory : WebApplicationFactory<Program>
 {
@@ -60,7 +75,14 @@ public class Auth2ServerFactory : WebApplicationFactory<Program>
 
     public string ConnectionString => _connectionString;
 
-    protected virtual void ConfigureAuth2(IServiceCollection services) => Customize?.Invoke(services);
+    public CapturingSender Messages { get; } = new();
+
+    protected virtual void ConfigureAuth2(IServiceCollection services)
+    {
+        services.AddSingleton<SystemX.Auth2.Server.Application.IEmailSender>(Messages);
+        services.AddSingleton<SystemX.Auth2.Server.Application.ISmsSender>(Messages);
+        Customize?.Invoke(services);
+    }
 
     /// <summary>Extra service changes for one test class. Set before the first use of <c>Services</c>.</summary>
     public Action<IServiceCollection>? Customize { get; set; }
@@ -79,7 +101,11 @@ public class Auth2ServerFactory : WebApplicationFactory<Program>
 /// <summary>Server with <c>ServerWithSingleApplication()</c>.</summary>
 public sealed class SingleModeFactory : Auth2ServerFactory
 {
-    protected override void ConfigureAuth2(IServiceCollection services) => services.ServerWithSingleApplication();
+    protected override void ConfigureAuth2(IServiceCollection services)
+    {
+        base.ConfigureAuth2(services);
+        services.ServerWithSingleApplication();
+    }
 }
 
 /// <summary>Base class: creates a factory and a database per test.</summary>

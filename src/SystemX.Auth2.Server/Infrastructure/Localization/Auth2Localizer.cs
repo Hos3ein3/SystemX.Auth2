@@ -11,8 +11,10 @@ namespace SystemX.Auth2.Server.Infrastructure.Localization;
 public sealed class Auth2Localizer(IStringLocalizer<Errors> errors, IStringLocalizer<Validation> validation) : IAuth2Localizer
 {
     /// <inheritdoc />
-    public string Error(string key, params object[] args) => errors[key, args].Value;
+    public string Error(string key, params object[] args) =>
+        args.Length == 0 ? errors[key].Value : errors[key, args].Value;   // without arguments the text is returned as it is (no format error)
 
     /// <inheritdoc />
-    public string Validation(string key, params object[] args) => validation[key, args].Value;
+    public string Validation(string key, params object[] args) =>
+        args.Length == 0 ? validation[key].Value : validation[key, args].Value;
 }

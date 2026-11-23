@@ -27,5 +27,21 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="confirm_email.subject" xml:space="preserve"><value>Confirm your email address</value></data>
   <data name="reset_password.subject" xml:space="preserve"><value>Reset your password</value></data>
-  <data name="otp.subject" xml:space="preserve"><value>Your sign-in code</value></data>
+  <data name="confirm_email.body" xml:space="preserve"><value>Hello,
+
+Please confirm your email address for {0} with this link:
+{1}
+
+If you did not ask for this, you can ignore this message.</value></data>
+  <data name="reset_password.body" xml:space="preserve"><value>Hello,
+
+Use this link to choose a new password for {0}:
+{1}
+
+If you did not ask for this, you can ignore this message. Your password stays the same.</value></data>
+  <data name="otp.subject" xml:space="preserve"><value>Your verification code</value></data>
+  <data name="otp.body" xml:space="preserve"><value>Your code is {0} (for {1}).
+
+It works once and only for a short time. Do not share it with anyone.</value></data>
+  <data name="sms.otp" xml:space="preserve"><value>{1}: your code is {0}. Do not share it.</value></data>
 </root>
