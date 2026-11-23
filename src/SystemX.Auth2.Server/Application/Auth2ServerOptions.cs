@@ -53,6 +53,12 @@ public sealed class ExternalProviderOptions
 {
     /// <summary>How often every instance looks for changed provider settings, in seconds. Default 30. Redis makes changes visible at once; the poll is the safety net.</summary>
     public int PollSeconds { get; set; } = 30;
+
+    /// <summary>For tests and local work only: allow http and private network addresses for provider URLs. Never turn this on in production.</summary>
+    public bool AllowPrivateNetworks { get; set; }
+
+    /// <summary>How long the state of a started sign-in lives, in minutes. Default 10.</summary>
+    public int StateMinutes { get; set; } = 10;
 }
 
 /// <summary>Redis settings. Redis is on when <see cref="ConnectionString"/> is set.</summary>

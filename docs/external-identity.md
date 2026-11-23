@@ -138,6 +138,32 @@ Secrets are decrypted only when a provider is used, never at load time, and are 
 
 Secrets (client secrets, Apple key, SAML SP key, bind password) are encrypted with Data Protection (purpose `SystemX.Auth2.ExternalProviderSecrets.v1`). The keys are stored in the database, so every instance can read them.
 
+## Setup guides
+
+- [Google](external-identity/google.md), [Microsoft](external-identity/microsoft.md), [GitHub](external-identity/github.md), [Apple](external-identity/apple.md), [Facebook](external-identity/facebook.md), [Generic OpenID Connect](external-identity/generic-oidc.md)
+
+## How the OpenID Connect engine works
+
+1. **Challenge**: the Server makes a random `state`, `nonce` and PKCE verifier, builds the authorization URL, and seals them (encrypted with Data Protection, valid 10 minutes) into a value that the endpoint keeps in a short-lived cookie.
+2. **Callback**: the Server opens the sealed value and checks: not expired, same provider (a response for another provider or another application fails), `state` equal (constant time), no `error`, and the `state` was **not used before** (stored in `replay_entries`, shared by all instances).
+3. **Token request**: the code is exchanged with the PKCE verifier. The client secret (or the Apple signed token) is decrypted only now.
+4. **Checks of the ID token**: signature with the provider keys (found by discovery), audience, lifetime (2 minutes skew), `nonce`, and the issuer rule of the type. Then the type's rules (Google `hd`, Microsoft `tid`, GitHub organizations).
+5. The result is an `ExternalIdentity` (subject, email, verified flag, names, groups). The next step (the login service) decides what to do with it.
+
+All calls to a provider use one HTTP client that refuses private network addresses and redirects (SSRF guard). Failures give `external_claims_invalid` to the user and a short **reason** (for example `nonce_mismatch`) to the audit log. Tokens, codes and claims are never logged.
+
+## How to add a new OIDC provider type (worked example)
+
+Example: add "GitLab".
+
+1. Add `GitLab` to `ExternalProviderType` (Contracts) and a count in the Contracts enum test.
+2. Add a descriptor class in `ExternalProviderDescriptors.cs` (derive from `OidcDescriptor`; set `DisplayName`, `DefaultScopes`, `EmailVerifiedByDefault`, fields) and register it in `ExternalIdentityRegistration`.
+3. In `OidcEndpointResolver.ResolveAsync` add the authority (`https://gitlab.com`) to the `switch`. If the provider is plain OAuth 2.0 (no ID token), return fixed endpoints like GitHub and add a `FromGitLabAsync` method in `OidcIdentitySource`.
+4. Add the type's extra rules (for example allowed groups) in `FromIdTokenAsync`, and fields in `OidcProviderSettings` with `[SettingEditability(GlobalOnly)]`.
+5. Add validation in `ExternalProviderSettingsValidator.Oidc`.
+6. Add the fake endpoints to `FakeOidcProvider` if needed and a test class like `GoogleOidcTests`.
+7. Write the setup guide in `docs/external-identity/gitlab.md` and add it to the list above.
+
 ## How to implement or extend
 
 - **Settings classes**: `Domain/Settings/ExternalProviders.cs`. A new kind needs a `[JsonDerivedType]` and a validator branch in `Application/ExternalProviderSettingsValidator.cs`.

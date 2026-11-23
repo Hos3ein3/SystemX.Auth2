@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- External identity step 4: OpenID Connect / OAuth 2.0 engine (`OidcIdentitySource`) for Google, Microsoft, GitHub, Apple, Facebook and generic OIDC (code flow, PKCE, state, nonce, single-use state through `IReplayCache`,
+  provider rules: Google `HostedDomain`, Microsoft `AllowedTenants`, GitHub organizations and verified email, Apple signed client secret, generic `AllowedIssuers`), endpoint discovery with cache, SSRF guard for all provider calls,
+  `ExternalIdentity` and source abstractions. Docs: setup guide per provider, engine description, how to add a provider type.
 - External identity step 3: `IExternalProviderRegistry` (enabled providers of all applications in memory), provider URLs per application and provider (`ExternalProviderUrls`), reload on every instance (Redis pub/sub plus polling,
   option `Auth2:ExternalProviders:PollSeconds`). Docs: `external-identity` (URLs, runtime changes), `deployment-and-scaling`.
 - External identity step 2 (data model): `AppUserLogin` is per application (key `application_id, login_provider, provider_key`), passkey store per application (`user_passkeys`, `AppUserPasskey`),

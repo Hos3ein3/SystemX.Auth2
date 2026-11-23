@@ -96,6 +96,7 @@ public sealed class MaintenanceJobs(IServiceScopeFactory scopes, IDistributedLoc
                 var cutoff = now.AddDays(-1);
                 var n = await db.OtpCodes.Where(c => c.ExpiresAtUtc < cutoff || (c.ConsumedAtUtc != null && c.ConsumedAtUtc < cutoff)).ExecuteDeleteAsync(ct);
                 if (n > 0) log.LogInformation("Removed {Count} old one-time codes.", n);
+                await db.ReplayEntries.Where(r => r.ExpiresAtUtc < now).ExecuteDeleteAsync(ct);
                 break;
             }
             case "audit-retention":
