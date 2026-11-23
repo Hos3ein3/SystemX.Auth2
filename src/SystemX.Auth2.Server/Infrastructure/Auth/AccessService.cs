@@ -44,6 +44,22 @@ internal static class AccessSupport
     public static bool IsUniqueViolation(Exception ex) =>
         ex is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } };
 
+    /// <summary>
+    /// Runs <paramref name="work"/> in a transaction that holds a per-application advisory lock, so two syncs of one application
+    /// run one after the other (no deadlocks between their inserts). The lock is released at commit or rollback.
+    /// </summary>
+    public static Task<T> SerializedAsync<T>(Auth2DbContext db, Guid applicationId, Func<Task<T>> work, CancellationToken ct) =>
+        db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var lockKey = "auth2.sync:" + applicationId.ToString("N");
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))", ct);
+            var result = await work();
+            await tx.CommitAsync(ct);
+            return result;
+        });
+
     /// <summary>Global roles are visible in the global project and in single-application mode.</summary>
     public static bool IncludeGlobalRoles(Auth2Application app, ServerMode mode) => app.IsGlobalProject || mode == ServerMode.SingleApplication;
 }

@@ -28,7 +28,7 @@ When you call the server from your own backend (or you write a client). The `Sys
 | 401 | No token or a bad token (`invalid_token`) |
 | 403 | Wrong kind of token (`forbidden`), missing scope (`insufficient_scope`), `registration_disabled`, `application_disabled`, `two_factor_not_allowed` |
 | 404 | The application of the token does not exist (`application_not_found`) |
-| 409 | `conflict` (for example two-factor is already on) |
+| 409 | `conflict` (for example two-factor is already on), `server_mode_mismatch`, `project_key_or_name_mismatch` |
 | 423 | `locked_out` |
 | 429 | `rate_limited` (rate limiting arrives in phase 10) |
 
@@ -52,6 +52,20 @@ See [error-codes.md](error-codes.md).
 | `POST /api/auth2/2fa/disable` | user | `auth2.me` | `TwoFactorDisableRequest` | `204` |
 | `POST /api/auth2/2fa/recovery-codes` | user | `auth2.me` | `RecoveryCodesRequest` | `200 RecoveryCodesResponse` (once) |
 | `GET /api/auth2/me` | user | `auth2.me` | none | `200 CurrentUserInfo` |
+
+## Client endpoints (handshake, sync, pull)
+
+| Method + route | Token | Scope | Body | Answer |
+|---|---|---|---|---|
+| `POST /api/auth2/client/handshake` | client | `auth2.client.handshake` | `ClientHandshakeRequest` | `200 ClientHandshakeResponse`, `409` on mismatch |
+| `POST /api/auth2/permissions/sync` | client | `auth2.permissions.sync` | `PermissionSyncRequest` | `200 SyncResponse` |
+| `POST /api/auth2/roles/sync` | client | `auth2.roles.sync` | `RoleSyncRequest` | `200 SyncResponse` |
+| `GET /api/auth2/permissions` | client | `auth2.permissions.sync` | none | `200 PermissionDto[]` |
+| `GET /api/auth2/roles` | client | `auth2.roles.sync` | none | `200 RoleDto[]` |
+| `GET /api/auth2/groups` | client | `auth2.groups.read` | none | `200 GroupDto[]` |
+| `GET /api/auth2/users/{id}/access` | client | `auth2.admin` | none | `200 CurrentUserInfo` (no scopes) |
+
+Details: [handshake-and-startup.md](handshake-and-startup.md), [permission-sync.md](permission-sync.md). `users/{id}/access` answers `404` when the user does not exist or is not a member of the token's application. The scope `auth2.admin` is not in the default `AllowedScopes`: add it only for trusted back-end programs.
 
 The DTOs are in `SystemX.Auth2.Contracts.Auth`. JSON uses camelCase.
 
@@ -93,7 +107,5 @@ Authorization: Bearer <user token with auth2.me>
 
 | Endpoint | Phase |
 |---|---|
-| `POST /api/auth2/client/handshake` | 8 |
-| `POST /api/auth2/permissions/sync`, `/roles/sync`; `GET /permissions`, `/roles`, `/groups`; `GET /users/{id}/access` | 8 |
 | `/api/auth2/admin/...` | 9 |
 | `GET /health/live`, `/health/ready` | 10 |

@@ -174,3 +174,13 @@ Effective permissions are the union of direct grants, permissions of the user's 
 
 ## ADR-057: The user store raises the access version for role changes
 `Auth2UserStore` remembers that `AddToRoleAsync` / `RemoveFromRoleAsync` ran and raises the access version right after `UpdateAsync` saves. So a role change made with a plain `UserManager` (seeder, scripts, other code) is as safe as one made with `IAccessService`. `IAccessService.AssignRoleAsync` / `RemoveRoleAsync` rely on this and do not bump twice.
+
+## ADR-058: Sync is serialized per application by an advisory lock
+Parallel syncs of one application (many instances starting together) deadlocked on inserts of roles and links. Each sync now runs in a transaction that first takes `pg_advisory_xact_lock` for the application, so syncs queue up. Unique indexes stay as a second guard. The work runs inside the EF execution strategy, because user transactions need it.
+
+## ADR-059: Sync rules
+Validate everything first, then write (all-or-nothing validation). Permissions: admin-made text is never overwritten; a re-sent obsolete permission is restored; `AllowRemovePermissionsFromSync` marks missing sync permissions obsolete and never deletes. Roles: matched only inside the application; `GlobalAdmin` and `ProjectAdmin` are reserved names; permission links are only added; unknown permission keys in roles are created as sync permissions when permission sync is allowed; new links raise the application access version. `displayName` of a role is not stored (the role entity has none).
+
+## ADR-060: Handshake compares, it does not select
+The handshake takes the application from the token and compares the body with it. Mode mismatch and name/key mismatch are `409`. Name comparison ignores case and outer spaces; the project key is compared ignoring case too (keys are lowercase anyway). `issuer` comes from `Auth2:Issuer` or the request address. `GET /users/{id}/access` needs the `auth2.admin` scope, which is not allowed to clients by default, and returns `404` for non-members.
+

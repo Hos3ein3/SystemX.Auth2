@@ -40,4 +40,7 @@ Every `TODO` in code must be listed here.
 - Phase 7: the `role` claim in an already issued token is not updated when roles change. `/me` is always current; the `pv` claim tells a client when to ask again.
 - Phase 7: changing roles of a global role from a project, and global permissions, are not supported. Permissions are always per application.
 - Phase 7: the access cache is per instance (memory); correct across instances because the version is read from the database each time.
+- Phase 8: sync has no rate limit yet (phase 10). The client side (scanners, hosted sync services, `HandshakeHostedService`) is built in phases 11–13.
+- Phase 8: role `displayName` is accepted but not stored. Add a column in a later migration if the admin UI needs it.
+- Phase 8: an unexpected unique-violation inside the sync transaction (for example an admin creating the same role at the same moment) ends that sync with a server error. Calling again fixes it.
 

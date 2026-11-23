@@ -5,6 +5,8 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- Phase 8: client handshake with server-mode check, permission and role sync (idempotent, never deletes, serialized per application), pull routes for permissions, roles and groups,
+  `GET /users/{id}/access`. Docs: `permission-sync`, `handshake-and-startup`.
 - Phase 7: access model: `IAccessService` (effective access, access version, cached by version, permissions, roles, role permissions, direct grants) and `IGroupService`
   (groups, members, roles, permissions), `GET /api/auth2/me`, effective roles in tokens, audit events for every change, `PermissionDto` / `RoleDto` / `GroupDto` in Contracts.
   Docs: `authorization`.

@@ -111,6 +111,9 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IAccessVersionService, AccessVersionService>();
         services.AddScoped<IAccessService, AccessService>();
         services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<IPermissionSyncService, PermissionSyncService>();
+        services.AddScoped<IRoleSyncService, RoleSyncService>();
+        services.AddScoped<IClientHandshakeService, ClientHandshakeService>();
         services.AddScoped<IRegisterService, RegisterService>();
         services.AddScoped<IJoinService, JoinService>();
         services.AddScoped<IPasswordService, PasswordService>();

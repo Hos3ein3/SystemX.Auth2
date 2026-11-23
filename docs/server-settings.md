@@ -206,7 +206,7 @@ Client behaviour.
 | `AllowedScopes` | `List<string>` | `"openid", "profile", "email", "phone", "roles", "offline_access", "auth2.me", "auth2.client.handshake", "auth2.register", "auth2.login", "auth2.permissions.sync", "auth2.roles.sync", "auth2.groups.read"` | GlobalOnly | Scopes clients may request. Never put `auth2.admin` or `auth2.admin.global` here for a normal client. |
 | `PermissionSyncAllowed` | `bool` | `true` | GlobalOnly | Permission sync is allowed. |
 | `RoleSyncAllowed` | `bool` | `true` | GlobalOnly | Role sync is allowed. |
-| `AllowRemovePermissionsFromSync` | `bool` | `null` | GlobalOnly | Sync may remove permissions. |
+| `AllowRemovePermissionsFromSync` | `bool` | `null` | GlobalOnly | Sync marks permissions that are missing from the list as obsolete (never deletes). |
 | `DefaultUiMode` | `UiMode` | `Hosted` | GlobalOnly | Default UI mode. |
 | `AllowSelfUiLogin` | `bool` | `null` | GlobalOnly | Enables the password grant for this application. |
 | `AllowedCorsOrigins` | `List<string>` | `empty list` | GlobalOnly | Allowed CORS origins. CORS is off when empty. |
@@ -240,7 +240,7 @@ External login provider (experimental).
 
 - Lowering `Password.MinLength` or turning off lockout makes accounts easier to attack.
 - `Clients.AllowSelfUiLogin` turns on the password grant for the application. The client app then handles passwords. Prefer the hosted UI. See [authentication-flows.md](authentication-flows.md).
-- `Clients.AllowRemovePermissionsFromSync` lets a client delete permissions by syncing. Keep it off.
+- `Clients.AllowRemovePermissionsFromSync` lets a client mark synced permissions obsolete by leaving them out of a sync (nothing is deleted). Keep it off unless one client owns the whole catalog.
 - `Email.RequireConfirmedEmail` is off by default so a fresh install works with the development email sender. Turn it on in production.
 
 ## Common problems

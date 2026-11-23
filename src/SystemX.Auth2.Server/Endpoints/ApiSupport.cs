@@ -90,9 +90,9 @@ internal static class ApiResults
     {
         // invalid_token is 400 here (a bad confirmation or reset token). The auth filter answers 401 for a bad access token by itself.
         Auth2ErrorCodes.Forbidden or Auth2ErrorCodes.InsufficientScope or Auth2ErrorCodes.RegistrationDisabled
-            or Auth2ErrorCodes.ApplicationDisabled or Auth2ErrorCodes.TwoFactorNotAllowed => StatusCodes.Status403Forbidden,
+            or Auth2ErrorCodes.ApplicationDisabled or Auth2ErrorCodes.TwoFactorNotAllowed or Auth2ErrorCodes.SyncNotAllowed => StatusCodes.Status403Forbidden,
         Auth2ErrorCodes.NotFound or Auth2ErrorCodes.ApplicationNotFound => StatusCodes.Status404NotFound,
-        Auth2ErrorCodes.Conflict => StatusCodes.Status409Conflict,
+        Auth2ErrorCodes.Conflict or Auth2ErrorCodes.ProjectKeyOrNameMismatch or Auth2ErrorCodes.ServerModeMismatch => StatusCodes.Status409Conflict,
         Auth2ErrorCodes.LockedOut => StatusCodes.Status423Locked,
         Auth2ErrorCodes.RateLimited => StatusCodes.Status429TooManyRequests,
         _ => StatusCodes.Status400BadRequest,
@@ -101,6 +101,10 @@ internal static class ApiResults
     /// <summary>The result of an operation as an HTTP result: 204 on success, otherwise the error.</summary>
     public static IResult From(HttpContext http, OperationResult result) =>
         result.Succeeded ? Results.NoContent() : Error(http, StatusFor(result.ErrorCode!), result.ErrorCode!, result.Errors);
+
+    /// <summary>A sync result: 200 with the counts, otherwise the error.</summary>
+    public static IResult From(HttpContext http, SyncOutcome outcome) =>
+        outcome.Result.Succeeded ? Results.Ok(outcome.Response) : From(http, outcome.Result);
 }
 
 internal static class ApiEndpointExtensions

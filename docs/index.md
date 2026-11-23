@@ -23,7 +23,9 @@ The map of all documentation pages. Pages marked *(planned)* are written in a la
 | [localization.md](localization.md) | resx texts, culture order, add a language | Written |
 | [authentication-flows.md](authentication-flows.md) | Login, tokens, grants, register, join, OTP, reset, 2FA, consent | Written (grows) |
 | [authorization.md](authorization.md) | Permissions, roles, groups, effective access, `/me` | Written |
-| getting-started.md, client-setup.md, client-authorization.md, client-current-user.md, permission-sync.md, handshake-and-startup.md, machine-to-machine.md, admin-api.md, security.md, deployment-and-scaling.md, observability.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
+| [permission-sync.md](permission-sync.md) | Push and pull of permissions and roles | Written |
+| [handshake-and-startup.md](handshake-and-startup.md) | Startup check and server mode | Written |
+| getting-started.md, client-setup.md, client-authorization.md, client-current-user.md, machine-to-machine.md, admin-api.md, security.md, deployment-and-scaling.md, observability.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
 
 ## Related pages
 
