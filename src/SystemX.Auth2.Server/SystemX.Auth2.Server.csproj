@@ -12,6 +12,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="OpenIddict.AspNetCore" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" />
+    <PackageReference Include="Novell.Directory.Ldap.NETStandard" />
+    <PackageReference Include="ITfoxtec.Identity.Saml2" />
+    <PackageReference Include="ITfoxtec.Identity.Saml2.MvcCore" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />

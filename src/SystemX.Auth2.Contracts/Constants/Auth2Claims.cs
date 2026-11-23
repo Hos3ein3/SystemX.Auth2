@@ -31,6 +31,8 @@ public static class Auth2Claims
     public const string ProjectKey = "projectkey";
     /// <summary>Authentication methods reference.</summary>
     public const string Amr = "amr";
+    /// <summary>Name of the external provider the user signed in with (<c>idp</c>). Absent for local sign-in.</summary>
+    public const string IdentityProvider = "idp";
     /// <summary>Session id.</summary>
     public const string SessionId = "sid";
     /// <summary>Saved culture of the user.</summary>

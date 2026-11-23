@@ -87,6 +87,30 @@ public static class Auth2ErrorCodes
     public const string InvalidPermissionKey = "invalid_permission_key";
     /// <summary>A scope name is invalid, or it is reserved (<c>auth2.*</c> and the standard OpenID Connect scopes).</summary>
     public const string InvalidScopeName = "invalid_scope_name";
+    /// <summary>The provider gave an email that is not verified, and a user with that email exists: nothing was linked.</summary>
+    public const string ExternalEmailExistsNotVerified = "external_email_exists_not_verified";
+    /// <summary>Registration through this external provider is not allowed.</summary>
+    public const string ExternalRegistrationNotAllowed = "external_registration_not_allowed";
+    /// <summary>The external provider is disabled or unknown.</summary>
+    public const string ExternalProviderDisabled = "external_provider_disabled";
+    /// <summary>The provider's answer is missing something or is not valid.</summary>
+    public const string ExternalClaimsInvalid = "external_claims_invalid";
+    /// <summary>The user cannot remove the last way to sign in.</summary>
+    public const string CannotRemoveLastLoginMethod = "cannot_remove_last_login_method";
+    /// <summary>A SAML response did not pass validation.</summary>
+    public const string SamlResponseInvalid = "saml_response_invalid";
+    /// <summary>A SAML response, assertion or request id was used before.</summary>
+    public const string SamlReplayDetected = "saml_replay_detected";
+    /// <summary>The directory could not be reached.</summary>
+    public const string LdapUnavailable = "ldap_unavailable";
+    /// <summary>The directory account is disabled (only shown when the application reveals it).</summary>
+    public const string LdapAccountDisabled = "ldap_account_disabled";
+    /// <summary>Passkeys are not allowed here.</summary>
+    public const string PasskeyNotAllowed = "passkey_not_allowed";
+    /// <summary>The user has the maximum number of passkeys.</summary>
+    public const string PasskeyLimitReached = "passkey_limit_reached";
+    /// <summary>This authenticator model is blocked.</summary>
+    public const string PasskeyBlockedAuthenticator = "passkey_blocked_authenticator";
     /// <summary>Too many items in one request.</summary>
     public const string TooManyItems = "too_many_items";
     /// <summary>Redirect URI not allowed.</summary>
