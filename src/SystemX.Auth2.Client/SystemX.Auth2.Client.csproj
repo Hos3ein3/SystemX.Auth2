@@ -4,8 +4,12 @@
     <Description>Client package for SystemX.Auth2: login, tokens, permissions and sync.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="SystemX.Auth2.Client.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />

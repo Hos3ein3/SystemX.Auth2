@@ -104,7 +104,7 @@ internal sealed class AccessService(
     private async Task<EffectiveAccess> LoadAsync(AppUser user, Auth2Application app, int version, CancellationToken ct)
     {
         if (Mode == ServerMode.MultiApplication && !await db.UserApplications.AsNoTracking().AnyAsync(x => x.UserId == user.Id && x.ApplicationId == app.Id, ct))
-            return new EffectiveAccess([], [], [], version);   // not a member of this application: no access
+            return new EffectiveAccess([], [], [], version, [], []);   // not a member of this application: no access
 
         var includeGlobal = AccessSupport.IncludeGlobalRoles(app, Mode);
         var groups = await (from ug in db.UserGroups.AsNoTracking()
@@ -127,7 +127,9 @@ internal sealed class AccessService(
             .Where(p => direct.Contains(p.Id) || viaRoles.Contains(p.Id) || viaGroups.Contains(p.Id))
             .Select(p => p.Key).ToListAsync(ct);
 
-        return new EffectiveAccess(Sorted(roleRows.Select(r => r.Name!)), Sorted(keys), Sorted(groups.Select(g => g.Name)), version);
+        var directKeys = await db.Permissions.AsNoTracking().Where(p => direct.Contains(p.Id)).Select(p => p.Key).ToListAsync(ct);
+        var roleKeys = await db.Permissions.AsNoTracking().Where(p => viaRoles.Contains(p.Id)).Select(p => p.Key).ToListAsync(ct);
+        return new EffectiveAccess(Sorted(roleRows.Select(r => r.Name!)), Sorted(keys), Sorted(groups.Select(g => g.Name)), version, Sorted(directKeys), Sorted(roleKeys));
     }
 
     private static IReadOnlyList<string> Sorted(IEnumerable<string> values) => [.. values.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
@@ -138,7 +140,8 @@ internal sealed class AccessService(
         var full = $"{user.FirstName} {user.LastName}".Trim();
         return new CurrentUserInfo(user.Id, user.UserName, user.Email, user.PhoneNumber, user.FirstName, user.LastName,
             !string.IsNullOrEmpty(user.DisplayName) ? user.DisplayName : (full.Length > 0 ? full : user.UserName),
-            access.Roles, access.Permissions, access.Groups, [.. scopes.Order(StringComparer.Ordinal)], access.AccessVersion);
+            access.Roles, access.Permissions, access.Groups, [.. scopes.Order(StringComparer.Ordinal)], access.AccessVersion,
+            access.DirectPermissions ?? [], access.RolePermissions ?? []);
     }
 
     public async Task<bool> HasPermissionAsync(AppUser user, string permissionKey, CancellationToken ct = default)

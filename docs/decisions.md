@@ -226,3 +226,15 @@ The client never guesses the mode. It sends the project key (or none) and also c
 ## ADR-074: Machine token cache
 One cache entry per sorted scope set, kept until `expires_in - 60 s` (at least 30 s), one request at a time per scope set (single flight), failures not cached. The default login scope of the client is `openid offline_access auth2.me`, so `GetMeAsync` works with the tokens it gets.
 
+## ADR-075: Client authorization is policy names plus one requirement type
+Attributes derive from `AuthorizeAttribute` and set a policy name such as `auth2:perm:any:orders.read|orders.write`. `Auth2PolicyProvider` builds the policy (authenticated user + one `Auth2Requirement`) and sends every other name to the default provider, so user policies keep working. Several attributes on one endpoint are several policies and ASP.NET combines them with AND. The Minimal API extensions only add these attributes (or plain metadata) to the endpoint, so scanners can read them (phase 13). `WithOnlyRolePermission` / `WithOnlyUserPermission` are metadata that the permission check reads from the endpoint.
+
+## ADR-076: /me tells where permissions come from
+`CurrentUserInfo` got two optional lists, `DirectPermissions` and `RolePermissions` (roles of the user and roles of the user's groups). Permissions given directly to a group are in `Permissions` only. A missing list (older server) makes source checks fail closed.
+
+## ADR-077: Roles, scopes and token kind from claims; permissions and groups from the server
+Tokens carry roles and scopes but not permissions (size, ADR in phase 7). The cache key is client id + user id; the entry is read again when its version is older than the token's `pv`, or when the time is over. Same-token changes stay hidden until then (documented). When the server cannot be asked: an old cached answer is used, otherwise the check fails closed (403).
+
+## ADR-078: API authentication uses the JWT bearer handler
+The standard handler gives discovery, a cached key set and a reload on an unknown key id. Claims are not remapped (`sub`, `role`, `scope`). The audience is the client id, so tokens of other applications are refused. Revocation is not checked (no introspection): tokens are short-lived. After a rotation the first token with an unknown key id triggers a read of the keys and a wait of up to 2 seconds (a signing-key resolver, rate limited by `KeyRefreshInterval`), so no request is refused.
+

@@ -9,7 +9,10 @@ namespace SystemX.Auth2.Server.Application;
 /// <param name="Permissions">Direct permissions, permissions of the roles above, and permissions of the user's groups.</param>
 /// <param name="Groups">Names of the user's groups.</param>
 /// <param name="AccessVersion">The access version (application version + user version). It only grows.</param>
-public sealed record EffectiveAccess(IReadOnlyList<string> Roles, IReadOnlyList<string> Permissions, IReadOnlyList<string> Groups, int AccessVersion);
+/// <param name="DirectPermissions">Only the permissions granted to the user directly.</param>
+/// <param name="RolePermissions">Only the permissions that come from the user's roles or the roles of the user's groups.</param>
+public sealed record EffectiveAccess(IReadOnlyList<string> Roles, IReadOnlyList<string> Permissions, IReadOnlyList<string> Groups, int AccessVersion,
+    IReadOnlyList<string>? DirectPermissions = null, IReadOnlyList<string>? RolePermissions = null);
 
 /// <summary>
 /// Reads and changes access data (permissions, roles, role permissions, direct grants) of the <b>current application</b>.

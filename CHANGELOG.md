@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- Phase 12: Client authorization: attributes and Minimal API extensions (`WithAuth2`, `WithAnonymous`, `WithRole`, `WithAllRoles`, `WithPermission`, `WithAllPermissions`, `WithOnlyRolePermission`, `WithOnlyUserPermission`, `WithScope`,
+  `WithMachineOnly`, `WithUserOnly`, `WithGroup`, `WithAuth2Policy`, `WithAuth2Audit`), policy provider and handlers, audit sink, `ICurrentUser`, `IAuth2CurrentUserService`, current user stores (memory, distributed),
+  `UseApiAuthentication` (JWT bearer with key refresh), `UseDistributedCurrentUserStore`. Server: `/me` returns `DirectPermissions` and `RolePermissions`. Docs: `client-authorization`, `client-current-user`.
 - Phase 11: Client core (`SystemX.Auth2.Client`): `AddAuth2Client` (URL or configuration section), builder methods (`ServerWithMultiApplication`, `EnablePermissions`, `EnableRoles`, `EnableGroups`,
   `EnableMachineToMachine`, `EnableCurrentUser`, `EnableResilience`, `EnableHealthCheck`), validated options, machine token provider and handler, handshake with the server-mode check, start-up behaviour and
   background retries, `Auth2ClientState`, health check, `IAuth2ApiClientService`. Docs: `client-setup`, `machine-to-machine`.

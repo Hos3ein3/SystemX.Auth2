@@ -51,4 +51,6 @@ Every `TODO` in code must be listed here.
 - Phase 10: Serilog sinks other than console and OTLP are configured by the operator through the `Serilog` section (extra sink packages are not included).
 - Phase 11: `UseApiAuthentication`, `UseCookieAuthentication`, `UseBlazor`, `UseHostedUi`, `UseSelfUi`, `EnableTokenForwarding`, `UseDistributedCurrentUserStore`, `IAuth2WebService` and `IAuth2BlazorService` are built in phases 12 and 13. `EnablePermissions`, `EnableRoles`, `EnableGroups` and `EnableCurrentUser` only store their options for now (sync and current user come in phases 12-13).
 - Phase 11: the Client does not cache the OIDC discovery document and JWKS yet (needed with API authentication, phase 12).
+- Phase 12: a revoked access token still works on a client until it expires (no introspection). Cookie / OIDC login, Blazor helpers, the redirect-or-401 choice for browser apps, and cookie storage of access data come in phase 13.
+- Phase 12: a role given to a user shows in a **new** token only; permissions and groups follow the cache rules in `client-current-user.md`.
 

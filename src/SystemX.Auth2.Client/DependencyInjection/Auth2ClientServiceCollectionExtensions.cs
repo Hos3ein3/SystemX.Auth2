@@ -4,6 +4,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using SystemX.Auth2.Client;
+using Microsoft.AspNetCore.Authorization;
+using SystemX.Auth2.Client.Authorization;
+using SystemX.Auth2.Client.CurrentUser;
 using SystemX.Auth2.Client.DependencyInjection;
 using SystemX.Auth2.Client.Handshake;
 using SystemX.Auth2.Client.HealthChecks;
@@ -50,6 +53,20 @@ public static class Auth2ClientServiceCollectionExtensions
                 client.BaseAddress = new Uri(o.ServerUrl.TrimEnd('/') + "/");
                 client.Timeout = Timeout.InfiniteTimeSpan;   // our own timeouts apply (the resilience handler also has its own)
             });
+
+        // Authorization and the current user
+        services.AddHttpContextAccessor();
+        services.AddMemoryCache();
+        services.AddAuthorization();
+        services.Replace(ServiceDescriptor.Singleton<IAuthorizationPolicyProvider, Auth2PolicyProvider>());
+        services.Replace(ServiceDescriptor.Singleton<IAuthorizationMiddlewareResultHandler, Auth2AuthorizationResultHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IAuthorizationHandler, Auth2AuthorizationHandler>());
+        services.TryAddSingleton<IAuth2AuditSink, LoggingAuditSink>();
+        services.TryAddSingleton<ICurrentUserStore, MemoryCurrentUserStore>();
+        services.TryAddSingleton<IAuth2AccessTokenAccessor, AccessTokenAccessor>();
+        services.TryAddSingleton<IAuth2CurrentUserService, CurrentUserService>();
+        services.TryAddScoped<IAuth2AccessProvider, AccessProvider>();
+        services.TryAddScoped<ICurrentUser, CurrentUserImpl>();
 
         services.TryAddSingleton<Auth2ClientState>();
         services.TryAddSingleton<IAuth2MachineTokenProvider, MachineTokenProvider>();
@@ -106,6 +123,14 @@ public static class Auth2ClientServiceCollectionExtensions
     public static IAuth2ClientBuilder EnableCurrentUser(this IAuth2ClientBuilder builder, Action<Auth2CurrentUserOptions>? configure = null)
     {
         if (configure is not null) builder.Services.Configure(configure);
+        return builder;
+    }
+
+    /// <summary>Keeps the access data of users in <c>IDistributedCache</c> (add Redis with <c>AddStackExchangeRedisCache</c>), so all instances of your application share it.</summary>
+    public static IAuth2ClientBuilder UseDistributedCurrentUserStore(this IAuth2ClientBuilder builder)
+    {
+        builder.Services.AddDistributedMemoryCache();   // the default distributed cache, replaced when you add Redis
+        builder.Services.Replace(ServiceDescriptor.Singleton<ICurrentUserStore, DistributedCurrentUserStore>());
         return builder;
     }
 
