@@ -190,3 +190,5 @@ dotnet ef migrations add <Name> -p src/SystemX.Auth2.Server -s src/SystemX.Auth2
 - [Permission, role and group sync](permission-sync.md)
 - [Server README](../src/SystemX.Auth2.Server/README.md)
 - [Documentation index](index.md)
+- [Redis: what it does, how to enable it, and the Client's cache](redis.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)

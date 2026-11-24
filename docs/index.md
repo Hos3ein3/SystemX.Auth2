@@ -29,6 +29,7 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 | [email-and-sms.md](email-and-sms.md) | Email and SMS providers per project and application (SMTP, Google) |
 | [localization.md](localization.md) | Texts, culture order, add a language |
 | [deployment-and-scaling.md](deployment-and-scaling.md) | Several instances, Redis, probes |
+| [redis.md](redis.md) | Enable Redis: what it holds, why, failure behaviour, the Client access-data cache |
 | [observability.md](observability.md) | Logs, traces, metrics, health |
 | [security.md](security.md) | Threat model, rate limits, keys, checklist |
 | [key-ring.md](key-ring.md) | The key ring and its in-memory snapshot: keys, rotation, use |
@@ -42,6 +43,7 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 | [authentication-flows.md](authentication-flows.md) | Login, tokens, grants, register, join, OTP, reset, two-factor, consent |
 | [enums-reference.md](enums-reference.md) | Every enum: values, where it is used, which value to choose and why |
 | [two-factor.md](two-factor.md) | Two-factor sign-in (authenticator app): enable, `TwoFactorService`, the sign-in step, recovery codes, admin reset |
+| [password-history.md](password-history.md) | Old password hashes, no reuse, password expiry: settings, behaviour, examples |
 | [authorization.md](authorization.md) | Permissions, roles, groups, effective access, `/me` |
 | [permission-sync.md](permission-sync.md) | Push and pull of permissions, roles, scopes and groups |
 | [handshake-and-startup.md](handshake-and-startup.md) | The startup check and the server mode |

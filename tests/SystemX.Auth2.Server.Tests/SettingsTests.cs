@@ -47,6 +47,28 @@ public class ProjectSettingsValidatorTests
         Check(s => s.Registration.AssignedPermissions = [.. Enumerable.Range(0, 51).Select(i => $"p{i}")]).ShouldContain(e => e.Path == "Registration.AssignedPermissions");
     }
 
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(24, true)]
+    [InlineData(25, false)]
+    public void Validate_OldPasswordsToKeep_IsBetween1And24(int value, bool valid) =>
+        Check(s => s.Password.OldPasswordsToKeep = value).Any(e => e.Path == "Password.OldPasswordsToKeep").ShouldBe(!valid);
+
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    [InlineData(90, true)]
+    [InlineData(3650, true)]
+    [InlineData(3651, false)]
+    public void Validate_PasswordExpiryDays_IsBetween0And3650(int value, bool valid) =>
+        Check(s => s.Password.PasswordExpiryDays = value).Any(e => e.Path == "Password.PasswordExpiryDays").ShouldBe(!valid);
+
+    [Fact]
+    public void ThePasswordHistory_IsOffByDefault_AndExpiryIsOff() =>
+        new ProjectSettings().Password.ShouldSatisfyAllConditions(
+            p => p.SaveOldPasswords.ShouldBeFalse(), p => p.AllowOldPasswordReuse.ShouldBeFalse(), p => p.PasswordExpiryDays.ShouldBe(0), p => p.OldPasswordsToKeep.ShouldBe(5));
+
     private static List<SettingsError> CheckUris(params string[] uris)
     {
         var errors = new List<SettingsError>();

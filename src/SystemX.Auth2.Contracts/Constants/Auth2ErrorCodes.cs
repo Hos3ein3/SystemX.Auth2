@@ -39,6 +39,10 @@ public static class Auth2ErrorCodes
     public const string PasswordRequiresUniqueChars = "password_requires_unique_chars";
     /// <summary>Password is on the banned list.</summary>
     public const string PasswordBanned = "password_banned";
+    /// <summary>The new password is the current one or one of the remembered old ones (<c>Password.SaveOldPasswords</c>).</summary>
+    public const string PasswordReused = "password_reused";
+    /// <summary>The password is older than <c>Password.PasswordExpiryDays</c>. The person must choose a new one (reset).</summary>
+    public const string PasswordExpired = "password_expired";
     /// <summary>User name has a wrong length or wrong characters.</summary>
     public const string InvalidUserName = "invalid_user_name";
     /// <summary>Email is not valid.</summary>

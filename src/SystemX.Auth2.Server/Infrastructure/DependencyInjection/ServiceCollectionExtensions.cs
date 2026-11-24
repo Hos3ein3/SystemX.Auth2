@@ -155,6 +155,8 @@ public static class Auth2ServerServiceCollectionExtensions
         services.TryAddScoped<ISmsSender, FactorySmsSender>();
         services.AddScoped<IUserNotifier, UserNotifier>();
         services.AddScoped<IRegistrationDefaults, RegistrationDefaults>();
+        services.AddScoped<PasswordRehashMarker>();
+        services.AddScoped<IPasswordHistoryService, PasswordHistoryService>();
         services.AddScoped<IAccessVersionService, AccessVersionService>();
         services.AddScoped<IAccessService, AccessService>();
         services.AddScoped<IGroupService, GroupService>();

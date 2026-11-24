@@ -50,6 +50,8 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IProjectSc
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     /// <summary>OTP codes.</summary>
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
+    /// <summary>The hashes of the passwords people had before.</summary>
+    public DbSet<PasswordHistoryEntry> PasswordHistory => Set<PasswordHistoryEntry>();
     /// <summary>Rules that turn external groups, claims and attributes into roles, groups and permissions.</summary>
     public DbSet<ExternalGroupMapping> ExternalGroupMappings => Set<ExternalGroupMapping>();
     /// <summary>Server-wide values changed at run time.</summary>
@@ -260,6 +262,16 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IProjectSc
             e.HasIndex(x => x.OccurredAtUtc);
             e.HasIndex(x => new { x.ProjectId, x.OccurredAtUtc });
             e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
+        });
+        b.Entity<PasswordHistoryEntry>(e =>
+        {
+            e.ToTable("password_history");
+            e.Property(x => x.PasswordHash).IsRequired();
+            e.HasIndex(x => new { x.UserId, x.CredentialProjectId, x.SavedAtUtc });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Project>().WithMany().HasForeignKey(x => x.CredentialProjectId).OnDelete(DeleteBehavior.Cascade);
+            // The rows of the current project, and the rows of shared credentials (no project).
+            e.HasQueryFilter(x => FiltersBypassed || x.CredentialProjectId == null || x.CredentialProjectId == CurrentProjectId);
         });
         b.Entity<OtpCode>(e =>
         {

@@ -67,13 +67,15 @@ Each of these methods asks `ICredentialStateProvider` for the strategy of the cu
 
 | Override | What it reads or writes |
 |---|---|
-| `GetPasswordHashAsync`, `SetPasswordHashAsync`, `HasPasswordAsync` | The password hash. `HasPasswordAsync` is "the hash is not null" |
+| `GetPasswordHashAsync`, `HasPasswordAsync` | The password hash. `HasPasswordAsync` is "the hash is not null" |
+| `SetPasswordHashAsync` | Stores the hash **and**, when a password is replaced: hands the old hash to `IPasswordHistoryService` (history on) and records the date of the password. A rehash during a sign-in does neither ([password-history.md](password-history.md#what-is-saved-and-when)) |
 | `GetSecurityStampAsync`, `SetSecurityStampAsync` | The security stamp (changing it signs out the other cookies) |
 | `GetTwoFactorEnabledAsync`, `SetTwoFactorEnabledAsync` | Whether the authenticator-app second step is on |
 | `GetLockoutEndDateAsync`, `SetLockoutEndDateAsync` | When the lock ends |
 | `GetAccessFailedCountAsync`, `IncrementAccessFailedCountAsync`, `ResetAccessFailedCountAsync` | The failed-attempt counter |
 | `GetLockoutEnabledAsync`, `SetLockoutEnabledAsync` | Whether this person can be locked |
 | `SetAuthenticatorKeyAsync`, `GetAuthenticatorKeyAsync` | The TOTP key (encrypted at rest) |
+| *(also on the state)* `GetPasswordChangedAtAsync`, `SetPasswordChangedAtAsync` | When the password was last set ([password-history.md](password-history.md)) |
 | `ReplaceCodesAsync`, `RedeemCodeAsync`, `CountCodesAsync` | The recovery codes of the authenticator step |
 
 `CreateAsync` first calls `BeforeUserCreated` on the strategy, so a pending membership row is saved **in the same transaction** as the new user ([`UserProjectCredentialState`](#userprojectcredentialstate)).
@@ -197,7 +199,7 @@ It is scoped and cheap: it only asks the flow resolver for the effective scope a
 
 ### `Auth2UserManager`
 
-A `UserManager<AppUser>` with **four overrides, all about lockout**. Why only lockout: `IdentityOptions.Lockout` is global, but the lockout rules are project settings (`Lockout.LockoutEnabled`, `MaxFailedAttempts`, `LockoutMinutes`, `LockoutForNewUsers`; [server-settings.md](server-settings.md)). Everything else Identity needs per project is done by the validators and the stores.
+A `UserManager<AppUser>` with **four overrides: lockout and the rehash marker**. Why only lockout: `IdentityOptions.Lockout` is global, but the lockout rules are project settings (`Lockout.LockoutEnabled`, `MaxFailedAttempts`, `LockoutMinutes`, `LockoutForNewUsers`; [server-settings.md](server-settings.md)). Everything else Identity needs per project is done by the validators and the stores.
 
 | Override | Behaviour |
 |---|---|
@@ -268,3 +270,4 @@ await userManager.AddToRoleAsync(user, "Editor");   // finds "Editor" in the cur
 - [Error codes](error-codes.md)
 - [Security](security.md)
 - [Passkeys](external-identity/passkeys.md)
+- [Decisions (ADR list)](decisions.md)

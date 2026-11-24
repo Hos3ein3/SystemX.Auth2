@@ -30,6 +30,8 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `invalid_user_name`, `invalid_email`, `email_domain_not_allowed`, `invalid_phone_number` | User data rule failed. |
 | `user_not_in_project` | The person has no membership row in this project. |
 | `email_not_confirmed`, `phone_not_confirmed` | Confirmation is required. Shown only after the password was right. |
+| `password_reused` | The new password is the current one or a remembered old one ([password-history.md](password-history.md)). |
+| `password_expired` | The password is older than `Password.PasswordExpiryDays`; the person must choose a new one ([password-history.md](password-history.md)). |
 | `two_factor_setup_required` | The application requires two-factor and the user has not set it up. |
 | `grant_not_allowed` | The grant type is not allowed for this application (Self UI is off). |
 | `two_factor_not_enabled`, `two_factor_not_allowed` | Two-factor is off for the user, or the application does not allow authenticator apps. |
@@ -102,3 +104,5 @@ Every code has an English text in `Errors.resx`. See [localization.md](localizat
 - [Client setup](client-setup.md)
 - [Security](security.md)
 - [Passkeys](external-identity/passkeys.md)
+- [Database tables](database-tables.md)
+- [Decisions (ADR list)](decisions.md)

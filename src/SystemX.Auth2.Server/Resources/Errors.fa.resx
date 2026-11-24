@@ -28,5 +28,7 @@
   <data name="invalid_credentials" xml:space="preserve"><value>نام کاربری یا گذرواژه اشتباه است.</value></data>
   <data name="locked_out" xml:space="preserve"><value>این حساب قفل شده است. بعداً دوباره تلاش کنید.</value></data>
   <data name="password_too_short" xml:space="preserve"><value>گذرواژه باید دست‌کم {0} نویسه باشد.</value></data>
+  <data name="password_reused" xml:space="preserve"><value>این گذرواژه پیش‌تر استفاده شده است. گذرواژه جدیدی انتخاب کنید.</value></data>
+  <data name="password_expired" xml:space="preserve"><value>گذرواژه شما منقضی شده است. از «فراموشی گذرواژه» برای انتخاب گذرواژه جدید استفاده کنید.</value></data>
   <data name="identity.DuplicateEmail" xml:space="preserve"><value>این نشانی ایمیل قبلاً استفاده شده است.</value></data>
 </root>

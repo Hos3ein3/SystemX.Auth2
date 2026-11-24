@@ -12,9 +12,10 @@ What works today. "Done" means: code, tests, docs and a CHANGELOG entry exist. W
 | Server: accounts (register, join, confirm, OTP, reset, two-factor, consent) | Done | [authentication-flows.md](authentication-flows.md) |
 | Registration defaults: assigned roles, groups and permissions; confirmation email and SMS switches | Done | [server-settings.md](server-settings.md#registration), [ADR-098](decisions.md) |
 | Server: access model (permissions, roles, groups, `/me`), sync and handshake | Done | [authorization.md](authorization.md), [permission-sync.md](permission-sync.md), [handshake-and-startup.md](handshake-and-startup.md) |
+| Password history (old password hashes, no reuse) and password expiry | Done | [password-history.md](password-history.md), [ADR-099](decisions.md) |
 | Admin JSON API | Done | [admin-api.md](admin-api.md) |
 | Admin console pages (`/admin/...`) | Done for projects, applications, users, roles, permissions, groups, assignments, scopes, authorizations, providers, sessions, audit, reports, settings, branding, email templates and the global pages | [ui-handover.md](ui-handover.md) |
-| Security and operations (rate limits, key ring, Redis, health, logs, traces) | Done | [security.md](security.md), [deployment-and-scaling.md](deployment-and-scaling.md), [observability.md](observability.md) |
+| Security and operations (rate limits, key ring, Redis, health, logs, traces) | Done | [redis.md](redis.md), [security.md](security.md), [deployment-and-scaling.md](deployment-and-scaling.md), [observability.md](observability.md) |
 | Project and Application split, one membership, per-project cookie | Done | [concepts.md](concepts.md) |
 | Enabled / disabled rules (project, application, shared gate, token refusal) | Done | [concepts.md](concepts.md) |
 | Two-level settings and the effective-value resolver | Done | [server-settings.md](server-settings.md) |

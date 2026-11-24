@@ -2,7 +2,7 @@
 
 ## What this is
 
-Every table that `Auth2DbContext` creates in PostgreSQL, what it holds, who writes it, who reads it and when its rows go away. There are 32 tables: the ones ASP.NET Core Identity needs, the OpenIddict ones, and the Auth2 ones (projects, access model, one-time codes, replay protection, key ring, audit, jobs, branding).
+Every table that `Auth2DbContext` creates in PostgreSQL, what it holds, who writes it, who reads it and when its rows go away. There are 33 tables: the ones ASP.NET Core Identity needs, the OpenIddict ones, and the Auth2 ones (projects, access model, one-time codes, replay protection, key ring, audit, jobs, branding).
 
 ## When to use it
 
@@ -30,7 +30,7 @@ Every table that `Auth2DbContext` creates in PostgreSQL, what it holds, who writ
 | Identity | [`users`](#users), [`roles`](#roles), [`user_roles`](#user_roles), [`user_claims`](#user_claims-and-role_claims), [`role_claims`](#user_claims-and-role_claims), [`user_logins`](#user_logins), [`user_tokens`](#user_tokens), [`user_passkeys`](#user_passkeys) |
 | Access model | [`permissions`](#permissions), [`user_permissions`](#user_permissions), [`role_permissions`](#role_permissions), [`groups`](#groups), [`user_groups`](#user_groups), [`group_roles`](#group_roles), [`group_permissions`](#group_permissions), [`external_group_mappings`](#external_group_mappings) |
 | OpenIddict | [`openiddict_authorizations`](#openiddict_authorizations), [`openiddict_tokens`](#openiddict_tokens), [`openiddict_scopes`](#openiddict_scopes) (and `applications`) |
-| Security and operations | [`key_ring`](#key_ring), [`data_protection_keys`](#data_protection_keys), [`otp_codes`](#otp_codes), [`replay_entries`](#replay_entries), [`server_values`](#server_values), [`audit_events`](#audit_events), [`job_runs`](#job_runs) |
+| Security and operations | [`key_ring`](#key_ring), [`data_protection_keys`](#data_protection_keys), [`otp_codes`](#otp_codes), [`password_history`](#password_history), [`replay_entries`](#replay_entries), [`server_values`](#server_values), [`audit_events`](#audit_events), [`job_runs`](#job_runs) |
 | Content | [`branding_assets`](#branding_assets), [`email_templates`](#email_templates) |
 
 ```
@@ -118,7 +118,7 @@ Primary key: `id`.
 ### user_projects
 
 **What it is.** "This person belongs to this project" **and** the person's credentials in that project when credentials are per project ([credential-scope.md](credential-scope.md)). One person can have a row in many projects; a person with no row cannot sign in to that project. Not used in single-project mode.
-**Key columns.** `status` (`Active` or `Suspended`: blocked in this project only), `joined_at_utc`, `last_login_utc`; credentials: `password_hash`, `security_stamp`, `two_factor_enabled`, `authenticator_key` (the TOTP key, encrypted with Data Protection), `access_failed_count`, `lockout_enabled`, `lockout_end`; access: `user_access_version` (raised when this person's roles, permissions or groups change), `active_session_id` (the current session when `SingleActiveSession` is on).
+**Key columns.** `status` (`Active` or `Suspended`: blocked in this project only), `joined_at_utc`, `last_login_utc`; credentials: `password_hash`, `password_changed_at_utc`, `security_stamp`, `two_factor_enabled`, `authenticator_key` (the TOTP key, encrypted with Data Protection), `access_failed_count`, `lockout_enabled`, `lockout_end`; access: `user_access_version` (raised when this person's roles, permissions or groups change), `active_session_id` (the current session when `SingleActiveSession` is on).
 **Written by** registering, joining with proof of ownership, an external first sign-in, and the admin. **Primary key** `(user_id, project_id)`; both columns cascade.
 <!-- columns:user_projects:start -->
 <details><summary>All columns</summary>
@@ -134,6 +134,7 @@ Primary key: `id`.
 | `last_login_utc` | `timestamptz` | yes |
 | `lockout_enabled` | `boolean` | no |
 | `lockout_end` | `timestamptz` | yes |
+| `password_changed_at_utc` | `timestamptz` | yes |
 | `password_hash` | `text` | yes |
 | `security_stamp` | `text` | yes |
 | `status` | `character varying(32)` | no |
@@ -174,7 +175,7 @@ Primary key: `id`.
 
 **What it is.** One real **person**, once on the whole server. User name and email are unique server-wide (a person with the same email in two projects is one row here and two rows in `user_projects`).
 **Identity columns.** `user_name`, `normalized_user_name`, `email`, `normalized_email`, `email_confirmed`, `phone_number`, `phone_number_confirmed`, `concurrency_stamp`. **Auth2 columns.** `first_name`, `last_name`, `display_name`, `preferred_culture` (the language of emails and pages for this person), `is_active` (false disables the person everywhere), `created_at_utc`, `profile` (free jsonb).
-**Credentials.** `password_hash`, `security_stamp`, `two_factor_enabled`, `lockout_*` and `access_failed_count` live here **only** when credentials are shared (`CredentialScope.Shared`, and always in single mode). With the default `PerProject` scope they are in [`user_projects`](#user_projects) and these columns stay empty.
+**Credentials.** `password_hash`, `password_changed_at_utc` (when the password was last set; used by `PasswordExpiryDays`), `security_stamp`, `two_factor_enabled`, `lockout_*` and `access_failed_count` live here **only** when credentials are shared (`CredentialScope.Shared`, and always in single mode). With the default `PerProject` scope they are in [`user_projects`](#user_projects) and these columns stay empty.
 <!-- columns:users:start -->
 <details><summary>All columns</summary>
 
@@ -194,6 +195,7 @@ Primary key: `id`.
 | `lockout_end` | `timestamptz` | yes |
 | `normalized_email` | `character varying(256)` | yes |
 | `normalized_user_name` | `character varying(256)` | yes |
+| `password_changed_at_utc` | `timestamptz` | yes |
 | `password_hash` | `text` | yes |
 | `phone_number` | `text` | yes |
 | `phone_number_confirmed` | `boolean` | no |
@@ -638,6 +640,27 @@ Primary key: `id`.
 </details>
 <!-- columns:otp_codes:end -->
 
+### password_history
+
+**What it is.** The **hashes of the passwords a person used before**, kept when `Password.SaveOldPasswords` is on ([password-history.md](password-history.md)). A new password is compared with the current hash and with these rows, so people cannot go back to a recent password.
+**Key columns.** `user_id` (cascade), `credential_project_id` (the project when credentials are per project; **`null` when they are shared**, so the history then belongs to the person; cascade with the project; it is not called `project_id` because the context fills a null `ProjectId` with the current project when it saves), `password_hash` (a real password hash from the same hasher; **never the plain text**), `saved_at_utc` (when the password was replaced).
+**Written by** `Auth2UserStore.SetPasswordHashAsync` when a password is replaced (change, reset, any `UserManager` call): it adds the old hash and removes the oldest rows beyond `Password.OldPasswordsToKeep`. **Read by** the password validator and nothing else. **Not cleaned** by a job and not shown in the admin API; rows go away with the person or the project. Turning the setting off keeps the rows. Filtered: the rows of the current project **and** the rows of shared credentials. Index on `(user_id, credential_project_id, saved_at_utc)`.
+<!-- columns:password_history:start -->
+<details><summary>All columns</summary>
+
+| Column | Type | Null |
+|---|---|---|
+| `id` | `uuid` | no |
+| `credential_project_id` | `uuid` | yes |
+| `password_hash` | `text` | no |
+| `saved_at_utc` | `timestamptz` | no |
+| `user_id` | `uuid` | no |
+
+Primary key: `id`.
+
+</details>
+<!-- columns:password_history:end -->
+
 ### replay_entries
 
 **What it is.** A value that may be used **only once** until it expires. The primary key is the text `key` = *kind:provider:value*, for example `oidc-state:ext-<projectId>-google:<state>`, `saml-request:...`, `saml-assertion:...`, `saml-logout:...`. The Server inserts the key; if the insert finds the same key it is a **replay** (a copied sign-in answer or SAML assertion) and the sign-in is refused. It is in the database so that **every instance** sees it. `project_id` says which project, `expires_at_utc` when it can be removed. The job `otp-cleanup` deletes expired rows (the same key is also cleared when it is used again after it expired).
@@ -810,3 +833,4 @@ Primary key: `id`.
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Contracts reference](contracts-reference.md)
 - [Two-factor authentication and `TwoFactorService`](two-factor.md)
+- [Error codes](error-codes.md)

@@ -114,8 +114,8 @@ Login and registration methods.
 
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
-| `AllowedLoginMethods` | `List<LoginMethod>` | `UserNamePassword, EmailPassword` | GlobalOnly | Allowed login methods. |
-| `AllowedRegisterMethods` | `List<LoginMethod>` | `UserNamePassword, EmailPassword` | GlobalOnly | Allowed register methods. |
+| `AllowedLoginMethods` | `List<LoginMethod>` | `[UserNamePassword, EmailPassword]` | GlobalOnly | Allowed login methods. |
+| `AllowedRegisterMethods` | `List<LoginMethod>` | `[UserNamePassword, EmailPassword]` | GlobalOnly | Allowed register methods. |
 
 ### UserName
 
@@ -141,7 +141,13 @@ Password rules.
 | `RequireUpper` | `bool` | `true` | GlobalOnly | Needs an uppercase letter. |
 | `RequireNonAlphanumeric` | `bool` | `false` | GlobalOnly | Needs a non-alphanumeric character. |
 | `UniqueChars` | `int` | `4` | GlobalOnly | Minimum number of different characters. |
-| `BannedPasswords` | `List<string>` | `empty list` | GlobalOnly | Passwords that are never allowed. A breached-list check can be plugged in later (hook only). |
+| `BannedPasswords` | `List<string>` | `[]` | GlobalOnly | Passwords that are never allowed. A breached-list check can be plugged in later (hook only). |
+| `SaveOldPasswords` | `bool` | `false` | GlobalOnly | Remember the **hash** of each replaced password (table `password_history`) and refuse the current password as a new one. |
+| `OldPasswordsToKeep` | `int` | `5` | GlobalOnly | How many old passwords are remembered, not counting the current one (1 to 24). |
+| `AllowOldPasswordReuse` | `bool` | `false` | GlobalOnly | `false`: refuse the current and every remembered password. `true`: refuse only the current one and the one used right before it. |
+| `PasswordExpiryDays` | `int` | `0` | GlobalOnly | A password older than this many days is refused at sign-in (`password_expired`) until it is changed. `0` = never (up to 3650). |
+
+How these four work, with examples and the limits: [password-history.md](password-history.md).
 
 ### Email
 
@@ -149,9 +155,9 @@ Email rules.
 
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
-| `RequireConfirmedEmail` | `bool` | `null` | GlobalOnly | Email must be confirmed before login. |
-| `AllowedDomains` | `List<string>` | `empty list` | ProjectAdminEditable | If not empty, only these domains are allowed. |
-| `BlockedDomains` | `List<string>` | `empty list` | ProjectAdminEditable | These domains are never allowed. |
+| `RequireConfirmedEmail` | `bool` | `false` | GlobalOnly | Email must be confirmed before login. |
+| `AllowedDomains` | `List<string>` | `[]` | ProjectAdminEditable | If not empty, only these domains are allowed. |
+| `BlockedDomains` | `List<string>` | `[]` | ProjectAdminEditable | These domains are never allowed. |
 
 ### Messaging (email and SMS providers)
 
@@ -173,7 +179,7 @@ Phone rules.
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
 | `PhoneNumberRegex` | `string` | `"^\+[1-9]\d{6,14}$"` | GlobalOnly | Regex for phone numbers. Default is E.164. |
-| `RequireConfirmedPhone` | `bool` | `null` | GlobalOnly | Phone must be confirmed before login. |
+| `RequireConfirmedPhone` | `bool` | `false` | GlobalOnly | Phone must be confirmed before login. |
 | `RegexTimeoutMs` | `int` | `200` | GlobalOnly | Regex timeout in ms. Protects from ReDoS. |
 
 ### Registration
@@ -187,9 +193,9 @@ Registration rules.
 | `LoginRequiredAfterRegister` | `bool` | `true` | ProjectAdminEditable | User must sign in again after registering. |
 | `SendConfirmationEmail` | `bool` | `true` | ProjectAdminEditable | Send the confirmation email right after registration. An application can override it (same name, `null` = project value). Always sent when `Email.RequireConfirmedEmail` is on. The user can ask for it again (resend) either way. |
 | `SendConfirmationSMS` | `bool` | `true` | ProjectAdminEditable | The same for the confirmation code sent by SMS. Always sent when `Phone.RequireConfirmedPhone` is on. |
-| `AssignedRoles` | `List<string>` | empty | GlobalOnly | Role names every new member gets. The roles must exist in the project. `GlobalAdmin`, `Developer` and `ProjectAdmin` are refused. |
-| `AssignedGroups` | `List<string>` | empty | GlobalOnly | Group names every new member gets (lowercase keys, like permission keys). The groups must exist. |
-| `AssignedPermissions` | `List<string>` | empty | GlobalOnly | Permission keys every new member gets directly. The permissions must exist. |
+| `AssignedRoles` | `List<string>` | `[]` | GlobalOnly | Role names every new member gets. The roles must exist in the project. `GlobalAdmin`, `Developer` and `ProjectAdmin` are refused. |
+| `AssignedGroups` | `List<string>` | `[]` | GlobalOnly | Group names every new member gets (lowercase keys, like permission keys). The groups must exist. |
+| `AssignedPermissions` | `List<string>` | `[]` | GlobalOnly | Permission keys every new member gets directly. The permissions must exist. |
 
 Each list has at most 50 entries, no duplicates (not case sensitive). Scopes are not in this list: a scope belongs to an **application** (what a client may ask for), not to a person, so it is set on the application (`allowedScopes`).
 
@@ -230,7 +236,7 @@ Two-factor and OTP rules.
 | `OtpLifetimeSeconds` | `int` | `120` | GlobalOnly | OTP lifetime in seconds. |
 | `OtpMaxAttempts` | `int` | `5` | GlobalOnly | Max wrong OTP attempts. |
 | `OtpResendSeconds` | `int` | `60` | GlobalOnly | Seconds before a new OTP may be sent. |
-| `AllowPasskeys` | `bool` | `null` | GlobalOnly | Allow passkeys (experimental). |
+| `AllowPasskeys` | `bool` | `false` | GlobalOnly | Allow passkeys (experimental). |
 
 ### Sessions
 
@@ -243,8 +249,8 @@ Sessions and tokens.
 | `IdentityTokenMinutes` | `int` | `10` | GlobalOnly | Identity token lifetime in minutes. |
 | `CookieLifetimeMinutes` | `int?` | `null` | GlobalOnly | Cookie lifetime in minutes. Null means the client default. |
 | `CookieSliding` | `bool` | `true` | GlobalOnly | Sliding cookie expiry. |
-| `SingleActiveSession` | `bool` | `null` | GlobalOnly | On sign-in, revoke other sessions of this project (all its applications). |
-| `RequireConsent` | `bool` | `null` | GlobalOnly | Show a consent screen. |
+| `SingleActiveSession` | `bool` | `false` | GlobalOnly | On sign-in, revoke other sessions of this project (all its applications). |
+| `RequireConsent` | `bool` | `false` | GlobalOnly | Show a consent screen. |
 | `ConsentMode` | `ConsentMode` | `Implicit` | GlobalOnly | How consent works. |
 
 ### Redirects
@@ -253,9 +259,9 @@ Redirect fallbacks. A valid return URL wins. The allowed redirect URIs are field
 
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
-| `RedirectAfterLogin` | `string?` | `null` | ProjectAdminEditable | Where to go after login. |
-| `RedirectAfterRegister` | `string?` | `null` | ProjectAdminEditable | Where to go after register. |
-| `RedirectAfterLogout` | `string?` | `null` | ProjectAdminEditable | Where to go after logout. |
+| `RedirectAfterLogin` | `string` | `null` | ProjectAdminEditable | Where to go after login. |
+| `RedirectAfterRegister` | `string` | `null` | ProjectAdminEditable | Where to go after register. |
+| `RedirectAfterLogout` | `string` | `null` | ProjectAdminEditable | Where to go after logout. |
 
 ### Clients
 
@@ -263,10 +269,10 @@ Client behaviour: project defaults for all applications. Scopes, redirect URIs, 
 
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
-| `AllowedClientTypes` | `List<ClientType>` | `Api, Mvc, RazorPages, Blazor, Machine` | GlobalOnly | Allowed client types. |
+| `AllowedClientTypes` | `List<ClientType>` | `[Api, Mvc, RazorPages, Blazor, Machine]` | GlobalOnly | Allowed client types. |
 | `PermissionSyncAllowed` | `bool` | `true` | GlobalOnly | Permission sync is allowed. |
 | `RoleSyncAllowed` | `bool` | `true` | GlobalOnly | Role sync is allowed. |
-| `AllowRemovePermissionsFromSync` | `bool` | `null` | GlobalOnly | Sync marks permissions that are missing from the list as obsolete (never deletes). |
+| `AllowRemovePermissionsFromSync` | `bool` | `false` | GlobalOnly | Sync marks permissions that are missing from the list as obsolete (never deletes). |
 | `DefaultUiMode` | `UiMode` | `Hosted` | GlobalOnly | Default UI mode. |
 | `ScopeSyncAllowed` | `bool` | `true` | GlobalOnly | A client may register its own custom scopes and allow them for itself (never `auth2.*` or the standard scopes). |
 | `GroupSyncAllowed` | `bool` | `false` | GlobalOnly | A client may add missing groups (push). Admins keep all other control. |
@@ -279,9 +285,9 @@ Localization and branding.
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
 | `DefaultCulture` | `string` | `"en"` | ProjectAdminEditable | Default culture. |
-| `SupportedCultures` | `List<string>` | `"en"` | ProjectAdminEditable | Supported cultures. They only choose a language. |
-| `BrandName` | `string?` | `null` | ProjectAdminEditable | Brand name. |
-| `SupportEmail` | `string?` | `null` | ProjectAdminEditable | Support email. |
+| `SupportedCultures` | `List<string>` | `["en"]` | ProjectAdminEditable | Supported cultures. They only choose a language. |
+| `BrandName` | `string` | `null` | ProjectAdminEditable | Brand name. |
+| `SupportEmail` | `string` | `null` | ProjectAdminEditable | Support email. |
 
 ### ExternalProviders[]
 
@@ -363,3 +369,6 @@ The OpenIddict fields (redirect URIs, post-logout redirect URIs, allowed scopes)
 - [Two-factor authentication and `TwoFactorService`](two-factor.md)
 - [Enums reference](enums-reference.md)
 - [Contracts reference](contracts-reference.md)
+- [Decisions (ADR list)](decisions.md)
+- [Redis: what it does, how to enable it, and the Client's cache](redis.md)
+- [Troubleshooting](troubleshooting.md)

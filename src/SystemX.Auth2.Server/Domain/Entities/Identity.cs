@@ -20,6 +20,8 @@ public class AppUser : IdentityUser<Guid>
     public bool IsActive { get; set; } = true;
     /// <summary>Creation time.</summary>
     public DateTimeOffset CreatedAtUtc { get; set; }
+    /// <summary>When the password was last set (shared credentials only; per-project credentials keep it in <c>user_projects</c>).</summary>
+    public DateTimeOffset? PasswordChangedAtUtc { get; set; }
     /// <summary>Optional free JSON profile (jsonb).</summary>
     public string? Profile { get; set; }
 }

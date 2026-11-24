@@ -162,3 +162,6 @@ What the Server does so that a wrong or hostile provider cannot take over an acc
 - [Client setup](client-setup.md)
 - [Error codes](error-codes.md)
 - [Passkeys](external-identity/passkeys.md)
+- [Redis: what it does, how to enable it, and the Client's cache](redis.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Troubleshooting](troubleshooting.md)

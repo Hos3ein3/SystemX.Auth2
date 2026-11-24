@@ -187,6 +187,9 @@ Calls that **change something** (register, login, password calls, refresh) are *
 - [Error codes](error-codes.md)
 - [Security](security.md)
 - [Passkeys](external-identity/passkeys.md)
+- [Redis: what it does, how to enable it, and the Client's cache](redis.md)
+- [Deployment and scaling](deployment-and-scaling.md)
+- [Observability](observability.md)
 
 ## Sign-in for browser apps (UI modes)
 

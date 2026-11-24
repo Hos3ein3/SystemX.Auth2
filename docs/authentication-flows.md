@@ -216,6 +216,7 @@ Every failure is `invalid_otp`, and wrong codes count as failed attempts, so too
 - **Forgot** (`/password/forgot`, page `Account/ForgotPassword`) always answers `202`. Only **members** of the application get a message: a link by email, or a code by SMS for a person with a confirmed phone and no email. A person who is not a member must use the join flow.
 - **Reset** (`/password/reset`, page `Account/ResetPassword`) takes the token (or the SMS code) and the new password. A weak password does not use up the token. The token works once. A token made in one application does not work in another when credentials are per application (the security stamp is per application).
   After a reset the server clears the lockout, ends all sessions of that application and raises the access version.
+- **A new password is also checked against the history** (current password, remembered old ones) when `Password.SaveOldPasswords` is on, and a password older than `Password.PasswordExpiryDays` is refused at sign-in with `password_expired`. A reset is the way out. See [password-history.md](password-history.md).
 - **Change** (`/password/change`, a **user** token with the scope `auth2.me`, page `Manage/ChangePassword`) needs the current password. A wrong current password counts as a failed attempt. All other sessions of this application end; the session that made the call stays.
 
 ### Two-factor (authenticator app)
@@ -350,3 +351,5 @@ Every application is an OpenIddict client with a **secret**. OpenIddict stores o
 - [Architecture](architecture.md)
 - [Current user and current client](client-current-user.md)
 - [Client setup](client-setup.md)
+- [Password history and password expiry](password-history.md)
+- [Decisions (ADR list)](decisions.md)

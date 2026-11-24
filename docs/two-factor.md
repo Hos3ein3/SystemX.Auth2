@@ -243,3 +243,5 @@ POST /api/auth2/admin/projects/{projectId}/users/{userId}/reset-2fa
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Contracts reference](contracts-reference.md)
+- [Password history and password expiry](password-history.md)
+- [Decisions (ADR list)](decisions.md)

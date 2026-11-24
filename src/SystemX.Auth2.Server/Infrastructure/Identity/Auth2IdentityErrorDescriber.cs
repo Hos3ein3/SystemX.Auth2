@@ -62,6 +62,8 @@ public class Auth2IdentityErrorDescriber(IAuth2Localizer localizer) : IdentityEr
     public virtual IdentityError PasswordTooLong(int length) => Auth2(Auth2ErrorCodes.PasswordTooLong, length);
     /// <summary>Password is on the banned list.</summary>
     public virtual IdentityError PasswordBanned() => Auth2(Auth2ErrorCodes.PasswordBanned);
+    /// <summary>The password is the current one or a remembered old one.</summary>
+    public virtual IdentityError PasswordReused() => Auth2(Auth2ErrorCodes.PasswordReused);
     /// <summary>The email domain is not allowed.</summary>
     public virtual IdentityError EmailDomainNotAllowed(string domain) => Auth2(Auth2ErrorCodes.EmailDomainNotAllowed);
     /// <summary>The phone number is not valid.</summary>

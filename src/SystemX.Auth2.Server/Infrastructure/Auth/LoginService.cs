@@ -25,6 +25,7 @@ internal sealed class LoginService(
     IPasswordHasher<AppUser> hasher,
     UserLookup lookup,
     IOtpService otp,
+    IPasswordHistoryService passwordHistory,
     TimeProvider clock) : ILoginService
 {
     private static readonly TimeSpan TwoFactorTokenLifetime = TimeSpan.FromMinutes(5);
@@ -78,6 +79,10 @@ internal sealed class LoginService(
             }
             return await FailAsync(app, user, Auth2ErrorCodes.InvalidCredentials, request, ct, new() { ["reason"] = "wrong_password" });
         }
+
+        // A password that is too old (Password.PasswordExpiryDays) is refused after it was right, so the answer says nothing to a guesser.
+        if (await passwordHistory.IsExpiredAsync(user, ct))
+            return await FailAsync(app, user, Auth2ErrorCodes.PasswordExpired, request, ct);
 
         if (settings.Email.RequireConfirmedEmail && !user.EmailConfirmed)
             return await FailAsync(app, user, Auth2ErrorCodes.EmailNotConfirmed, request, ct);

@@ -60,6 +60,12 @@ public sealed class UserRowCredentialState(Auth2DbContext db, IDataProtectionPro
     public void BeforeUserCreated(AppUser user) { }
 
     /// <inheritdoc />
+    public Task<DateTimeOffset?> GetPasswordChangedAtAsync(AppUser u, CancellationToken ct) =>
+        Task.FromResult<DateTimeOffset?>(u.PasswordHash is null ? null : u.PasswordChangedAtUtc ?? u.CreatedAtUtc);
+    /// <inheritdoc />
+    public Task SetPasswordChangedAtAsync(AppUser u, DateTimeOffset? changedAt, CancellationToken ct) { u.PasswordChangedAtUtc = changedAt; return Task.CompletedTask; }
+
+    /// <inheritdoc />
     public async Task<string?> GetAuthenticatorKeyAsync(AppUser u, CancellationToken ct) =>
         Unprotect((await FindTokenAsync(u, KeyToken, ct))?.Value);
 
@@ -158,6 +164,15 @@ public sealed class UserProjectCredentialState(
     {
         if (_pending.Remove(user.Id, out var row)) db.UserProjects.Add(row);
     }
+
+    /// <inheritdoc />
+    public async Task<DateTimeOffset?> GetPasswordChangedAtAsync(AppUser u, CancellationToken ct)
+    {
+        var row = await RowAsync(u, false, ct);
+        return row?.PasswordHash is null ? null : row.PasswordChangedAtUtc ?? row.JoinedAtUtc;
+    }
+    /// <inheritdoc />
+    public async Task SetPasswordChangedAtAsync(AppUser u, DateTimeOffset? changedAt, CancellationToken ct) => (await RowAsync(u, true, ct))!.PasswordChangedAtUtc = changedAt;
 
     /// <inheritdoc />
     public async Task ReplaceRecoveryCodesAsync(AppUser u, IEnumerable<string> codes, CancellationToken ct)

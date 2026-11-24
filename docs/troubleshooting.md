@@ -40,3 +40,5 @@ When something does not work and you do not know where to look.
 - [Contracts reference](contracts-reference.md)
 - [Authentication flows](authentication-flows.md)
 - [Documentation index](index.md)
+- [Redis: what it does, how to enable it, and the Client's cache](redis.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)

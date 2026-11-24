@@ -75,6 +75,8 @@ public class UserProject
     public DateTimeOffset? LastLoginUtc { get; set; }
     /// <summary>Current session id when <c>SingleActiveSession</c> is on.</summary>
     public string? ActiveSessionId { get; set; }
+    /// <summary>When the password of this project was last set. Null for a password set before this was recorded.</summary>
+    public DateTimeOffset? PasswordChangedAtUtc { get; set; }
 }
 
 /// <summary>Hashed recovery code for TOTP.</summary>

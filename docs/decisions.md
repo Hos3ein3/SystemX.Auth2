@@ -328,6 +328,13 @@ While this package was implemented, another process changed the same working tre
 **Package.** MailKit 4.18.2 (4.13.0 was refused by the build: known advisories). `System.Net.Mail.SmtpClient` was not used (Microsoft marks it obsolete for new code).
 **Not done.** No admin console page yet (the routes exist), no "send a test email" route, no real SMS provider (only the extension point and `logging`).
 
+## ADR-099: Password history is kept by the user store; the history belongs to the credentials
+**Decision.** Old password **hashes** go into `password_history`. The place that writes them is `Auth2UserStore.SetPasswordHashAsync`, because every replacement (change, reset, join, any `UserManager` call) passes through it; the place that checks is `Auth2PasswordValidator` (after the plain rules), through `IPasswordHistoryService`; expiry is checked in `LoginService` after the password was proved right. The date of the password (`password_changed_at_utc`) is part of `ICredentialState`, so it lives where the password lives (per project or shared).
+**The history follows the credential scope.** With per-project credentials a row has the project in `credential_project_id`; with shared credentials the column is null and the history belongs to the person. The column is not named `ProjectId` because `Auth2DbContext.AssignProjectId` fills a null `ProjectId` with the current project on save.
+**A rehash is not a change.** Identity can store the same password again with a stronger hash while it checks a sign-in (`CheckPasswordAsync`). `Auth2UserManager` marks that call (`PasswordRehashMarker`) so the store neither saves a history row nor renews the date (a test proves it).
+**Defaults and limits.** Everything is off by default, so nothing changes for a server that does not opt in. The number of remembered passwords is limited to 24 because each comparison is a real password-hash check. A password with no recorded date counts from the day the person joined (shared: was created), so enabling expiry on an old installation expires old accounts, which is the meaning of the rule.
+**Not done.** No warning before expiry, no minimum age, no admin route to see or clear a person's history, no job that deletes old rows (they are bounded by the count).
+
 ## ADR-098: Registration can hand out roles, groups and permissions (not scopes)
 **Decision.** `Registration.AssignedRoles`, `AssignedGroups` and `AssignedPermissions` list what every new member of a project gets. One service (`IRegistrationDefaults`) does it and is called from the three places that create a member by themselves: register, join with proof of ownership, and the first external sign-in. Admin-created users are not touched (the admin chooses).
 **Rules.** The settings are `GlobalOnly` (they decide what rights a stranger gets). The validator refuses `GlobalAdmin`, `Developer` and `ProjectAdmin`, bad names, duplicates and more than 50 entries; the service refuses the admin roles again at run time. A name that does not exist is skipped, logged by count and written to the audit event `register.defaults_applied` with an `assigned` and a `skipped` list; it never fails a registration.
@@ -348,3 +355,8 @@ While this package was implemented, another process changed the same working tre
 - [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
 - [Testing](testing.md)
 - [Documentation index](index.md)
+- [Password history and password expiry](password-history.md)
+- [Server settings](server-settings.md)
+- [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
+- [Error codes](error-codes.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)

@@ -34,6 +34,8 @@ public static class ProjectSettingsValidator
         if (p.MaxLength < p.MinLength) Err("Password.MaxLength", "Must not be less than MinLength.");
         if (p.MaxLength > 1024) Err("Password.MaxLength", "Must not be more than 1024.");
         if (p.UniqueChars < 0 || p.UniqueChars > p.MinLength) Err("Password.UniqueChars", "Must be between 0 and MinLength.");
+        if (p.OldPasswordsToKeep is < 1 or > 24) Err("Password.OldPasswordsToKeep", "Must be between 1 and 24.");
+        if (p.PasswordExpiryDays is < 0 or > 3650) Err("Password.PasswordExpiryDays", "Must be between 0 and 3650 (0 means never).");
 
         CheckRegex("Phone.PhoneNumberRegex", s.Phone.PhoneNumberRegex, s.Phone.RegexTimeoutMs, Err);
         if (s.Phone.RegexTimeoutMs is < 1 or > 1000) Err("Phone.RegexTimeoutMs", "Must be between 1 and 1000. A regex always needs a timeout.");

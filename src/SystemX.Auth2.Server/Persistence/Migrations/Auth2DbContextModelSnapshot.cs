@@ -240,6 +240,10 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("normalized_user_name");
 
+                    b.Property<DateTimeOffset?>("PasswordChangedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("password_changed_at_utc");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
@@ -834,6 +838,42 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.ToTable("otp_codes", (string)null);
                 });
 
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.PasswordHistoryEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CredentialProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_project_id");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
+
+                    b.Property<DateTimeOffset>("SavedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("saved_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_history");
+
+                    b.HasIndex("CredentialProjectId")
+                        .HasDatabaseName("ix_password_history_credential_project_id");
+
+                    b.HasIndex("UserId", "CredentialProjectId", "SavedAtUtc")
+                        .HasDatabaseName("ix_password_history_user_id_credential_project_id_saved_at_utc");
+
+                    b.ToTable("password_history", (string)null);
+                });
+
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.Permission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1103,6 +1143,10 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamptz")
                         .HasColumnName("lockout_end");
+
+                    b.Property<DateTimeOffset?>("PasswordChangedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("password_changed_at_utc");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
@@ -1688,6 +1732,22 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_otp_codes_users_user_id");
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.PasswordHistoryEntry", b =>
+                {
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("CredentialProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_password_history_projects_credential_project_id");
+
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_history_users_user_id");
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.Permission", b =>

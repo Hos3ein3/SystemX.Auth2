@@ -88,3 +88,6 @@ OTEL_SERVICE_NAME=systemx-auth2
 - [Error codes](error-codes.md)
 - [Troubleshooting external sign-in](external-identity/troubleshooting.md)
 - [Documentation index](index.md)
+- [Redis: what it does, how to enable it, and the Client's cache](redis.md)
+- [Client setup](client-setup.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)

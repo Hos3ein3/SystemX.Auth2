@@ -76,6 +76,37 @@ public interface ICredentialState
     Task<int> CountRecoveryCodesAsync(AppUser user, CancellationToken ct);
     /// <summary>Called before a new user is saved, so pending credential rows can be saved in the same transaction.</summary>
     void BeforeUserCreated(AppUser user);
+    /// <summary>
+    /// When the password was last set. A password with no recorded date counts from the day the person was created (shared credentials) or joined the project
+    /// (per-project credentials). Null when there is no password.
+    /// </summary>
+    Task<DateTimeOffset?> GetPasswordChangedAtAsync(AppUser user, CancellationToken ct);
+    /// <summary>Records when the password was set.</summary>
+    Task SetPasswordChangedAtAsync(AppUser user, DateTimeOffset? changedAt, CancellationToken ct);
+}
+
+/// <summary>Set while Identity checks a password and may replace the hash by a stronger one (a "rehash"). That is not a password change.</summary>
+public sealed class PasswordRehashMarker
+{
+    /// <summary>True during the check of a password.</summary>
+    public bool Active { get; set; }
+}
+
+/// <summary>
+/// The memory of old passwords and the age of the password (settings <c>Password.SaveOldPasswords</c>, <c>OldPasswordsToKeep</c>,
+/// <c>AllowOldPasswordReuse</c> and <c>PasswordExpiryDays</c>). Only hashes are kept.
+/// </summary>
+public interface IPasswordHistoryService
+{
+    /// <summary>
+    /// True when <paramref name="newPassword"/> may not be used: it is the current password, or (history on) a remembered old one. With
+    /// <c>AllowOldPasswordReuse</c> only the one used right before the current password is refused. Always false when <c>SaveOldPasswords</c> is off.
+    /// </summary>
+    Task<bool> IsReusedAsync(AppUser user, string newPassword, CancellationToken ct = default);
+    /// <summary>Remembers the hash that is about to be replaced and forgets the oldest ones beyond <c>OldPasswordsToKeep</c>. Does nothing when the history is off.</summary>
+    Task RememberAsync(AppUser user, string oldPasswordHash, CancellationToken ct = default);
+    /// <summary>True when <c>PasswordExpiryDays</c> is set and the password is older.</summary>
+    Task<bool> IsExpiredAsync(AppUser user, CancellationToken ct = default);
 }
 
 /// <summary>Chooses the <see cref="ICredentialState"/> strategy for the current application.</summary>

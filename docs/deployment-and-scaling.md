@@ -27,6 +27,8 @@ Every instance keeps the enabled external providers in memory. A change made on 
 
 ## Redis
 
+What Redis holds, how to turn it on, what the Client can keep in it and what happens when it is down: [redis.md](redis.md).
+
 Set `Auth2:Redis:ConnectionString` (for example `redis:6379,password=...`). Optional `Auth2:Redis:KeyPrefix` (default `auth2`) lets several servers share one Redis.
 When Redis is on: rate-limit counters, one-time codes and settings invalidation use it, and `/health/ready` checks it. Data Protection keys and the key ring stay in the database on purpose: Redis can lose data, and without those keys cookies and tokens would stop working.
 Redis down: the server still starts (`AbortOnConnectFail=false`), calls that need Redis fail, and `/health/ready` says not ready.
@@ -96,3 +98,6 @@ Rotate keys with a `CronJob` that runs `rotate-keys`, or by hand.
 - [Client authorization](client-authorization.md)
 - [Gateway](gateway.md)
 - [Documentation index](index.md)
+- [Client setup](client-setup.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Troubleshooting](troubleshooting.md)

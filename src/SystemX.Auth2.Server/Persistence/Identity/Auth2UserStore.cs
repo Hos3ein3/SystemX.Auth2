@@ -18,6 +18,9 @@ public class Auth2UserStore(
     IProjectContext applications,
     IProjectScope scope,
     IOptions<Auth2ServerOptions> options,
+    IPasswordHistoryService passwordHistory,
+    PasswordRehashMarker rehash,
+    TimeProvider clock,
     IdentityErrorDescriber? describer = null)
     : UserStore<AppUser, AppRole, Auth2DbContext, Guid, IdentityUserClaim<Guid>, IdentityUserRole<Guid>, AppUserLogin, AppUserToken, IdentityRoleClaim<Guid>, AppUserPasskey>(context, describer)
 {
@@ -26,8 +29,20 @@ public class Auth2UserStore(
     // ---- credentials
     /// <inheritdoc />
     public override async Task<string?> GetPasswordHashAsync(AppUser user, CancellationToken ct = default) => await (await State(ct)).GetPasswordHashAsync(user, ct);
-    /// <inheritdoc />
-    public override async Task SetPasswordHashAsync(AppUser user, string? passwordHash, CancellationToken ct = default) => await (await State(ct)).SetPasswordHashAsync(user, passwordHash, ct);
+    /// <summary>
+    /// Sets the password hash. When a password is **replaced** (change, reset, set by an admin) the old hash is handed to <see cref="IPasswordHistoryService"/>
+    /// and the date of the password is renewed. A rehash (the same password stored with a stronger hash while it is checked) is neither: it keeps the date.
+    /// </summary>
+    public override async Task SetPasswordHashAsync(AppUser user, string? passwordHash, CancellationToken ct = default)
+    {
+        var state = await State(ct);
+        if (rehash.Active) { await state.SetPasswordHashAsync(user, passwordHash, ct); return; }
+
+        var old = await state.GetPasswordHashAsync(user, ct);
+        if (old is not null && passwordHash is not null && old != passwordHash) await passwordHistory.RememberAsync(user, old, ct);
+        await state.SetPasswordHashAsync(user, passwordHash, ct);
+        if (passwordHash is not null) await state.SetPasswordChangedAtAsync(user, clock.GetUtcNow(), ct);
+    }
     /// <inheritdoc />
     public override async Task<bool> HasPasswordAsync(AppUser user, CancellationToken ct = default) => await GetPasswordHashAsync(user, ct) is not null;
     /// <inheritdoc />

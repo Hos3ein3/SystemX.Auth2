@@ -7,13 +7,15 @@ using SystemX.Auth2.Server.Domain.Entities;
 namespace SystemX.Auth2.Server.Infrastructure.Identity;
 
 /// <summary>Checks a password against the rules of the current application.</summary>
-public sealed class Auth2PasswordValidator(IAuthFlowResolver flow, Auth2IdentityErrorDescriber describer) : IPasswordValidator<AppUser>
+public sealed class Auth2PasswordValidator(IAuthFlowResolver flow, Auth2IdentityErrorDescriber describer, IPasswordHistoryService history) : IPasswordValidator<AppUser>
 {
     /// <inheritdoc />
     public async Task<IdentityResult> ValidateAsync(UserManager<AppUser> manager, AppUser user, string? password)
     {
         var rules = (await flow.GetSettingsAsync()).Password;
         var errors = Check(rules, password ?? "", describer);
+        // The history check hashes the password against old hashes, so it only runs when the plain rules passed.
+        if (errors.Count == 0 && await history.IsReusedAsync(user, password ?? "")) errors.Add(describer.PasswordReused());
         return errors.Count == 0 ? IdentityResult.Success : IdentityResult.Failed([.. errors]);
     }
 

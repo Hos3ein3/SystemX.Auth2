@@ -134,6 +134,23 @@ public sealed class PasswordSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public int UniqueChars { get; set; } = 4;
     /// <summary>Passwords that are never allowed. A breached-list check can be plugged in later (hook only).</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public List<string> BannedPasswords { get; set; } = [];
+    /// <summary>
+    /// Remember the hashes of the passwords a person had before (when the password changes by change, reset or join). With this on, the new password may not be
+    /// the current one. Off by default; nothing is saved and nothing is checked.
+    /// </summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public bool SaveOldPasswords { get; set; }
+    /// <summary>How many old passwords are remembered (1 to 24), not counting the current one. The oldest are forgotten. Used with <see cref="SaveOldPasswords"/>.</summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public int OldPasswordsToKeep { get; set; } = 5;
+    /// <summary>
+    /// With <see cref="SaveOldPasswords"/> on: <c>false</c> refuses the current password and every remembered one. <c>true</c> allows an older password again
+    /// and refuses only the current one and the one used right before it.
+    /// </summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public bool AllowOldPasswordReuse { get; set; }
+    /// <summary>
+    /// A password must be changed after this many days (0 = never). When it is older, the password sign-in answers <c>password_expired</c> until the person
+    /// chooses a new password (the forgot-password flow). A password without a date counts from the day the person joined.
+    /// </summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public int PasswordExpiryDays { get; set; }
 }
 
 /// <summary>Email rules.</summary>

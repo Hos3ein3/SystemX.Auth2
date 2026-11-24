@@ -43,6 +43,8 @@
   <data name="password_requires_non_alphanumeric" xml:space="preserve"><value>The password must contain a special character.</value></data>
   <data name="password_requires_unique_chars" xml:space="preserve"><value>The password must contain at least {0} different characters.</value></data>
   <data name="password_banned" xml:space="preserve"><value>This password is not allowed.</value></data>
+  <data name="password_reused" xml:space="preserve"><value>This password was used before. Choose a new one.</value></data>
+  <data name="password_expired" xml:space="preserve"><value>Your password has expired. Use "Forgot password" to choose a new one.</value></data>
   <data name="invalid_user_name" xml:space="preserve"><value>The user name is not valid.</value></data>
   <data name="invalid_email" xml:space="preserve"><value>The email address is not valid.</value></data>
   <data name="email_domain_not_allowed" xml:space="preserve"><value>Email addresses from this domain are not allowed.</value></data>

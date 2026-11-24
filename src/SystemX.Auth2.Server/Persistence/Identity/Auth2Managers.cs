@@ -19,6 +19,18 @@ public class Auth2UserManager(
     : UserManager<AppUser>(store, optionsAccessor, passwordHasher, userValidators, passwordValidators, keyNormalizer, errors, services, logger)
 {
     private IUserLockoutStore<AppUser> LockoutStore => (IUserLockoutStore<AppUser>)Store;
+    private readonly PasswordRehashMarker _rehash = services.GetRequiredService<PasswordRehashMarker>();
+
+    /// <summary>
+    /// Checks a password. While it checks, Identity may store the same password again with a stronger hash (a "rehash"). The user store must not treat that
+    /// as a password change (no history row, no new password date), so the check is marked.
+    /// </summary>
+    public override async Task<bool> CheckPasswordAsync(AppUser user, string password)
+    {
+        _rehash.Active = true;
+        try { return await base.CheckPasswordAsync(user, password); }
+        finally { _rehash.Active = false; }
+    }
 
     /// <inheritdoc />
     public override async Task<IdentityResult> CreateAsync(AppUser user)
