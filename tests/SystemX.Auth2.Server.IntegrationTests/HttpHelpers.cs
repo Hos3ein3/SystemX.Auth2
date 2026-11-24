@@ -62,6 +62,19 @@ public sealed class Browser
         return await PostFormAsync(url, fields);
     }
 
+    /// <summary>A JSON request of a signed-in user with a valid anti-forgery header (like the script of the UI sends).</summary>
+    public async Task<HttpResponseMessage> SendJsonWithTokenAsync(HttpMethod method, string url, object? body)
+    {
+        using var scope = _services.CreateScope();
+        var ctx = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        if (_cookies.Count > 0) ctx.Request.Headers.Cookie = string.Join("; ", _cookies.Select(c => $"{c.Key}={c.Value}"));
+        var session = await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.AuthenticateAsync(ctx, SystemX.Auth2.Server.Infrastructure.Auth.Auth2Cookie.Scheme);
+        if (session.Succeeded) ctx.User = session.Principal!;
+        var tokens = scope.ServiceProvider.GetRequiredService<IAntiforgery>().GetAndStoreTokens(ctx);
+        foreach (var header in ctx.Response.Headers.SetCookie) Remember(header!);
+        return await SendJsonAsync(method, url, body, null, ("RequestVerificationToken", tokens.RequestToken!));
+    }
+
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, string? bearer)
     {
         if (_cookies.Count > 0) request.Headers.TryAddWithoutValidation("Cookie", string.Join("; ", _cookies.Select(c => $"{c.Key}={c.Value}")));

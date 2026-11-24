@@ -70,6 +70,44 @@ Properties: `Links` (`provider`, `providerKey`, `displayName`), `AvailableProvid
 | `?handler=Link` | `Provider` | Redirect to the provider; the callback adds the link and returns to this page |
 | `?handler=Unlink` | `Provider`, `ProviderKey` | Removes the link. `cannot_remove_last_login_method` when it is the last way to sign in |
 
+## Passkey routes (JSON for the UI script)
+
+All routes take the application in `?client_id=` (not needed when signed in; the session knows it). Errors have the usual body `{ "code": "...", "message": "..." }`. The routes that need a session also need the anti-forgery token in the header `RequestVerificationToken` (the cookie is set by any page that renders a form; the UI gets the token the same way as for forms).
+
+### Register (signed in)
+
+1. `POST /account/passkey/creation-options` (body `{}`) returns the **PublicKeyCredentialCreationOptions JSON**. Give it to `PublicKeyCredential.parseCreationOptionsFromJSON(...)` and `navigator.credentials.create({ publicKey })`.
+2. `POST /account/passkey/register` with body `{ "credential": <credential.toJSON()>, "name": "MacBook" }` returns the new passkey:
+
+```json
+{ "id": "base64url", "name": "MacBook", "createdAtUtc": "2026-11-24T10:00:00Z", "signCount": 0,
+  "isBackedUp": false, "isBackupEligible": true, "isUserVerified": true, "transports": ["internal"] }
+```
+
+Errors: `passkey_not_allowed`, `passkey_limit_reached`, `passkey_blocked_authenticator`, `validation_failed` (name too long, no user verification, bad answer), `conflict` (credential already registered).
+
+### Sign in (anonymous)
+
+1. `POST /account/passkey/request-options` with `{ "login": "sara" }` (or `{ "login": null }` for a usernameless sign-in, good for the browser's conditional UI) returns the **PublicKeyCredentialRequestOptions JSON**. An unknown name gets options like any other. Use `navigator.credentials.get({ publicKey })`.
+2. `POST /account/passkey/signin` with `{ "credential": <credential.toJSON()>, "returnUrl": "..." }`:
+   - success: `{ "succeeded": true, "redirectTo": "/..." }` and the session cookie is set;
+   - second factor needed (the passkey was not user verified): `{ "succeeded": false, "errorCode": "two_factor_required", "twoFactorToken": "..." }`;
+   - failure: status 400 with `invalid_credentials` (the same code for wrong, replayed or unknown passkeys), `login_method_not_allowed`, `passkey_not_allowed`, `locked_out`, or 429 `rate_limited`.
+
+### Manage (signed in)
+
+| Route | Result |
+|---|---|
+| `GET /account/passkeys` | `[ { id, name, createdAtUtc, signCount, isBackedUp, isBackupEligible, isUserVerified, transports } ]` |
+| `PATCH /account/passkeys/{id}` body `{ "name": "..." }` | 204, or 404 / `validation_failed` |
+| `DELETE /account/passkeys/{id}` | 204, 404, or `cannot_remove_last_login_method` |
+
+The page `/Manage/Passkeys` exposes the same list as properties (`Passkeys`, `PasskeysAllowed`, `CanAddMore`, `SuggestBackupPasskey`) and has the handlers `Rename` (`Id`, `Name`) and `Delete` (`Id`). See [external-identity/passkeys.md](external-identity/passkeys.md).
+
+## SAML pages
+
+`POST /saml/{slug}/{name}/acs` (the identity provider posts here; same redirects as the OIDC callback), `GET /saml/{slug}/{name}/metadata` (XML), `GET /saml/{slug}/{name}/slo` (single logout). When a provider uses the POST binding, `Account/External/Challenge` returns **200** with the properties `PostAction` and `PostFields`: the UI renders an auto-submitting form with these fields. The route `POST /connect/external/challenge` returns `{ "postAction": "...", "postFields": { ... } }` in this case.
+
 ## Related pages
 
 - [external-identity.md](external-identity.md)

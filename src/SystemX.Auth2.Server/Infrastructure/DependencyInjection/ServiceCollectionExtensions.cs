@@ -88,6 +88,23 @@ public static class Auth2ServerServiceCollectionExtensions
             .AddRoleManager<Auth2RoleManager>()
             .AddSignInManager<Auth2SignInManager>()
             .AddDefaultTokenProviders();
+        // Passkeys: the options of Identity are the same for all applications. The per-application rules (user verification, limits)
+        // are applied by PasskeyService. Only the domain and the allowed origins are set here.
+        services.AddOptions<IdentityPasskeyOptions>().Configure<IOptions<Auth2ServerOptions>>((passkey, server) =>
+        {
+            var passkeys = server.Value;
+            passkey.ServerDomain = string.IsNullOrWhiteSpace(passkeys.Passkeys.ServerDomain) ? null : passkeys.Passkeys.ServerDomain;
+            passkey.UserVerificationRequirement = "preferred";
+            passkey.ResidentKeyRequirement = "preferred";
+            passkey.ValidateOrigin = context =>
+            {
+                if (context.CrossOrigin) return ValueTask.FromResult(false);
+                var allowed = !string.IsNullOrWhiteSpace(passkeys.Issuer)
+                    ? new Uri(passkeys.Issuer).GetLeftPart(UriPartial.Authority)
+                    : $"{context.HttpContext.Request.Scheme}://{context.HttpContext.Request.Host}";
+                return ValueTask.FromResult(string.Equals(context.Origin, allowed, StringComparison.OrdinalIgnoreCase));
+            };
+        });
         services.Replace(ServiceDescriptor.Scoped<IdentityErrorDescriber>(sp => sp.GetRequiredService<Auth2IdentityErrorDescriber>()));
         services.RemoveAll<IPasswordValidator<AppUser>>();
         services.AddScoped<IPasswordValidator<AppUser>, Auth2PasswordValidator>();

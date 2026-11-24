@@ -330,13 +330,15 @@ internal sealed class ExternalLinkService(UserManager<AppUser> users, Auth2DbCon
         if (registry.Get(app.Id, providerName) is { Settings: LdapProviderSettings { Mode: LdapMode.LdapOnly } })
             return OperationResult.Fail(Auth2ErrorCodes.CannotRemoveLastLoginMethod);
 
-        var remaining = logins.Count - 1;
-        if (await users.HasPasswordAsync(user)) remaining++;
-        remaining += await db.Set<AppUserPasskey>().CountAsync(x => x.UserId == user.Id, ct);
+        var others = logins.Count - 1;
+        if (await users.HasPasswordAsync(user)) others++;
         var methods = settings.Methods.AllowedLoginMethods;
-        if (user.EmailConfirmed && !string.IsNullOrEmpty(user.Email) && methods.Contains(LoginMethod.EmailOtp)) remaining++;
-        if (user.PhoneNumberConfirmed && !string.IsNullOrEmpty(user.PhoneNumber) && methods.Contains(LoginMethod.PhoneOtp)) remaining++;
-        if (remaining < 1) return OperationResult.Fail(Auth2ErrorCodes.CannotRemoveLastLoginMethod);
+        if (user.EmailConfirmed && !string.IsNullOrEmpty(user.Email) && methods.Contains(LoginMethod.EmailOtp)) others++;
+        if (user.PhoneNumberConfirmed && !string.IsNullOrEmpty(user.PhoneNumber) && methods.Contains(LoginMethod.PhoneOtp)) others++;
+        var passkeys = await db.Set<AppUserPasskey>().CountAsync(x => x.UserId == user.Id, ct);
+        if (others + passkeys < 1) return OperationResult.Fail(Auth2ErrorCodes.CannotRemoveLastLoginMethod);
+        // Backup rule: a person who would depend on one passkey alone must first register a second one (a lost device would lock them out).
+        if (settings.Passkeys.RequirePasskeyBackupMethod && others == 0 && passkeys == 1) return OperationResult.Fail(Auth2ErrorCodes.CannotRemoveLastLoginMethod);
 
         var result = await users.RemoveLoginAsync(user, providerName, providerKey);
         if (!result.Succeeded) return OperationResult.Fail(result.Errors);

@@ -14,3 +14,6 @@ public sealed record ExternalProviderInfoDto(string Name, string DisplayName, Ex
 /// <param name="Providers">The enabled providers of the application.</param>
 /// <param name="SuggestedProvider">Home-realm discovery: the provider that matches the <c>hint</c> (an email domain or a provider name), or null.</param>
 public sealed record ExternalProvidersResponse(IReadOnlyList<ExternalProviderInfoDto> Providers, string? SuggestedProvider);
+
+/// <summary>One passkey of a user, as the UI shows it. The id is the credential id in base64url.</summary>
+public sealed record PasskeyDto(string Id, string? Name, DateTimeOffset CreatedAtUtc, uint SignCount, bool IsBackedUp, bool IsBackupEligible, bool IsUserVerified, IReadOnlyList<string> Transports);

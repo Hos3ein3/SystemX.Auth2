@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- External identity step 8: passkeys (`IPasskeyService`) on the ASP.NET Core Identity passkey support with a per-application store: registration and sign-in routes (`/account/passkey/*`), management routes and page (`/account/passkeys`, `Manage/Passkeys`),
+  limits, user verification rule, backup rule when unlinking, blocked AAGUIDs and allow list, `Auth2:Passkeys:ServerDomain` (required in Production), `amr` `swk`/`hwk` + `mfa`, local two-factor skipped for a user-verified passkey, rate limit policy `passkey`.
+  Docs: passkeys guide, JSON contract in `ui-handover`.
 - External identity step 7: LDAP and Active Directory (`LdapDirectory`): LDAPS or StartTLS with chain and name checks, service-account search with RFC 4515 escaping, user bind (no empty passwords), unique id as link key (`entryUUID`, `objectGUID`), groups with optional nesting,
   disabled-account handling, modes `LdapOnly`, `LocalThenLdap`, `LdapThenLocal` (`LdapAwareLoginService`), rate limit policy `ldap`, failed passwords count toward the lockout, test lookup and connection test services, `ldap_unavailable`. Docs: OpenLDAP and Active Directory guides, troubleshooting.
 - External identity step 6: SAML 2.0 service provider (`SamlIdentitySource`): AuthnRequest (Redirect or POST binding, optional signing), ACS with XXE-safe parsing, size limit, signature-wrapping defences, pinned certificates, issuer, destination, audience, `InResponseTo`, time window, single-use request and assertion ids,

@@ -46,6 +46,29 @@ public sealed class Auth2ServerOptions
 
     /// <summary>External identity providers. Section <c>Auth2:ExternalProviders</c>.</summary>
     public ExternalProviderOptions ExternalProviders { get; set; } = new();
+
+    /// <summary>Passkeys. Section <c>Auth2:Passkeys</c>.</summary>
+    public PasskeyServerOptions Passkeys { get; set; } = new();
+}
+
+/// <summary>Server-wide passkey options. The per-application rules are in the application settings (<c>Passkeys</c>).</summary>
+public sealed class PasskeyServerOptions
+{
+    /// <summary>
+    /// The relying party id: the domain (without scheme and port) that passkeys are bound to, for example <c>auth.example.com</c>.
+    /// <b>Required in Production</b>: without it passkeys are refused. Changing it later makes every existing passkey useless.
+    /// In Development the host of the request is used.
+    /// </summary>
+    public string? ServerDomain { get; set; }
+
+    /// <summary>Authenticator models (AAGUIDs) that cannot be registered. Global admin only (a server setting). The AAGUID is as reported by the authenticator.</summary>
+    public List<Guid> BlockedAaguids { get; set; } = [];
+
+    /// <summary><c>None</c> (default): attestation is not asked for. <c>AaguidAllowList</c>: only the models in <see cref="AllowedAaguids"/> can be registered.</summary>
+    public string AttestationMode { get; set; } = "None";
+
+    /// <summary>Allowed authenticator models when <see cref="AttestationMode"/> is <c>AaguidAllowList</c>.</summary>
+    public List<Guid> AllowedAaguids { get; set; } = [];
 }
 
 /// <summary>How the Server keeps its list of external providers fresh.</summary>

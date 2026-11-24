@@ -28,6 +28,17 @@ public static class Auth2Cookie
         builder.Services.AddOptions<CookieAuthenticationOptions>(Scheme).Configure<IHostEnvironment>((o, env) =>
             o.Cookie.SecurePolicy = OpenIddict.OpenIddictSetup.IsDevelopmentLike(env) ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always);
 
+        // The short-lived, single-use state of a passkey registration or sign-in (ASP.NET Core Identity keeps it in this scheme).
+        builder.Services.AddOptions<CookieAuthenticationOptions>(Microsoft.AspNetCore.Identity.IdentityConstants.TwoFactorUserIdScheme).Configure<IHostEnvironment>((o, env) =>
+            o.Cookie.SecurePolicy = OpenIddict.OpenIddictSetup.IsDevelopmentLike(env) ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always);
+        builder.AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.TwoFactorUserIdScheme, o =>
+        {
+            o.Cookie.Name = ".SystemX.Auth2.PasskeyState";
+            o.Cookie.HttpOnly = true;
+            o.Cookie.SameSite = SameSiteMode.Strict;
+            o.ExpireTimeSpan = TimeSpan.FromMinutes(5);
+        });
+
         return builder.AddCookie(Scheme, o =>
         {
             o.Cookie.Name = CookieName;
