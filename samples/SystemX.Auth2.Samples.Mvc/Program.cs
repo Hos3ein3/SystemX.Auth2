@@ -13,7 +13,7 @@ var auth2Section = builder.Configuration.GetSection("Auth2");
 builder.Services
     .AddAuth2Client(auth2Section)
     .ServerWithMultiProject(builder.Configuration["Auth2:ProjectKey"] ?? "sample-project")
-    //.UseHostedUi()
+    .UseHostedUi()
     .UseCookieAuthentication(o =>
     {
         o.AccessMode = AccessLoadMode.OnSignIn;
