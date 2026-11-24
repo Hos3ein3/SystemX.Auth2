@@ -5,6 +5,7 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- **Setting `Registration.SendConfirmationEmail`** (default on; an application can override it). When off, registration does not send the confirmation email; it is still sent when `Email.RequireConfirmedEmail` is on, and the resend route works either way.
 - **EmailFactory and SmsFactory.** The default `IEmailSender` / `ISmsSender` ask `IEmailFactory` / `ISmsFactory`, which pick the provider per request: the application's, else the project's, else the server default (`Auth2:Messaging`), else logging. New providers: `smtp` (MailKit) and `google` (Gmail, app password). Add your own with `IEmailTransport` / `ISmsTransport`. Settings are `GlobalOnly` and live in `ProjectSettings.Messaging` and `ClientApplicationSettings.Messaging`; the password is encrypted and never returned. Admin routes: `GET|PUT /projects/{id}/messaging`, `GET|PUT|DELETE /projects/{id}/applications/{appId}/messaging`. See [docs/email-and-sms.md](docs/email-and-sms.md).
 
 ### Changed

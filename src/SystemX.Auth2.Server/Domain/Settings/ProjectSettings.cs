@@ -167,6 +167,11 @@ public sealed class RegistrationSettings
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public JoinMode JoinMode { get; set; } = JoinMode.AutoJoin;
     /// <summary>User must sign in again after registering.</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public bool LoginRequiredAfterRegister { get; set; } = true;
+    /// <summary>
+    /// Send the confirmation email (the link) right after registration. An application can override it. It is always sent when
+    /// <c>Email.RequireConfirmedEmail</c> is on, because the user could not sign in otherwise. The user can ask for it again later.
+    /// </summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public bool SendConfirmationEmail { get; set; } = true;
 }
 
 /// <summary>Lockout rules.</summary>

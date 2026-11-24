@@ -140,6 +140,22 @@ public class MessagingTests : AdminBase, IDisposable
     }
 
     [Fact]
+    public async Task SendConfirmationEmail_Off_SendsNothingAtRegistration_OnForAnApplication_SendsAgain()
+    {
+        await StartAsync();
+        (await SendAsync(HttpMethod.Put, "/messaging", GlobalToken, SmtpTo(_smtpA, "project@acme.test"), ("X-Auth2-Application", "appa"))).Status.ShouldBe(HttpStatusCode.NoContent);
+        await UpdateSettingsAsync(A, s => s.Project.Registration.SendConfirmationEmail = false);
+
+        await RegisterAsync("appa", "sara", "sara@example.com");
+        await Task.Delay(500);
+        _smtpA.Mails.ShouldBeEmpty();
+
+        await UpdateSettingsAsync(A, s => s.App.SendConfirmationEmail = true);   // the application overrides the project
+        await RegisterAsync("appa", "tom", "tom@example.com");
+        (await WaitForMailAsync(_smtpA)).ShouldContain("tom@example.com");
+    }
+
+    [Fact]
     public async Task WithoutAnySetting_TheServerDefaultIsUsed_ItLogsAndSendsNothing()
     {
         await StartAsync();

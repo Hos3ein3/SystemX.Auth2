@@ -65,6 +65,23 @@ public class ProjectModelTests
     }
 
     [Fact]
+    public void Effective_SendConfirmationEmail_ApplicationOverridesProject_AndARequiredConfirmationForcesIt()
+    {
+        var project = new ProjectSettings();
+        new EffectiveSettings(project, Client()).SendConfirmationEmail.ShouldBeTrue();   // default: on
+
+        project.Registration.SendConfirmationEmail = false;
+        new EffectiveSettings(project, Client()).SendConfirmationEmail.ShouldBeFalse();
+        new EffectiveSettings(project, Client(new ClientApplicationSettings { SendConfirmationEmail = true })).SendConfirmationEmail.ShouldBeTrue();
+
+        project.Registration.SendConfirmationEmail = true;
+        new EffectiveSettings(project, Client(new ClientApplicationSettings { SendConfirmationEmail = false })).SendConfirmationEmail.ShouldBeFalse();
+
+        project.Email.RequireConfirmedEmail = true;   // the user could not sign in otherwise
+        new EffectiveSettings(project, Client(new ClientApplicationSettings { SendConfirmationEmail = false })).SendConfirmationEmail.ShouldBeTrue();
+    }
+
+    [Fact]
     public void Effective_EmailProvider_ApplicationThenProjectThenNothing()
     {
         var project = new ProjectSettings();

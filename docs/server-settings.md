@@ -185,6 +185,7 @@ Registration rules.
 | `RegistrationEnabled` | `bool` | `true` | ProjectAdminEditable | Is registration open. |
 | `JoinMode` | `JoinMode` | `AutoJoin` | ProjectAdminEditable | Join mode. |
 | `LoginRequiredAfterRegister` | `bool` | `true` | ProjectAdminEditable | User must sign in again after registering. |
+| `SendConfirmationEmail` | `bool` | `true` | ProjectAdminEditable | Send the confirmation email right after registration. An application can override it (same name, `null` = project value). Always sent when `Email.RequireConfirmedEmail` is on. The user can ask for it again (resend) either way. |
 
 ### Lockout
 

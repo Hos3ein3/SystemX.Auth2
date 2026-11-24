@@ -72,8 +72,9 @@ internal sealed class RegisterService(
             return new RegisterOutcome { Result = OperationResult.Fail(result.Errors) };
         }
 
-        // Confirmations (email link, phone code). They are sent even when the application does not force them.
-        if (email is not null) await notifier.SendEmailConfirmationAsync(user, await users.GenerateEmailConfirmationTokenAsync(user), returnUrl, ct);
+        // Confirmations (email link, phone code). They are sent even when the application does not force them, unless the setting is off for email.
+        var sendEmail = (await flow.GetEffectiveAsync(ct)).SendConfirmationEmail;
+        if (email is not null && sendEmail) await notifier.SendEmailConfirmationAsync(user, await users.GenerateEmailConfirmationTokenAsync(user), returnUrl, ct);
         if (phone is not null)
         {
             var issued = await otp.IssueAsync(user, Auth2OtpPurposes.ConfirmPhone, ct);

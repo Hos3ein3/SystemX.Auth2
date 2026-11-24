@@ -33,6 +33,8 @@ public sealed class EffectiveSettings(ProjectSettings project, ClientApplication
     /// <summary>Redirect URIs of the application (OpenIddict field). Empty when the request has no client.</summary>
     public IReadOnlyList<string> AllowedRedirectUris => Application?.RedirectUris ?? [];
 
+    /// <summary>True when the confirmation email is sent right after registration: application, else project; always true when a confirmed email is required.</summary>
+    public bool SendConfirmationEmail => Project.Email.RequireConfirmedEmail || (App?.SendConfirmationEmail ?? Project.Registration.SendConfirmationEmail);
     /// <summary>The email provider chosen for this request: application, else project. Null means "use the server default".</summary>
     public EmailProviderSettings? EmailProvider => Pick(App?.Messaging?.Email, Project.Messaging.Email);
     /// <summary>The SMS provider chosen for this request: application, else project. Null means "use the server default".</summary>
