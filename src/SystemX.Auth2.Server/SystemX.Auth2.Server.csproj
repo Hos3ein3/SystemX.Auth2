@@ -13,6 +13,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="OpenIddict.AspNetCore" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" />
+    <PackageReference Include="OpenIddict.Client.AspNetCore" />
+    <PackageReference Include="OpenIddict.Client.SystemNetHttp" />
+    <PackageReference Include="OpenIddict.Client.WebIntegration" />
     <PackageReference Include="Novell.Directory.Ldap.NETStandard" />
     <PackageReference Include="ITfoxtec.Identity.Saml2" />
     <PackageReference Include="ITfoxtec.Identity.Saml2.MvcCore" />

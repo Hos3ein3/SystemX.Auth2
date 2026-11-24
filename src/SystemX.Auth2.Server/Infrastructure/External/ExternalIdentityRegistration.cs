@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 using SystemX.Auth2.Server.Application;
 
@@ -27,8 +28,12 @@ internal static class ExternalIdentityRegistration
             });
         services.TryAddSingleton<IReplayCache, DatabaseReplayCache>();
         services.TryAddSingleton<IOidcEndpointResolver, OidcEndpointResolver>();
-        services.TryAddSingleton<OidcIdentitySource>();
-        services.AddSingleton<IExternalIdentitySource>(sp => sp.GetRequiredService<OidcIdentitySource>());
+        services.AddSingleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, ExternalClientHttpFilter>();
+        services.TryAddSingleton<OpenIddictIdentitySource>();
+        services.AddSingleton<IExternalIdentitySource>(sp => sp.GetRequiredService<OpenIddictIdentitySource>());
+        services.TryAddSingleton<ExternalClientRegistrations>();
+        services.AddSingleton<IConfigureOptions<global::OpenIddict.Client.OpenIddictClientOptions>>(sp => sp.GetRequiredService<ExternalClientRegistrations>());
+        services.AddSingleton<IOptionsChangeTokenSource<global::OpenIddict.Client.OpenIddictClientOptions>>(sp => sp.GetRequiredService<ExternalClientRegistrations>());
         services.TryAddSingleton<ISamlProviderMaterial, SamlProviderMaterial>();
         services.TryAddSingleton<SamlIdentitySource>();
         services.AddSingleton<IExternalIdentitySource>(sp => sp.GetRequiredService<SamlIdentitySource>());

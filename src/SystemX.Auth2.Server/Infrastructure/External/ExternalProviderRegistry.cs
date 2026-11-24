@@ -18,6 +18,8 @@ public interface IExternalProviderRegistry
     IReadOnlyList<RegisteredProvider> ListForProject(Guid applicationId);
     /// <summary>The provider that handles an email domain, or null.</summary>
     RegisteredProvider? FindByEmailDomain(Guid applicationId, string domain);
+    /// <summary>Every enabled provider of every application (used to build the OpenID Connect client registrations).</summary>
+    IReadOnlyList<RegisteredProvider> ListAll();
     /// <summary>Finds a provider by the project slug of a URL.</summary>
     RegisteredProvider? FindByUrl(string projectSlug, string name);
     /// <summary>Loads one application again now (used after a change on this instance or a Redis message).</summary>
@@ -51,6 +53,9 @@ public sealed class ExternalProviderRegistry(IServiceScopeFactory scopes, IOptio
     /// <inheritdoc />
     public RegisteredProvider? FindByEmailDomain(Guid applicationId, string domain) =>
         ListForProject(applicationId).FirstOrDefault(p => p.Settings.EmailDomains.Contains(domain, StringComparer.OrdinalIgnoreCase));
+
+    /// <inheritdoc />
+    public IReadOnlyList<RegisteredProvider> ListAll() => [.. _byUrl.Values];
 
     /// <inheritdoc />
     public RegisteredProvider? FindByUrl(string projectSlug, string name) => _byUrl.GetValueOrDefault(projectSlug + "/" + name);

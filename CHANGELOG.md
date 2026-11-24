@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 
 ## [Unreleased]
 
+### Changed
+- **Social login and generic OpenID Connect now use OpenIddict.Client** (`OpenIddict.Client.AspNetCore`, `.SystemNetHttp`, `.WebIntegration`) instead of a hand-written client. Registrations are built from the provider list at run time (no restart); see ADR-096 for the spike result and the findings. Behaviour changes: a specific Microsoft tenant refuses another tenant at the issuer check; Apple, Google and GitHub follow the library (RFC 9207 `iss`); the Facebook Graph version is applied to the library's endpoints. Upstream tokens are never stored in the Server's token table.
+- The HTTP clients of OpenIddict.Client get the SSRF guard (`SsrfGuardHandler`). The answer of a provider (`/callback/login/...`) is read by Auth2 itself; the OpenIddict middleware does not handle it.
+
 ### Changed (breaking, pre-1.0)
 - **Project vs Application.** The old "application" (tenant + client) is split. **Project** = the tenant (table `projects`, `ProjectKey` never changes, project settings). **Application** = a client of a project and **is** the OpenIddict application table (`applications`, custom OpenIddict entities with `ProjectId`, `IsEnabled`, `Name` unique inside the project, `SettingsJson`), created, changed and deleted only through `IOpenIddictApplicationManager`.
   `user_applications` is now `user_projects`; every tenant table uses `ProjectId` (the query filter too). Audit events, sessions and synced catalog items keep an **optional** `ApplicationId`. One data-preserving migration (`ProjectsAndApplications`, hand-written, upgrade test compares the result with a fresh schema). OpenIddict major upgrades need a migration review.

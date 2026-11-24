@@ -38,7 +38,11 @@ app.UseRouting();
 app.UseCors();
 app.UseMiddleware<RateLimitMiddleware>();
 app.UseMiddleware<ProjectCookieMiddleware>();   // which project's session cookie to read
-app.UseAuthentication();
+// The answer of an upstream provider (/callback/login/...) is read by Auth2's own endpoint through OpenIddict.Client (see OpenIddictIdentitySource), whose
+// state lives in Auth2's sealed state cookie. The OpenIddict middleware must not handle that request itself: it would look for its own correlation cookie and answer 400.
+app.UseWhen(http => !http.Request.Path.StartsWithSegments("/callback/login"), branch => branch.UseAuthentication());
+// WebApplication adds its own UseAuthentication at the start of the pipeline unless the application says it has done so. A branch does not say it.
+((IApplicationBuilder)app).Properties["__AuthenticationMiddlewareSet"] = true;
 app.UseAuthorization();
 
 app.MapHealthChecks(Auth2Routes.HealthLive, new HealthCheckOptions { Predicate = _ => false });   // the process runs

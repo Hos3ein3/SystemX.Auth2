@@ -45,6 +45,8 @@ public sealed class FakeOidcProvider : HttpMessageHandler
     public bool TamperSignature { get; set; }
     public string? AudienceOverride { get; set; }
     public string? IssuerOverride { get; set; }
+    /// <summary>The issuer of the identity token only. The discovery document keeps its own (a multi-tenant provider names a tenant in the token).</summary>
+    public string? TokenIssuerOverride { get; set; }
     public bool ExpiredToken { get; set; }
     public string? NonceOverride { get; set; }
     public bool RejectTokenRequest { get; set; }
@@ -83,7 +85,9 @@ public sealed class FakeOidcProvider : HttpMessageHandler
         if (path.EndsWith("/.well-known/openid-configuration", StringComparison.Ordinal))
         {
             var prefix = path[..^"/.well-known/openid-configuration".Length];
-            var issuer = MicrosoftStyleIssuer ? origin + prefix.Replace(prefix.Split('/')[1], "{tenantid}") : IssuerOverride ?? origin + prefix;
+            // Microsoft names the tenant in the issuer of a token. Only the shared endpoints (common, organizations, consumers) have a template issuer in discovery.
+            var shared = MicrosoftStyleIssuer && prefix.Split('/') is { Length: > 1 } seg && seg[1] is "common" or "organizations" or "consumers";
+            var issuer = shared ? origin + prefix.Replace(prefix.Split('/')[1], "{tenantid}") : IssuerOverride ?? origin + prefix;
             return Json(new
             {
                 issuer,
@@ -98,9 +102,11 @@ public sealed class FakeOidcProvider : HttpMessageHandler
                 code_challenge_methods_supported = new[] { "S256" },
                 token_endpoint_auth_methods_supported = new[] { "client_secret_post", "client_secret_basic" },
                 scopes_supported = new[] { "openid", "email", "profile" },
+                response_modes_supported = new[] { "query", "fragment", "form_post" },
             });
         }
-        if (path.EndsWith("/jwks", StringComparison.Ordinal))
+        // the key sets of the real providers: Google /oauth2/v3/certs, Microsoft /discovery/v2.0/keys, Apple /auth/keys
+        if (path.EndsWith("/jwks", StringComparison.Ordinal) || path.EndsWith("/certs", StringComparison.Ordinal) || path.EndsWith("/keys", StringComparison.Ordinal))
         {
             var jwk = JsonWebKeyConverter.ConvertFromRSASecurityKey(new RsaSecurityKey(_rsa.ExportParameters(false)) { KeyId = "k1" });
             return Json(new { keys = new[] { new { kty = "RSA", use = "sig", alg = "RS256", kid = "k1", n = jwk.N, e = jwk.E } } });
@@ -154,7 +160,7 @@ public sealed class FakeOidcProvider : HttpMessageHandler
         var u = issued.User;
         var access = "at-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
         _access[access] = u;
-        var iss = IssuerOverride ?? (MicrosoftStyleIssuer ? $"https://login.microsoftonline.com/{u.Tid}/v2.0" : origin == "https://accounts.google.com" ? origin : origin + uri.AbsolutePath[..uri.AbsolutePath.LastIndexOf('/')]);
+        var iss = TokenIssuerOverride ?? IssuerOverride ?? (origin == "https://oauth2.googleapis.com" ? "https://accounts.google.com" : MicrosoftStyleIssuer ? $"https://login.microsoftonline.com/{u.Tid}/v2.0" : origin == "https://accounts.google.com" ? origin : origin + uri.AbsolutePath[..uri.AbsolutePath.LastIndexOf('/')]);
         var claims = new Dictionary<string, object> { ["sub"] = u.Sub };
         if (u.Email is not null) claims["email"] = u.Email;
         if (u.EmailVerified is not null) claims["email_verified"] = u.EmailVerified.Value;
@@ -185,4 +191,28 @@ public sealed class FakeOidcProvider : HttpMessageHandler
 
     private static HttpResponseMessage Json(object o) =>
         new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(o), Encoding.UTF8, "application/json") };
+}
+
+/// <summary>
+/// Puts a fake provider in front of the HTTP clients that OpenIddict.Client uses. OpenIddict accepts only an <c>HttpClientHandler</c> as the primary handler
+/// of its clients, so the fake cannot replace it; this delegating handler answers instead and never calls the real network.
+/// </summary>
+public sealed class FakeHttpShortcut(HttpMessageHandler fake) : DelegatingHandler
+{
+    private readonly HttpMessageInvoker _invoker = new(fake, disposeHandler: false);
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) => _invoker.SendAsync(request, ct);
+
+    /// <summary>Adds the shortcut to every client whose name starts with <c>OpenIddict</c>.</summary>
+    public static void Install(Microsoft.Extensions.DependencyInjection.IServiceCollection services, HttpMessageHandler fake) =>
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter>(services, new Filter(fake));
+
+
+    private sealed class Filter(HttpMessageHandler fake) : Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter
+    {
+        public Action<Microsoft.Extensions.Http.HttpMessageHandlerBuilder> Configure(Action<Microsoft.Extensions.Http.HttpMessageHandlerBuilder> next) => b =>
+        {
+            next(b);
+            if (b.Name?.StartsWith("OpenIddict", StringComparison.Ordinal) == true) b.AdditionalHandlers.Add(new FakeHttpShortcut(fake));
+        };
+    }
 }
