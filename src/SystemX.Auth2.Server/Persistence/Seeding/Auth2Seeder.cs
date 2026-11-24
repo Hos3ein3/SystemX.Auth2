@@ -334,6 +334,7 @@ public sealed partial class Auth2Seeder(
     private async Task<bool> EnsureAdminAsync(Project globalApp, bool single, CancellationToken ct)
     {
         var adminPassword = Environment.GetEnvironmentVariable("AUTH2_ADMIN_PASSWORD") ?? AdminPassword;
+        selection.ProjectKey = ProjectKeyRules.GlobalProjectKey;   // role and credential reads of the existing admin need a project
 
         // Never create a second admin. If admin exists, ensure password hash and Developer role are present.
         var existingAdmin = await users.FindByNameAsync(AdminUserName) ?? await users.FindByEmailAsync(AdminEmail);
