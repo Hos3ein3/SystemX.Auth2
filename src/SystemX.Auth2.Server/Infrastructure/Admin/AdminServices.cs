@@ -574,3 +574,36 @@ internal sealed class AuditReader(Auth2DbContext db, IAuthFlowResolver flow, IGl
         finally { all?.Dispose(); }
     }
 }
+
+internal sealed class AdminJobService(Auth2DbContext db, Operations.MaintenanceJobs jobs) : IAdminJobService
+{
+    public async Task<IReadOnlyList<JobStatusDto>> GetStatusAsync(CancellationToken ct = default)
+    {
+        var runs = await db.JobRuns.AsNoTracking().OrderByDescending(r => r.StartedAtUtc).Take(500).ToListAsync(ct);
+        return [.. Operations.MaintenanceJobs.Names.Select(name =>
+        {
+            var mine = runs.Where(r => r.JobName == name).ToList();
+            var last = mine.FirstOrDefault();
+            return new JobStatusDto(name, last?.StartedAtUtc, mine.FirstOrDefault(r => r.Success)?.StartedAtUtc, mine.FirstOrDefault(r => !r.Success)?.Error, last?.Success ?? true);
+        })];
+    }
+
+    public async Task<PagedResult<JobRunDto>> ListRunsAsync(PageQuery query, string? jobName = null, bool? success = null, CancellationToken ct = default)
+    {
+        IQueryable<JobRun> q = db.JobRuns.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(jobName)) q = q.Where(r => r.JobName == jobName);
+        if (success is { } ok) q = q.Where(r => r.Success == ok);
+        q = q.OrderByDescending(r => r.StartedAtUtc);
+        var total = await q.CountAsync(ct);
+        var items = await q.Skip(query.Skip).Take(query.SafePageSize).ToListAsync(ct);
+        return new PagedResult<JobRunDto>([.. items.Select(ToDto)], query.SafePage, query.SafePageSize, total);
+    }
+
+    public async Task<(OperationResult Result, JobRunDto? Run)> RunNowAsync(string jobName, CancellationToken ct = default)
+    {
+        if (!Operations.MaintenanceJobs.Names.Contains(jobName)) return (OperationResult.Fail(Auth2ErrorCodes.NotFound), null);
+        return (OperationResult.Ok, ToDto(await jobs.RunJobAsync(jobName, ct)));
+    }
+
+    private static JobRunDto ToDto(JobRun r) => new(r.Id, r.JobName, r.InstanceId, r.StartedAtUtc, r.FinishedAtUtc, r.Success, r.Error, r.RowsAffected);
+}

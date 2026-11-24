@@ -64,7 +64,21 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
         if (result.Succeeded)
         {
             await Auth2Cookie.SignInAsync(HttpContext, result.User!, Project!, Client, Effective, result.Amr, result.SessionId);
-            return Redirect(ResolveRedirect(Settings.Redirects.RedirectAfterLogin));
+
+            var isDeveloper = await users.IsInRoleAsync(result.User!, Auth2Roles.Developer)
+                           || await users.IsInRoleAsync(result.User!, Auth2Roles.GlobalAdmin);
+
+            var targetRedirect = ResolveRedirect(Settings.Redirects.RedirectAfterLogin);
+
+            if (isDeveloper)
+            {
+                ShowDeveloperModal = true;
+                RedirectAfterLoginUrl = targetRedirect;
+                DeveloperDashboardUrl = "/";
+                return Page();
+            }
+
+            return Redirect(targetRedirect);
         }
         switch (result.ErrorCode)
         {

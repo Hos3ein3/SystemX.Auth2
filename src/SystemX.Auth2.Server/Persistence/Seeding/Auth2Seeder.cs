@@ -29,7 +29,9 @@ public sealed partial class Auth2Seeder(
     IOpenIddictScopeManager scopeManager,
     IAuditService audit,
     IProjectSelection selection,
-    TimeProvider clock)
+    TimeProvider clock,
+    IOpenIddictApplicationManager? appManager = null,
+    IHostEnvironment? env = null)
 {
     // Hard-coded first admin. Change before production (see docs/seeding.md).
     internal const string AdminUserName = "globaladmin";
@@ -42,11 +44,14 @@ public sealed partial class Auth2Seeder(
         using var _ = globalScope.Begin();
         var single = options.Value.Mode == ServerMode.SingleProject;
 
+        await EnsureDatabaseCompatibilityAsync(ct);
+
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
         var globalApp = await EnsureProjectAsync(ProjectKeyRules.GlobalProjectKey, "Global", "Built-in project for developers and global admins.", "_global", ct);
         await EnsureScopesAsync(ct);
         await EnsureGlobalAdminRoleAsync(ct);
+        await EnsureDeveloperRoleAsync(ct);
         if (single)
             await EnsureProjectAsync(SlugFor(options.Value.SingleProject.Name), options.Value.SingleProject.Name, null, "default", ct);
         var created = await EnsureAdminAsync(globalApp, single, ct);
@@ -313,7 +318,7 @@ public sealed partial class Auth2Seeder(
         await Task.CompletedTask;
     }
 
-    private async Task<bool> EnsureAdminAsync(Project globalApp, bool single, CancellationToken ct)
+    private async Task EnsureDeveloperRoleAsync(CancellationToken ct)
     {
         if (await roles.FindByNameAsync(Auth2Roles.Developer) is not null) return;
         var result = await roles.CreateAsync(new AppRole(Auth2Roles.Developer)
@@ -332,6 +337,11 @@ public sealed partial class Auth2Seeder(
 
         // Never create a second admin. If admin exists, ensure password hash and Developer role are present.
         var existingAdmin = await users.FindByNameAsync(AdminUserName) ?? await users.FindByEmailAsync(AdminEmail);
+        if (existingAdmin is not null && !await users.IsInRoleAsync(existingAdmin, Auth2Roles.GlobalAdmin))
+        {
+            log.LogWarning("A user named '{UserName}' exists but is not a GlobalAdmin. The seeder did not change it.", AdminUserName);
+            return false;
+        }
         if (existingAdmin is not null)
         {
             var adminHash = users.PasswordHasher.HashPassword(existingAdmin, adminPassword);
@@ -393,11 +403,20 @@ public sealed partial class Auth2Seeder(
         EnsureSucceeded(await users.CreateAsync(user, adminPassword), "create the GlobalAdmin user");
         EnsureSucceeded(await users.AddToRoleAsync(user, Auth2Roles.GlobalAdmin), "add the user to GlobalAdmin");
         EnsureSucceeded(await users.AddToRoleAsync(user, Auth2Roles.Developer), "add the user to Developer");
-        EnsureSucceeded(await users.AddToRoleAsync(user, Auth2Roles.Developer), "add the user to Developer");
 
         // In multi mode the user also belongs to the _global project. With per-application credentials the store
         // already saved this row together with the user; with shared credentials we add it here.
-        if (!single && !await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == globalApp.Id, ct))
+        var globalUserProject = await db.UserProjects.FirstOrDefaultAsync(x => x.UserId == user.Id && x.ProjectId == globalApp.Id, ct);
+        var hash = users.PasswordHasher.HashPassword(user, adminPassword);
+        if (globalUserProject is not null)
+        {
+            if (string.IsNullOrEmpty(globalUserProject.PasswordHash))
+            {
+                globalUserProject.PasswordHash = hash;
+                await db.SaveChangesAsync(ct);
+            }
+        }
+        else if (!single)
         {
             db.UserProjects.Add(new UserProject
             {

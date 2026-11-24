@@ -306,7 +306,7 @@ public class RolesAndRulesTests : IdentityTestBase
     {
         await SetUpAsync();
         var admin = await InAsync("_global", async m => (await m.FindByNameAsync("globaladmin"))!);
-        (await InAsync("_global", async m => (await m.GetRolesAsync((await m.FindByNameAsync("globaladmin"))!)).ToList())).ShouldBe([Auth2Roles.GlobalAdmin]);
+        (await InAsync("_global", async m => (await m.GetRolesAsync((await m.FindByNameAsync("globaladmin"))!)).ToList())).ShouldBe([Auth2Roles.GlobalAdmin, Auth2Roles.Developer], ignoreOrder: true);
 
         await JoinAsync(admin, A);
         (await InAsync("appa", async m => (await m.GetRolesAsync((await m.FindByNameAsync("globaladmin"))!)).ToList())).ShouldBeEmpty();

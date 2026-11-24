@@ -15,12 +15,6 @@ public class CurrentClientTests
 
     private static ICurrentUser UserWith(params Claim[] claims)
     {
-        var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
-        return new CurrentClientImpl(new HttpContextAccessor { HttpContext = context });
-    }
-
-    private static ICurrentUser UserWith(params Claim[] claims)
-    {
         var identity = claims.Length > 0 ? new ClaimsIdentity(claims, "test") : new ClaimsIdentity();
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         return new CurrentUserImpl(new HttpContextAccessor { HttpContext = context }, Substitute.For<IAuth2AccessProvider>());
