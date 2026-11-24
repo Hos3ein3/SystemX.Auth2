@@ -47,7 +47,7 @@ public abstract class ClientAppTestBase : ClientTestBase
     protected async Task StartAppAsync(Action<IEndpointRouteBuilder> map, Action<IAuth2ClientBuilder>? configure = null, Action<IServiceCollection>? services = null,
         HttpMessageHandler? apiHandler = null, Action<SystemX.Auth2.Client.Options.Auth2ApiOptions>? api = null, bool handshake = false)
     {
-        await UpdateSettingsAsync(s => { s.Clients.AllowSelfUiLogin = true; });
+        await UpdateSettingsAsync(s => { s.App.AllowSelfUiLogin = true; });
         Counting = new CountingHandler(Server.Server.CreateHandler());
         ApiClient = BuildClient("blog", handler: apiHandler ?? Counting);
 
@@ -55,8 +55,8 @@ public abstract class ClientAppTestBase : ClientTestBase
             .ConfigureServices(s =>
             {
                 s.AddRouting();
-                var builder = s.AddAuth2Client("http://localhost", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; o.HandshakeOnStartup = handshake; })
-                    .ServerWithMultiApplication("blog")
+                var builder = s.AddAuth2Client("http://localhost", o => { o.ApplicationName = "default"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; o.HandshakeOnStartup = handshake; })
+                    .ServerWithMultiProject("blog")
                     .UseApiAuthentication(o => { o.BackchannelHandler = Server.Server.CreateHandler(); o.KeyRefreshInterval = TimeSpan.FromSeconds(1); api?.Invoke(o); });
                 configure?.Invoke(builder);
                 foreach (var name in new[] { Auth2ClientDefaults.HttpClientName, Auth2ClientDefaults.ResilientHttpClientName })
@@ -154,9 +154,9 @@ public class EndpointAuthorizationTests : ClientAppTestBase
         e.MapGet("/attr-anon", [Auth2Anonymous] () => "ok");
         var group = e.MapGroup("/g").WithPermission("orders.write");
         group.MapGet("/one", () => "ok");
-        e.MapGet("/who", async (ICurrentUser u) => Results.Json(new
+        e.MapGet("/who", async (ICurrentUser u, ICurrentClient c) => Results.Json(new
         {
-            u.IsAuthenticated, u.IsMachine, u.UserId, u.UserName, u.Email, u.Scopes,
+            u.IsAuthenticated, c.IsMachine, u.UserId, u.UserName, u.Email, c.Scopes, c.ClientId, c.ProjectKey, c.IsTokenAuthenticated,
             Roles = await u.GetRolesAsync(), Permissions = await u.GetPermissionsAsync(), Groups = await u.GetGroupsAsync(),
             HasOrders = await u.HasPermissionAsync("orders.read"), IsEditor = await u.HasRoleAsync("editor"),
         })).WithAuth2();
@@ -376,7 +376,7 @@ public class ClientAuthenticationTests : ClientAppTestBase
         await StartAppAsync(e => e.MapGet("/signed-in", () => "ok").WithAuth2());
         await using (var scope = Server.Services.CreateAsyncScope())
         {
-            var shop = await scope.ServiceProvider.GetRequiredService<IApplicationService>().CreateAsync("shop", "Shop", null, null);
+            var shop = await scope.ServiceProvider.GetRequiredService<IProjectService>().CreateWithApplicationAsync("shop", "Shop", null, null);
             var response = await new HttpClient(Server.Server.CreateHandler()) { BaseAddress = new Uri("http://localhost") }.PostAsync("/connect/token",
                 new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "client_credentials", ["client_id"] = "shop", ["client_secret"] = shop.ClientSecret, ["scope"] = "auth2.groups.read" }));
             var token = (await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("access_token").GetString()!;

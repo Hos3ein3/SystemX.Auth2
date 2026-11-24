@@ -38,11 +38,11 @@ internal sealed class LoginService(
     /// <inheritdoc />
     public async Task<LoginResult> PasswordLoginAsync(PasswordLoginRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
 
         // 1. application enabled
-        if (!app.IsEnabled) return await FailAsync(app, null, Auth2ErrorCodes.ApplicationDisabled, request, ct);
+        if (await flow.CheckGateAsync(ct) is { } denied) return await FailAsync(app, null, denied, request, ct, publicCode: Auth2ErrorCodes.AccessDenied);
 
         // 2. which login method is this, and is it allowed?
         var method = MethodOf(lookup.KindOf(request.Login, settings));
@@ -60,7 +60,7 @@ internal sealed class LoginService(
         if (!await lookup.IsMemberAsync(user, app, ct))
         {
             _ = hasher.VerifyHashedPassword(user, DummyHash.Value, request.Password);
-            return await FailAsync(app, user, Auth2ErrorCodes.NotRegisteredInApplication, request, ct, publicCode: Auth2ErrorCodes.InvalidCredentials);
+            return await FailAsync(app, user, Auth2ErrorCodes.NotRegisteredInProject, request, ct, publicCode: Auth2ErrorCodes.InvalidCredentials);
         }
 
         // 4. lockout
@@ -107,9 +107,9 @@ internal sealed class LoginService(
     /// <inheritdoc />
     public async Task<LoginResult> OtpLoginAsync(OtpLoginRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
-        if (!app.IsEnabled) return await FailAsync(app, null, Auth2ErrorCodes.ApplicationDisabled, null, ct, ipAddress: request.IpAddress);
+        if (await flow.CheckGateAsync(ct) is { } denied) return await FailAsync(app, null, denied, null, ct, publicCode: Auth2ErrorCodes.AccessDenied, ipAddress: request.IpAddress);
 
         // A code can only be sent to an email address or a phone number, never to a user name.
         var kind = lookup.KindOf(request.Login, settings);
@@ -141,12 +141,12 @@ internal sealed class LoginService(
     /// <inheritdoc />
     public async Task<LoginResult> ExternalLoginAsync(ExternalSignInRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         var user = request.User;
         var data = new Dictionary<string, object?> { ["method"] = request.Method.ToString(), ["provider"] = request.ProviderName };
 
-        if (!app.IsEnabled) return await FailAsync(app, user, Auth2ErrorCodes.ApplicationDisabled, null, ct, data, ipAddress: request.IpAddress);
+        if (await flow.CheckGateAsync(ct) is { } denied) return await FailAsync(app, user, denied, null, ct, data, Auth2ErrorCodes.AccessDenied, request.IpAddress);
         if (!settings.Methods.AllowedLoginMethods.Contains(request.Method))
             return await FailAsync(app, user, Auth2ErrorCodes.LoginMethodNotAllowed, null, ct, data, ipAddress: request.IpAddress);
         if (!user.IsActive || !await lookup.IsMemberAsync(user, app, ct))
@@ -172,12 +172,12 @@ internal sealed class LoginService(
     /// <inheritdoc />
     public async Task<LoginResult> CompleteTwoFactorAsync(string twoFactorToken, string? code, string? recoveryCode, string? ipAddress = null, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
 
         var user = await ReadTwoFactorTokenAsync(twoFactorToken, app);
         if (user is null) return await FailAsync(app, null, Auth2ErrorCodes.InvalidToken, null, ct, ipAddress: ipAddress);
-        if (!app.IsEnabled) return await FailAsync(app, user, Auth2ErrorCodes.ApplicationDisabled, null, ct, ipAddress: ipAddress);
+        if (await flow.CheckGateAsync(ct) is { } denied) return await FailAsync(app, user, denied, null, ct, publicCode: Auth2ErrorCodes.AccessDenied, ipAddress: ipAddress);
         if (await users.IsLockedOutAsync(user)) return await FailAsync(app, user, Auth2ErrorCodes.LockedOut, null, ct, ipAddress: ipAddress);
 
         bool ok;
@@ -200,19 +200,19 @@ internal sealed class LoginService(
     /// <inheritdoc />
     public async Task<bool> IsSubjectValidAsync(AppUser user, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
-        return app.IsEnabled && user.IsActive && await lookup.IsMemberAsync(user, app, ct) && !await users.IsLockedOutAsync(user);
+        var app = await flow.GetProjectAsync(ct);
+        return await flow.CheckGateAsync(ct) is null && user.IsActive && await lookup.IsMemberAsync(user, app, ct) && !await users.IsLockedOutAsync(user);
     }
 
     // ---------------------------------------------------------------------------------------------
 
-    private async Task<LoginResult> SucceedAsync(AppUser user, Auth2Application app, ApplicationSettings settings, string[] amr, string? ip, string? ua, CancellationToken ct)
+    private async Task<LoginResult> SucceedAsync(AppUser user, Project app, ProjectSettings settings, string[] amr, string? ip, string? ua, CancellationToken ct)
     {
         await users.ResetAccessFailedCountAsync(user);
 
-        if (options.Value.Mode == ServerMode.MultiApplication)
+        if (options.Value.Mode == ServerMode.MultiProject)
         {
-            var row = await db.UserApplications.FirstOrDefaultAsync(x => x.UserId == user.Id && x.ApplicationId == app.Id, ct);
+            var row = await db.UserProjects.FirstOrDefaultAsync(x => x.UserId == user.Id && x.ProjectId == app.Id, ct);
             if (row is not null) { row.LastLoginUtc = clock.GetUtcNow(); await db.SaveChangesAsync(ct); }
         }
 
@@ -222,7 +222,7 @@ internal sealed class LoginService(
             await sessions.RevokeAllAsync(user, app, "session.revoked_others", ct: ct);
             // With per-application credentials the stamp belongs to this application. A shared stamp would also log the
             // user out of the other applications, so it is left alone in that case.
-            if (await flow.GetCredentialScopeAsync(ct) == CredentialScope.PerApplication)
+            if (await flow.GetCredentialScopeAsync(ct) == CredentialScope.PerProject)
                 await users.UpdateSecurityStampAsync(user);
         }
 
@@ -232,7 +232,7 @@ internal sealed class LoginService(
     }
 
     /// <summary>Writes the audit event and returns the failure. <paramref name="publicCode"/> is what the caller sees; the audit keeps the real reason.</summary>
-    private async Task<LoginResult> FailAsync(Auth2Application app, AppUser? user, string reasonCode, PasswordLoginRequest? request, CancellationToken ct,
+    private async Task<LoginResult> FailAsync(Project app, AppUser? user, string reasonCode, PasswordLoginRequest? request, CancellationToken ct,
         Dictionary<string, object?>? data = null, string? publicCode = null, string? ipAddress = null)
     {
         data ??= [];
@@ -242,7 +242,7 @@ internal sealed class LoginService(
         return LoginResult.Fail(publicCode ?? reasonCode);
     }
 
-    private AuditEntry Entry(string action, Auth2Application app, AppUser? user, string? ip, string? ua, Dictionary<string, object?>? data = null) =>
+    private AuditEntry Entry(string action, Project app, AppUser? user, string? ip, string? ua, Dictionary<string, object?>? data = null) =>
         new(action, app.Id, ActorUserId: user?.Id, TargetType: user is null ? null : "user", TargetId: user?.Id.ToString(), IpAddress: ip, UserAgent: ua, Data: data);
 
     private static LoginMethod MethodOf(IdentifierKind kind) => kind switch
@@ -252,10 +252,10 @@ internal sealed class LoginService(
         _ => LoginMethod.UserNamePassword,
     };
 
-    private string CreateTwoFactorToken(AppUser user, Auth2Application app) =>
+    private string CreateTwoFactorToken(AppUser user, Project app) =>
         TokenProtector.Protect($"{user.Id:N}|{app.Id:N}", TwoFactorTokenLifetime);
 
-    private async Task<AppUser?> ReadTwoFactorTokenAsync(string token, Auth2Application app)
+    private async Task<AppUser?> ReadTwoFactorTokenAsync(string token, Project app)
     {
         try
         {

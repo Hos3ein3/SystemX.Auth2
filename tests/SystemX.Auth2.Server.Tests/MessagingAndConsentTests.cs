@@ -11,9 +11,9 @@ namespace SystemX.Auth2.Server.Tests;
 
 public class ConsentPolicyTests
 {
-    private static ApplicationSettings Settings(bool require, ConsentMode mode)
+    private static ProjectSettings Settings(bool require, ConsentMode mode)
     {
-        var s = new ApplicationSettings();
+        var s = new ProjectSettings();
         s.Sessions.RequireConsent = require;
         s.Sessions.ConsentMode = mode;
         return s;

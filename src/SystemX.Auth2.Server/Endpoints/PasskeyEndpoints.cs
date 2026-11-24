@@ -72,7 +72,7 @@ public static class PasskeyEndpoints
                 var r = await svc.RequestOptionsAsync(body?.Login, http.RequestAborted);
                 return r.Succeeded ? Results.Content(r.Value!, "application/json") : ApiResults.Error(http, StatusCodes.Status400BadRequest, r.Result.ErrorCode!);
             }
-            catch (ApplicationNotFoundException) { return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ApplicationNotFound); }
+            catch (ProjectNotFoundException) { return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ProjectNotFound); }
         });
         group.MapPost("/passkey/signin", async (HttpContext http, string? client_id, PasskeySignInRequest body, IClientIdAccessor accessor, IPasskeyService svc,
             IAuthFlowResolver flow, IReturnUrlValidator urls) =>
@@ -85,11 +85,11 @@ public static class PasskeyEndpoints
                     return result.ErrorCode == Auth2ErrorCodes.TwoFactorRequired
                         ? Results.Ok(new { succeeded = false, errorCode = result.ErrorCode, twoFactorToken = result.TwoFactorToken })
                         : ApiResults.Error(http, result.ErrorCode == Auth2ErrorCodes.RateLimited ? StatusCodes.Status429TooManyRequests : StatusCodes.Status400BadRequest, result.ErrorCode ?? Auth2ErrorCodes.InvalidCredentials);
-                var settings = await flow.GetSettingsAsync(http.RequestAborted);
-                await Auth2Cookie.SignInAsync(http, result.User!, result.Application!, settings, result.Amr, result.SessionId, result.IdentityProvider);
-                return Results.Ok(new { succeeded = true, redirectTo = urls.Resolve(body.ReturnUrl, settings.Redirects.RedirectAfterLogin, settings) });
+                var settings = await flow.GetEffectiveAsync(http.RequestAborted);
+                await Auth2Cookie.SignInAsync(http, result.User!, result.Application!, settings.Application, settings, result.Amr, result.SessionId, result.IdentityProvider);
+                return Results.Ok(new { succeeded = true, redirectTo = urls.Resolve(body.ReturnUrl, settings.Project.Redirects.RedirectAfterLogin, settings) });
             }
-            catch (ApplicationNotFoundException) { return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ApplicationNotFound); }
+            catch (ProjectNotFoundException) { return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ProjectNotFound); }
         });
         return routes;
     }
@@ -106,8 +106,8 @@ public static class PasskeyEndpoints
         }
         http.RequestServices.GetRequiredService<IClientIdAccessor>().ClientId = session.Principal!.FindFirst(Auth2Claims.ClientId)?.Value ?? clientId;
         var user = await http.RequestServices.GetRequiredService<UserManager<AppUser>>().FindByIdAsync(session.Principal.FindFirst("sub")?.Value ?? "");
-        var app = await http.RequestServices.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync(http.RequestAborted);
-        if (user is null || session.Principal.FindFirst(Auth2Claims.ApplicationId)?.Value != app.Id.ToString("D")
+        var app = await http.RequestServices.GetRequiredService<IAuthFlowResolver>().GetProjectAsync(http.RequestAborted);
+        if (user is null || session.Principal.FindFirst(Auth2Claims.ProjectId)?.Value != app.Id.ToString("D")
             || !await http.RequestServices.GetRequiredService<ILoginService>().IsSubjectValidAsync(user, http.RequestAborted))
             return ApiResults.Error(http, StatusCodes.Status401Unauthorized, Auth2ErrorCodes.InvalidToken);
         return await action(user, http.RequestServices.GetRequiredService<IPasskeyService>());

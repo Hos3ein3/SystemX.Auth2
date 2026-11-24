@@ -13,8 +13,8 @@ When you call the server from your own backend (or you write a client). The `Sys
 - **Token.** `Authorization: Bearer <access token>`. Two kinds:
   - **Machine token**: `grant_type=client_credentials`. For the endpoints marked *client*.
   - **User token**: the token of a signed-in user. For the endpoints marked *user*. A machine token is refused on a user endpoint (`403 forbidden`) and the other way round.
-- **The application is the audience of the token.** It is never read from the body.
-- **Scope.** Each endpoint needs one scope. The application must allow it in `Clients.AllowedScopes`.
+- **The application is the audience of the token** (its client id). The project is the one of that application. Neither is ever read from the body.
+- **Scope.** Each endpoint needs one scope. The application must allow it in `the allowed scopes of the application`.
 - **Errors** have the same shape. `code` is stable. `message` is localized (`Accept-Language`). `details` is optional.
 
 ```json
@@ -26,8 +26,9 @@ When you call the server from your own backend (or you write a client). The `Sys
 |---|---|
 | 400 | Validation or a business rule (`validation_failed`, `password_*`, `invalid_otp`, `invalid_token` for a bad confirmation or reset token, `invalid_credentials`, `login_method_not_allowed`) |
 | 401 | No token or a bad token (`invalid_token`) |
-| 403 | Wrong kind of token (`forbidden`), missing scope (`insufficient_scope`), `registration_disabled`, `application_disabled`, `two_factor_not_allowed` |
-| 404 | The application of the token does not exist (`application_not_found`) |
+| 403 | Wrong kind of token (`forbidden`), missing scope (`insufficient_scope`), `registration_disabled`, `project_disabled`, `two_factor_not_allowed` |
+| 404 | The application of the token does not exist (`project_not_found`) |
+| 403 | The project or the application is disabled (`access_denied`; the audit log has the real reason) |
 | 409 | `conflict` (for example two-factor is already on), `server_mode_mismatch`, `project_key_or_name_mismatch` |
 | 423 | `locked_out` |
 | 429 | `rate_limited` (rate limiting arrives in phase 10) |
@@ -84,12 +85,12 @@ Content-Type: application/json
 ```
 
 ```json
-{ "userId": "0198...", "userWasCreated": true, "joinedApplication": true, "confirmationRequired": false }
+{ "userId": "0198...", "userWasCreated": true, "joinedProject": true, "confirmationRequired": false }
 ```
 
-For a person who exists in another application: `userWasCreated=false`, `joinedApplication=false`, `confirmationRequired=true`. A proof code went to their confirmed email or phone. Finish with `join/complete`. See [authentication-flows.md](authentication-flows.md).
+For a person who exists in another application: `userWasCreated=false`, `joinedProject=false`, `confirmationRequired=true`. A proof code went to their confirmed email or phone. Finish with `join/complete`. See [authentication-flows.md](authentication-flows.md).
 
-`returnUrl` goes into the email links only when it is a local path or exactly one of the application's `AllowedRedirectUris`.
+`returnUrl` goes into the email links only when it is a local path or exactly one of the application's the redirect URIs of the application.
 
 ### Example: me
 

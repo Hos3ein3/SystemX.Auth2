@@ -6,7 +6,7 @@ The user types a user name and password into the login page of the Server. The S
 
 1. Create a **service account** in the directory that may search users and groups (read only). The Server uses it to find the user. Never use the directory admin account in production.
 2. Make sure the directory offers **LDAPS** (port 636) or **StartTLS** (port 389). Plain LDAP is not offered.
-3. Add the provider, and add `Ldap` to `Methods.AllowedLoginMethods` of the application.
+3. Add the provider, and add `Ldap` to `Methods.AllowedLoginMethods` of the project.
 
 ```json
 {

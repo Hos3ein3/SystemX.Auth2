@@ -54,12 +54,12 @@ public sealed class RegisterModel(IClientIdAccessor clientId, IAuthFlowResolver 
         if (outcome.UserWasCreated && !Settings.Registration.LoginRequiredAfterRegister && !outcome.ConfirmationRequired)
             return await SignInAndRedirectAsync(new LoginResult { Succeeded = true, User = outcome.User, Amr = ["pwd"], SessionId = Guid.NewGuid().ToString("N") },
                 Settings.Redirects.RedirectAfterRegister);
-        return RedirectToPage("Login", new { ReturnUrl, ClientId = Application!.ClientId });
+        return RedirectToPage("Login", new { ReturnUrl, ClientId = ClientIdForLinks });
     }
 
     private async Task<bool> PrepareAsync()
     {
-        if (!await LoadApplicationAsync()) return false;
+        if (!await LoadProjectAsync()) return false;
         var m = Settings.Methods.AllowedRegisterMethods;
         ShowUserNameField = m.Contains(LoginMethod.UserNamePassword);
         ShowEmailField = m.Contains(LoginMethod.EmailPassword) || m.Contains(LoginMethod.EmailOtp);

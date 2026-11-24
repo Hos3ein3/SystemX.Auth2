@@ -16,11 +16,11 @@ public sealed class OtpService(Auth2DbContext db, IAuthFlowResolver flow, ISecre
     /// <inheritdoc />
     public async Task<OtpIssueResult> IssueAsync(AppUser user, string purpose, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var rules = (await flow.GetSettingsAsync(ct)).TwoFactor;
         var now = clock.GetUtcNow();
 
-        var open = await db.OtpCodes.Where(c => c.UserId == user.Id && c.ApplicationId == app.Id && c.Purpose == purpose && c.ConsumedAtUtc == null).ToListAsync(ct);
+        var open = await db.OtpCodes.Where(c => c.UserId == user.Id && c.ProjectId == app.Id && c.Purpose == purpose && c.ConsumedAtUtc == null).ToListAsync(ct);
         // The creation time is the expiry minus the lifetime that was in force then; the newest code decides the resend delay.
         if (open.Count > 0 && now < open.Max(c => c.ExpiresAtUtc) - TimeSpan.FromSeconds(rules.OtpLifetimeSeconds) + TimeSpan.FromSeconds(rules.OtpResendSeconds))
             return new OtpIssueResult(null, TooSoon: true);
@@ -31,7 +31,7 @@ public sealed class OtpService(Auth2DbContext db, IAuthFlowResolver flow, ISecre
         db.OtpCodes.Add(new OtpCode
         {
             UserId = user.Id,
-            ApplicationId = app.Id,
+            ProjectId = app.Id,
             Purpose = purpose,
             CodeHash = hasher.Hash(code),
             ExpiresAtUtc = now.AddSeconds(rules.OtpLifetimeSeconds),
@@ -43,13 +43,13 @@ public sealed class OtpService(Auth2DbContext db, IAuthFlowResolver flow, ISecre
     /// <inheritdoc />
     public async Task<OtpVerifyResult> VerifyAsync(AppUser user, string purpose, string code, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var rules = (await flow.GetSettingsAsync(ct)).TwoFactor;
         var now = clock.GetUtcNow();
 
         // No tracking: the updates below bypass the change tracker, so a tracked copy would show old attempt counts.
         var row = await db.OtpCodes.AsNoTracking()
-            .Where(c => c.UserId == user.Id && c.ApplicationId == app.Id && c.Purpose == purpose && c.ConsumedAtUtc == null)
+            .Where(c => c.UserId == user.Id && c.ProjectId == app.Id && c.Purpose == purpose && c.ConsumedAtUtc == null)
             .OrderByDescending(c => c.ExpiresAtUtc).FirstOrDefaultAsync(ct);
         if (row is null) return OtpVerifyResult.NotFound;
 

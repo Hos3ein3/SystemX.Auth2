@@ -93,7 +93,7 @@ public sealed class OidcIdentitySource(
             !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(returned), Encoding.UTF8.GetBytes(payload.S))) Fail("state_mismatch");
         if (ctx.Parameters.ContainsKey("error")) Fail("provider_error");
         // A state can be used one time only, even if the cookie is copied.
-        if (!await replay.TryAddAsync(p.ApplicationId, $"oidc-state:{p.RegistrationName}:{payload.S}", DateTimeOffset.FromUnixTimeSeconds(payload.E), ct)) Fail("state_replayed");
+        if (!await replay.TryAddAsync(p.ProjectId, $"oidc-state:{p.RegistrationName}:{payload.S}", DateTimeOffset.FromUnixTimeSeconds(payload.E), ct)) Fail("state_replayed");
         if (!ctx.Parameters.TryGetValue("code", out var code) || string.IsNullOrEmpty(code)) Fail("code_missing");
 
         var ep = await endpoints.ResolveAsync(p, ct);

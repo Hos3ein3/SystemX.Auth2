@@ -12,7 +12,7 @@ public sealed class LogoutModel(IClientIdAccessor clientId, IAuthFlowResolver fl
     /// <summary>Loads the application. The UI shows an "are you sure" form.</summary>
     public async Task<IActionResult> OnGetAsync()
     {
-        await LoadApplicationAsync();
+        await LoadProjectAsync();
         Response.StatusCode = StatusCodes.Status200OK;   // a missing application is fine here
         return Page();
     }
@@ -20,7 +20,7 @@ public sealed class LogoutModel(IClientIdAccessor clientId, IAuthFlowResolver fl
     /// <summary>Signs out.</summary>
     public async Task<IActionResult> OnPostAsync()
     {
-        var found = await LoadApplicationAsync();
+        var found = await LoadProjectAsync();
         Response.StatusCode = StatusCodes.Status200OK;
         await HttpContext.SignOutAsync(Auth2Cookie.Scheme);
         return Redirect(ResolveRedirect(found ? Settings.Redirects.RedirectAfterLogout : null));

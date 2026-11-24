@@ -190,11 +190,11 @@ public class SyncIntegrationTests : ClientAppTestBase
     [Fact]
     public async Task ScanningWorksInAMinimalHostingApplication_TooWithWebApplication()
     {
-        await UpdateSettingsAsync(s => s.Clients.AllowSelfUiLogin = true);
+        await UpdateSettingsAsync(s => s.App.AllowSelfUiLogin = true);
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
-        builder.Services.AddAuth2Client("http://localhost", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; })
-            .ServerWithMultiApplication("blog")
+        builder.Services.AddAuth2Client("http://localhost", o => { o.ApplicationName = "default"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; })
+            .ServerWithMultiProject("blog")
             .EnablePermissions(o => { o.SyncPolicy = PermissionSyncPolicy.Push; o.ScanningPolicy = ScanningPolicy.AssemblyScan; });
         foreach (var name in new[] { Auth2ClientDefaults.HttpClientName, Auth2ClientDefaults.ResilientHttpClientName })
             builder.Services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => Server.Server.CreateHandler());
@@ -365,7 +365,7 @@ public class HostedUiIntegrationTests : ClientAppTestBase
 
     private async Task<(Jar App, Jar Srv, HttpClient ServerClient)> StartAsync(Action<SystemX.Auth2.Client.Options.Auth2CookieOptions>? cookie = null)
     {
-        await UpdateSettingsAsync(s => { s.Clients.AllowSelfUiLogin = true; s.Redirects.AllowedRedirectUris.Add(Callback); s.Redirects.AllowedPostLogoutRedirectUris.Add("http://localhost/signout-callback-oidc"); });
+        await UpdateSettingsAsync(s => { s.App.AllowSelfUiLogin = true; s.RedirectUris.Add(Callback); s.PostLogoutRedirectUris.Add("http://localhost/signout-callback-oidc"); });
         await StartAppAsync(Map, b => b.UseHostedUi(o => o.BackchannelHandler = Server.Server.CreateHandler()).UseCookieAuthentication(o =>
         {
             o.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest;

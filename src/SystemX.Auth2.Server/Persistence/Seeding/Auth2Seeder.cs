@@ -27,7 +27,7 @@ public sealed partial class Auth2Seeder(
     IClientProvisioner provisioner,
     IOpenIddictScopeManager scopeManager,
     IAuditService audit,
-    IApplicationSelection selection,
+    IProjectSelection selection,
     TimeProvider clock)
 {
     // Hard-coded first admin. Change before production (see docs/seeding.md).
@@ -39,15 +39,15 @@ public sealed partial class Auth2Seeder(
     public async Task SeedAsync(CancellationToken ct = default)
     {
         using var _ = globalScope.Begin();
-        var single = options.Value.Mode == ServerMode.SingleApplication;
+        var single = options.Value.Mode == ServerMode.SingleProject;
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-        var globalApp = await EnsureApplicationAsync(ProjectKeyRules.GlobalProjectKey, "Global", "Built-in project for developers and global admins.", ct);
+        var globalApp = await EnsureProjectAsync(ProjectKeyRules.GlobalProjectKey, "Global", "Built-in project for developers and global admins.", "_global", ct);
         await EnsureScopesAsync(ct);
         await EnsureGlobalAdminRoleAsync(ct);
         if (single)
-            await EnsureApplicationAsync(SlugFor(options.Value.SingleApplication.Name), options.Value.SingleApplication.Name, null, ct);
+            await EnsureProjectAsync(SlugFor(options.Value.SingleProject.Name), options.Value.SingleProject.Name, null, "default", ct);
         var created = await EnsureAdminAsync(globalApp, single, ct);
 
         await tx.CommitAsync(ct);
@@ -67,28 +67,20 @@ public sealed partial class Auth2Seeder(
             log.LogWarning("The GlobalAdmin user still has the default password. Change it now.");
     }
 
-    private async Task<Auth2Application> EnsureApplicationAsync(string projectKey, string name, string? description, CancellationToken ct)
+    private async Task<Project> EnsureProjectAsync(string projectKey, string name, string? description, string applicationName, CancellationToken ct)
     {
-        var app = await db.Applications.FirstOrDefaultAsync(a => a.ProjectKey == projectKey, ct);
-        if (app is null)
+        var project = await db.Projects.FirstOrDefaultAsync(a => a.ProjectKey == projectKey, ct);
+        if (project is null)
         {
-            app = new Auth2Application
-            {
-                ProjectKey = projectKey,
-                Name = name,
-                Description = description,
-                ClientId = projectKey,
-                CreatedAtUtc = clock.GetUtcNow(),
-            };
-            db.Applications.Add(app);
+            var now = clock.GetUtcNow();
+            project = new Project { ProjectKey = projectKey, Name = name, Description = description, CreatedAtUtc = now, UpdatedAtUtc = now };
+            db.Projects.Add(project);
             await db.SaveChangesAsync(ct);
         }
-        if (app.OpenIddictApplicationId is null)
-        {
-            app.OpenIddictApplicationId = (await provisioner.EnsureClientAsync(app, ct)).Id;   // the secret of a seeded client is not shown; rotate it with the rotate-client-secret command
-            await db.SaveChangesAsync(ct);
-        }
-        return app;
+        // The seeded application uses the project key as client id. Its secret is not shown (rotate it with the rotate-client-secret command).
+        if (!await db.Set<Auth2Application>().AnyAsync(a => a.ProjectId == project.Id, ct))
+            await provisioner.CreateAsync(project, new ApplicationSpec(applicationName, projectKey), clock.GetUtcNow(), ct);
+        return project;
     }
 
     private async Task EnsureScopesAsync(CancellationToken ct)
@@ -105,7 +97,7 @@ public sealed partial class Auth2Seeder(
         if (await roles.FindByNameAsync(Auth2Roles.GlobalAdmin) is not null) return;
         var result = await roles.CreateAsync(new AppRole(Auth2Roles.GlobalAdmin)
         {
-            ApplicationId = null,
+            ProjectId = null,
             IsSystem = true,
             Description = "Can manage everything on this server.",
         });
@@ -113,7 +105,7 @@ public sealed partial class Auth2Seeder(
         await Task.CompletedTask;
     }
 
-    private async Task<bool> EnsureAdminAsync(Auth2Application globalApp, bool single, CancellationToken ct)
+    private async Task<bool> EnsureAdminAsync(Project globalApp, bool single, CancellationToken ct)
     {
         // Never create a second admin and never touch an existing one.
         if ((await users.GetUsersInRoleAsync(Auth2Roles.GlobalAdmin)).Count > 0) return false;
@@ -139,14 +131,14 @@ public sealed partial class Auth2Seeder(
 
         // In multi mode the user also belongs to the _global project. With per-application credentials the store
         // already saved this row together with the user; with shared credentials we add it here.
-        if (!single && !await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == globalApp.Id, ct))
+        if (!single && !await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == globalApp.Id, ct))
         {
-            db.UserApplications.Add(new UserApplication
+            db.UserProjects.Add(new UserProject
             {
                 UserId = user.Id,
-                ApplicationId = globalApp.Id,
+                ProjectId = globalApp.Id,
                 JoinedAtUtc = clock.GetUtcNow(),
-                Status = UserApplicationStatus.Active,
+                Status = UserProjectStatus.Active,
                 LockoutEnabled = true,
             });
             await db.SaveChangesAsync(ct);
@@ -163,16 +155,16 @@ public sealed partial class Auth2Seeder(
     public async Task CreateAdminAsync(string userName, string email, string password, CancellationToken ct = default)
     {
         using var _ = globalScope.Begin();
-        var single = options.Value.Mode == SystemX.Auth2.Contracts.Enums.ServerMode.SingleApplication;
-        var globalApp = await db.Applications.FirstAsync(a => a.ProjectKey == ProjectKeyRules.GlobalProjectKey, ct);
+        var single = options.Value.Mode == SystemX.Auth2.Contracts.Enums.ServerMode.SingleProject;
+        var globalApp = await db.Projects.FirstAsync(a => a.ProjectKey == ProjectKeyRules.GlobalProjectKey, ct);
         selection.ProjectKey = ProjectKeyRules.GlobalProjectKey;
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         var user = new AppUser { UserName = userName, Email = email, EmailConfirmed = true, IsActive = true, DisplayName = "Global admin", CreatedAtUtc = clock.GetUtcNow() };
         EnsureSucceeded(await users.CreateAsync(user, password), "create the admin user");
         EnsureSucceeded(await users.AddToRoleAsync(user, Auth2Roles.GlobalAdmin), "add the user to GlobalAdmin");
-        if (!single && !await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == globalApp.Id, ct))
+        if (!single && !await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == globalApp.Id, ct))
         {
-            db.UserApplications.Add(new UserApplication { UserId = user.Id, ApplicationId = globalApp.Id, JoinedAtUtc = clock.GetUtcNow(), Status = UserApplicationStatus.Active, LockoutEnabled = true });
+            db.UserProjects.Add(new UserProject { UserId = user.Id, ProjectId = globalApp.Id, JoinedAtUtc = clock.GetUtcNow(), Status = UserProjectStatus.Active, LockoutEnabled = true });
             await db.SaveChangesAsync(ct);
         }
         await audit.WriteAsync(new AuditEntry("admin.created", globalApp.Id, TargetType: "user", TargetId: user.Id.ToString()), ct);

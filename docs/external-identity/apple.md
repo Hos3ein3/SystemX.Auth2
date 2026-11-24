@@ -12,7 +12,7 @@ Users sign in with an Apple ID. Apple has no client secret: the Server makes a s
 
 ### The URL to register
 
-Enter this as the redirect (callback) URL at the provider. Replace `{slug}` with the project key of your application (or `default` in single-application mode) and `{name}` with the provider name you choose:
+Enter this as the redirect (callback) URL at the provider. Replace `{slug}` with the project key of your application (or `default` in single-project mode) and `{name}` with the provider name you choose:
 
 ```
 https://auth.example.com/callback/login/{slug}/{name}

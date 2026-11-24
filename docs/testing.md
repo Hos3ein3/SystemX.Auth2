@@ -34,7 +34,7 @@ dotnet test --collect:"XPlat Code Coverage"   # with coverage (coverlet)
 `Server.IntegrationTests` starts one PostgreSQL 15 container (`postgres:15-alpine`) for the whole run.
 Each test class instance creates its own database and its own `WebApplicationFactory<Program>` (environment `Testing`).
 Use `ServerTestBase`: call `MigrateAndSeedAsync()`, then open a scope with `NewScope()`.
-Set `SingleMode => true` to test `ServerWithSingleApplication()`.
+Set `SingleMode => true` to test `ServerWithSingleProject()`.
 `Factory.Logs` captures log messages, so tests can check that no secret is logged.
 
 ## Common problems

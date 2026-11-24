@@ -8,7 +8,7 @@ namespace SystemX.Auth2.Server.Infrastructure.Admin;
 public static class SettingsEditability
 {
     /// <summary>Paths (like <c>Clients.AllowedScopes</c>) of <c>GlobalOnly</c> settings whose value differs between the two objects.</summary>
-    public static IReadOnlyList<string> ChangedGlobalOnly(ApplicationSettings before, ApplicationSettings after)
+    public static IReadOnlyList<string> ChangedGlobalOnly(object before, object after)
     {
         var changed = new List<string>();
         Walk(before, after, "", changed);

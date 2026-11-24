@@ -90,7 +90,7 @@ public sealed class Auth2RequestCultureProvider : RequestCultureProvider
             appDefault = settings.Localization.DefaultCulture;
             supported = settings.Localization.SupportedCultures;
         }
-        catch (ApplicationNotFoundException)
+        catch (ProjectNotFoundException)
         {
             // No application known for this request: use the server defaults.
         }

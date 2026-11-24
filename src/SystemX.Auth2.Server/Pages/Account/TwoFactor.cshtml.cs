@@ -32,7 +32,7 @@ public sealed class TwoFactorModel(IClientIdAccessor clientId, IAuthFlowResolver
     /// <summary>Loads the token from the first step.</summary>
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         ShowRecoveryCode = Settings.TwoFactor.AllowRecoveryCodes;
         TwoFactorToken = TempData.Peek("TwoFactorToken") as string ?? "";
         if (TwoFactorToken.Length == 0) return RedirectToPage("Login", new { ReturnUrl, ClientId });
@@ -42,7 +42,7 @@ public sealed class TwoFactorModel(IClientIdAccessor clientId, IAuthFlowResolver
     /// <summary>Checks the code and signs the user in.</summary>
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         ShowRecoveryCode = Settings.TwoFactor.AllowRecoveryCodes;
 
         var result = await login.CompleteTwoFactorAsync(TwoFactorToken, Input.Code, Input.RecoveryCode,
@@ -50,7 +50,7 @@ public sealed class TwoFactorModel(IClientIdAccessor clientId, IAuthFlowResolver
         if (result.Succeeded)
         {
             TempData.Remove("TwoFactorToken");
-            await Auth2Cookie.SignInAsync(HttpContext, result.User!, Application!, Settings, result.Amr, result.SessionId);
+            await Auth2Cookie.SignInAsync(HttpContext, result.User!, Project!, Client, Effective, result.Amr, result.SessionId);
             return Redirect(ResolveRedirect(Settings.Redirects.RedirectAfterLogin));
         }
         if (result.ErrorCode == Auth2ErrorCodes.LockedOut) return RedirectToPage("Lockout", new { ReturnUrl, ClientId });

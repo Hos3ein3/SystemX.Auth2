@@ -15,8 +15,8 @@ namespace SystemX.Auth2.Server.Persistence.Identity;
 public class Auth2UserStore(
     Auth2DbContext context,
     ICredentialStateProvider credentials,
-    IApplicationContext applications,
-    IApplicationScope scope,
+    IProjectContext applications,
+    IProjectScope scope,
     IOptions<Auth2ServerOptions> options,
     IdentityErrorDescriber? describer = null)
     : UserStore<AppUser, AppRole, Auth2DbContext, Guid, IdentityUserClaim<Guid>, IdentityUserRole<Guid>, AppUserLogin, AppUserToken, IdentityRoleClaim<Guid>, AppUserPasskey>(context, describer)
@@ -72,7 +72,7 @@ public class Auth2UserStore(
 
     // ---- external logins and passkeys belong to the current application
 
-    private async Task<Guid> CurrentApplicationIdAsync(CancellationToken ct) => (await applications.GetRequiredAsync(ct)).Id;
+    private async Task<Guid> CurrentProjectIdAsync(CancellationToken ct) => (await applications.GetRequiredAsync(ct)).Id;
 
     /// <inheritdoc />
     public override async Task AddLoginAsync(AppUser user, UserLoginInfo login, CancellationToken ct = default)
@@ -85,7 +85,7 @@ public class Auth2UserStore(
     protected override AppUserLogin CreateUserLogin(AppUser user, UserLoginInfo login) => new()
     {
         UserId = user.Id,
-        ApplicationId = scope.ApplicationId ?? throw new InvalidOperationException("A login needs an application."),
+        ProjectId = scope.ProjectId ?? throw new InvalidOperationException("A login needs an application."),
         ProviderKey = login.ProviderKey,
         LoginProvider = login.LoginProvider,
         ProviderDisplayName = login.ProviderDisplayName,
@@ -116,7 +116,7 @@ public class Auth2UserStore(
     protected override AppUserPasskey CreateUserPasskey(AppUser user, UserPasskeyInfo passkey)
     {
         var p = base.CreateUserPasskey(user, passkey);
-        p.ApplicationId = scope.ApplicationId ?? throw new InvalidOperationException("A passkey needs an application.");
+        p.ProjectId = scope.ProjectId ?? throw new InvalidOperationException("A passkey needs an application.");
         return p;
     }
 
@@ -184,10 +184,10 @@ public class Auth2UserStore(
         {
             rolesChanged = false;
             var app = await applications.GetRequiredAsync(ct);
-            if (options.Value.Mode == ServerMode.SingleApplication)
-                await Context.Applications.Where(a => a.Id == app.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.AccessVersion, a => a.AccessVersion + 1), ct);
+            if (options.Value.Mode == ServerMode.SingleProject)
+                await Context.Projects.Where(a => a.Id == app.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.AccessVersion, a => a.AccessVersion + 1), ct);
             else
-                await Context.UserApplications.Where(x => x.UserId == user.Id && x.ApplicationId == app.Id)
+                await Context.UserProjects.Where(x => x.UserId == user.Id && x.ProjectId == app.Id)
                     .ExecuteUpdateAsync(s => s.SetProperty(x => x.UserAccessVersion, x => x.UserAccessVersion + 1), ct);
         }
         return result;
@@ -196,25 +196,25 @@ public class Auth2UserStore(
     /// <summary>Finds a role by normalized name. A role of the current application wins over a global role with the same name.</summary>
     protected override async Task<AppRole?> FindRoleAsync(string normalizedRoleName, CancellationToken ct)
     {
-        await RoleScopeHelper.EnsureApplicationAsync(applications, scope, ct);
-        var current = scope.ApplicationId;
+        await RoleScopeHelper.EnsureProjectAsync(applications, scope, ct);
+        var current = scope.ProjectId;
         return await Context.Roles.Where(r => r.NormalizedName == normalizedRoleName)
-            .OrderBy(r => r.ApplicationId == current ? 0 : r.ApplicationId == null ? 1 : 2)
+            .OrderBy(r => r.ProjectId == current ? 0 : r.ProjectId == null ? 1 : 2)
             .FirstOrDefaultAsync(ct);
     }
 
     /// <summary>
     /// Roles of the user in the current application. Global roles (for example <c>GlobalAdmin</c>) are included only
-    /// in the <c>_global</c> project, and in single-application mode.
+    /// in the <c>_global</c> project, and in single-project mode.
     /// </summary>
     public override async Task<IList<string>> GetRolesAsync(AppUser user, CancellationToken ct = default)
     {
         ThrowIfDisposed();
         var app = await applications.GetRequiredAsync(ct);
-        var includeGlobal = app.IsGlobalProject || options.Value.Mode == ServerMode.SingleApplication;
+        var includeGlobal = app.IsGlobalProject || options.Value.Mode == ServerMode.SingleProject;
         return await (from ur in Context.UserRoles
                       join r in Context.Roles on ur.RoleId equals r.Id
-                      where ur.UserId == user.Id && (r.ApplicationId == app.Id || (includeGlobal && r.ApplicationId == null))
+                      where ur.UserId == user.Id && (r.ProjectId == app.Id || (includeGlobal && r.ProjectId == null))
                       select r.Name!).ToListAsync(ct);
     }
 }

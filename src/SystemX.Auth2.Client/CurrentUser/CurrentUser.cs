@@ -16,13 +16,48 @@ using SystemX.Auth2.Contracts.Users;
 namespace SystemX.Auth2.Client.CurrentUser;
 
 /// <summary>
-/// The signed-in user. Name, email, scopes and "is it a machine?" come from the token (no call). Roles, permissions and groups are
+/// The calling <b>client</b> of the current request, read from the token. Everything here is synchronous (no call to the server)
+/// and says nothing about a person: use <see cref="ICurrentUser"/> for that. Scopes belong here, because a scope is what the client may do;
+/// a permission belongs to the user.
+/// </summary>
+public interface ICurrentClient
+{
+    /// <summary>True when the request carries a valid token (user token or machine token).</summary>
+    bool IsTokenAuthenticated { get; }
+    /// <summary>OAuth client id (<c>client_id</c>) of the application that got the token.</summary>
+    string? ClientId { get; }
+    /// <summary>Id of the application (<c>application_id</c>).</summary>
+    Guid? ApplicationId { get; }
+    /// <summary>Id of the project the application belongs to (<c>project_id</c>).</summary>
+    Guid? ProjectId { get; }
+    /// <summary>Key of the project (<c>projectkey</c>).</summary>
+    string? ProjectKey { get; }
+    /// <summary>Scopes of the token.</summary>
+    IReadOnlyList<string> Scopes { get; }
+    /// <summary>True when the token has the scope (exact match).</summary>
+    bool HasScope(string scope);
+    /// <summary>True when the token belongs to a program (client credentials), not a person.</summary>
+    bool IsMachine { get; }
+    /// <summary>Session id (<c>sid</c>) of a user token, or null.</summary>
+    string? SessionId { get; }
+    /// <summary>
+    /// The external provider the user signed in with (claim <c>idp</c>, for example <c>google</c> or <c>corp-saml</c>), or null for a local sign-in.
+    /// The name is the one the project chose for the provider.
+    /// </summary>
+    string? Idp { get; }
+    /// <summary>How the user proved who they are (claim <c>amr</c>): <c>pwd</c>, <c>otp</c>, <c>fed</c> (external provider), <c>swk</c>/<c>hwk</c> (passkey), <c>mfa</c> (several factors).</summary>
+    IReadOnlyList<string> Amr { get; }
+}
+
+/// <summary>
+/// The signed-in <b>person</b>. Name and email come from the token (no call). Roles, permissions and groups are
 /// <b>async</b> because they may need a call to the server (<c>/api/auth2/me</c>); the answer is cached.
-/// A machine token (client credentials) has no user: <see cref="IsMachine"/> is true and the access lists are empty.
+/// A machine token (client credentials) is not a person: <see cref="IsAuthenticated"/> is false, and the access lists are empty.
+/// Scopes, the client and the sign-in method are on <see cref="ICurrentClient"/>.
 /// </summary>
 public interface ICurrentUser
 {
-    /// <summary>True when the request has a valid token.</summary>
+    /// <summary>True when the request has a valid token of a person. False for no token and for a machine token.</summary>
     bool IsAuthenticated { get; }
     /// <summary>User id (<c>sub</c>), or null for a machine token or no user.</summary>
     Guid? UserId { get; }
@@ -38,17 +73,6 @@ public interface ICurrentUser
     string? LastName { get; }
     /// <summary>Full name.</summary>
     string? FullName { get; }
-    /// <summary>Scopes of the token.</summary>
-    IReadOnlyList<string> Scopes { get; }
-    /// <summary>True when the token belongs to a program (client credentials), not a person.</summary>
-    bool IsMachine { get; }
-    /// <summary>
-    /// The external provider the user signed in with (claim <c>idp</c>, for example <c>google</c> or <c>corp-saml</c>), or null for a local sign-in.
-    /// The name is the one the application chose for the provider.
-    /// </summary>
-    string? IdentityProvider { get; }
-    /// <summary>How the user proved who they are (claim <c>amr</c>): <c>pwd</c>, <c>otp</c>, <c>fed</c> (external provider), <c>swk</c>/<c>hwk</c> (passkey), <c>mfa</c> (several factors).</summary>
-    IReadOnlyList<string> AuthenticationMethods { get; }
 
     /// <summary>Roles. Empty for a machine token.</summary>
     Task<IReadOnlyList<string>> GetRolesAsync(CancellationToken ct = default);
@@ -244,8 +268,8 @@ internal sealed class CurrentUserImpl(IHttpContextAccessor http, IAuth2AccessPro
     private ClaimsPrincipal Principal => http.HttpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity());
     private string? Claim(params string[] types) => types.Select(t => Principal.FindFirst(t)?.Value).FirstOrDefault(v => !string.IsNullOrEmpty(v));
 
-    public bool IsAuthenticated => Principal.Identity?.IsAuthenticated == true;
-    public bool IsMachine => Principal.FindFirst(Auth2Claims.Machine)?.Value == "true";
+    private bool IsMachine => Principal.FindFirst(Auth2Claims.Machine)?.Value == "true";
+    public bool IsAuthenticated => Principal.Identity?.IsAuthenticated == true && !IsMachine;
     public Guid? UserId => !IsMachine && Guid.TryParse(Claim("sub", ClaimTypes.NameIdentifier), out var id) ? id : null;
     public string? UserName => IsMachine ? null : Claim("preferred_username", "name");
     public string? Email => Claim("email");
@@ -253,9 +277,6 @@ internal sealed class CurrentUserImpl(IHttpContextAccessor http, IAuth2AccessPro
     public string? FirstName => Claim("given_name");
     public string? LastName => Claim("family_name");
     public string? FullName => Claim("name");
-    public IReadOnlyList<string> Scopes => ScopeClaims.Read(Principal);
-    public string? IdentityProvider => Claim(Auth2Claims.IdentityProvider);
-    public IReadOnlyList<string> AuthenticationMethods => [.. Principal.FindAll(Auth2Claims.Amr).Select(c => c.Value).Distinct(StringComparer.Ordinal)];
 
     public async Task<IReadOnlyList<string>> GetRolesAsync(CancellationToken ct = default) => (await access.GetAccessAsync(Principal, ct)).Roles;
     public async Task<IReadOnlyList<string>> GetPermissionsAsync(CancellationToken ct = default) => (await access.GetAccessAsync(Principal, ct)).Permissions;
@@ -264,6 +285,24 @@ internal sealed class CurrentUserImpl(IHttpContextAccessor http, IAuth2AccessPro
         (await access.GetAccessAsync(Principal, ct)).Permissions.Contains(permission.Trim().ToLowerInvariant());
     public async Task<bool> HasRoleAsync(string role, CancellationToken ct = default) =>
         (await access.GetAccessAsync(Principal, ct)).Roles.Contains(role, StringComparer.OrdinalIgnoreCase);
+}
+
+internal sealed class CurrentClientImpl(IHttpContextAccessor http) : ICurrentClient
+{
+    private ClaimsPrincipal Principal => http.HttpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity());
+    private string? Claim(string type) => Principal.FindFirst(type)?.Value is { Length: > 0 } v ? v : null;
+
+    public bool IsTokenAuthenticated => Principal.Identity?.IsAuthenticated == true;
+    public string? ClientId => Claim(Auth2Claims.ClientId);
+    public Guid? ApplicationId => Guid.TryParse(Claim(Auth2Claims.ApplicationId), out var id) ? id : null;
+    public Guid? ProjectId => Guid.TryParse(Claim(Auth2Claims.ProjectId), out var id) ? id : null;
+    public string? ProjectKey => Claim(Auth2Claims.ProjectKey);
+    public IReadOnlyList<string> Scopes => ScopeClaims.Read(Principal);
+    public bool HasScope(string scope) => Scopes.Contains(scope, StringComparer.Ordinal);
+    public bool IsMachine => Principal.FindFirst(Auth2Claims.Machine)?.Value == "true";
+    public string? SessionId => Claim(Auth2Claims.SessionId);
+    public string? Idp => Claim(Auth2Claims.IdentityProvider);
+    public IReadOnlyList<string> Amr => [.. Principal.FindAll(Auth2Claims.Amr).Select(c => c.Value).Distinct(StringComparer.Ordinal)];
 }
 
 /// <summary>Reads the scopes of a token (the <c>scope</c> claim can be one string with spaces, or several claims).</summary>

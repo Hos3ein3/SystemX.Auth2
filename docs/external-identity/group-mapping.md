@@ -1,6 +1,6 @@
 # Group mapping
 
-A **mapping** turns something that the external source says (a group, a claim or an attribute) into a **role, group or permission of the same application**. Mappings are used by OIDC, SAML and LDAP.
+A **mapping** turns something that the external source says (a group, a claim or an attribute) into a **role, group or permission of the same project**. Mappings are used by OIDC, SAML and LDAP.
 
 ## How to use (for operators)
 
@@ -9,7 +9,7 @@ A **mapping** turns something that the external source says (a group, a claim or
 
 | Field | Meaning |
 |---|---|
-| `providerName` | One provider, or empty for all providers of the application |
+| `providerName` | One provider, or empty for all providers of the project |
 | `sourceType` | `Group` (groups from the source), `Claim` (OIDC claim) or `Attribute` (SAML or LDAP attribute) |
 | `sourceName` | The claim or attribute name. Empty for groups |
 | `matchType` | `Exact` or `Prefix`. Case does not matter. **No regular expressions** (they can be slow and unsafe) |
@@ -27,7 +27,7 @@ Example: members of the group `Finance-EMEA` get the role `accountant`:
 
 ### Rules that cannot be changed
 
-- A mapping can only give things of **the same application**. A target of another application is ignored.
+- A mapping can only give things of **the same project**. A target of another project is ignored.
 - `GlobalAdmin` and system roles can never be given by a mapping.
 - Mappings do nothing when `GroupMappingMode` is `None`.
 

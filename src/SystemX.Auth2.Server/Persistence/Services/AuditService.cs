@@ -17,11 +17,13 @@ public sealed class AuditService(Auth2DbContext db, TimeProvider clock, IHttpCon
     {
         // Inside a web request the caller's address and agent are added, and the admin who made the call (set by the admin API filter).
         var context = http.HttpContext;
+        var client = context is null ? null : await context.RequestServices.GetService<IClientApplicationContext>()?.GetAsync(ct)!;
         var actor = entry.ActorUserId ?? (context?.Items.TryGetValue(ActorItemKey, out var a) == true ? a as Guid? : null);
         db.AuditEvents.Add(new AuditEvent
         {
             OccurredAtUtc = clock.GetUtcNow(),
-            ApplicationId = entry.ApplicationId,
+            ProjectId = entry.ProjectId,
+            ApplicationId = client is not null && client.ProjectId == entry.ProjectId ? client.Id : null,
             ActorUserId = actor,
             ActorClientId = entry.ActorClientId,
             Action = entry.Action,

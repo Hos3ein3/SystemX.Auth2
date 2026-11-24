@@ -43,55 +43,60 @@ public class ServerFactory(string connectionString, bool single) : WebApplicatio
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Auth2", connectionString);
+        builder.UseSetting("Auth2:ProjectStatusCacheSeconds", "0");
         builder.ConfigureLogging(l => l.ClearProviders());
-        if (single) builder.ConfigureTestServices(s => s.ServerWithSingleApplication());
+        if (single) builder.ConfigureTestServices(s => s.ServerWithSingleProject());
     }
 }
 
 /// <summary>
 /// A running Server with one application and a client built from the real Client package that talks to it.
-/// Multi mode: application "Blog" with project key <c>blog</c>. Single mode: the one application "Default".
+/// Multi mode: project "Blog" with project key <c>blog</c> and its application "default". Single mode: the one application "default".
 /// </summary>
 public abstract class ClientTestBase : IAsyncLifetime
 {
     protected virtual bool Single => false;
     protected ServerFactory Server { get; private set; } = null!;
     protected string ClientId => Single ? "default" : "blog";
-    protected string ApplicationName => Single ? "Default" : "Blog";
+    protected string ApplicationName => "default";   // the first application of a project made by CreateWithApplicationAsync is named "default"
     protected string ClientSecret { get; private set; } = "";
-    protected Guid ApplicationId { get; private set; }
+    protected Guid ProjectId { get; private set; }
 
     public async Task InitializeAsync()
     {
         Server = new ServerFactory(await SharedPostgres.CreateDatabaseAsync(), Single);
         await using var scope = Server.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<DatabaseInitializer>().RunAsync(migrate: true, seed: true);
-        var apps = scope.ServiceProvider.GetRequiredService<IApplicationService>();
+        var apps = scope.ServiceProvider.GetRequiredService<IProjectService>();
         if (Single)
         {
-            ClientSecret = await apps.RotateClientSecretAsync("default");
-            ApplicationId = (await apps.FindByProjectKeyAsync("default"))!.Id;
+            ClientSecret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateSecretAsync("default");
+            ProjectId = (await apps.FindByProjectKeyAsync("default"))!.Id;
         }
         else
         {
-            var created = await apps.CreateAsync("blog", "Blog", null, null);
+            var created = await apps.CreateWithApplicationAsync("blog", "Blog", null, null);
             ClientSecret = created.ClientSecret;
-            ApplicationId = created.Application.Id;
+            ProjectId = created.Project.Id;
         }
     }
 
     public async Task DisposeAsync() => await Server.DisposeAsync();
 
-    protected async Task UpdateSettingsAsync(Action<Server.Domain.Settings.ApplicationSettings> change)
+    protected async Task UpdateSettingsAsync(Action<Server.IntegrationTests.TestEdit> change)
     {
         await using var scope = Server.Services.CreateAsyncScope();
-        var settings = await scope.ServiceProvider.GetRequiredService<IApplicationSettingsProvider>().GetAsync(ApplicationId);
-        var copy = SettingsJson.Clone(settings);
-        change(copy);
-        await scope.ServiceProvider.GetRequiredService<IApplicationService>().UpdateSettingsAsync(ApplicationId, copy);
+        var apps = scope.ServiceProvider.GetRequiredService<IApplicationService>();
+        var client = (await apps.ListAsync(ProjectId)).First();
+        var settings = await scope.ServiceProvider.GetRequiredService<IProjectSettingsProvider>().GetAsync(ProjectId);
+        var edit = new Server.IntegrationTests.TestEdit(SettingsJson.Clone(settings), client);
+        change(edit);
+        await scope.ServiceProvider.GetRequiredService<IProjectService>().UpdateSettingsAsync(ProjectId, edit.Project);
+        await apps.UpdateAsync(client.Id, new ApplicationSpec("", RedirectUris: edit.RedirectUris, PostLogoutRedirectUris: edit.PostLogoutRedirectUris,
+            AllowedScopes: edit.AllowedScopes, Settings: edit.App));
     }
 
-    /// <summary>A client that talks to the in-memory server. <paramref name="projectKey"/> null = no <c>ServerWithMultiApplication</c> call.</summary>
+    /// <summary>A client that talks to the in-memory server. <paramref name="projectKey"/> null = no <c>ServerWithMultiProject</c> call.</summary>
     protected ServiceProvider BuildClient(string? projectKey, Action<Client.Options.Auth2ClientOptions>? options = null, Action<IAuth2ClientBuilder>? configure = null, HttpMessageHandler? handler = null)
     {
         var services = new ServiceCollection();
@@ -104,7 +109,7 @@ public abstract class ClientTestBase : IAsyncLifetime
             o.HandshakeTimeout = TimeSpan.FromSeconds(10);
             options?.Invoke(o);
         });
-        if (projectKey is not null) builder.ServerWithMultiApplication(projectKey);
+        if (projectKey is not null) builder.ServerWithMultiProject(projectKey);
         configure?.Invoke(builder);
         foreach (var name in new[] { Auth2ClientDefaults.HttpClientName, Auth2ClientDefaults.ResilientHttpClientName })
             services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => handler ?? Server.Server.CreateHandler());

@@ -124,271 +124,6 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.ToTable("user_roles", (string)null);
                 });
 
-            modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication<System.Guid>", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ApplicationType")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("application_type");
-
-                    b.Property<string>("ClientId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("client_id");
-
-                    b.Property<string>("ClientSecret")
-                        .HasColumnType("text")
-                        .HasColumnName("client_secret");
-
-                    b.Property<string>("ClientType")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("client_type");
-
-                    b.Property<string>("ConcurrencyToken")
-                        .IsConcurrencyToken()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("concurrency_token");
-
-                    b.Property<string>("ConsentType")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("consent_type");
-
-                    b.Property<string>("DisplayName")
-                        .HasColumnType("text")
-                        .HasColumnName("display_name");
-
-                    b.Property<string>("DisplayNames")
-                        .HasColumnType("text")
-                        .HasColumnName("display_names");
-
-                    b.Property<string>("JsonWebKeySet")
-                        .HasColumnType("text")
-                        .HasColumnName("json_web_key_set");
-
-                    b.Property<string>("Permissions")
-                        .HasColumnType("text")
-                        .HasColumnName("permissions");
-
-                    b.Property<string>("PostLogoutRedirectUris")
-                        .HasColumnType("text")
-                        .HasColumnName("post_logout_redirect_uris");
-
-                    b.Property<string>("Properties")
-                        .HasColumnType("text")
-                        .HasColumnName("properties");
-
-                    b.Property<string>("RedirectUris")
-                        .HasColumnType("text")
-                        .HasColumnName("redirect_uris");
-
-                    b.Property<string>("Requirements")
-                        .HasColumnType("text")
-                        .HasColumnName("requirements");
-
-                    b.Property<string>("Settings")
-                        .HasColumnType("text")
-                        .HasColumnName("settings");
-
-                    b.HasKey("Id")
-                        .HasName("pk_openiddict_applications");
-
-                    b.HasIndex("ClientId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_openiddict_applications_client_id");
-
-                    b.ToTable("openiddict_applications", (string)null);
-                });
-
-            modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreAuthorization<System.Guid>", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid?>("ApplicationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("application_id");
-
-                    b.Property<string>("ConcurrencyToken")
-                        .IsConcurrencyToken()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("concurrency_token");
-
-                    b.Property<DateTime?>("CreationDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("creation_date");
-
-                    b.Property<string>("Properties")
-                        .HasColumnType("text")
-                        .HasColumnName("properties");
-
-                    b.Property<string>("Scopes")
-                        .HasColumnType("text")
-                        .HasColumnName("scopes");
-
-                    b.Property<string>("Status")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("status");
-
-                    b.Property<string>("Subject")
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
-                        .HasColumnName("subject");
-
-                    b.Property<string>("Type")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("type");
-
-                    b.HasKey("Id")
-                        .HasName("pk_openiddict_authorizations");
-
-                    b.HasIndex("ApplicationId", "Status", "Subject", "Type")
-                        .HasDatabaseName("ix_openiddict_authorizations_application_id_status_subject_type");
-
-                    b.ToTable("openiddict_authorizations", (string)null);
-                });
-
-            modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreScope<System.Guid>", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ConcurrencyToken")
-                        .IsConcurrencyToken()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("concurrency_token");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<string>("Descriptions")
-                        .HasColumnType("text")
-                        .HasColumnName("descriptions");
-
-                    b.Property<string>("DisplayName")
-                        .HasColumnType("text")
-                        .HasColumnName("display_name");
-
-                    b.Property<string>("DisplayNames")
-                        .HasColumnType("text")
-                        .HasColumnName("display_names");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Properties")
-                        .HasColumnType("text")
-                        .HasColumnName("properties");
-
-                    b.Property<string>("Resources")
-                        .HasColumnType("text")
-                        .HasColumnName("resources");
-
-                    b.HasKey("Id")
-                        .HasName("pk_openiddict_scopes");
-
-                    b.HasIndex("Name")
-                        .IsUnique()
-                        .HasDatabaseName("ix_openiddict_scopes_name");
-
-                    b.ToTable("openiddict_scopes", (string)null);
-                });
-
-            modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreToken<System.Guid>", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid?>("ApplicationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("application_id");
-
-                    b.Property<Guid?>("AuthorizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("authorization_id");
-
-                    b.Property<string>("ConcurrencyToken")
-                        .IsConcurrencyToken()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("concurrency_token");
-
-                    b.Property<DateTime?>("CreationDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("creation_date");
-
-                    b.Property<DateTime?>("ExpirationDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expiration_date");
-
-                    b.Property<string>("Payload")
-                        .HasColumnType("text")
-                        .HasColumnName("payload");
-
-                    b.Property<string>("Properties")
-                        .HasColumnType("text")
-                        .HasColumnName("properties");
-
-                    b.Property<DateTime?>("RedemptionDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("redemption_date");
-
-                    b.Property<string>("ReferenceId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("reference_id");
-
-                    b.Property<string>("Status")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("status");
-
-                    b.Property<string>("Subject")
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
-                        .HasColumnName("subject");
-
-                    b.Property<string>("Type")
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("type");
-
-                    b.HasKey("Id")
-                        .HasName("pk_openiddict_tokens");
-
-                    b.HasIndex("AuthorizationId")
-                        .HasDatabaseName("ix_openiddict_tokens_authorization_id");
-
-                    b.HasIndex("ReferenceId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_openiddict_tokens_reference_id");
-
-                    b.HasIndex("ApplicationId", "Status", "Subject", "Type")
-                        .HasDatabaseName("ix_openiddict_tokens_application_id_status_subject_type");
-
-                    b.ToTable("openiddict_tokens", (string)null);
-                });
-
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.AppRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -423,14 +158,18 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("normalized_name");
 
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
                     b.HasKey("Id")
                         .HasName("pk_roles");
 
-                    b.HasIndex(new[] { "ApplicationId", "NormalizedName" }, "ix_roles_application_id_normalized_name")
+                    b.HasIndex(new[] { "ProjectId", "NormalizedName" }, "ix_roles_project_id_normalized_name")
                         .IsUnique()
-                        .HasDatabaseName("ix_roles_application_id_normalized_name");
+                        .HasDatabaseName("ix_roles_project_id_normalized_name");
 
-                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "ApplicationId", "NormalizedName" }, "ix_roles_application_id_normalized_name"), false);
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex(new[] { "ProjectId", "NormalizedName" }, "ix_roles_project_id_normalized_name"), false);
 
                     b.ToTable("roles", (string)null);
                 });
@@ -551,9 +290,9 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.AppUserLogin", b =>
                 {
-                    b.Property<Guid>("ApplicationId")
+                    b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
-                        .HasColumnName("application_id");
+                        .HasColumnName("project_id");
 
                     b.Property<string>("LoginProvider")
                         .HasMaxLength(64)
@@ -573,23 +312,23 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("ApplicationId", "LoginProvider", "ProviderKey")
+                    b.HasKey("ProjectId", "LoginProvider", "ProviderKey")
                         .HasName("pk_user_logins");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_user_logins_user_id");
 
-                    b.HasIndex("ApplicationId", "UserId")
-                        .HasDatabaseName("ix_user_logins_application_id_user_id");
+                    b.HasIndex("ProjectId", "UserId")
+                        .HasDatabaseName("ix_user_logins_project_id_user_id");
 
                     b.ToTable("user_logins", (string)null);
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.AppUserPasskey", b =>
                 {
-                    b.Property<Guid>("ApplicationId")
+                    b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
-                        .HasColumnName("application_id");
+                        .HasColumnName("project_id");
 
                     b.Property<byte[]>("CredentialId")
                         .HasMaxLength(1024)
@@ -604,14 +343,14 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("ApplicationId", "CredentialId")
+                    b.HasKey("ProjectId", "CredentialId")
                         .HasName("pk_user_passkeys");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_user_passkeys_user_id");
 
-                    b.HasIndex("ApplicationId", "UserId")
-                        .HasDatabaseName("ix_user_passkeys_application_id_user_id");
+                    b.HasIndex("ProjectId", "UserId")
+                        .HasDatabaseName("ix_user_passkeys_project_id_user_id");
 
                     b.ToTable("user_passkeys", (string)null);
                 });
@@ -630,9 +369,9 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name");
 
-                    b.Property<Guid?>("ApplicationId")
+                    b.Property<Guid?>("ProjectId")
                         .HasColumnType("uuid")
-                        .HasColumnName("application_id");
+                        .HasColumnName("project_id");
 
                     b.Property<string>("Value")
                         .HasColumnType("text")
@@ -681,6 +420,10 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("occurred_at_utc");
 
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
                     b.Property<string>("TargetId")
                         .HasColumnType("text")
                         .HasColumnName("target_id");
@@ -699,78 +442,110 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.HasIndex("OccurredAtUtc")
                         .HasDatabaseName("ix_audit_events_occurred_at_utc");
 
-                    b.HasIndex("ApplicationId", "OccurredAtUtc")
-                        .HasDatabaseName("ix_audit_events_application_id_occurred_at_utc");
+                    b.HasIndex("ProjectId", "OccurredAtUtc")
+                        .HasDatabaseName("ix_audit_events_project_id_occurred_at_utc");
 
                     b.ToTable("audit_events", (string)null);
                 });
 
-            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.Auth2Application", b =>
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.BrandingAsset", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<int>("AccessVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("access_version");
-
-                    b.Property<string>("ClientId")
+                    b.Property<string>("ContentType")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("client_id");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
 
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_enabled");
-
-                    b.Property<string>("Name")
+                    b.Property<byte[]>("Data")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
+                        .HasColumnType("bytea")
+                        .HasColumnName("data");
 
-                    b.Property<Guid?>("OpenIddictApplicationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("open_iddict_application_id");
-
-                    b.Property<string>("ProjectKey")
+                    b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
-                        .HasColumnName("project_key");
+                        .HasColumnName("kind");
 
-                    b.Property<string>("Settings")
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Sha256")
                         .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("settings_json");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sha256");
 
-                    b.Property<int>("SettingsVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("settings_version");
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
 
                     b.HasKey("Id")
-                        .HasName("pk_applications");
+                        .HasName("pk_branding_assets");
 
-                    b.HasIndex("ClientId")
+                    b.HasIndex("ProjectId", "Kind")
                         .IsUnique()
-                        .HasDatabaseName("ix_applications_client_id");
+                        .HasDatabaseName("ix_branding_assets_project_id_kind");
 
-                    b.HasIndex("ProjectKey")
+                    b.ToTable("branding_assets", (string)null);
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.EmailTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<string>("Culture")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("culture");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("subject");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_templates");
+
+                    b.HasIndex("ProjectId", "Name", "Culture")
                         .IsUnique()
-                        .HasDatabaseName("ix_applications_project_key");
+                        .HasDatabaseName("ix_email_templates_project_id_name_culture");
 
-                    b.ToTable("applications", (string)null);
+                    b.ToTable("email_templates", (string)null);
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.ExternalGroupMapping", b =>
@@ -780,15 +555,15 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("ApplicationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("application_id");
-
                     b.Property<string>("MatchType")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasColumnName("match_type");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
 
                     b.Property<string>("ProviderName")
                         .HasMaxLength(64)
@@ -826,8 +601,8 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_external_group_mappings");
 
-                    b.HasIndex("ApplicationId", "ProviderName")
-                        .HasDatabaseName("ix_external_group_mappings_application_id_provider_name");
+                    b.HasIndex("ProjectId", "ProviderName")
+                        .HasDatabaseName("ix_external_group_mappings_project_id_provider_name");
 
                     b.ToTable("external_group_mappings", (string)null);
                 });
@@ -839,7 +614,7 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("ApplicationId")
+                    b.Property<Guid?>("ApplicationId")
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
 
@@ -857,12 +632,16 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
                     b.HasKey("Id")
                         .HasName("pk_groups");
 
-                    b.HasIndex("ApplicationId", "Name")
+                    b.HasIndex("ProjectId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ix_groups_application_id_name");
+                        .HasDatabaseName("ix_groups_project_id_name");
 
                     b.ToTable("groups", (string)null);
                 });
@@ -903,6 +682,57 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasDatabaseName("ix_group_roles_role_id");
 
                     b.ToTable("group_roles", (string)null);
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.JobRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("finished_at_utc");
+
+                    b.Property<string>("InstanceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("instance_id");
+
+                    b.Property<string>("JobName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("job_name");
+
+                    b.Property<int>("RowsAffected")
+                        .HasColumnType("integer")
+                        .HasColumnName("rows_affected");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("started_at_utc");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("boolean")
+                        .HasColumnName("success");
+
+                    b.HasKey("Id")
+                        .HasName("pk_job_runs");
+
+                    b.HasIndex("StartedAtUtc")
+                        .HasDatabaseName("ix_job_runs_started_at_utc");
+
+                    b.HasIndex("JobName", "StartedAtUtc")
+                        .HasDatabaseName("ix_job_runs_job_name_started_at_utc");
+
+                    b.ToTable("job_runs", (string)null);
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.KeyRingEntry", b =>
@@ -961,10 +791,6 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("ApplicationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("application_id");
-
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
@@ -982,6 +808,10 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at_utc");
 
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
                     b.Property<string>("Purpose")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -998,8 +828,8 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.HasIndex("ExpiresAtUtc")
                         .HasDatabaseName("ix_otp_codes_expires_at_utc");
 
-                    b.HasIndex("UserId", "ApplicationId", "Purpose")
-                        .HasDatabaseName("ix_otp_codes_user_id_application_id_purpose");
+                    b.HasIndex("UserId", "ProjectId", "Purpose")
+                        .HasDatabaseName("ix_otp_codes_user_id_project_id_purpose");
 
                     b.ToTable("otp_codes", (string)null);
                 });
@@ -1011,7 +841,7 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("ApplicationId")
+                    b.Property<Guid?>("ApplicationId")
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
 
@@ -1037,6 +867,10 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("key");
 
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -1046,11 +880,75 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_permissions");
 
-                    b.HasIndex("ApplicationId", "Key")
+                    b.HasIndex("ProjectId", "Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_permissions_application_id_key");
+                        .HasDatabaseName("ix_permissions_project_id_key");
 
                     b.ToTable("permissions", (string)null);
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.Project", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AccessVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("access_version");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("project_key");
+
+                    b.Property<string>("Settings")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("settings_json");
+
+                    b.Property<int>("SettingsVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("settings_version");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_projects");
+
+                    b.HasIndex("ProjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_projects_project_key");
+
+                    b.ToTable("projects", (string)null);
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.ReplayEntry", b =>
@@ -1060,13 +958,13 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("character varying(400)")
                         .HasColumnName("key");
 
-                    b.Property<Guid>("ApplicationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("application_id");
-
                     b.Property<DateTimeOffset>("ExpiresAtUtc")
                         .HasColumnType("timestamptz")
                         .HasColumnName("expires_at_utc");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
 
                     b.HasKey("Key")
                         .HasName("pk_replay_entries");
@@ -1118,15 +1016,65 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.ToTable("server_values", (string)null);
                 });
 
-            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserApplication", b =>
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserGroup", b =>
                 {
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.Property<Guid>("ApplicationId")
+                    b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
-                        .HasColumnName("application_id");
+                        .HasColumnName("group_id");
+
+                    b.HasKey("UserId", "GroupId")
+                        .HasName("pk_user_groups");
+
+                    b.HasIndex("GroupId")
+                        .HasDatabaseName("ix_user_groups_group_id");
+
+                    b.ToTable("user_groups", (string)null);
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserPermission", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("permission_id");
+
+                    b.Property<DateTimeOffset>("GrantedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("granted_at_utc");
+
+                    b.Property<Guid?>("GrantedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.HasKey("UserId", "PermissionId")
+                        .HasName("pk_user_permissions");
+
+                    b.HasIndex("PermissionId")
+                        .HasDatabaseName("ix_user_permissions_permission_id");
+
+                    b.ToTable("user_permissions", (string)null);
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserProject", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer")
@@ -1178,30 +1126,30 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("user_access_version");
 
-                    b.HasKey("UserId", "ApplicationId")
-                        .HasName("pk_user_applications");
+                    b.HasKey("UserId", "ProjectId")
+                        .HasName("pk_user_projects");
 
-                    b.HasIndex("ApplicationId")
-                        .HasDatabaseName("ix_user_applications_application_id");
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("ix_user_projects_project_id");
 
-                    b.ToTable("user_applications", (string)null);
+                    b.ToTable("user_projects", (string)null);
                 });
 
-            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserApplicationRecoveryCode", b =>
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserProjectRecoveryCode", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("ApplicationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("application_id");
-
                     b.Property<string>("CodeHash")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("code_hash");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
 
                     b.Property<DateTimeOffset?>("UsedAtUtc")
                         .HasColumnType("timestamptz")
@@ -1212,65 +1160,315 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_user_application_recovery_codes");
+                        .HasName("pk_user_project_recovery_codes");
 
-                    b.HasIndex("ApplicationId")
-                        .HasDatabaseName("ix_user_application_recovery_codes_application_id");
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("ix_user_project_recovery_codes_project_id");
 
-                    b.HasIndex("UserId", "ApplicationId")
-                        .HasDatabaseName("ix_user_application_recovery_codes_user_id_application_id");
+                    b.HasIndex("UserId", "ProjectId")
+                        .HasDatabaseName("ix_user_project_recovery_codes_user_id_project_id");
 
-                    b.ToTable("user_application_recovery_codes", (string)null);
+                    b.ToTable("user_project_recovery_codes", (string)null);
                 });
 
-            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserGroup", b =>
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Application", b =>
                 {
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("user_id");
+                        .HasColumnName("id");
 
-                    b.Property<Guid>("GroupId")
+                    b.Property<string>("ApplicationType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("application_type");
+
+                    b.Property<string>("ClientId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("client_id");
+
+                    b.Property<string>("ClientSecret")
+                        .HasColumnType("text")
+                        .HasColumnName("client_secret");
+
+                    b.Property<string>("ClientSettings")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("settings_json");
+
+                    b.Property<string>("ClientType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("client_type");
+
+                    b.Property<string>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("concurrency_token");
+
+                    b.Property<string>("ConsentType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("consent_type");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("DisplayNames")
+                        .HasColumnType("text")
+                        .HasColumnName("display_names");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<string>("JsonWebKeySet")
+                        .HasColumnType("text")
+                        .HasColumnName("json_web_key_set");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Permissions")
+                        .HasColumnType("text")
+                        .HasColumnName("permissions");
+
+                    b.Property<string>("PostLogoutRedirectUris")
+                        .HasColumnType("text")
+                        .HasColumnName("post_logout_redirect_uris");
+
+                    b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
-                        .HasColumnName("group_id");
+                        .HasColumnName("project_id");
 
-                    b.HasKey("UserId", "GroupId")
-                        .HasName("pk_user_groups");
+                    b.Property<string>("Properties")
+                        .HasColumnType("text")
+                        .HasColumnName("properties");
 
-                    b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_user_groups_group_id");
+                    b.Property<string>("RedirectUris")
+                        .HasColumnType("text")
+                        .HasColumnName("redirect_uris");
 
-                    b.ToTable("user_groups", (string)null);
+                    b.Property<string>("Requirements")
+                        .HasColumnType("text")
+                        .HasColumnName("requirements");
+
+                    b.Property<string>("Settings")
+                        .HasColumnType("text")
+                        .HasColumnName("settings");
+
+                    b.Property<int>("SettingsVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("settings_version");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_applications");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_applications_client_id");
+
+                    b.HasIndex("ProjectId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_applications_project_id_name");
+
+                    b.ToTable("applications", (string)null);
                 });
 
-            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserPermission", b =>
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Authorization", b =>
                 {
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("user_id");
+                        .HasColumnName("id");
 
-                    b.Property<Guid>("PermissionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("permission_id");
-
-                    b.Property<Guid>("ApplicationId")
+                    b.Property<Guid?>("ApplicationId")
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
 
-                    b.Property<DateTimeOffset>("GrantedAtUtc")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("granted_at_utc");
+                    b.Property<string>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("concurrency_token");
 
-                    b.Property<Guid?>("GrantedBy")
+                    b.Property<DateTime?>("CreationDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creation_date");
+
+                    b.Property<string>("Properties")
+                        .HasColumnType("text")
+                        .HasColumnName("properties");
+
+                    b.Property<string>("Scopes")
+                        .HasColumnType("text")
+                        .HasColumnName("scopes");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_openiddict_authorizations");
+
+                    b.HasIndex("ApplicationId", "Status", "Subject", "Type")
+                        .HasDatabaseName("ix_openiddict_authorizations_application_id_status_subject_type");
+
+                    b.ToTable("openiddict_authorizations", (string)null);
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Scope", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("granted_by");
+                        .HasColumnName("id");
 
-                    b.HasKey("UserId", "PermissionId")
-                        .HasName("pk_user_permissions");
+                    b.Property<string>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("concurrency_token");
 
-                    b.HasIndex("PermissionId")
-                        .HasDatabaseName("ix_user_permissions_permission_id");
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
-                    b.ToTable("user_permissions", (string)null);
+                    b.Property<string>("Descriptions")
+                        .HasColumnType("text")
+                        .HasColumnName("descriptions");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("DisplayNames")
+                        .HasColumnType("text")
+                        .HasColumnName("display_names");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Properties")
+                        .HasColumnType("text")
+                        .HasColumnName("properties");
+
+                    b.Property<string>("Resources")
+                        .HasColumnType("text")
+                        .HasColumnName("resources");
+
+                    b.HasKey("Id")
+                        .HasName("pk_openiddict_scopes");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_openiddict_scopes_name");
+
+                    b.ToTable("openiddict_scopes", (string)null);
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Token", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ApplicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("application_id");
+
+                    b.Property<Guid?>("AuthorizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("authorization_id");
+
+                    b.Property<string>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("concurrency_token");
+
+                    b.Property<DateTime?>("CreationDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creation_date");
+
+                    b.Property<DateTime?>("ExpirationDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expiration_date");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("text")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("Properties")
+                        .HasColumnType("text")
+                        .HasColumnName("properties");
+
+                    b.Property<DateTime?>("RedemptionDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("redemption_date");
+
+                    b.Property<string>("ReferenceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reference_id");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_openiddict_tokens");
+
+                    b.HasIndex("AuthorizationId")
+                        .HasDatabaseName("ix_openiddict_tokens_authorization_id");
+
+                    b.HasIndex("ReferenceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_openiddict_tokens_reference_id");
+
+                    b.HasIndex("ApplicationId", "Status", "Subject", "Type")
+                        .HasDatabaseName("ix_openiddict_tokens_application_id_status_subject_type");
+
+                    b.ToTable("openiddict_tokens", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1310,50 +1508,23 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasConstraintName("fk_user_roles_users_user_id");
                 });
 
-            modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreAuthorization<System.Guid>", b =>
-                {
-                    b.HasOne("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication<System.Guid>", "Application")
-                        .WithMany("Authorizations")
-                        .HasForeignKey("ApplicationId")
-                        .HasConstraintName("fk_openiddict_authorizations_openiddict_applications_applicati~");
-
-                    b.Navigation("Application");
-                });
-
-            modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreToken<System.Guid>", b =>
-                {
-                    b.HasOne("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication<System.Guid>", "Application")
-                        .WithMany("Tokens")
-                        .HasForeignKey("ApplicationId")
-                        .HasConstraintName("fk_openiddict_tokens_openiddict_applications_application_id");
-
-                    b.HasOne("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreAuthorization<System.Guid>", "Authorization")
-                        .WithMany("Tokens")
-                        .HasForeignKey("AuthorizationId")
-                        .HasConstraintName("fk_openiddict_tokens_openiddict_authorizations_authorization_id");
-
-                    b.Navigation("Application");
-
-                    b.Navigation("Authorization");
-                });
-
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.AppRole", b =>
                 {
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Auth2Application", null)
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
                         .WithMany()
-                        .HasForeignKey("ApplicationId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_roles_applications_application_id");
+                        .HasConstraintName("fk_roles_projects_project_id");
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.AppUserLogin", b =>
                 {
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Auth2Application", null)
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
                         .WithMany()
-                        .HasForeignKey("ApplicationId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_user_logins_applications_application_id");
+                        .HasConstraintName("fk_user_logins_projects_project_id");
 
                     b.HasOne("SystemX.Auth2.Server.Domain.Entities.AppUser", null)
                         .WithMany()
@@ -1365,12 +1536,12 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.AppUserPasskey", b =>
                 {
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Auth2Application", null)
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
                         .WithMany()
-                        .HasForeignKey("ApplicationId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_user_passkeys_applications_application_id");
+                        .HasConstraintName("fk_user_passkeys_projects_project_id");
 
                     b.HasOne("SystemX.Auth2.Server.Domain.Entities.AppUser", null)
                         .WithMany()
@@ -1381,7 +1552,7 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
 
                     b.OwnsOne("Microsoft.AspNetCore.Identity.IdentityPasskeyData", "Data", b1 =>
                         {
-                            b1.Property<Guid>("AppUserPasskeyApplicationId");
+                            b1.Property<Guid>("AppUserPasskeyProjectId");
 
                             b1.Property<byte[]>("AppUserPasskeyCredentialId");
 
@@ -1409,7 +1580,7 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
 
                             b1.PrimitiveCollection<string>("Transports");
 
-                            b1.HasKey("AppUserPasskeyApplicationId", "AppUserPasskeyCredentialId");
+                            b1.HasKey("AppUserPasskeyProjectId", "AppUserPasskeyCredentialId");
 
                             b1.ToTable("user_passkeys");
 
@@ -1418,7 +1589,7 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                                 .HasColumnType("jsonb");
 
                             b1.WithOwner()
-                                .HasForeignKey("AppUserPasskeyApplicationId", "AppUserPasskeyCredentialId");
+                                .HasForeignKey("AppUserPasskeyProjectId", "AppUserPasskeyCredentialId");
                         });
 
                     b.Navigation("Data")
@@ -1435,24 +1606,44 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasConstraintName("fk_user_tokens_users_user_id");
                 });
 
-            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.ExternalGroupMapping", b =>
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.BrandingAsset", b =>
                 {
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Auth2Application", null)
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
                         .WithMany()
-                        .HasForeignKey("ApplicationId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_external_group_mappings_applications_application_id");
+                        .HasConstraintName("fk_branding_assets_projects_project_id");
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.EmailTemplate", b =>
+                {
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_templates_projects_project_id");
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.ExternalGroupMapping", b =>
+                {
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_group_mappings_projects_project_id");
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.Group", b =>
                 {
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Auth2Application", null)
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
                         .WithMany()
-                        .HasForeignKey("ApplicationId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_groups_applications_application_id");
+                        .HasConstraintName("fk_groups_projects_project_id");
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.GroupPermission", b =>
@@ -1501,12 +1692,12 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.Permission", b =>
                 {
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Auth2Application", null)
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
                         .WithMany()
-                        .HasForeignKey("ApplicationId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_permissions_applications_application_id");
+                        .HasConstraintName("fk_permissions_projects_project_id");
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.RolePermission", b =>
@@ -1524,40 +1715,6 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_role_permissions_roles_role_id");
-                });
-
-            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserApplication", b =>
-                {
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Auth2Application", null)
-                        .WithMany()
-                        .HasForeignKey("ApplicationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_applications_applications_application_id");
-
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.AppUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_applications_users_user_id");
-                });
-
-            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserApplicationRecoveryCode", b =>
-                {
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Auth2Application", null)
-                        .WithMany()
-                        .HasForeignKey("ApplicationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_application_recovery_codes_applications_application_id");
-
-                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.AppUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_application_recovery_codes_users_user_id");
                 });
 
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserGroup", b =>
@@ -1594,14 +1751,85 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasConstraintName("fk_user_permissions_users_user_id");
                 });
 
-            modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication<System.Guid>", b =>
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserProject", b =>
+                {
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_projects_projects_project_id");
+
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_projects_users_user_id");
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserProjectRecoveryCode", b =>
+                {
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_project_recovery_codes_projects_project_id");
+
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_project_recovery_codes_users_user_id");
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Application", b =>
+                {
+                    b.HasOne("SystemX.Auth2.Server.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_applications_projects_project_id");
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Authorization", b =>
+                {
+                    b.HasOne("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Application", "Application")
+                        .WithMany("Authorizations")
+                        .HasForeignKey("ApplicationId")
+                        .HasConstraintName("fk_openiddict_authorizations_applications_application_id");
+
+                    b.Navigation("Application");
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Token", b =>
+                {
+                    b.HasOne("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Application", "Application")
+                        .WithMany("Tokens")
+                        .HasForeignKey("ApplicationId")
+                        .HasConstraintName("fk_openiddict_tokens_applications_application_id");
+
+                    b.HasOne("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Authorization", "Authorization")
+                        .WithMany("Tokens")
+                        .HasForeignKey("AuthorizationId")
+                        .HasConstraintName("fk_openiddict_tokens_openiddict_authorizations_authorization_id");
+
+                    b.Navigation("Application");
+
+                    b.Navigation("Authorization");
+                });
+
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Application", b =>
                 {
                     b.Navigation("Authorizations");
 
                     b.Navigation("Tokens");
                 });
 
-            modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreAuthorization<System.Guid>", b =>
+            modelBuilder.Entity("SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Authorization", b =>
                 {
                     b.Navigation("Tokens");
                 });

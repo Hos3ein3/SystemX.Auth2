@@ -51,14 +51,14 @@ public sealed class VerifyOtpModel(IClientIdAccessor clientId, IAuthFlowResolver
         var result = await Svc<ILoginService>().OtpLoginAsync(new OtpLoginRequest(Input.Login, Input.Code,
             HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString()), HttpContext.RequestAborted);
         if (result.Succeeded) return await SignInAndRedirectAsync(result, Settings.Redirects.RedirectAfterLogin);
-        if (result.ErrorCode == Auth2ErrorCodes.LockedOut) return RedirectToPage("Lockout", new { ReturnUrl, ClientId = Application!.ClientId });
+        if (result.ErrorCode == Auth2ErrorCodes.LockedOut) return RedirectToPage("Lockout", new { ReturnUrl, ClientId = ClientIdForLinks });
         Fail(result.ErrorCode ?? Auth2ErrorCodes.InvalidOtp);
         return Page();
     }
 
     private async Task<bool> Prepare()
     {
-        if (!await LoadApplicationAsync()) return false;
+        if (!await LoadProjectAsync()) return false;
         ShowEmailLogin = Settings.Methods.AllowedLoginMethods.Contains(LoginMethod.EmailOtp);
         ShowPhoneField = Settings.Methods.AllowedLoginMethods.Contains(LoginMethod.PhoneOtp);
         return true;

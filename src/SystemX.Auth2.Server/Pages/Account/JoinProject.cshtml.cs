@@ -10,7 +10,7 @@ using SystemX.Auth2.Server.Infrastructure.Auth;
 
 namespace SystemX.Auth2.Server.Pages.Account;
 
-public sealed class JoinApplicationModel(IClientIdAccessor clientId, IAuthFlowResolver flow, IReturnUrlValidator urls, IAuth2Localizer text)
+public sealed class JoinProjectModel(IClientIdAccessor clientId, IAuthFlowResolver flow, IReturnUrlValidator urls, IAuth2Localizer text)
     : Auth2PageModel(clientId, flow, urls, text)
 {
 
@@ -52,15 +52,15 @@ public sealed class JoinApplicationModel(IClientIdAccessor clientId, IAuthFlowRe
         var result = await Svc<IJoinService>().CompleteAsync(Input.Login, Input.Code, Input.NewPassword ?? "", HttpContext.RequestAborted);
         Input.NewPassword = null;
         if (!result.Succeeded) { Fail(result); return Page(); }
-        return RedirectToPage("Login", new { ReturnUrl, ClientId = Application!.ClientId });
+        return RedirectToPage("Login", new { ReturnUrl, ClientId = ClientIdForLinks });
     }
 
     private async Task<bool> Prepare()
     {
-        if (!await LoadApplicationAsync()) return false;
+        if (!await LoadProjectAsync()) return false;
         JoinEnabled = Settings.Registration.JoinMode == Domain.Settings.JoinMode.AutoJoin
-            && Svc<Microsoft.Extensions.Options.IOptions<Auth2ServerOptions>>().Value.Mode == ServerMode.MultiApplication;
-        AskNewPassword = await Svc<IAuthFlowResolver>().GetCredentialScopeAsync(HttpContext.RequestAborted) == CredentialScope.PerApplication;
+            && Svc<Microsoft.Extensions.Options.IOptions<Auth2ServerOptions>>().Value.Mode == ServerMode.MultiProject;
+        AskNewPassword = await Svc<IAuthFlowResolver>().GetCredentialScopeAsync(HttpContext.RequestAborted) == CredentialScope.PerProject;
         return true;
     }
 }

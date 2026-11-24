@@ -24,7 +24,7 @@ public static class OpenIddictSetup
         services.AddOptions<Auth2KeyOptions>().Bind(configuration.GetSection(Auth2KeyOptions.SectionName));
 
         services.AddOpenIddict()
-            .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<Auth2DbContext>().ReplaceDefaultEntities<Guid>())
+            .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<Auth2DbContext>().ReplaceDefaultEntities<Auth2Application, Auth2Authorization, Auth2Scope, Auth2Token, Guid>())
             .AddServer(o =>
             {
                 o.SetAuthorizationEndpointUris(Auth2Routes.Authorize)
@@ -58,6 +58,9 @@ public static class OpenIddictSetup
                  .EnableEndSessionEndpointPassthrough()
                  .EnableUserInfoEndpointPassthrough()
                  .EnableStatusCodePagesIntegration();
+
+                // A token of a disabled project or application stops working (see ProjectStatusHandlers).
+                o.AddEventHandler(ProjectStatusServerHandler.Descriptor);
             })
             .AddValidation(o =>
             {
@@ -65,6 +68,7 @@ public static class OpenIddictSetup
                 o.UseAspNetCore();
                 o.EnableAuthorizationEntryValidation();
                 o.EnableTokenEntryValidation();
+                o.AddEventHandler(ProjectStatusValidationHandler.Descriptor);
             });
 
         // Keys, issuer and transport rules depend on the environment, so they are set when the options are built.

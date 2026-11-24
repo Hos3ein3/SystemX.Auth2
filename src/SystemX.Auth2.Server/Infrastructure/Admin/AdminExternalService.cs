@@ -18,7 +18,7 @@ namespace SystemX.Auth2.Server.Infrastructure.Admin;
 
 /// <summary>See <see cref="IAdminExternalService"/>. Secrets are encrypted before they are saved and are never put into an answer or an audit event.</summary>
 internal sealed class AdminExternalService(
-    Auth2DbContext db, IGlobalScope globalScope, IApplicationService applications, IExternalSecretProtector secrets, IExternalProviderDescriptors descriptors,
+    Auth2DbContext db, IGlobalScope globalScope, IProjectService applications, IExternalSecretProtector secrets, IExternalProviderDescriptors descriptors,
     IOidcEndpointResolver oidc, ISamlProviderMaterial saml, ILdapDirectory ldap, UserManager<AppUser> users,
     IExternalLinkService links, UserLookup lookup, IAuthFlowResolver flow, IServerValues serverValues, IAuditService audit, IOptions<Auth2ServerOptions> options, TimeProvider clock) : IAdminExternalService
 {
@@ -26,20 +26,20 @@ internal sealed class AdminExternalService(
 
     // ------------------------------------------------------------------------------------ helpers
 
-    private bool Single => options.Value.Mode == ServerMode.SingleApplication;
+    private bool Single => options.Value.Mode == ServerMode.SingleProject;
 
-    private async Task<Auth2Application?> AppAsync(Guid id, CancellationToken ct)
+    private async Task<Project?> AppAsync(Guid id, CancellationToken ct)
     {
         using var _ = globalScope.Begin();
-        return await db.Applications.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, ct);
+        return await db.Projects.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, ct);
     }
 
     private string Issuer() => !string.IsNullOrWhiteSpace(options.Value.Issuer) ? options.Value.Issuer.TrimEnd('/') : "https://auth.example.com";
 
-    private ExternalProviderAdminDto ToDto(Auth2Application app, ExternalProviderSettings p)
+    private ExternalProviderAdminDto ToDto(Project app, ExternalProviderSettings p)
     {
         var slug = Single ? ExternalProviderUrls.SingleModeSlug : app.ProjectKey;
-        var urls = ExternalProviderUrls.For(new RegisteredProvider(app.Id, slug, p, app.SettingsVersion, app.ClientId), Issuer());
+        var urls = ExternalProviderUrls.For(new RegisteredProvider(app.Id, slug, p, app.SettingsVersion), Issuer());
         var set = new Dictionary<string, bool>();
         var warnings = new List<string>();
         switch (p)
@@ -112,9 +112,9 @@ internal sealed class AdminExternalService(
         }
     }
 
-    private async Task<OperationResult> SaveAsync(Guid appId, ApplicationSettings settings, CancellationToken ct)
+    private async Task<OperationResult> SaveAsync(Guid appId, ProjectSettings settings, CancellationToken ct)
     {
-        var errors = ApplicationSettingsValidator.Validate(settings);
+        var errors = ProjectSettingsValidator.Validate(settings);
         if (errors.Count > 0) return AdminSupport.Invalid(errors);
         await applications.UpdateSettingsAsync(appId, settings, ct);   // bumps the version, refreshes the registry on this instance, tells the others
         return OperationResult.Ok;
@@ -217,10 +217,10 @@ internal sealed class AdminExternalService(
 
     // ------------------------------------------------------------------------------------ tests
 
-    private (Auth2Application? App, RegisteredProvider? Provider) Find(Auth2Application? app, string name)
+    private (Project? App, RegisteredProvider? Provider) Find(Project? app, string name)
     {
         var p = app?.Settings.ExternalProviders.FirstOrDefault(x => x.Name == name);
-        return p is null ? (null, null) : (app, new RegisteredProvider(app!.Id, Single ? ExternalProviderUrls.SingleModeSlug : app.ProjectKey, p, app.SettingsVersion, app.ClientId));
+        return p is null ? (null, null) : (app, new RegisteredProvider(app!.Id, Single ? ExternalProviderUrls.SingleModeSlug : app.ProjectKey, p, app.SettingsVersion));
     }
 
     public async Task<(OperationResult, ExternalProviderTestResult?)> TestProviderAsync(Guid applicationId, string name, CancellationToken ct = default)
@@ -301,7 +301,7 @@ internal sealed class AdminExternalService(
     public async Task<IReadOnlyList<ExternalMappingDto>> ListMappingsAsync(Guid applicationId, CancellationToken ct = default)
     {
         using var _ = globalScope.Begin();
-        return [.. (await db.ExternalGroupMappings.AsNoTracking().Where(m => m.ApplicationId == applicationId).OrderBy(m => m.ProviderName).ThenBy(m => m.SourceValue).ToListAsync(ct)).Select(ToDto)];
+        return [.. (await db.ExternalGroupMappings.AsNoTracking().Where(m => m.ProjectId == applicationId).OrderBy(m => m.ProviderName).ThenBy(m => m.SourceValue).ToListAsync(ct)).Select(ToDto)];
     }
 
     private async Task<(OperationResult Result, ExternalGroupMapping? Mapping)> BuildMappingAsync(Guid applicationId, ExternalMappingRequest r, ExternalGroupMapping? existing, CancellationToken ct)
@@ -319,13 +319,13 @@ internal sealed class AdminExternalService(
         // The target must belong to this application. Global and system roles (GlobalAdmin) can never be a target.
         var ok = target switch
         {
-            MappingTargetType.Role => await db.Roles.AnyAsync(x => x.Id == r.TargetId && x.ApplicationId == applicationId && !x.IsSystem && x.Name != Auth2Roles.GlobalAdmin, ct),
-            MappingTargetType.Group => await db.Groups.AnyAsync(x => x.Id == r.TargetId && x.ApplicationId == applicationId, ct),
-            _ => await db.Permissions.AnyAsync(x => x.Id == r.TargetId && x.ApplicationId == applicationId, ct),
+            MappingTargetType.Role => await db.Roles.AnyAsync(x => x.Id == r.TargetId && x.ProjectId == applicationId && !x.IsSystem && x.Name != Auth2Roles.GlobalAdmin, ct),
+            MappingTargetType.Group => await db.Groups.AnyAsync(x => x.Id == r.TargetId && x.ProjectId == applicationId, ct),
+            _ => await db.Permissions.AnyAsync(x => x.Id == r.TargetId && x.ProjectId == applicationId, ct),
         };
         if (!ok) return (AdminSupport.Invalid([new SettingsError("TargetId", "The target must be a role, group or permission of this application. System roles and GlobalAdmin cannot be mapped.")]), null);
 
-        var m = existing ?? new ExternalGroupMapping { ApplicationId = applicationId };
+        var m = existing ?? new ExternalGroupMapping { ProjectId = applicationId };
         (m.ProviderName, m.SourceType, m.SourceName, m.MatchType, m.SourceValue, m.TargetType, m.TargetId) =
             (string.IsNullOrWhiteSpace(r.ProviderName) ? null : r.ProviderName, source, source == MappingSourceType.Group ? "" : r.SourceName.Trim(), match, r.SourceValue.Trim(), target, r.TargetId);
         return (OperationResult.Ok, m);
@@ -336,7 +336,7 @@ internal sealed class AdminExternalService(
         var (result, mapping) = await BuildMappingAsync(applicationId, request, null, ct);
         if (!result.Succeeded) return (result, null);
         using var _ = globalScope.Begin();
-        if (await db.ExternalGroupMappings.CountAsync(x => x.ApplicationId == applicationId, ct) >= 1000) return (OperationResult.Fail(Auth2ErrorCodes.TooManyItems), null);
+        if (await db.ExternalGroupMappings.CountAsync(x => x.ProjectId == applicationId, ct) >= 1000) return (OperationResult.Fail(Auth2ErrorCodes.TooManyItems), null);
         db.ExternalGroupMappings.Add(mapping!);
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(new AuditEntry("external.mapping.created", applicationId, TargetType: "external_mapping", TargetId: mapping!.Id.ToString()), ct);
@@ -346,7 +346,7 @@ internal sealed class AdminExternalService(
     public async Task<(OperationResult, ExternalMappingDto?)> UpdateMappingAsync(Guid applicationId, Guid id, ExternalMappingRequest request, CancellationToken ct = default)
     {
         ExternalGroupMapping? existing;
-        using (globalScope.Begin()) existing = await db.ExternalGroupMappings.FirstOrDefaultAsync(x => x.Id == id && x.ApplicationId == applicationId, ct);
+        using (globalScope.Begin()) existing = await db.ExternalGroupMappings.FirstOrDefaultAsync(x => x.Id == id && x.ProjectId == applicationId, ct);
         if (existing is null) return (OperationResult.Fail(Auth2ErrorCodes.NotFound), null);
         var (result, mapping) = await BuildMappingAsync(applicationId, request, existing, ct);
         if (!result.Succeeded) return (result, null);
@@ -359,7 +359,7 @@ internal sealed class AdminExternalService(
     public async Task<OperationResult> DeleteMappingAsync(Guid applicationId, Guid id, CancellationToken ct = default)
     {
         using var _ = globalScope.Begin();
-        var n = await db.ExternalGroupMappings.Where(x => x.Id == id && x.ApplicationId == applicationId).ExecuteDeleteAsync(ct);
+        var n = await db.ExternalGroupMappings.Where(x => x.Id == id && x.ProjectId == applicationId).ExecuteDeleteAsync(ct);
         if (n == 0) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         await audit.WriteAsync(new AuditEntry("external.mapping.deleted", applicationId, TargetType: "external_mapping", TargetId: id.ToString()), ct);
         return OperationResult.Ok;
@@ -397,7 +397,7 @@ internal sealed class AdminExternalService(
     {
         var user = await users.FindByIdAsync(userId.ToString());
         if (user is null) return null;
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         return await lookup.IsMemberAsync(user, app, ct) ? user : null;
     }
 

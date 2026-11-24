@@ -4,6 +4,7 @@ using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Endpoints;
 using SystemX.Auth2.Server.Infrastructure;
+using SystemX.Auth2.Server.Infrastructure.Auth;
 using SystemX.Auth2.Server.Infrastructure.Commands;
 using SystemX.Auth2.Server.Infrastructure.Localization;
 using SystemX.Auth2.Server.Infrastructure.Operations;
@@ -13,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddAuth2Observability();
 builder.Services.AddSystemXAuth2Server(builder.Configuration);
 
-// builder.Services.ServerWithSingleApplication();   // optional. Without it the server is multi-application.
+// builder.Services.ServerWithSingleProject();   // optional. Without it the server is multi-project.
 
 var isCommand = Auth2Commands.IsCommand(args);
 if (!isCommand) builder.Services.AddHostedService<Auth2StartupService>();
@@ -36,6 +37,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseCors();
 app.UseMiddleware<RateLimitMiddleware>();
+app.UseMiddleware<ProjectCookieMiddleware>();   // which project's session cookie to read
 app.UseAuthentication();
 app.UseAuthorization();
 

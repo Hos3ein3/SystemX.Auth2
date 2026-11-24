@@ -22,12 +22,12 @@ public class ExternalRegistryTests : IdentityTestBase
 
         var a = Registry().Get(A.Id, "google")!;
         var b = Registry().Get(B.Id, "google")!;
-        a.ApplicationId.ShouldBe(A.Id);
-        b.ApplicationId.ShouldBe(B.Id);
+        a.ProjectId.ShouldBe(A.Id);
+        b.ProjectId.ShouldBe(B.Id);
         a.RegistrationName.ShouldNotBe(b.RegistrationName);
         a.RegistrationName.ShouldBe($"ext-{A.Id:N}-google");
-        Registry().FindByUrl("appa", "google")!.ApplicationId.ShouldBe(A.Id);
-        Registry().FindByUrl("appb", "google")!.ApplicationId.ShouldBe(B.Id);
+        Registry().FindByUrl("appa", "google")!.ProjectId.ShouldBe(A.Id);
+        Registry().FindByUrl("appb", "google")!.ProjectId.ShouldBe(B.Id);
         Registry().FindByUrl("appa", "other").ShouldBeNull();
     }
 
@@ -36,7 +36,7 @@ public class ExternalRegistryTests : IdentityTestBase
     {
         await SetUpAsync();
         await UpdateSettingsAsync(A, s => { s.ExternalProviders.Add(Google("on")); s.ExternalProviders.Add(Google("off", enabled: false)); });
-        Registry().ListForApplication(A.Id).Select(p => p.Name).ShouldBe(["on"]);
+        Registry().ListForProject(A.Id).Select(p => p.Name).ShouldBe(["on"]);
         Registry().Get(A.Id, "off").ShouldBeNull();
     }
 
@@ -59,7 +59,7 @@ public class ExternalRegistryTests : IdentityTestBase
         await UpdateSettingsAsync(A, s => s.ExternalProviders[0].DisplayName = "Sign in with Google");
         Registry().Get(A.Id, "google")!.Settings.DisplayName.ShouldBe("Sign in with Google");
         await UpdateSettingsAsync(A, s => s.ExternalProviders.Clear());
-        Registry().ListForApplication(A.Id).ShouldBeEmpty();
+        Registry().ListForProject(A.Id).ShouldBeEmpty();
     }
 
     [Fact]
@@ -87,10 +87,10 @@ public class ExternalRegistryTests : IdentityTestBase
         second.ShareDatabaseWith(Factory);
         var other = Registry(second);
         await other.RefreshChangedAsync();
-        other.ListForApplication(A.Id).ShouldBeEmpty();
+        other.ListForProject(A.Id).ShouldBeEmpty();
 
         await UpdateSettingsAsync(A, s => s.ExternalProviders.Add(Google()));
-        other.ListForApplication(A.Id).ShouldBeEmpty();           // not told yet
+        other.ListForProject(A.Id).ShouldBeEmpty();           // not told yet
         (await other.RefreshChangedAsync()).ShouldBe(1);          // what the 30 second poll does
         other.Get(A.Id, "google").ShouldNotBeNull();
         (await other.RefreshChangedAsync()).ShouldBe(0);          // nothing changed since

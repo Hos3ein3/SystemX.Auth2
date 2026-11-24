@@ -12,7 +12,7 @@ using SystemX.Auth2.Server.Application;
 namespace SystemX.Auth2.Server.Infrastructure.Operations;
 
 /// <summary>
-/// Logging (Serilog) and telemetry (OpenTelemetry). Logs are structured; every event carries <c>ApplicationId</c>, <c>ProjectKey</c>,
+/// Logging (Serilog) and telemetry (OpenTelemetry). Logs are structured; every event carries <c>ProjectId</c>, <c>ProjectKey</c>,
 /// <c>TraceId</c> and <c>CorrelationId</c>. Properties that look like secrets are replaced by <c>***</c>. Request logging has no bodies and no query string.
 /// Telemetry is exported with OTLP only when <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set (the usual <c>OTEL_*</c> variables apply).
 /// </summary>
@@ -87,8 +87,8 @@ internal sealed class Auth2Enricher(IHttpContextAccessor http) : ILogEventEnrich
         var context = http.HttpContext;
         if (context is null) return;
         if (context.Items.TryGetValue("Auth2.CorrelationId", out var c) && c is string correlation) logEvent.AddPropertyIfAbsent(factory.CreateProperty("CorrelationId", correlation));
-        var scope = context.RequestServices?.GetService<IApplicationScope>();
-        if (scope?.ApplicationId is { } id) logEvent.AddPropertyIfAbsent(factory.CreateProperty("ApplicationId", id));
+        var scope = context.RequestServices?.GetService<IProjectScope>();
+        if (scope?.ProjectId is { } id) logEvent.AddPropertyIfAbsent(factory.CreateProperty("ProjectId", id));
         if (scope?.CurrentProjectKey is { } key) logEvent.AddPropertyIfAbsent(factory.CreateProperty("ProjectKey", key));
     }
 }

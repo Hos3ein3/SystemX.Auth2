@@ -24,7 +24,7 @@ public sealed class Auth2ClientOptionsValidator : IValidateOptions<Auth2ClientOp
         if (string.IsNullOrWhiteSpace(o.ClientSecret)) errors.Add("Auth2: ClientSecret is required. Keep it in a secret store, not in the source code.");
         if (o.ProjectKey is not null && !IsValidProjectKey(o.ProjectKey))
             errors.Add("Auth2: ProjectKey may only have lowercase letters, digits, '-' and '_', must be 3 to 64 characters long and must not be '_global'. " +
-                       "Leave it out (do not call ServerWithMultiApplication) when the server is single-application.");
+                       "Leave it out (do not call ServerWithMultiProject) when the server is single-project.");
         if (o.HandshakeTimeout <= TimeSpan.Zero) errors.Add("Auth2: HandshakeTimeout must be longer than zero.");
         if (o.RequestTimeout <= TimeSpan.Zero) errors.Add("Auth2: RequestTimeout must be longer than zero.");
         if (o.HandshakeMaxRetries < 0) errors.Add("Auth2: HandshakeMaxRetries must not be negative.");

@@ -44,7 +44,8 @@ public class AttributeAndPolicyTests
 
     [Fact]
     public void AnAttributeWithNoValues_IsAnError() =>
-        Should.Throw<ArgumentOutOfRangeException>(() => new Auth2PermissionAttribute());
+        // No key is allowed now: on a const field the attribute only carries the data of the permission (the value of the field is the key).
+        new Auth2PermissionAttribute().Permissions.ShouldBeEmpty();
 
     [Fact]
     public async Task PolicyProvider_BuildsAuth2Policies_AndLeavesOtherNamesToTheDefaultProvider()

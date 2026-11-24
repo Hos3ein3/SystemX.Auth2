@@ -20,11 +20,11 @@ public sealed record HandshakeOutcome(HandshakeStatus Status, ClientHandshakeRes
 /// <summary>Makes one handshake attempt and turns every possible answer into a <see cref="HandshakeStatus"/>.</summary>
 public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, IOptions<Auth2ClientOptions> options)
 {
-    /// <summary>Message when the client has a project key but the server is single-application.</summary>
-    public const string SingleServerMessage = "The server is single-application. Remove ServerWithMultiApplication.";
+    /// <summary>Warning when the client has a project key but the server has a single project. The key is ignored.</summary>
+    public const string SingleServerMessage = "The server has a single project. The ProjectKey is ignored. Remove ServerWithMultiProject.";
 
-    /// <summary>Message when the client has no project key but the server is multi-application.</summary>
-    public const string MultiServerMessage = "The server is multi-application. Call ServerWithMultiApplication(projectKey).";
+    /// <summary>Message when the client has no project key but the server serves many projects.</summary>
+    public const string MultiServerMessage = "The server serves many projects. Call ServerWithMultiProject(projectKey) with the key of the project of this application.";
 
     /// <summary>Makes one attempt. Never throws (except when <paramref name="ct"/> is cancelled).</summary>
     public async Task<HandshakeOutcome> RunAsync(CancellationToken ct = default)
@@ -71,14 +71,15 @@ public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenP
 
             // The server says which mode it has. The client never guesses.
             var hasKey = !string.IsNullOrWhiteSpace(o.ProjectKey);
-            if (hasKey && body.ServerMode == ServerMode.SingleApplication) return new HandshakeOutcome(HandshakeStatus.Rejected, null, Auth2ErrorCodes.ServerModeMismatch, SingleServerMessage);
-            if (!hasKey && body.ServerMode == ServerMode.MultiApplication) return new HandshakeOutcome(HandshakeStatus.Rejected, null, Auth2ErrorCodes.ServerModeMismatch, MultiServerMessage);
+            // A key sent to a single-project server is not an error: the server ignores it, and the client only warns.
+            if (hasKey && body.ServerMode == ServerMode.SingleProject) return new HandshakeOutcome(HandshakeStatus.Ok, body, null, SingleServerMessage);
+            if (!hasKey && body.ServerMode == ServerMode.MultiProject) return new HandshakeOutcome(HandshakeStatus.Rejected, null, Auth2ErrorCodes.ServerModeMismatch, MultiServerMessage);
             return new HandshakeOutcome(HandshakeStatus.Ok, body, null, null);
         }
 
         var code = await ReadCodeAsync(response, ct);
         if (response.StatusCode == HttpStatusCode.NotFound)
-            return new HandshakeOutcome(HandshakeStatus.NotFound, null, code ?? Auth2ErrorCodes.ApplicationNotFound,
+            return new HandshakeOutcome(HandshakeStatus.NotFound, null, code ?? Auth2ErrorCodes.ProjectNotFound,
                 "The server does not know this application. Check ClientId and ServerUrl.");
         if (status >= 500 || response.StatusCode == HttpStatusCode.TooManyRequests)
             return new HandshakeOutcome(HandshakeStatus.ServerUnavailable, null, code ?? Auth2ClientErrorCodes.ServerUnavailable, $"The server answered {status}.");
@@ -86,7 +87,7 @@ public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenP
         if (code == Auth2ErrorCodes.ServerModeMismatch)
             return new HandshakeOutcome(HandshakeStatus.Rejected, null, code, string.IsNullOrWhiteSpace(o.ProjectKey) ? MultiServerMessage : SingleServerMessage);
         if (code == Auth2ErrorCodes.ProjectKeyOrNameMismatch)
-            return new HandshakeOutcome(HandshakeStatus.Rejected, null, code, "ProjectKey or ApplicationName does not match the application of this client id on the server.");
+            return new HandshakeOutcome(HandshakeStatus.Rejected, null, code, "ProjectKey or ApplicationName does not match the application of this client id on the server (the application must belong to that project and have that name).");
         return new HandshakeOutcome(HandshakeStatus.Rejected, null, code ?? "rejected", $"The server rejected the handshake ({status}{(code is null ? "" : ", " + code)}).");
     }
 

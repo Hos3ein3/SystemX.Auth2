@@ -24,37 +24,37 @@ public class MultiServerHandshakeTests : ClientTestBase
 
         var state = client.GetRequiredService<Auth2ClientState>();
         state.Status.ShouldBe(HandshakeStatus.Ok);
-        state.LastResponse!.ServerMode.ShouldBe(ServerMode.MultiApplication);
+        state.LastResponse!.ServerMode.ShouldBe(ServerMode.MultiProject);
         state.LastResponse.ProjectKey.ShouldBe("blog");
         state.LastResponse.CookieLifetime.ShouldBe(TimeSpan.FromMinutes(90));
         state.LastResponse.SingleActiveSession.ShouldBeTrue();
-        state.LastResponse.ApplicationId.ShouldBe(ApplicationId);
+        state.LastResponse.ProjectId.ShouldBe(ProjectId);
         (await new Auth2ClientHealthCheck(state).CheckHealthAsync(new(), default)).Status.ShouldBe(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy);
     }
 
     [Fact]
-    public async Task Handshake_ApplicationNotFoundOnTheServer_IsNotFound_AndThrowsByDefault()
+    public async Task Handshake_ApplicationDeletedOnTheServer_IsRejected_AndThrowsByDefault()
     {
         await using var client = BuildClient("blog");
         await client.GetRequiredService<IAuth2ApiClientService>().HandshakeAsync();   // gets and caches the machine token while the application exists
         await using (var scope = Server.Services.CreateAsyncScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-            using var _ = scope.ServiceProvider.GetRequiredService<Server.Application.IGlobalScope>().Begin();
-            await db.Applications.Where(a => a.Id == ApplicationId).ExecuteDeleteAsync();   // the OpenIddict client stays, so the token is still valid
+            // an application is deleted through the OpenIddict manager: its tokens go with it, so the cached token and the client id are both finished
+            var apps = scope.ServiceProvider.GetRequiredService<Server.Application.IApplicationService>();
+            await apps.DeleteAsync((await apps.ListAsync(ProjectId)).Single().Id);
         }
         var result = await client.GetRequiredService<IAuth2ApiClientService>().HandshakeAsync();
-        result.Error!.Code.ShouldBe(Auth2ErrorCodes.ApplicationNotFound);
-        client.GetRequiredService<Auth2ClientState>().Status.ShouldBe(HandshakeStatus.NotFound);
+        result.IsSuccess.ShouldBeFalse();
+        client.GetRequiredService<Auth2ClientState>().Status.ShouldBe(HandshakeStatus.Rejected);
 
         var ex = await Should.ThrowAsync<Auth2StartupException>(() => client.GetRequiredService<HandshakeHostedService>().StartAsync(default));
-        ex.Status.ShouldBe(HandshakeStatus.NotFound);
+        ex.Status.ShouldBe(HandshakeStatus.Rejected);
     }
 
     [Fact]
     public async Task Handshake_WrongApplicationName_IsRejected_WithTheMismatchCode()
     {
-        await using var client = BuildClient("blog", o => o.ApplicationName = "Not The Blog");
+        await using var client = BuildClient("blog", o => o.ApplicationName = "Not The Default");
         var result = await client.GetRequiredService<IAuth2ApiClientService>().HandshakeAsync();
         result.Error!.Code.ShouldBe(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
         client.GetRequiredService<Auth2ClientState>().Status.ShouldBe(HandshakeStatus.Rejected);
@@ -64,7 +64,7 @@ public class MultiServerHandshakeTests : ClientTestBase
     public async Task Handshake_ProjectKeyOfAnotherApplication_IsRejected()
     {
         await using (var scope = Server.Services.CreateAsyncScope())
-            await scope.ServiceProvider.GetRequiredService<Server.Application.IApplicationService>().CreateAsync("shop", "Shop", null, null);
+            await scope.ServiceProvider.GetRequiredService<Server.Application.IProjectService>().CreateWithApplicationAsync("shop", "Shop", null, null);
         await using var client = BuildClient("shop");   // the secret is Blog's
         (await client.GetRequiredService<IAuth2ApiClientService>().HandshakeAsync()).Error!.Code.ShouldBe(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
     }
@@ -84,7 +84,7 @@ public class MultiServerHandshakeTests : ClientTestBase
         await using var client = BuildClient(projectKey: null);
         var outcome = await client.GetRequiredService<HandshakeRunner>().RunAsync();
         outcome.Status.ShouldBe(HandshakeStatus.Rejected);
-        outcome.Message.ShouldBe("The server is multi-application. Call ServerWithMultiApplication(projectKey).");
+        outcome.Message.ShouldBe(HandshakeRunner.MultiServerMessage);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class MultiServerHandshakeTests : ClientTestBase
     {
         using var host = Host.CreateDefaultBuilder().ConfigureServices(s =>
         {
-            s.AddAuth2Client("http://localhost", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; }).ServerWithMultiApplication("blog").EnableHealthCheck();
+            s.AddAuth2Client("http://localhost", o => { o.ApplicationName = "default"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; }).ServerWithMultiProject("blog").EnableHealthCheck();
             foreach (var name in new[] { Auth2ClientDefaults.HttpClientName, Auth2ClientDefaults.ResilientHttpClientName })
                 s.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => Server.Server.CreateHandler());
         }).Build();
@@ -126,18 +126,18 @@ public class SingleServerHandshakeTests : ClientTestBase
         await client.GetRequiredService<HandshakeHostedService>().StartAsync(default);
         var state = client.GetRequiredService<Auth2ClientState>();
         state.Status.ShouldBe(HandshakeStatus.Ok);
-        state.LastResponse!.ServerMode.ShouldBe(ServerMode.SingleApplication);
+        state.LastResponse!.ServerMode.ShouldBe(ServerMode.SingleProject);
         state.LastResponse.ProjectKey.ShouldBeNull();
     }
 
     [Fact]
-    public async Task ClientWithAProjectKey_AgainstASingleServer_IsRejected_WithAClearMessage()
+    public async Task ClientWithAProjectKey_AgainstASingleServer_Works_ButIsToldThatTheKeyIsIgnored()
     {
         await using var client = BuildClient("default");
         var outcome = await client.GetRequiredService<HandshakeRunner>().RunAsync();
-        outcome.Status.ShouldBe(HandshakeStatus.Rejected);
-        outcome.Code.ShouldBe(Auth2ErrorCodes.ServerModeMismatch);
-        outcome.Message.ShouldBe("The server is single-application. Remove ServerWithMultiApplication.");
+        outcome.Status.ShouldBe(HandshakeStatus.Ok);
+        outcome.Message.ShouldBe(HandshakeRunner.SingleServerMessage);   // a warning, not an error
+        outcome.Response!.ProjectKey.ShouldBeNull();
     }
 }
 
@@ -149,7 +149,7 @@ public class ClientServicesAgainstServerTests : ClientTestBase
     {
         await UpdateSettingsAsync(s =>
         {
-            s.Clients.AllowSelfUiLogin = true;
+            s.App.AllowSelfUiLogin = true;
             s.Methods.AllowedRegisterMethods.Add(LoginMethod.EmailPassword);
         });
         return BuildClient("blog", configure: b => b.EnableResilience());

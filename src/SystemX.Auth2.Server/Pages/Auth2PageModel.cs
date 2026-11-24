@@ -8,8 +8,8 @@ using SystemX.Auth2.Server.Infrastructure.Auth;
 namespace SystemX.Auth2.Server.Pages;
 
 /// <summary>
-/// Base class of the pages. A page finds its application from the <c>client_id</c> query value, a <c>ClientId</c> form value,
-/// or the <c>client_id</c> inside <c>ReturnUrl</c> (the authorize URL). In single-application mode no client id is needed.
+/// Base class of the pages. A page finds its project (and its application) from the <c>client_id</c> query value, a <c>ClientId</c> form value,
+/// or the <c>client_id</c> inside <c>ReturnUrl</c> (the authorize URL). In single-project mode the project needs no client id.
 /// The pages have no HTML yet: they expose properties and flags for the UI that comes later (see docs/ui-handover.md).
 /// </summary>
 public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFlowResolver flow, IReturnUrlValidator urls, IAuth2Localizer text) : PageModel
@@ -20,14 +20,23 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     /// <summary>The client id of the application (optional when <c>ReturnUrl</c> has one, or in single mode).</summary>
     [BindProperty(SupportsGet = true)] public string? ClientId { get; set; }
 
-    /// <summary>The application, or null when it could not be found.</summary>
-    public Auth2Application? Application { get; private set; }
+    /// <summary>The project, or null when it could not be found.</summary>
+    public Project? Project { get; private set; }
 
-    /// <summary>Settings of the application.</summary>
-    public ApplicationSettings Settings { get; private set; } = new();
+    /// <summary>The calling application (client), or null when the request has no client id.</summary>
+    public ClientApplicationInfo? Client { get; private set; }
 
-    /// <summary>False when the application could not be found.</summary>
-    public bool ApplicationFound => Application is not null;
+    /// <summary>Settings of the project.</summary>
+    public ProjectSettings Settings { get; private set; } = new();
+
+    /// <summary>Project settings with the application overrides applied.</summary>
+    public EffectiveSettings Effective { get; private set; } = new(new ProjectSettings(), null);
+
+    /// <summary>False when the project could not be found.</summary>
+    public bool ProjectFound => Project is not null;
+
+    /// <summary>The client id to put into redirects to the next page (so the next page finds the same application).</summary>
+    protected string? ClientIdForLinks => Client?.ClientId ?? ClientId;
 
     /// <summary>Localized error message for the UI, or null.</summary>
     public string? ErrorMessage { get; protected set; }
@@ -36,22 +45,24 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     public string? ErrorCode { get; protected set; }
 
     /// <summary>Brand name of the application, for titles.</summary>
-    public string? BrandName => Settings.Localization.BrandName ?? Application?.Name;
+    public string? BrandName => Settings.Localization.BrandName ?? Project?.Name;
 
     /// <summary>Finds the application of this request and loads its settings. Returns false when there is none.</summary>
-    protected async Task<bool> LoadApplicationAsync()
+    protected async Task<bool> LoadProjectAsync()
     {
         clientIdAccessor.ClientId ??= !string.IsNullOrEmpty(ClientId) ? ClientId
             : ReturnUrlQuery.Get(ReturnUrl, "client_id") ?? ReturnUrlQuery.Get(ReturnUrl, "ClientId");
         try
         {
-            Application = await flow.GetApplicationAsync(HttpContext.RequestAborted);
+            Project = await flow.GetProjectAsync(HttpContext.RequestAborted);
             Settings = await flow.GetSettingsAsync(HttpContext.RequestAborted);
+            Client = await flow.GetClientAsync(HttpContext.RequestAborted);
+            Effective = new EffectiveSettings(Settings, Client);
             return true;
         }
-        catch (ApplicationNotFoundException)
+        catch (ProjectNotFoundException)
         {
-            Fail(SystemX.Auth2.Contracts.Constants.Auth2ErrorCodes.ApplicationNotFound, StatusCodes.Status404NotFound);
+            Fail(SystemX.Auth2.Contracts.Constants.Auth2ErrorCodes.ProjectNotFound, StatusCodes.Status404NotFound);
             return false;
         }
     }
@@ -68,7 +79,7 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     protected T Svc<T>() where T : notnull => HttpContext.RequestServices.GetRequiredService<T>();
 
     /// <summary><see cref="ReturnUrl"/> if it is safe, otherwise null. Use it for links in emails.</summary>
-    protected string? SafeReturnUrl() => urls.IsAllowed(ReturnUrl, Settings.Redirects.AllowedRedirectUris) ? ReturnUrl : null;
+    protected string? SafeReturnUrl() => urls.IsAllowed(ReturnUrl, Effective.AllowedRedirectUris) ? ReturnUrl : null;
 
     /// <summary>Messages of every broken rule (for example the password rules), localized.</summary>
     public IReadOnlyList<string> ErrorMessages { get; protected set; } = [];
@@ -83,10 +94,10 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     /// <summary>Signs the user into the hosted-UI session and returns the redirect to the first safe target.</summary>
     protected async Task<IActionResult> SignInAndRedirectAsync(LoginResult result, string? applicationFallback)
     {
-        await Auth2Cookie.SignInAsync(HttpContext, result.User!, Application!, Settings, result.Amr, result.SessionId, result.IdentityProvider);
+        await Auth2Cookie.SignInAsync(HttpContext, result.User!, Project!, Client, Effective, result.Amr, result.SessionId, result.IdentityProvider);
         return Redirect(ResolveRedirect(applicationFallback));
     }
 
     /// <summary>The URL to go to after success: valid return URL, then the application fallback, then <paramref name="home"/>.</summary>
-    protected string ResolveRedirect(string? applicationFallback, string home = "/") => urls.Resolve(ReturnUrl, applicationFallback, Settings, home);
+    protected string ResolveRedirect(string? applicationFallback, string home = "/") => urls.Resolve(ReturnUrl, applicationFallback, Effective, home);
 }

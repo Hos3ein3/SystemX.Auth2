@@ -2,59 +2,62 @@ using SystemX.Auth2.Server.Domain.Settings;
 
 namespace SystemX.Auth2.Server.Domain.Entities;
 
-/// <summary>An application (project). One row per project. <c>_global</c> is the built-in admin project.</summary>
-public class Auth2Application
+/// <summary>
+/// A project: the tenant and product boundary (for example PaperTrade). Users, roles, permissions, groups and credentials belong to a project.
+/// Its clients are <c>Auth2Project</c> rows. <c>_global</c> is the built-in admin project.
+/// </summary>
+public class Project
 {
     /// <summary>Id.</summary>
     public Guid Id { get; set; } = Guid.CreateVersion7();
-    /// <summary>Unique project key. Ignored by logic in single-application mode.</summary>
+    /// <summary>Unique project key (lowercase letters, digits, hyphens). It never changes after creation. Not a secret.</summary>
     public string ProjectKey { get; set; } = "";
-    /// <summary>Name. The client handshake checks it.</summary>
+    /// <summary>Name.</summary>
     public string Name { get; set; } = "";
     /// <summary>Description.</summary>
     public string? Description { get; set; }
-    /// <summary>OAuth client id of the matching OpenIddict application (unique).</summary>
-    public string ClientId { get; set; } = "";
-    /// <summary>Id of the OpenIddict application row.</summary>
-    public Guid? OpenIddictApplicationId { get; set; }
-    /// <summary>False disables logins and API calls.</summary>
+    /// <summary>False blocks every login and token of the whole project.</summary>
     public bool IsEnabled { get; set; } = true;
-    /// <summary>Settings (stored as jsonb).</summary>
-    public ApplicationSettings Settings { get; set; } = new();
+    /// <summary>Project settings (stored as jsonb).</summary>
+    public ProjectSettings Settings { get; set; } = new();
     /// <summary>Raised on every settings change.</summary>
     public int SettingsVersion { get; set; } = 1;
     /// <summary>Raised on every change that affects access.</summary>
     public int AccessVersion { get; set; } = 1;
     /// <summary>Creation time.</summary>
     public DateTimeOffset CreatedAtUtc { get; set; }
+    /// <summary>Last change.</summary>
+    public DateTimeOffset UpdatedAtUtc { get; set; }
+    /// <summary>Database concurrency token (PostgreSQL <c>xmin</c>).</summary>
+    public uint Version { get; set; }
 
     /// <summary>True for the built-in <c>_global</c> project.</summary>
     public bool IsGlobalProject => ProjectKey == ProjectKeyRules.GlobalProjectKey;
 }
 
-/// <summary>Status of a user inside one application.</summary>
-public enum UserApplicationStatus
+/// <summary>Status of a user inside one project.</summary>
+public enum UserProjectStatus
 {
     /// <summary>Normal.</summary>
     Active = 0,
-    /// <summary>Blocked in this application only.</summary>
+    /// <summary>Blocked in this project only.</summary>
     Suspended = 1,
 }
 
-/// <summary>"This person belongs to this application". Also holds per-application credentials. Not used in single mode.</summary>
-public class UserApplication
+/// <summary>"This person belongs to this project". Also holds per-project credentials. Not used in single mode.</summary>
+public class UserProject
 {
     /// <summary>User id.</summary>
     public Guid UserId { get; set; }
-    /// <summary>Application id.</summary>
-    public Guid ApplicationId { get; set; }
+    /// <summary>Project id.</summary>
+    public Guid ProjectId { get; set; }
     /// <summary>When the user joined.</summary>
     public DateTimeOffset JoinedAtUtc { get; set; }
     /// <summary>Status.</summary>
-    public UserApplicationStatus Status { get; set; }
-    /// <summary>Password hash for this application.</summary>
+    public UserProjectStatus Status { get; set; }
+    /// <summary>Password hash for this project.</summary>
     public string? PasswordHash { get; set; }
-    /// <summary>Security stamp for this application.</summary>
+    /// <summary>Security stamp for this project.</summary>
     public string? SecurityStamp { get; set; }
     /// <summary>Is TOTP on.</summary>
     public bool TwoFactorEnabled { get; set; }
@@ -75,14 +78,14 @@ public class UserApplication
 }
 
 /// <summary>Hashed recovery code for TOTP.</summary>
-public class UserApplicationRecoveryCode
+public class UserProjectRecoveryCode
 {
     /// <summary>Id.</summary>
     public Guid Id { get; set; } = Guid.CreateVersion7();
     /// <summary>User id.</summary>
     public Guid UserId { get; set; }
-    /// <summary>Application id.</summary>
-    public Guid ApplicationId { get; set; }
+    /// <summary>Project id.</summary>
+    public Guid ProjectId { get; set; }
     /// <summary>Hash of the code.</summary>
     public string CodeHash { get; set; } = "";
     /// <summary>When the code was used.</summary>

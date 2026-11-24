@@ -25,13 +25,13 @@ public sealed class ForgotPasswordModel(IClientIdAccessor clientId, IAuthFlowRes
 
     public async Task<IActionResult> OnGetAsync()
     {
-        await LoadApplicationAsync();
+        await LoadProjectAsync();
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         if (!ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
         await Svc<IPasswordService>().ForgotAsync(Input.Login, SafeReturnUrl(), HttpContext.RequestAborted);
         Submitted = true;

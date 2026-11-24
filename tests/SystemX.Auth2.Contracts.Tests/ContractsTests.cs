@@ -29,10 +29,13 @@ public class DtoSerializationTests
         new UserDto(Guid.NewGuid(), "u", "e@e.com", true, null, false, "F", "L", "D", true, false, true, DateTimeOffset.UnixEpoch, null),
         new ClientHandshakeRequest("papertrade", "PaperTrade.Api", "1.0.0"),
         new ClientHandshakeRequest(null, "App", "1.0.0"),
-        new ClientHandshakeResponse(Guid.NewGuid(), null, "App", ServerMode.SingleApplication, "https://auth", 3, TimeSpan.FromMinutes(30), true),
-        new ApplicationDto(Guid.NewGuid(), "pk", "N", null, "cid", true, 1, DateTimeOffset.UnixEpoch),
-        new CreateApplicationRequest("papertrade", "PaperTrade"),
-        new UpdateApplicationRequest("N", "D", false),
+        new ClientHandshakeResponse(Guid.NewGuid(), Guid.NewGuid(), null, "App", ServerMode.SingleProject, "https://auth", 3, TimeSpan.FromMinutes(30), true),
+        new ProjectDto(Guid.NewGuid(), "pk", "N", null, true, 1, DateTimeOffset.UnixEpoch),
+        new ApplicationDto(Guid.NewGuid(), Guid.NewGuid(), "api", "pk.api", true, ["https://a/cb"], [], ["openid"], 1, DateTimeOffset.UnixEpoch),
+        new CreateApplicationRequest("api"),
+        new UpdateApplicationRequest("api", true),
+        new CreateProjectRequest("papertrade", "PaperTrade"),
+        new UpdateProjectRequest("N", "D", false),
         new LoginRequest("sara", "pw", ["openid"]),
         new LoginResponse("a", "r", null, 900),
         new LoginResponse(null, null, null, null, true, "2ft"),
@@ -60,8 +63,8 @@ public class DtoSerializationTests
     [Fact]
     public void Serialize_Handshake_UsesStringEnum()
     {
-        var r = new ClientHandshakeResponse(Guid.Empty, null, "A", ServerMode.MultiApplication, "i", 1, null, false);
-        JsonSerializer.Serialize(r, Options).ShouldContain("\"serverMode\":\"MultiApplication\"");
+        var r = new ClientHandshakeResponse(Guid.Empty, Guid.Empty, null, "A", ServerMode.MultiProject, "i", 1, null, false);
+        JsonSerializer.Serialize(r, Options).ShouldContain("\"serverMode\":\"MultiProject\"");
     }
 
     [Fact]

@@ -21,10 +21,10 @@ public abstract class ManagePageModel(IClientIdAccessor clientId, IAuthFlowResol
     {
         ClientId = User.FindFirst(Auth2Claims.ClientId)?.Value;
         ReturnUrl = null;
-        if (!await LoadApplicationAsync()) return false;
+        if (!await LoadProjectAsync()) return false;
 
         var user = await Svc<UserManager<AppUser>>().FindByIdAsync(User.FindFirst("sub")?.Value ?? "");
-        if (User.FindFirst(Auth2Claims.ApplicationId)?.Value != Application!.Id.ToString("D")
+        if (User.FindFirst(Auth2Claims.ProjectId)?.Value != Project!.Id.ToString("D")
             || user is null || !await Svc<ILoginService>().IsSubjectValidAsync(user, HttpContext.RequestAborted))
         {
             Fail(Auth2ErrorCodes.InvalidToken, StatusCodes.Status401Unauthorized);

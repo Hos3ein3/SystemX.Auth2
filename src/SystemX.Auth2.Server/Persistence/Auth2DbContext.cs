@@ -16,20 +16,20 @@ namespace SystemX.Auth2.Server.Persistence;
 /// The database. Tenant tables have a global query filter by the current application.
 /// Only <see cref="IGlobalScope"/> bypasses it. Table and column names use snake_case.
 /// </summary>
-public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicationScope scope)
+public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IProjectScope scope)
     : IdentityDbContext<AppUser, AppRole, Guid, IdentityUserClaim<Guid>, IdentityUserRole<Guid>, AppUserLogin, IdentityRoleClaim<Guid>, AppUserToken, AppUserPasskey>(options),
       IDataProtectionKeyContext
 {
     // Read by the query filters. EF turns them into per-context parameters.
-    private Guid? CurrentApplicationId => scope.ApplicationId;
+    private Guid? CurrentProjectId => scope.ProjectId;
     private bool FiltersBypassed => scope.IsGlobalActive;
 
-    /// <summary>Applications.</summary>
-    public DbSet<Auth2Application> Applications => Set<Auth2Application>();
+    /// <summary>Projects.</summary>
+    public DbSet<Project> Projects => Set<Project>();
     /// <summary>User membership and per-application credentials.</summary>
-    public DbSet<UserApplication> UserApplications => Set<UserApplication>();
+    public DbSet<UserProject> UserProjects => Set<UserProject>();
     /// <summary>Recovery codes.</summary>
-    public DbSet<UserApplicationRecoveryCode> RecoveryCodes => Set<UserApplicationRecoveryCode>();
+    public DbSet<UserProjectRecoveryCode> RecoveryCodes => Set<UserProjectRecoveryCode>();
     /// <summary>Signing and encryption keys.</summary>
     public DbSet<KeyRingEntry> KeyRing => Set<KeyRingEntry>();
     /// <summary>Permissions.</summary>
@@ -58,6 +58,12 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
     public DbSet<ReplayEntry> ReplayEntries => Set<ReplayEntry>();
     /// <summary>Data Protection keys (scale-out).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+    /// <summary>Maintenance job runs.</summary>
+    public DbSet<JobRun> JobRuns => Set<JobRun>();
+    /// <summary>Branding assets.</summary>
+    public DbSet<BrandingAsset> BrandingAssets => Set<BrandingAsset>();
+    /// <summary>Email templates.</summary>
+    public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
 
     /// <inheritdoc />
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -91,10 +97,10 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
             // Replace the default unique index on NormalizedName: role names are unique per application.
             var old = e.Metadata.GetIndexes().Single(i => i.Properties.Count == 1 && i.Properties[0].Name == nameof(AppRole.NormalizedName));
             e.Metadata.RemoveIndex(old);
-            e.HasIndex(r => new { r.ApplicationId, r.NormalizedName }, "ix_roles_application_id_normalized_name")
+            e.HasIndex(r => new { r.ProjectId, r.NormalizedName }, "ix_roles_project_id_normalized_name")
                 .IsUnique().AreNullsDistinct(false);
-            e.HasOne<Auth2Application>().WithMany().HasForeignKey(r => r.ApplicationId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(r => FiltersBypassed || r.ApplicationId == null || r.ApplicationId == CurrentApplicationId);
+            e.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(r => FiltersBypassed || r.ProjectId == null || r.ProjectId == CurrentProjectId);
         });
         b.Entity<IdentityUserRole<Guid>>().ToTable("user_roles");
         b.Entity<IdentityUserClaim<Guid>>().ToTable("user_claims");
@@ -102,23 +108,23 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
         b.Entity<AppUserLogin>(e =>
         {
             e.ToTable("user_logins");
-            e.HasKey(x => new { x.ApplicationId, x.LoginProvider, x.ProviderKey });
-            e.HasIndex(x => new { x.ApplicationId, x.UserId });
+            e.HasKey(x => new { x.ProjectId, x.LoginProvider, x.ProviderKey });
+            e.HasIndex(x => new { x.ProjectId, x.UserId });
             e.Property(x => x.LoginProvider).HasMaxLength(64);
             e.Property(x => x.ProviderKey).HasMaxLength(512);
-            e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+            e.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
         });
         b.Entity<AppUserPasskey>(e =>
         {
             e.ToTable("user_passkeys");
-            e.HasKey(x => new { x.ApplicationId, x.CredentialId });
+            e.HasKey(x => new { x.ProjectId, x.CredentialId });
             e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.CredentialId).HasMaxLength(1024);
             e.OwnsOne(x => x.Data).ToJson("data");
-            e.HasIndex(x => new { x.ApplicationId, x.UserId });
-            e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+            e.HasIndex(x => new { x.ProjectId, x.UserId });
+            e.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
         });
         b.Entity<ExternalGroupMapping>(e =>
         {
@@ -129,9 +135,9 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
             e.Property(x => x.SourceType).HasConversion<string>().HasMaxLength(16);
             e.Property(x => x.MatchType).HasConversion<string>().HasMaxLength(16);
             e.Property(x => x.TargetType).HasConversion<string>().HasMaxLength(16);
-            e.HasIndex(x => new { x.ApplicationId, x.ProviderName });
-            e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+            e.HasIndex(x => new { x.ProjectId, x.ProviderName });
+            e.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
         });
         b.Entity<ServerValue>(e =>
         {
@@ -148,42 +154,46 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
         });
         b.Entity<AppUserToken>().ToTable("user_tokens");
 
-        // ---- Applications
-        b.Entity<Auth2Application>(e =>
+        // ---- Projects (tenants) and applications (their OpenIddict clients)
+        b.Entity<Project>(e =>
         {
-            e.ToTable("applications");
+            e.ToTable("projects");
             e.HasKey(a => a.Id);
             e.Property(a => a.ProjectKey).HasMaxLength(64).IsRequired();
             e.Property(a => a.Name).HasMaxLength(200).IsRequired();
-            e.Property(a => a.ClientId).HasMaxLength(200).IsRequired();
             e.HasIndex(a => a.ProjectKey).IsUnique();
-            e.HasIndex(a => a.ClientId).IsUnique();
-            var converter = new ValueConverter<Domain.Settings.ApplicationSettings, string>(
-                v => SettingsJson.Serialize(v), v => SettingsJson.Deserialize(v));
-            var comparer = new ValueComparer<Domain.Settings.ApplicationSettings>(
-                (x, y) => SettingsJson.Serialize(x!) == SettingsJson.Serialize(y!),
-                v => SettingsJson.Serialize(v).GetHashCode(),
-                v => SettingsJson.Clone(v));
+            e.Property(a => a.Version).HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();   // PostgreSQL system column
             e.Property(a => a.Settings).HasColumnName("settings_json").HasColumnType("jsonb")
-                .HasConversion(converter, comparer);
+                .HasConversion(SettingsConverter<Domain.Settings.ProjectSettings>(), SettingsComparer<Domain.Settings.ProjectSettings>());
         });
 
-        b.Entity<UserApplication>(e =>
+        // The application IS the OpenIddict application (one table). OpenIddict's own columns stay; these are the extra ones.
+        b.Entity<Infrastructure.OpenIddict.Auth2Application>(e =>
         {
-            e.ToTable("user_applications");
-            e.HasKey(x => new { x.UserId, x.ApplicationId });
-            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
-            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
-            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+            e.ToTable("applications");
+            e.Property(a => a.Name).HasMaxLength(200).IsRequired();
+            e.HasIndex(a => new { a.ProjectId, a.Name }).IsUnique();
+            e.HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(a => a.ClientSettings).HasColumnName("settings_json").HasColumnType("jsonb")
+                .HasConversion(SettingsConverter<Domain.Settings.ClientApplicationSettings>(), SettingsComparer<Domain.Settings.ClientApplicationSettings>());
         });
-        b.Entity<UserApplicationRecoveryCode>(e =>
+
+        b.Entity<UserProject>(e =>
         {
-            e.ToTable("user_application_recovery_codes");
-            e.HasIndex(x => new { x.UserId, x.ApplicationId });
+            e.ToTable("user_projects");
+            e.HasKey(x => new { x.UserId, x.ProjectId });
             e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+            e.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
+        });
+        b.Entity<UserProjectRecoveryCode>(e =>
+        {
+            e.ToTable("user_project_recovery_codes");
+            e.HasIndex(x => new { x.UserId, x.ProjectId });
+            e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
         });
 
         // ---- Access model
@@ -192,9 +202,9 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
             e.ToTable("permissions");
             e.Property(p => p.Key).HasMaxLength(100).IsRequired();
             e.Property(p => p.Source).HasConversion<string>().HasMaxLength(16);
-            e.HasIndex(p => new { p.ApplicationId, p.Key }).IsUnique();
-            e.HasOne<Auth2Application>().WithMany().HasForeignKey(p => p.ApplicationId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(p => FiltersBypassed || p.ApplicationId == CurrentApplicationId);
+            e.HasIndex(p => new { p.ProjectId, p.Key }).IsUnique();
+            e.HasOne<Project>().WithMany().HasForeignKey(p => p.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(p => FiltersBypassed || p.ProjectId == CurrentProjectId);
         });
         b.Entity<UserPermission>(e =>
         {
@@ -202,7 +212,7 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
             e.HasKey(x => new { x.UserId, x.PermissionId });
             e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Permission>().WithMany().HasForeignKey(x => x.PermissionId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
         });
         b.Entity<RolePermission>(e =>
         {
@@ -215,9 +225,9 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
         {
             e.ToTable("groups");
             e.Property(g => g.Name).HasMaxLength(100).IsRequired();
-            e.HasIndex(g => new { g.ApplicationId, g.Name }).IsUnique();
-            e.HasOne<Auth2Application>().WithMany().HasForeignKey(g => g.ApplicationId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(g => FiltersBypassed || g.ApplicationId == CurrentApplicationId);
+            e.HasIndex(g => new { g.ProjectId, g.Name }).IsUnique();
+            e.HasOne<Project>().WithMany().HasForeignKey(g => g.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(g => FiltersBypassed || g.ProjectId == CurrentProjectId);
         });
         b.Entity<UserGroup>(e =>
         {
@@ -248,17 +258,17 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
             e.Property(x => x.Action).HasMaxLength(100).IsRequired();
             e.Property(x => x.DataJson).HasColumnType("jsonb");
             e.HasIndex(x => x.OccurredAtUtc);
-            e.HasIndex(x => new { x.ApplicationId, x.OccurredAtUtc });
-            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+            e.HasIndex(x => new { x.ProjectId, x.OccurredAtUtc });
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
         });
         b.Entity<OtpCode>(e =>
         {
             e.ToTable("otp_codes");
             e.Property(x => x.Purpose).HasMaxLength(50).IsRequired();
-            e.HasIndex(x => new { x.UserId, x.ApplicationId, x.Purpose });
+            e.HasIndex(x => new { x.UserId, x.ProjectId, x.Purpose });
             e.HasIndex(x => x.ExpiresAtUtc);
             e.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
         });
         b.Entity<KeyRingEntry>(e =>
         {
@@ -269,8 +279,44 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
         });
         b.Entity<DataProtectionKey>().ToTable("data_protection_keys");
 
+        b.Entity<JobRun>(e =>
+        {
+            e.ToTable("job_runs");
+            e.Property(x => x.JobName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.InstanceId).HasMaxLength(100);
+            e.Property(x => x.Error).HasMaxLength(1000);
+            e.HasIndex(x => x.StartedAtUtc);
+            e.HasIndex(x => new { x.JobName, x.StartedAtUtc });
+        });
+        b.Entity<BrandingAsset>(e =>
+        {
+            e.ToTable("branding_assets");
+            e.Property(x => x.Kind).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ContentType).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => new { x.ProjectId, x.Kind }).IsUnique();
+            e.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
+        });
+        b.Entity<EmailTemplate>(e =>
+        {
+            e.ToTable("email_templates");
+            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Culture).HasMaxLength(16).IsRequired();
+            e.Property(x => x.Subject).HasMaxLength(256).IsRequired();
+            e.HasIndex(x => new { x.ProjectId, x.Name, x.Culture }).IsUnique();
+            e.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => FiltersBypassed || x.ProjectId == CurrentProjectId);
+        });
+
         ApplySnakeCase(b);
     }
+
+    private static ValueConverter<T, string> SettingsConverter<T>() where T : class, new() =>
+        new(v => SettingsJson.Serialize(v), v => SettingsJson.Deserialize<T>(v));
+
+    private static ValueComparer<T> SettingsComparer<T>() where T : class, new() =>
+        new((x, y) => SettingsJson.Serialize(x!) == SettingsJson.Serialize(y!), v => SettingsJson.Serialize(v).GetHashCode(), v => SettingsJson.Clone(v));
 
     /// <inheritdoc />
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

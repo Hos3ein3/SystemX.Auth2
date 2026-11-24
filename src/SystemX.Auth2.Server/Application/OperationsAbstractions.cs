@@ -22,6 +22,9 @@ public interface IKeyRing
     /// <summary>Deletes retired keys whose time is over. Returns how many.</summary>
     Task<int> RemoveExpiredAsync(CancellationToken ct = default);
 
+    /// <summary>Retires a key early by id. Returns true if retired.</summary>
+    Task<bool> RetireAsync(Guid id, CancellationToken ct = default);
+
     /// <summary>Reads the keys again. Returns true when they changed (another instance rotated).</summary>
     Task<bool> RefreshAsync(CancellationToken ct = default);
 }
@@ -39,6 +42,6 @@ public interface IDistributedLock
 /// <summary>Tells every instance that the settings of an application changed (Redis pub/sub when Redis is on).</summary>
 public interface ISettingsInvalidationBus
 {
-    /// <summary>Announces a change. Other instances drop their cached settings of the application.</summary>
-    Task PublishAsync(Guid applicationId, CancellationToken ct = default);
+    /// <summary>Announces a change. Other instances drop their cached settings and status of the project.</summary>
+    Task PublishAsync(Guid projectId, CancellationToken ct = default);
 }

@@ -7,25 +7,25 @@ public class SettingsEditabilityTests
 {
     [Fact]
     public void NoChange_NothingIsReported() =>
-        SettingsEditability.ChangedGlobalOnly(new ApplicationSettings(), new ApplicationSettings()).ShouldBeEmpty();
+        SettingsEditability.ChangedGlobalOnly(new ProjectSettings(), new ProjectSettings()).ShouldBeEmpty();
 
     [Fact]
     public void ProjectAdminEditableChange_IsNotReported()
     {
-        var after = new ApplicationSettings();
+        var after = new ProjectSettings();
         after.Localization.BrandName = "Blog";
         after.Password.UniqueChars = after.Password.UniqueChars;   // same value
-        SettingsEditability.ChangedGlobalOnly(new ApplicationSettings(), after).ShouldBeEmpty();
+        SettingsEditability.ChangedGlobalOnly(new ProjectSettings(), after).ShouldBeEmpty();
     }
 
     [Fact]
     public void GlobalOnlyChanges_AreReportedWithTheirPath()
     {
-        var after = new ApplicationSettings();
-        after.Clients.AllowSelfUiLogin = true;
-        after.Redirects.AllowedRedirectUris.Add("https://a.test/cb");   // a list
+        var after = new ProjectSettings();
+        after.Clients.ScopeSyncAllowed = false;
+        after.Password.BannedPasswords.Add("secret123");   // a list
         after.Sessions.SingleActiveSession = true;
-        SettingsEditability.ChangedGlobalOnly(new ApplicationSettings(), after)
-            .ShouldBe(["Redirects.AllowedRedirectUris", "Sessions.SingleActiveSession", "Clients.AllowSelfUiLogin"], ignoreOrder: true);
+        SettingsEditability.ChangedGlobalOnly(new ProjectSettings(), after)
+            .ShouldBe(["Password.BannedPasswords", "Sessions.SingleActiveSession", "Clients.ScopeSyncAllowed"], ignoreOrder: true);
     }
 }

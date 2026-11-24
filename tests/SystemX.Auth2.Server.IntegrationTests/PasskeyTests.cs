@@ -12,13 +12,13 @@ namespace SystemX.Auth2.Server.IntegrationTests;
 
 public abstract class PasskeyTestBase : ExternalLoginTestBase
 {
-    protected async Task PreparePasskeysAsync(Action<ApplicationSettings>? app = null, bool both = false)
+    protected async Task PreparePasskeysAsync(Action<TestEdit>? app = null, bool both = false)
     {
         await SetUpAsync();
         foreach (var a in both ? new[] { A, B } : [A])
             await UpdateSettingsAsync(a, s =>
             {
-                s.Redirects.AllowedRedirectUris.Add(ClientRedirect);
+                s.RedirectUris.Add(ClientRedirect);
                 s.Methods.AllowedLoginMethods.Add(LoginMethod.Passkey);
                 s.Passkeys.AllowPasskeys = true;
                 app?.Invoke(s);

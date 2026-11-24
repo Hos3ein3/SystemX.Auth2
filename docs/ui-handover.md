@@ -5,7 +5,7 @@ The UI team writes the HTML, CSS and JavaScript later. This page lists what a UI
 
 ## How a page works
 
-- A page finds its application from `ClientId` (query or form) or from the `client_id` inside `ReturnUrl`. In single-application mode no client id is needed.
+- A page finds its application from `ClientId` (query or form) or from the `client_id` inside `ReturnUrl`; the application knows its project. In single-project mode the project needs no client id. A page model exposes `Project`, `Client` (the calling application) and `Effective` (project settings with the application overrides). The redirect URIs that `ReturnUrl` is checked against are the ones of the application.
 - Forms are posted with an anti-forgery token (`__RequestVerificationToken`). The UI must include it.
 - On an error the page sets the status code (usually 400) and exposes `ErrorCode` (a stable code, see [error-codes.md](error-codes.md)) and `ErrorMessage` (localized).
 - Public properties of a page model are the data the UI shows.
@@ -38,7 +38,7 @@ Post a form to `/Account/External/Challenge?ClientId={clientId}` (or `/connect/e
 | Field | Meaning |
 |---|---|
 | `Provider` | Provider name from the list |
-| `ReturnUrl` | The authorize URL (or another allowed URL) to return to after sign-in. An unsafe value is replaced by the application default |
+| `ReturnUrl` | The authorize URL (or another allowed URL) to return to after sign-in. An unsafe value is replaced by the project default |
 | `Hint` | Optional email or user name to prefill at the provider |
 | `__RequestVerificationToken` | Anti-forgery token |
 
@@ -52,7 +52,7 @@ The provider sends the browser here. The page does everything and answers with a
 |---|---|
 | Signed in | The `ReturnUrl` (or `RedirectAfterLogin`) |
 | Second factor needed | `/Account/TwoFactor` (the token is in TempData) |
-| No email from the provider, application needs one | `/Account/External/Confirm` |
+| No email from the provider, project needs one | `/Account/External/Confirm` |
 | Locked out | `/Account/Lockout` |
 | Refused | The page itself with status 400 and `ErrorCode` (for example `external_email_exists_not_verified`) |
 
@@ -72,7 +72,7 @@ Properties: `Links` (`provider`, `providerKey`, `displayName`), `AvailableProvid
 
 ## Passkey routes (JSON for the UI script)
 
-All routes take the application in `?client_id=` (not needed when signed in; the session knows it). Errors have the usual body `{ "code": "...", "message": "..." }`. The routes that need a session also need the anti-forgery token in the header `RequestVerificationToken` (the cookie is set by any page that renders a form; the UI gets the token the same way as for forms).
+All routes take the application in `?client_id=` (the project follows from it) (not needed when signed in; the session knows it). Errors have the usual body `{ "code": "...", "message": "..." }`. The routes that need a session also need the anti-forgery token in the header `RequestVerificationToken` (the cookie is set by any page that renders a form; the UI gets the token the same way as for forms).
 
 ### Register (signed in)
 
@@ -90,7 +90,7 @@ Errors: `passkey_not_allowed`, `passkey_limit_reached`, `passkey_blocked_authent
 
 1. `POST /account/passkey/request-options` with `{ "login": "sara" }` (or `{ "login": null }` for a usernameless sign-in, good for the browser's conditional UI) returns the **PublicKeyCredentialRequestOptions JSON**. An unknown name gets options like any other. Use `navigator.credentials.get({ publicKey })`.
 2. `POST /account/passkey/signin` with `{ "credential": <credential.toJSON()>, "returnUrl": "..." }`:
-   - success: `{ "succeeded": true, "redirectTo": "/..." }` and the session cookie is set;
+   - success: `{ "succeeded": true, "redirectTo": "/..." }` and the session cookie is set (its name is `.SystemX.Auth2.Session.{projectkey}`);
    - second factor needed (the passkey was not user verified): `{ "succeeded": false, "errorCode": "two_factor_required", "twoFactorToken": "..." }`;
    - failure: status 400 with `invalid_credentials` (the same code for wrong, replayed or unknown passkeys), `login_method_not_allowed`, `passkey_not_allowed`, `locked_out`, or 429 `rate_limited`.
 

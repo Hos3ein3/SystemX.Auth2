@@ -20,17 +20,18 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `invalid_credentials` | Wrong user or wrong password. Same code on purpose (no user enumeration). |
 | `locked_out` | The account is locked. |
 | `two_factor_required` | A second factor is needed. |
-| `not_registered_in_application` | The user does not belong to this application. |
-| `application_not_found` | No application for this client. |
-| `application_disabled` | The application is disabled. |
-| `project_key_or_name_mismatch` | Handshake: ProjectKey or application name does not match. |
+| `not_registered_in_project` | The user does not belong to this project. |
+| `project_not_found` | No project or application for this client. |
+| `access_denied` | The **public** answer when the project or the application is disabled. It never tells which one. |
+| `project_disabled`, `application_disabled` | The real reason. They appear only in the **audit log**, never in an answer to a caller. |
+| `project_key_or_name_mismatch` | Handshake: the client does not belong to the project with that key, or the application name does not match. |
 | `server_mode_mismatch` | Client and server use different modes (single vs multi). |
 | `password_too_short`, `password_too_long`, `password_requires_digit`, `password_requires_lower`, `password_requires_upper`, `password_requires_non_alphanumeric`, `password_requires_unique_chars`, `password_banned` | Password rule failed. The rules come from the application settings. |
 | `invalid_user_name`, `invalid_email`, `email_domain_not_allowed`, `invalid_phone_number` | User data rule failed. |
-| `user_not_in_application` | The person has no membership row in this application. |
+| `user_not_in_project` | The person has no membership row in this project. |
 | `email_not_confirmed`, `phone_not_confirmed` | Confirmation is required. Shown only after the password was right. |
 | `two_factor_setup_required` | The application requires two-factor and the user has not set it up. |
-| `grant_not_allowed` | The grant type is not allowed for this application. |
+| `grant_not_allowed` | The grant type is not allowed for this application (Self UI is off). |
 | `two_factor_not_enabled`, `two_factor_not_allowed` | Two-factor is off for the user, or the application does not allow authenticator apps. |
 | `consent_required` | Consent is needed and the request used `prompt=none`. |
 | `login_method_not_allowed` | This login method is off for the application. |
@@ -43,7 +44,7 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `conflict` | Someone else changed the record. |
 | `rate_limited` | Too many requests (HTTP 429). |
 | `invalid_otp` | OTP code is wrong or expired. |
-| `ownership_proof_required` | Joining a second application needs proof of ownership. |
+| `ownership_proof_required` | Joining a second project needs proof of ownership. |
 | `sync_not_allowed` | Sync is off for this application. |
 | `invalid_permission_key` | A permission key is invalid. |
 | `too_many_items` | Too many items in one request. |

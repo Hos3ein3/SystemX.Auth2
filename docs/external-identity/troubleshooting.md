@@ -13,7 +13,7 @@ Find the **reason** in the audit log. The user only sees a stable error code ([e
 
 | Symptom | Cause and fix |
 |---|---|
-| The login page has no button | The provider is not `Enabled`, or the application is disabled. Check `GET /connect/external/providers?client_id=...` |
+| The login page has no button | The provider is not `Enabled`, or the project is disabled. Check `GET /connect/external/providers?client_id=...` |
 | `login_method_not_allowed` after a good sign-in | Add `External` (or `Ldap`) to `Methods.AllowedLoginMethods` |
 | `external_email_exists_not_verified` | A user with this email exists and the provider cannot prove the email. The user signs in the usual way and links the provider in *Manage external logins*. Or (global admin) turn on `TrustProviderEmailVerification` if you trust that provider's emails |
 | `external_registration_not_allowed` | `AllowRegister` is off, or `Registration.JoinMode` is not `AutoJoin` |

@@ -24,7 +24,7 @@ public class AppUser : IdentityUser<Guid>
     public string? Profile { get; set; }
 }
 
-/// <summary>A role. <c>ApplicationId</c> is null for a global role.</summary>
+/// <summary>A role. <c>ProjectId</c> is null for a global role.</summary>
 public class AppRole : IdentityRole<Guid>
 {
     /// <summary>Creates a role with a new time-ordered id.</summary>
@@ -33,7 +33,9 @@ public class AppRole : IdentityRole<Guid>
     /// <summary>Creates a role with a name.</summary>
     public AppRole(string name) : this() => Name = name;
 
-    /// <summary>Owner application, or null for a global role.</summary>
+    /// <summary>Owner project, or null for a global role.</summary>
+    public Guid? ProjectId { get; set; }
+    /// <summary>The application that pushed it by sync, or null.</summary>
     public Guid? ApplicationId { get; set; }
     /// <summary>Description.</summary>
     public string? Description { get; set; }
@@ -49,21 +51,21 @@ public class AppRole : IdentityRole<Guid>
 public class AppUserLogin : IdentityUserLogin<Guid>
 {
     /// <summary>The application of this link.</summary>
-    public Guid ApplicationId { get; set; }
+    public Guid ProjectId { get; set; }
 }
 
 /// <summary>A passkey (WebAuthn credential). Per application: a passkey of one application is never found in another.</summary>
 public class AppUserPasskey : IdentityUserPasskey<Guid>
 {
     /// <summary>The application of this passkey.</summary>
-    public Guid ApplicationId { get; set; }
+    public Guid ProjectId { get; set; }
     /// <summary>Authenticator model id (AAGUID), read at registration. Used by the block list.</summary>
     public Guid? Aaguid { get; set; }
 }
 
-/// <summary>User token. <c>ApplicationId</c> makes it per application when set.</summary>
+/// <summary>User token. <c>ProjectId</c> makes it per application when set.</summary>
 public class AppUserToken : IdentityUserToken<Guid>
 {
     /// <summary>Optional application.</summary>
-    public Guid? ApplicationId { get; set; }
+    public Guid? ProjectId { get; set; }
 }

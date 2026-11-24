@@ -40,11 +40,17 @@ public static class ConnectEndpoints
     {
         var request = http.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
         clientId.ClientId = request.ClientId;
-        var app = await flow.GetApplicationAsync(http.RequestAborted);
+        var app = await flow.GetProjectAsync(http.RequestAborted);
+        if (await flow.CheckGateAsync(http.RequestAborted) is not null)
+            return Results.Forbid(new AuthenticationProperties(new Dictionary<string, string?>
+            {
+                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.AccessDenied,
+                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Access is denied.",
+            }), [OpenIddictScheme]);
 
         var cookie = await http.AuthenticateAsync(Auth2Cookie.Scheme);
-        var wrongApplication = cookie.Succeeded && cookie.Principal!.FindFirst(Auth2Claims.ApplicationId)?.Value != app.Id.ToString("D");
-        var mustLogin = !cookie.Succeeded || wrongApplication || request.HasPromptValue(PromptValues.Login);
+        var wrongProject = cookie.Succeeded && cookie.Principal!.FindFirst(Auth2Claims.ProjectId)?.Value != app.Id.ToString("D");
+        var mustLogin = !cookie.Succeeded || wrongProject || request.HasPromptValue(PromptValues.Login);
 
         AppUser? user = null;
         if (!mustLogin)
@@ -67,13 +73,14 @@ public static class ConnectEndpoints
         }
 
         // Consent: none (implicit), once per user and scopes (explicit), or every time (systematic).
-        var settings = await flow.GetSettingsAsync(http.RequestAborted);
+        var settings = await flow.GetEffectiveAsync(http.RequestAborted);
+        var client = (await flow.GetClientAsync(http.RequestAborted))!;
         var scopes = request.GetScopes();
-        var mode = ConsentPolicy.Effective(settings);
+        var mode = settings.ConsentMode;
         string? authorizationId = null;
         if (mode != ConsentMode.Implicit)
         {
-            if (await consent.IsConsentNeededAsync(user!, app, settings, scopes, (string?)request["consent"], http.RequestAborted))
+            if (await consent.IsConsentNeededAsync(user!, client, settings, scopes, (string?)request["consent"], http.RequestAborted))
             {
                 if (request.HasPromptValue(PromptValues.None))
                     return Results.Forbid(new AuthenticationProperties(new Dictionary<string, string?>
@@ -83,9 +90,9 @@ public static class ConnectEndpoints
                     }), [OpenIddictScheme]);
                 // The consent page gets the authorize URL (without prompt and without an old consent token) and comes back to it.
                 var back = ReturnUrl(http, Parameters.Prompt, "consent");
-                return Results.Redirect($"/Account/Consent?ClientId={Uri.EscapeDataString(app.ClientId)}&ReturnUrl={Uri.EscapeDataString(back)}");
+                return Results.Redirect($"/Account/Consent?ClientId={Uri.EscapeDataString(client.ClientId)}&ReturnUrl={Uri.EscapeDataString(back)}");
             }
-            if (mode == ConsentMode.Explicit) authorizationId = await consent.FindAuthorizationIdAsync(user!, app, scopes, http.RequestAborted);
+            if (mode == ConsentMode.Explicit) authorizationId = await consent.FindAuthorizationIdAsync(user!, client, scopes, http.RequestAborted);
         }
 
         var amr = cookie.Principal!.FindAll(Auth2Claims.Amr).Select(c => c.Value).DefaultIfEmpty("pwd");
@@ -94,7 +101,7 @@ public static class ConnectEndpoints
         if (mode == ConsentMode.Explicit)
         {
             // Remember the agreement, so the user is not asked again for the same scopes. The tokens belong to this authorization.
-            authorizationId ??= await consent.SaveAuthorizationAsync(user!, app, principal, scopes, http.RequestAborted);
+            authorizationId ??= await consent.SaveAuthorizationAsync(user!, client, principal, scopes, http.RequestAborted);
             principal.SetAuthorizationId(authorizationId);
         }
         return Results.SignIn(principal, properties: null, OpenIddictScheme);
@@ -110,16 +117,21 @@ public static class ConnectEndpoints
     // ---------------------------------------------------------------- token
 
     private static async Task<IResult> TokenAsync(HttpContext http, IClientIdAccessor clientId, IAuthFlowResolver flow, UserManager<AppUser> users,
-        ITokenIssuer issuer, ILoginService login)
+        ITokenIssuer issuer, ILoginService login, IAuditService audit)
     {
         var request = http.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
         clientId.ClientId = request.ClientId;
         var ct = http.RequestAborted;
-        var app = await flow.GetApplicationAsync(ct);
-        var settings = await flow.GetSettingsAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
+        var settings = await flow.GetEffectiveAsync(ct);
         http.Response.Headers.CacheControl = "no-store";
 
-        if (!app.IsEnabled) return OAuthError(Errors.InvalidGrant, Auth2ErrorCodes.ApplicationDisabled);
+        if (await flow.CheckGateAsync(ct) is { } denied)
+        {
+            // The caller only sees access_denied. The real reason (project or application) goes to the audit log.
+            await audit.WriteAsync(new AuditEntry("token.denied", app.Id, ActorClientId: request.ClientId, Data: new Dictionary<string, object?> { ["reason"] = denied, ["grant"] = request.GrantType }), ct);
+            return OAuthError(Errors.AccessDenied, Auth2ErrorCodes.AccessDenied);
+        }
 
         if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
         {
@@ -144,7 +156,7 @@ public static class ConnectEndpoints
         {
             // OpenIddict already checked that this client has the password permission (only given when AllowSelfUiLogin is true).
             // The client is confidential: it was authenticated with its secret before we got here. We check the setting again.
-            if (!settings.Clients.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
+            if (!settings.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
 
             var result = await login.PasswordLoginAsync(new PasswordLoginRequest(request.Username ?? "", request.Password ?? "",
                 http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString()), ct);
@@ -153,7 +165,7 @@ public static class ConnectEndpoints
 
         if (request.GrantType == Auth2GrantTypes.TwoFactor)
         {
-            if (!settings.Clients.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
+            if (!settings.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
             var result = await login.CompleteTwoFactorAsync((string?)request["two_factor_token"] ?? "", (string?)request["code"], (string?)request["recovery_code"],
                 http.Connection.RemoteIpAddress?.ToString(), ct);
             return await ToTokenResultAsync(result, request, issuer, ct);
@@ -161,7 +173,7 @@ public static class ConnectEndpoints
 
         if (request.GrantType == Auth2GrantTypes.Otp)
         {
-            if (!settings.Clients.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
+            if (!settings.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
             var result = await login.OtpLoginAsync(new OtpLoginRequest(request.Username ?? "", (string?)request["code"] ?? "",
                 http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString()), ct);
             return await ToTokenResultAsync(result, request, issuer, ct);
@@ -201,17 +213,23 @@ public static class ConnectEndpoints
     private static async Task<IResult> EndSessionAsync(HttpContext http, IClientIdAccessor clientId, IAuthFlowResolver flow, IReturnUrlValidator urls)
     {
         var request = http.GetOpenIddictServerRequest();
-        await http.SignOutAsync(Auth2Cookie.Scheme);
-
-        // post_logout_redirect_uri was already checked by OpenIddict (exact match with the registered list) and is used by it.
-        // Without one, we go to RedirectAfterLogout of the application, then to the home page.
+        // The project must be known first: the session cookie has the project key in its name.
         var fallback = "/";
         if (!string.IsNullOrEmpty(request?.ClientId))
         {
             clientId.ClientId = request.ClientId;
-            var settings = await flow.GetSettingsAsync(http.RequestAborted);
-            fallback = urls.Resolve(null, settings.Redirects.RedirectAfterLogout, settings);
+            try
+            {
+                var settings = await flow.GetEffectiveAsync(http.RequestAborted);
+                await flow.GetProjectAsync(http.RequestAborted);
+                await http.SignOutAsync(Auth2Cookie.Scheme);
+                // post_logout_redirect_uri was already checked by OpenIddict (exact match with the registered list) and is used by it.
+                // Without one, we go to RedirectAfterLogout of the project, then to the home page.
+                fallback = urls.Resolve(null, settings.Project.Redirects.RedirectAfterLogout, settings);
+            }
+            catch (ProjectNotFoundException) { /* an unknown client: nothing to sign out of */ }
         }
+        else await http.SignOutAsync(Auth2Cookie.Scheme);
         return Results.SignOut(new AuthenticationProperties { RedirectUri = fallback }, [OpenIddictScheme]);
     }
 

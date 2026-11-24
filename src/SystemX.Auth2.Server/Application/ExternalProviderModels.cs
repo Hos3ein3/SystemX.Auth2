@@ -8,14 +8,14 @@ namespace SystemX.Auth2.Server.Application;
 /// and are decrypted only at the moment of use (by the external secret protector).
 /// </summary>
 public sealed record RegisteredProvider(
-    Guid ApplicationId, string ProjectSlug, ExternalProviderSettings Settings, int SettingsVersion, string ClientId = "")
+    Guid ProjectId, string ProjectSlug, ExternalProviderSettings Settings, int SettingsVersion)
 {
     /// <summary>Provider name inside the application.</summary>
     public string Name => Settings.Name;
     /// <summary>Provider type.</summary>
     public ExternalProviderType Type => Settings.Type;
     /// <summary>Globally unique registration name: <c>ext-{applicationId:N}-{name}</c>.</summary>
-    public string RegistrationName => ExternalProviderUrls.RegistrationName(ApplicationId, Name);
+    public string RegistrationName => ExternalProviderUrls.RegistrationName(ProjectId, Name);
 }
 
 /// <summary>Builds the names and URLs of providers. URLs are unique per application and provider (protection against mix-up attacks).</summary>

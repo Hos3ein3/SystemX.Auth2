@@ -23,7 +23,19 @@ public sealed class Browser
         _services = factory.Services;
     }
 
-    public bool HasCookie(string name) => _cookies.ContainsKey(name);
+    /// <summary>True when the cookie exists. The session cookie has the project key in its name, so the plain name matches any project.</summary>
+    public bool HasCookie(string name) => _cookies.Keys.Any(k => k == name || k.StartsWith(name + ".", StringComparison.Ordinal));
+
+    /// <summary>Names of all cookies the browser holds.</summary>
+    public IReadOnlyCollection<string> CookieNames => _cookies.Keys;
+
+    /// <summary>The session cookie belongs to one project. A request built outside the server needs the same project to read it.</summary>
+    private void BindProject(IServiceProvider services)
+    {
+        var name = _cookies.Keys.FirstOrDefault(k => k.StartsWith(SystemX.Auth2.Server.Infrastructure.Auth.Auth2Cookie.CookieName + ".", StringComparison.Ordinal));
+        if (name is not null)
+            services.GetRequiredService<SystemX.Auth2.Server.Application.IProjectScope>().Set(Guid.Empty, name[(SystemX.Auth2.Server.Infrastructure.Auth.Auth2Cookie.CookieName.Length + 1)..]);
+    }
 
     public async Task<HttpResponseMessage> GetAsync(string url, string? bearer = null) => await SendAsync(new HttpRequestMessage(HttpMethod.Get, url), bearer);
 
@@ -52,6 +64,7 @@ public sealed class Browser
     {
         using var scope = _services.CreateScope();
         var ctx = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        BindProject(scope.ServiceProvider);
         // An anti-forgery token is bound to the signed-in user, so build it as the user of the session cookie (if there is one).
         if (_cookies.Count > 0) ctx.Request.Headers.Cookie = string.Join("; ", _cookies.Select(c => $"{c.Key}={c.Value}"));
         var session = await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.AuthenticateAsync(ctx, SystemX.Auth2.Server.Infrastructure.Auth.Auth2Cookie.Scheme);
@@ -67,6 +80,7 @@ public sealed class Browser
     {
         using var scope = _services.CreateScope();
         var ctx = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        BindProject(scope.ServiceProvider);
         if (_cookies.Count > 0) ctx.Request.Headers.Cookie = string.Join("; ", _cookies.Select(c => $"{c.Key}={c.Value}"));
         var session = await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.AuthenticateAsync(ctx, SystemX.Auth2.Server.Infrastructure.Auth.Auth2Cookie.Scheme);
         if (session.Succeeded) ctx.User = session.Principal!;

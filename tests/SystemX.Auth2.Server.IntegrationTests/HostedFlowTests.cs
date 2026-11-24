@@ -13,14 +13,14 @@ public class HostedFlowTests : IdentityTestBase
     private const string Redirect = "https://client.test/cb";
     private const string Scopes = "openid profile email roles offline_access auth2.me";
 
-    private async Task PrepareAsync(Action<Domain.Settings.ApplicationSettings>? more = null)
+    private async Task PrepareAsync(Action<TestEdit>? more = null)
     {
         await SetUpAsync();
         await CreateUserInAsync("appa");
         await UpdateSettingsAsync(A, s =>
         {
-            s.Redirects.AllowedRedirectUris.Add(Redirect);
-            s.Redirects.AllowedPostLogoutRedirectUris.Add("https://client.test/bye");
+            s.RedirectUris.Add(Redirect);
+            s.PostLogoutRedirectUris.Add("https://client.test/bye");
             more?.Invoke(s);
         });
     }
@@ -81,7 +81,9 @@ public class HostedFlowTests : IdentityTestBase
 
         var claims = HttpExtensions.JwtPayload(token.Body.Str("access_token"));
         claims.Str("preferred_username").ShouldBe("sara");
-        claims.Str("app").ShouldBe(A.Id.ToString("D"));
+        claims.Str("project_id").ShouldBe(A.Id.ToString("D"));
+        claims.Str("client_id").ShouldBe("appa");
+        claims.TryGetProperty("application_id", out _).ShouldBeTrue();
         claims.Str("projectkey").ShouldBe("appa");
         claims.Values("amr").ShouldBe(["pwd"]);
         claims.Values("aud").ShouldContain("appa");
@@ -175,7 +177,7 @@ public class HostedFlowTests : IdentityTestBase
     {
         await PrepareAsync();
         var user = await CreateUserInAsync("appa", "other", PassA);
-        await UpdateSettingsAsync(B, s => s.Redirects.AllowedRedirectUris.Add(Redirect));
+        await UpdateSettingsAsync(B, s => s.RedirectUris.Add(Redirect));
         await JoinAsync(user, B);
 
         var b = new Browser(Factory);

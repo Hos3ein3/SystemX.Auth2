@@ -13,9 +13,14 @@ What works today. "Done" means: code, tests, docs and a CHANGELOG entry exist.
 | Login service, mapping, brokering, unlink rules, pages | Done | Step 5 |
 | SAML 2.0 service provider (ACS, metadata, SLO, rotation) | Done | Step 6 |
 | LDAP and Active Directory | Done | Step 7 |
-| Passkeys (per application, limits, backup rule, AAGUID block list) | Done | Step 8 |
+| Passkeys (per project, limits, backup rule, AAGUID block list) | Done | Step 8 |
 | Admin API for providers, mappings, domain routes, support routes | Done | Step 9 |
 | Client changes for external identity (`IdentityProvider`, `AuthenticationMethods`, `GetExternalProvidersAsync`) | Done | Step 10 |
 | Samples and final docs | Planned | |
 
 This page is updated at every step of the external identity work package.
+| Project vs Application (split, one OpenIddict table, one membership, per-project cookie) | Done | Work package "fixing issues", part 1 |
+| Enabled / disabled rules (project, application, shared gate, token refusal) | Done | Part 1 |
+| Two-level settings and the effective-value resolver | Done | Part 1 |
+| `ICurrentClient` / `ICurrentUser` split | Done | Part 2 |
+| Catalog sources (class, enum, string, list, provider, factory, configuration) | Done | Part 3 |

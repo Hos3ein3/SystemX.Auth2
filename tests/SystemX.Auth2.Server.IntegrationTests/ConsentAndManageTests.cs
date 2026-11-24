@@ -89,7 +89,7 @@ public class ConsentFlowTests : Phase6Base
 
         await using var scope = ScopeFor("appa");
         var user = (await scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>().FindByNameAsync("sara"))!;
-        var app = await scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync();
+        var app = await scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetProjectAsync();
         var sessions = await scope.ServiceProvider.GetRequiredService<ISessionService>().ListAsync(user, app);
         sessions.Count.ShouldBe(1);
         sessions[0].Scopes.ShouldBe(["openid", "profile", "offline_access"], ignoreOrder: true);
@@ -153,7 +153,7 @@ public class ConsentFlowTests : Phase6Base
         string TokenFor(AppUser user, string[] scopes)
         {
             using var scope = ScopeFor("appa");
-            var app = scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync().GetAwaiter().GetResult();
+            var app = scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetClientAsync().GetAwaiter().GetResult()!;
             return scope.ServiceProvider.GetRequiredService<IConsentService>().CreateGrantToken(user, app, scopes);
         }
         var sara = await UserAsync("sara@example.com");
@@ -267,7 +267,7 @@ public class ManagePagesTests : Phase6Base
         var theirs = await UserTokensAsync("other", PassA);
 
         await using var scope = ScopeFor("appa");
-        var app = await scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync();
+        var app = await scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetProjectAsync();
         var sessions = scope.ServiceProvider.GetRequiredService<ISessionService>();
         var sara = (await scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>().FindByNameAsync("sara"))!;
         var list = await sessions.ListAsync(sara, app);
@@ -294,11 +294,13 @@ public class ManagePagesTests : Phase6Base
     public async Task ManagePages_RefuseASessionOfAnotherApplication()
     {
         var b = await SignedInAsync();   // signed in for appa
-        // the cookie says appa; a request that pretends to be appb must not be served as appb
+        // the cookie belongs to project A (its name has the project key); a request that names a client of project B does not see it at all
+        (await b.GetAsync("/Manage")).StatusCode.ShouldBe(HttpStatusCode.OK);   // the project comes from the only session cookie
         var r = await b.GetAsync("/Manage?ClientId=appb");
-        r.StatusCode.ShouldBe(HttpStatusCode.OK);   // the application is taken from the cookie, not from the query
+        r.StatusCode.ShouldBe(HttpStatusCode.Redirect);   // not signed in in project B: to the login page
+        r.Location()!.ShouldContain("/Account/Login");
         (await b.PostPageAsync("/Manage/ChangePassword?ClientId=appb", new Dictionary<string, string> { ["Input.CurrentPassword"] = PassA, ["Input.NewPassword"] = "New-Pass-12345!" }))
-            .StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await UserTokensAsync("sara", "New-Pass-12345!", "appa")).Str("token_type").ShouldBe("Bearer");   // it changed the appa password
+            .StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        (await UserTokensAsync("sara", PassA, "appa")).Str("token_type").ShouldBe("Bearer");   // the appa password did not change
     }
 }

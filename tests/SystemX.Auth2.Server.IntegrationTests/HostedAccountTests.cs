@@ -158,7 +158,7 @@ public class HostedAccountTests : Phase6Base
     // ---------------------------------------------------------------- join
 
     [Fact]
-    public async Task JoinApplication_Page_NeedsTheProofCode_ThenAllowsLoginInTheSecondApplication()
+    public async Task JoinProject_Page_NeedsTheProofCode_ThenAllowsLoginInTheSecondApplication()
     {
         await PrepareAppsAsync();
         var tokenA = await ClientTokenAsync("appa", "auth2.register");
@@ -166,18 +166,18 @@ public class HostedAccountTests : Phase6Base
         await ConfirmEmailAsync(Email);
 
         var b = new Browser(Factory);
-        var send = await b.PostPageAsync("/Account/JoinApplication?handler=Send&ClientId=appb", Form(("Input.Login", Email)));
+        var send = await b.PostPageAsync("/Account/JoinProject?handler=Send&ClientId=appb", Form(("Input.Login", Email)));
         send.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var sameForUnknown = await b.PostPageAsync("/Account/JoinApplication?handler=Send&ClientId=appb", Form(("Input.Login", "nobody@example.com")));
+        var sameForUnknown = await b.PostPageAsync("/Account/JoinProject?handler=Send&ClientId=appb", Form(("Input.Login", "nobody@example.com")));
         sameForUnknown.StatusCode.ShouldBe(send.StatusCode);
         Factory.Messages.CountTo("nobody@example.com").ShouldBe(0);
         var code = Factory.Messages.LastEmailTo(Email)!["code"];
 
-        (await b.PostPageAsync("/Account/JoinApplication?ClientId=appb", Form(("Input.Login", Email), ("Input.Code", code == "000000" ? "000001" : "000000"), ("Input.NewPassword", PassB))))
+        (await b.PostPageAsync("/Account/JoinProject?ClientId=appb", Form(("Input.Login", Email), ("Input.Code", code == "000000" ? "000001" : "000000"), ("Input.NewPassword", PassB))))
             .StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await HasRowAsync(Email, B)).ShouldBeFalse();
 
-        var done = await b.PostPageAsync("/Account/JoinApplication?ClientId=appb&ReturnUrl=%2Fpage-b", Form(("Input.Login", Email), ("Input.Code", code), ("Input.NewPassword", PassB)));
+        var done = await b.PostPageAsync("/Account/JoinProject?ClientId=appb&ReturnUrl=%2Fpage-b", Form(("Input.Login", Email), ("Input.Code", code), ("Input.NewPassword", PassB)));
         done.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         done.Location()!.ShouldContain("/Account/Login");
         (await HasRowAsync(Email, B)).ShouldBeTrue();
@@ -185,17 +185,17 @@ public class HostedAccountTests : Phase6Base
     }
 
     [Fact]
-    public async Task JoinApplication_Page_IsOffInSingleModeAndWhenJoinModeIsNotAutoJoin()
+    public async Task JoinProject_Page_IsOffInSingleModeAndWhenJoinModeIsNotAutoJoin()
     {
         await PrepareAppsAsync();
         await UpdateSettingsAsync(B, s => s.Registration.JoinMode = JoinMode.InviteOnly);
         var b = new Browser(Factory);
-        (await b.GetAsync("/Account/JoinApplication?ClientId=appb")).StatusCode.ShouldBe(HttpStatusCode.OK);   // the page loads; JoinEnabled is false
+        (await b.GetAsync("/Account/JoinProject?ClientId=appb")).StatusCode.ShouldBe(HttpStatusCode.OK);   // the page loads; JoinEnabled is false
         var tokenA = await ClientTokenAsync("appa", "auth2.register");
         await CallAsync(b, Auth2Routes.Register, new RegisterRequest("sara", Email, null, PassA), tokenA);
         await ConfirmEmailAsync(Email);
         var before = Factory.Messages.CountTo(Email);
-        await b.PostPageAsync("/Account/JoinApplication?handler=Send&ClientId=appb", Form(("Input.Login", Email)));
+        await b.PostPageAsync("/Account/JoinProject?handler=Send&ClientId=appb", Form(("Input.Login", Email)));
         Factory.Messages.CountTo(Email).ShouldBe(before);
     }
 

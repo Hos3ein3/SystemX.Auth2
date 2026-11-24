@@ -12,7 +12,7 @@ public class OtpServiceTests : IdentityTestBase
 {
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
 
-    private async Task<(AsyncServiceScope Scope, OtpService Otp, AppUser User)> StartAsync(string clientId = "appa", Action<Domain.Settings.ApplicationSettings>? tune = null)
+    private async Task<(AsyncServiceScope Scope, OtpService Otp, AppUser User)> StartAsync(string clientId = "appa", Action<TestEdit>? tune = null)
     {
         await SetUpAsync();
         var user = await CreateUserInAsync("appa");

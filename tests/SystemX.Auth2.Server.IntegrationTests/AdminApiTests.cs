@@ -21,22 +21,39 @@ public abstract class AdminBase : Phase6Base
     protected string ProjectToken = "";    // ProjectAdmin of appa
     protected string PlainToken = "";      // a normal user of appa (no admin role)
     protected AppUser Pam = null!;
+    protected Guid GlobalProjectId;
+
+    /// <summary>
+    /// Old tests name a route like <c>/users</c> and (for another project) the header <c>X-Auth2-Application</c>. The routes now carry the project:
+    /// <c>/projects/{projectId}/users</c>. This turns the short form into the real one. The project of a token is its home project.
+    /// </summary>
+    protected (string Path, (string, string)[] Headers) Route(string path, string? token, (string, string)[] headers)
+    {
+        var rest = headers.Where(h => h.Item1 != "X-Auth2-Application").ToArray();
+        var asked = headers.FirstOrDefault(h => h.Item1 == "X-Auth2-Application").Item2;
+        var target = asked switch { null => token == GlobalToken ? GlobalProjectId : A.Id, "appa" => A.Id, "appb" => B.Id, "_global" => GlobalProjectId, _ => Guid.NewGuid() };
+
+        if (path.StartsWith("/applications")) return ("/projects" + path["/applications".Length..], rest);   // list, create, one, settings, external-providers ...
+        var projectLevel = new[] { "/users", "/roles", "/permissions", "/groups", "/audit-events", "/external-provider-types" };
+        if (projectLevel.Any(p => path == p || path.StartsWith(p + "/") || path.StartsWith(p + "?"))) return ($"/projects/{target}{path}", rest);
+        return (path, rest);
+    }
 
     /// <summary>Two applications, the global admin, a project admin of appa and a plain user of appa. Tokens carry the admin scopes.</summary>
     protected async Task StartAsync()
     {
-        await PrepareAppsAsync(both: s => s.Clients.AllowedScopes.AddRange(["auth2.admin", "auth2.admin.global"]));
-        Auth2Application global; string globalSecret;
+        await PrepareAppsAsync(both: s => s.AllowedScopes.AddRange(["auth2.admin", "auth2.admin.global"]));
+        Project global; string globalSecret;
         await using (var scope = NewScope())
         {
-            var apps = scope.ServiceProvider.GetRequiredService<IApplicationService>();
-            global = (await apps.FindByProjectKeyAsync("_global"))!;
-            globalSecret = await apps.RotateClientSecretAsync("_global");
+            global = (await scope.ServiceProvider.GetRequiredService<IProjectService>().FindByProjectKeyAsync("_global"))!;
+            globalSecret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateSecretAsync("_global");
         }
+        GlobalProjectId = global.Id;
         await UpdateSettingsAsync(global, s =>
         {
-            s.Clients.AllowSelfUiLogin = true;
-            s.Clients.AllowedScopes.AddRange(["auth2.admin", "auth2.admin.global"]);
+            s.App.AllowSelfUiLogin = true;
+            s.AllowedScopes.AddRange(["auth2.admin", "auth2.admin.global"]);
         });
         GlobalToken = (await TokenAsync("_global", globalSecret, "globaladmin", "Admin@12345!ChangeMe")).Str("access_token");
 
@@ -45,7 +62,7 @@ public abstract class AdminBase : Phase6Base
         await using (var scope = ScopeFor("appa"))
         {
             var roles = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
-            (await roles.CreateAsync(new AppRole("ProjectAdmin") { ApplicationId = A.Id, IsSystem = true })).Succeeded.ShouldBeTrue();
+            (await roles.CreateAsync(new AppRole("ProjectAdmin") { ProjectId = A.Id, IsSystem = true })).Succeeded.ShouldBeTrue();
             var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
             (await users.AddToRoleAsync((await users.FindByNameAsync("pam"))!, "ProjectAdmin")).Succeeded.ShouldBeTrue();
         }
@@ -67,7 +84,8 @@ public abstract class AdminBase : Phase6Base
 
     protected async Task<(HttpStatusCode Status, JsonElement Body, HttpResponseMessage Response)> SendAsync(HttpMethod method, string path, string? token, object? body = null, params (string, string)[] headers)
     {
-        var r = await new Browser(Factory).SendJsonAsync(method, Admin + path, body, token, headers);
+        var (route, rest) = Route(path, token, headers);
+        var r = await new Browser(Factory).SendJsonAsync(method, Admin + route, body, token, rest);
         var text = await r.Content.ReadAsStringAsync();
         return (r.StatusCode, text.Length == 0 ? default : JsonDocument.Parse(text).RootElement.Clone(), r);
     }
@@ -96,7 +114,7 @@ public class AdminAccessControlTests : AdminBase
     {
         await StartAsync();
         (await GetA("/applications", ProjectToken)).Status.ShouldBe(HttpStatusCode.OK);   // a project admin sees only the own application
-        var post = await SendAsync(HttpMethod.Post, "/applications", ProjectToken, new CreateApplicationRequest("newapp", "New"));
+        var post = await SendAsync(HttpMethod.Post, "/applications", ProjectToken, new CreateProjectRequest("newapp", "New"));
         post.Status.ShouldBe(HttpStatusCode.Forbidden);
         (await SendAsync(HttpMethod.Delete, $"/applications/{B.Id}", ProjectToken)).Status.ShouldBe(HttpStatusCode.Forbidden);
     }
@@ -106,7 +124,7 @@ public class AdminAccessControlTests : AdminBase
     {
         await StartAsync();
         var denied = await GetA("/users", ProjectToken, ("X-Auth2-Application", "appb"));
-        denied.Status.ShouldBe(HttpStatusCode.Forbidden);
+        denied.Status.ShouldBe(HttpStatusCode.NotFound);   // another project is not even visible to a project admin
         (await GetA("/users", ProjectToken, ("X-Auth2-Application", "appa"))).Status.ShouldBe(HttpStatusCode.OK);
         (await GetA("/users", GlobalToken, ("X-Auth2-Application", "appb"))).Status.ShouldBe(HttpStatusCode.OK);
         (await GetA("/users", GlobalToken, ("X-Auth2-Application", "nope"))).Status.ShouldBe(HttpStatusCode.NotFound);
@@ -141,7 +159,7 @@ public class AdminAccessControlTests : AdminBase
         (await GetA($"/users/{bobId}", ProjectToken)).Status.ShouldBe(HttpStatusCode.NotFound);
         (await GetA("/audit-events?all=true", ProjectToken)).Status.ShouldBe(HttpStatusCode.Forbidden);
         var ownAudit = (await GetA("/audit-events", ProjectToken)).Body.GetProperty("items").EnumerateArray().ToList();
-        ownAudit.ShouldAllBe(e => e.GetProperty("applicationId").GetGuid() == A.Id);
+        ownAudit.ShouldAllBe(e => e.GetProperty("projectId").GetGuid() == A.Id);
     }
 
     [Fact]
@@ -168,22 +186,22 @@ public class AdminApplicationTests : AdminBase
     public async Task GlobalAdmin_CreatesGetsUpdatesAndDeletesAnApplication_AndTheSecretIsShownOnce()
     {
         await StartAsync();
-        var created = await SendAsync(HttpMethod.Post, "/applications", GlobalToken, new CreateApplicationRequest("shop", "Shop", "A shop"));
+        var created = await SendAsync(HttpMethod.Post, "/applications", GlobalToken, new CreateProjectRequest("shop", "Shop", "A shop"));
         created.Status.ShouldBe(HttpStatusCode.Created, created.Body.ToString());
-        var id = created.Body.GetProperty("application").GetProperty("id").GetGuid();
-        created.Body.Str("clientSecret").ShouldNotBeNullOrEmpty();
+        var id = created.Body.GetProperty("project").GetProperty("id").GetGuid();
         (await GetA($"/applications/{id}", GlobalToken)).Body.ToString().ShouldNotContain("clientSecret");
 
-        (await SendAsync(HttpMethod.Post, "/applications", GlobalToken, new CreateApplicationRequest("shop", "Again"))).Status.ShouldBe(HttpStatusCode.Conflict);
-        (await SendAsync(HttpMethod.Post, "/applications", GlobalToken, new CreateApplicationRequest("_global", "x"))).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await SendAsync(HttpMethod.Post, "/applications", GlobalToken, new CreateProjectRequest("shop", "Again"))).Status.ShouldBe(HttpStatusCode.Conflict);
+        (await SendAsync(HttpMethod.Post, "/applications", GlobalToken, new CreateProjectRequest("_global", "x"))).Status.ShouldBe(HttpStatusCode.BadRequest);
 
-        var updated = await SendAsync(HttpMethod.Put, $"/applications/{id}", GlobalToken, new UpdateApplicationRequest("Shop 2", null, false));
+        var updated = await SendAsync(HttpMethod.Put, $"/applications/{id}", GlobalToken, new UpdateProjectRequest("Shop 2", null, false, "closing the shop"));
         updated.Body.Str("name").ShouldBe("Shop 2");
         updated.Body.GetProperty("isEnabled").GetBoolean().ShouldBeFalse();
+        updated.Body.Str("projectKey").ShouldBe("shop");   // the key never changes
 
         (await SendAsync(HttpMethod.Delete, $"/applications/{id}", GlobalToken)).Status.ShouldBe(HttpStatusCode.NoContent);
         (await GetA($"/applications/{id}", GlobalToken)).Status.ShouldBe(HttpStatusCode.NotFound);
-        (await AuditAsync("application.deleted")).Count.ShouldBe(1);
+        (await AuditAsync("project.deleted")).Count.ShouldBe(1);
     }
 
     [Fact]
@@ -194,7 +212,7 @@ public class AdminApplicationTests : AdminBase
         var g = list.Body.GetProperty("items")[0];
         var id = g.GetProperty("id").GetGuid();
         (await SendAsync(HttpMethod.Delete, $"/applications/{id}", GlobalToken)).Status.ShouldBe(HttpStatusCode.Forbidden);
-        (await SendAsync(HttpMethod.Put, $"/applications/{id}", GlobalToken, new UpdateApplicationRequest("Global", null, false))).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await SendAsync(HttpMethod.Put, $"/applications/{id}", GlobalToken, new UpdateProjectRequest("Global", null, false))).Status.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -235,27 +253,34 @@ public class AdminApplicationTests : AdminBase
         var ok = await SendAsync(HttpMethod.Put, $"/applications/{A.Id}/settings", ProjectToken, node.ToJsonString());
         ok.Status.ShouldBe(HttpStatusCode.NoContent, ok.Body.ToString());
 
-        node["clients"]!["allowSelfUiLogin"] = false;   // GlobalOnly
+        node["password"]!["minLength"] = 14;   // GlobalOnly
         var denied = await SendAsync(HttpMethod.Put, $"/applications/{A.Id}/settings", ProjectToken, node.ToJsonString());
         denied.Status.ShouldBe(HttpStatusCode.Forbidden);
-        denied.Body.GetProperty("details").GetProperty("errors").ToString().ShouldContain("Clients.AllowSelfUiLogin");
+        denied.Body.GetProperty("details").GetProperty("errors").ToString().ShouldContain("Password.MinLength");
 
-        var uris = await SendAsync(HttpMethod.Put, $"/applications/{A.Id}/redirect-uris", ProjectToken, new RedirectUrisDto(["https://evil.test/cb"], []));
-        uris.Status.ShouldBe(HttpStatusCode.Forbidden);   // redirect URIs are GlobalOnly
-        var globalUris = await SendAsync(HttpMethod.Put, $"/applications/{A.Id}/redirect-uris", GlobalToken, new RedirectUrisDto(["https://ok.test/cb"], []));
+        // redirect URIs are a field of the application (OpenIddict) and only a global admin changes them
+        var appId = (await GetA($"/projects/{A.Id}/applications", ProjectToken)).Body[0].GetProperty("id").GetGuid();
+        var uris = await SendAsync(HttpMethod.Put, $"/projects/{A.Id}/applications/{appId}/redirect-uris", ProjectToken, new RedirectUrisDto(["https://evil.test/cb"], []));
+        uris.Status.ShouldBe(HttpStatusCode.Forbidden);
+        var globalUris = await SendAsync(HttpMethod.Put, $"/projects/{A.Id}/applications/{appId}/redirect-uris", GlobalToken, new RedirectUrisDto(["https://ok.test/cb"], []));
         globalUris.Status.ShouldBe(HttpStatusCode.NoContent, globalUris.Body.ToString());
-        (await GetA($"/applications/{A.Id}/redirect-uris", ProjectToken)).Body.Values("redirectUris").ShouldBe(["https://ok.test/cb"]);
+        (await GetA($"/projects/{A.Id}/applications/{appId}/redirect-uris", ProjectToken)).Body.Values("redirectUris").ShouldBe(["https://ok.test/cb"]);
     }
 
     [Fact]
     public async Task SecretRotation_NeedsGlobalAdmin_OrTheSetting_AndTheOldSecretStopsWorking()
     {
         await StartAsync();
-        (await SendAsync(HttpMethod.Post, $"/applications/{A.Id}/secret/rotate", ProjectToken)).Status.ShouldBe(HttpStatusCode.Forbidden);
-        (await SendAsync(HttpMethod.Post, $"/applications/{B.Id}/secret/rotate", ProjectToken)).Status.ShouldBe(HttpStatusCode.NotFound);
+        var appA = (await GetA($"/projects/{A.Id}/applications", GlobalToken)).Body[0].GetProperty("id").GetGuid();
+        var appB = (await GetA($"/projects/{B.Id}/applications", GlobalToken)).Body[0].GetProperty("id").GetGuid();
+        string Rotate(Guid project, Guid app) => $"/projects/{project}/applications/{app}/secret/rotate";
+        (await SendAsync(HttpMethod.Post, Rotate(A.Id, appA), ProjectToken)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await SendAsync(HttpMethod.Post, Rotate(B.Id, appB), ProjectToken)).Status.ShouldBe(HttpStatusCode.NotFound);   // another project
+        (await SendAsync(HttpMethod.Post, Rotate(A.Id, appB), GlobalToken)).Status.ShouldBe(HttpStatusCode.NotFound);   // an application of another project, under this project
 
-        var rotated = await SendAsync(HttpMethod.Post, $"/applications/{A.Id}/secret/rotate", GlobalToken);
+        var rotated = await SendAsync(HttpMethod.Post, Rotate(A.Id, appA), GlobalToken);
         var secret = rotated.Body.Str("clientSecret");
+        rotated.Body.GetProperty("setup").Str("clientSecret").ShouldBe(secret);   // shown once, in the copy-paste setup too
         secret.ShouldNotBe(ASecret);
         var old = await new Browser(Factory).PostFormAsync("/connect/token", new Dictionary<string, string> { ["grant_type"] = "client_credentials", ["client_id"] = "appa", ["client_secret"] = ASecret });
         old.StatusCode.ShouldBe(HttpStatusCode.BadRequest.Equals(old.StatusCode) ? HttpStatusCode.BadRequest : HttpStatusCode.Unauthorized);
@@ -263,7 +288,7 @@ public class AdminApplicationTests : AdminBase
         fresh.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         await UpdateSettingsAsync(A, s => s.Clients.AllowProjectAdminRotateSecret = true);
-        (await SendAsync(HttpMethod.Post, $"/applications/{A.Id}/secret/rotate", ProjectToken)).Status.ShouldBe(HttpStatusCode.OK);
+        (await SendAsync(HttpMethod.Post, Rotate(A.Id, appA), ProjectToken)).Status.ShouldBe(HttpStatusCode.OK);
     }
 }
 
@@ -301,7 +326,7 @@ public class AdminUserTests : AdminBase
         var joined = await SendAsync(HttpMethod.Post, "/users", GlobalToken, new AdminCreateUserRequest("nina", "nina@example.com", null, "Hacker-Pass-1!"), ("X-Auth2-Application", "appb"));
         joined.Status.ShouldBe(HttpStatusCode.Created);
         joined.Body.GetProperty("userWasCreated").GetBoolean().ShouldBeFalse();
-        joined.Body.GetProperty("joinedApplication").GetBoolean().ShouldBeTrue();
+        joined.Body.GetProperty("joinedProject").GetBoolean().ShouldBeTrue();
         var attempt = await new Browser(Factory).PostFormAsync("/connect/token", new Dictionary<string, string>
         {
             ["grant_type"] = "password", ["username"] = "nina", ["password"] = "Hacker-Pass-1!", ["scope"] = "openid", ["client_id"] = "appb", ["client_secret"] = BSecret,
@@ -523,14 +548,13 @@ public class AdminSingleModeTests : IdentityTestBase
         string secret;
         await using (var scope = NewScope())
         {
-            var apps = scope.ServiceProvider.GetRequiredService<IApplicationService>();
-            secret = await apps.RotateClientSecretAsync("default");
-            var app = (await apps.FindByProjectKeyAsync("default"))!;
-            var settings = Persistence.SettingsJson.Clone(app.Settings);
-            settings.Clients.AllowSelfUiLogin = true;
-            settings.Clients.AllowedScopes.AddRange(["auth2.admin", "auth2.admin.global"]);
-            await apps.UpdateSettingsAsync(app.Id, settings);
+            secret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateSecretAsync("default");
         }
+        await UpdateSettingsAsync((await FindProjectAsync("default"))!, s =>
+        {
+            s.App.AllowSelfUiLogin = true;
+            s.AllowedScopes.AddRange(["auth2.admin", "auth2.admin.global"]);
+        });
         var b = new Browser(Factory);
         var t = await b.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
@@ -539,12 +563,117 @@ public class AdminSingleModeTests : IdentityTestBase
         });
         var token = (await t.JsonAsync()).Str("access_token");
 
-        var create = await b.SendJsonAsync(HttpMethod.Post, Auth2Routes.Admin + "/users", new AdminCreateUserRequest("sara", "sara@example.com", null, PassA), token);
+        var project = (await FindProjectAsync("default"))!;
+        var users = $"{Auth2Routes.Admin}/projects/{project.Id}/users";
+        var create = await b.SendJsonAsync(HttpMethod.Post, users, new AdminCreateUserRequest("sara", "sara@example.com", null, PassA), token);
         create.StatusCode.ShouldBe(HttpStatusCode.Created, await create.Content.ReadAsStringAsync());
-        var list = await (await b.SendJsonAsync(HttpMethod.Get, Auth2Routes.Admin + "/users", null, token)).JsonAsync();
+        var list = await (await b.SendJsonAsync(HttpMethod.Get, users, null, token)).JsonAsync();
         list.GetProperty("items").EnumerateArray().Select(u => u.Str("userName")).ShouldBe(["globaladmin", "sara"], ignoreOrder: true);
-        (await b.SendJsonAsync(HttpMethod.Post, Auth2Routes.Admin + "/applications", new CreateApplicationRequest("another", "Another"), token)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        var apps2 = await (await b.SendJsonAsync(HttpMethod.Get, Auth2Routes.Admin + "/applications", null, token)).JsonAsync();
+        (await b.SendJsonAsync(HttpMethod.Post, Auth2Routes.Admin + "/projects", new CreateProjectRequest("another", "Another"), token)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        var apps2 = await (await b.SendJsonAsync(HttpMethod.Get, Auth2Routes.Admin + "/projects", null, token)).JsonAsync();
         apps2.GetProperty("items").EnumerateArray().ShouldAllBe(a => a.GetProperty("projectKey").ValueKind == JsonValueKind.Null);
     }
+}
+
+/// <summary>The application routes: <c>/projects/{projectId}/applications/{applicationId}/...</c>.</summary>
+public class AdminApplicationRoutesTests : AdminBase
+{
+    private string Apps(Guid project) => $"/projects/{project}/applications";
+
+    [Fact]
+    public async Task GlobalAdmin_CreatesAnApplication_SecretShownOnce_WithACopyPasteSetup()
+    {
+        await StartAsync();
+        var created = await SendAsync(HttpMethod.Post, Apps(A.Id), GlobalToken, new CreateApplicationRequest("web", RedirectUris: ["https://web.test/cb"], AllowedScopes: ["openid", "auth2.me"]));
+        created.Status.ShouldBe(HttpStatusCode.Created, created.Body.ToString());
+        created.Body.GetProperty("application").Str("clientId").ShouldBe("appa.web");
+        created.Body.GetProperty("application").Values("allowedScopes").ShouldBe(["openid", "auth2.me"], ignoreOrder: true);
+        var secret = created.Body.Str("clientSecret");
+        secret.ShouldNotBeNullOrEmpty();
+        var setup = created.Body.GetProperty("setup");
+        setup.Str("applicationName").ShouldBe("web");
+        setup.Str("projectKey").ShouldBe("appa");
+        setup.Str("clientId").ShouldBe("appa.web");
+        setup.Str("snippet").ShouldContain("ServerWithMultiProject(\"appa\")");
+        setup.Str("snippet").ShouldContain("options.ApplicationName = \"web\"");
+
+        var id = created.Body.GetProperty("application").GetProperty("id").GetGuid();
+        var read = await GetA($"{Apps(A.Id)}/{id}", ProjectToken);   // the project admin sees the application of the own project
+        read.Status.ShouldBe(HttpStatusCode.OK);
+        read.Text().ShouldNotContain(secret);
+        var again = await GetA($"{Apps(A.Id)}/{id}/setup", ProjectToken);
+        again.Body.GetProperty("clientSecret").ValueKind.ShouldBe(JsonValueKind.Null);   // the secret is shown only at creation and rotation
+        again.Body.Str("snippet").ShouldNotContain(secret);
+    }
+
+    [Fact]
+    public async Task ProjectAdmin_ReadsButCannotCreateUpdateOrDeleteApplications_AndAnotherProjectIsHidden()
+    {
+        await StartAsync();
+        (await SendAsync(HttpMethod.Post, Apps(A.Id), ProjectToken, new CreateApplicationRequest("web"))).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await GetA(Apps(A.Id), ProjectToken)).Status.ShouldBe(HttpStatusCode.OK);
+        (await GetA(Apps(B.Id), ProjectToken)).Status.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(HttpMethod.Post, Apps(B.Id), ProjectToken, new CreateApplicationRequest("web"))).Status.ShouldBeOneOf(HttpStatusCode.NotFound, HttpStatusCode.Forbidden);   // a global route: never for a project admin
+        var appA = (await GetA(Apps(A.Id), GlobalToken)).Body[0].GetProperty("id").GetGuid();
+        (await SendAsync(HttpMethod.Delete, $"{Apps(A.Id)}/{appA}", ProjectToken)).Status.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task AnApplicationOfAnotherProject_IsNotFound_UnderThisProject()
+    {
+        await StartAsync();
+        var appB = (await GetA(Apps(B.Id), GlobalToken)).Body[0].GetProperty("id").GetGuid();
+        (await GetA($"{Apps(A.Id)}/{appB}", GlobalToken)).Status.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(HttpMethod.Delete, $"{Apps(A.Id)}/{appB}", GlobalToken)).Status.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(HttpMethod.Put, $"{Apps(A.Id)}/{appB}", GlobalToken, new UpdateApplicationRequest("x", true))).Status.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Create_DuplicateNameInTheProject_OrDuplicateClientId_IsAConflict_AndTheSameNameInAnotherProjectIsFine()
+    {
+        await StartAsync();
+        (await SendAsync(HttpMethod.Post, Apps(A.Id), GlobalToken, new CreateApplicationRequest("web"))).Status.ShouldBe(HttpStatusCode.Created);
+        (await SendAsync(HttpMethod.Post, Apps(A.Id), GlobalToken, new CreateApplicationRequest("web"))).Status.ShouldBe(HttpStatusCode.Conflict);
+        (await SendAsync(HttpMethod.Post, Apps(B.Id), GlobalToken, new CreateApplicationRequest("web"))).Status.ShouldBe(HttpStatusCode.Created);
+        (await SendAsync(HttpMethod.Post, Apps(B.Id), GlobalToken, new CreateApplicationRequest("other", ClientId: "appa.web"))).Status.ShouldBe(HttpStatusCode.Conflict);
+        (await SendAsync(HttpMethod.Post, Apps(B.Id), GlobalToken, new CreateApplicationRequest("bad", RedirectUris: ["https://*.evil.test/cb"]))).Status.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task DisablingAnApplication_BlocksOnlyIt_AndTheApplicationSettingsHaveAnETag()
+    {
+        await StartAsync();
+        var created = await SendAsync(HttpMethod.Post, Apps(A.Id), GlobalToken, new CreateApplicationRequest("web"));
+        var id = created.Body.GetProperty("application").GetProperty("id").GetGuid();
+        var off = await SendAsync(HttpMethod.Put, $"{Apps(A.Id)}/{id}", GlobalToken, new UpdateApplicationRequest("web", false, Reason: "retired"));
+        off.Body.GetProperty("isEnabled").GetBoolean().ShouldBeFalse();
+        (await AuditAsync("application.disabled")).Single().DataJson!.ShouldContain("retired");
+        (await new Browser(Factory).PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials", ["client_id"] = "appa.web", ["client_secret"] = created.Body.Str("clientSecret"),
+        })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);   // access_denied
+
+        var settings = await GetA($"{Apps(A.Id)}/{id}/settings", ProjectToken);
+        var etag = settings.Response.Headers.ETag!.Tag;
+        var changed = await SendAsync(HttpMethod.Put, $"{Apps(A.Id)}/{id}/settings", GlobalToken, new { cookieLifetimeMinutes = 45, allowSelfUiLogin = true }, ("If-Match", etag));
+        changed.Status.ShouldBe(HttpStatusCode.NoContent, changed.Body.ToString());
+        (await SendAsync(HttpMethod.Put, $"{Apps(A.Id)}/{id}/settings", GlobalToken, new { cookieLifetimeMinutes = 50 }, ("If-Match", etag))).Status.ShouldBe(HttpStatusCode.Conflict);
+        (await GetA($"{Apps(A.Id)}/{id}/settings", GlobalToken)).Body.GetProperty("cookieLifetimeMinutes").GetInt32().ShouldBe(45);
+        (await SendAsync(HttpMethod.Put, $"{Apps(A.Id)}/{id}/settings", ProjectToken, new { cookieLifetimeMinutes = 10 })).Status.ShouldBe(HttpStatusCode.Forbidden);   // GlobalOnly
+    }
+
+    [Fact]
+    public async Task ProjectAdmin_CannotDisableTheOwnProject_OnlyAGlobalAdminCan()
+    {
+        await StartAsync();
+        var own = await GetA($"/projects/{A.Id}", ProjectToken);
+        (await SendAsync(HttpMethod.Put, $"/projects/{A.Id}", ProjectToken, new UpdateProjectRequest(own.Body.Str("name"), null, false))).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await SendAsync(HttpMethod.Put, $"/projects/{A.Id}", ProjectToken, new UpdateProjectRequest("Renamed by Pam", null, true))).Status.ShouldBe(HttpStatusCode.OK);
+        (await SendAsync(HttpMethod.Put, $"/projects/{GlobalProjectId}", GlobalToken, new UpdateProjectRequest("Global", null, false))).Status.ShouldBe(HttpStatusCode.Forbidden);   // _global never
+    }
+}
+
+internal static class JsonTextExtensions
+{
+    public static string Text(this (HttpStatusCode Status, JsonElement Body, HttpResponseMessage Response) r) => r.Body.ValueKind == JsonValueKind.Undefined ? "" : r.Body.GetRawText();
 }

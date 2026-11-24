@@ -7,7 +7,7 @@ namespace SystemX.Auth2.Contracts.Enums;
 public enum CredentialScope
 {
     /// <summary>Each application has its own credentials.</summary>
-    PerApplication,
+    PerProject,
     /// <summary>All applications share one set of credentials.</summary>
     Shared,
 }

@@ -3,19 +3,19 @@
 ## What this is
 
 The JSON API that a future admin UI (and scripts) use to manage the Server. Base route: `/api/auth2/admin`.
-The pages of the admin UI are empty in this version. Everything they would do is available here.
+The pages of the admin UI do not hold logic: everything they do is available here.
 
 ## When to use it
 
 - You build the admin screens.
-- You want to script user, role, group or application management.
+- You want to script project, application, user, role, group or provider management.
 
 ## Who may call it
 
 | Caller | How the Server knows | May do |
 |---|---|---|
-| **GlobalAdmin** | has the role `GlobalAdmin` and the token comes from the `_global` project (or the only application in single mode) | everything, in every application |
-| **ProjectAdmin** | has the role `ProjectAdmin` in the application of the token | manage **only** that application |
+| **GlobalAdmin** | has the role `GlobalAdmin` and the token comes from the `_global` project (or the only project in single mode) | everything, in every project |
+| **ProjectAdmin** | has the role `ProjectAdmin` in the project of the token | manage **only** that project, with all its applications and users. There is no application admin in v1 |
 | Anyone else | | `403 forbidden` |
 
 Every call needs the token of a **signed-in user** (not a machine token) with the scope `auth2.admin`. Routes that only a global admin may call also need the scope `auth2.admin.global`.
@@ -23,16 +23,11 @@ The scopes are not in the default `AllowedScopes`. Add them to the client of the
 
 The roles are checked **on every call**, so removing a role takes effect at once, even for a token that was issued earlier. Deactivated, locked or removed users get `401`.
 
-### Choosing the application
+### Choosing the project
 
-A call works on the application of the token. A **global admin** may work on another application with the header
-
-```
-X-Auth2-Application: <projectKey>
-```
-
-A project admin who sends another key gets `403`. Unknown key: `404 application_not_found`. In single-application mode the header is ignored.
-Objects of other applications look like they do not exist (`404`) to a project admin.
+The project is in the **route**: project data lives under `/projects/{projectId}/...`, applications under `/projects/{projectId}/applications/{applicationId}/...`.
+A **global admin** may use any project id. A **project admin** may use only the project of the token: another project id gives `404` (it looks like it does not exist). There are no cross-project reads or writes for a project admin.
+In single-project mode the only project id is the one of the single project.
 
 ## Rules for every endpoint
 
@@ -44,38 +39,54 @@ Objects of other applications look like they do not exist (`404`) to a project a
 
 ## Endpoints
 
-### Applications
+### Projects
 
 | Route | Who | Does |
 |---|---|---|
-| `GET /applications` | project admin (sees only the own), global admin (all) | Paged list |
-| `GET /applications/{id}` | project (own) / global | One application |
-| `POST /applications` | global | Create. The answer holds the client secret, **shown once** |
-| `PUT /applications/{id}` | global | Name, description, enabled. `_global` cannot be disabled |
-| `DELETE /applications/{id}` | global | Delete with all its data and its client. Not `_global` |
-| `GET /applications/{id}/settings` | project (own) / global | Settings JSON, with `ETag: "v3"` |
-| `PUT /applications/{id}/settings` | project (own) / global | Replace the settings. A project admin may change only `ProjectAdminEditable` settings; others give `403` and the list of paths |
-| `POST /applications/{id}/secret/rotate` | global; project admin only if `Clients.AllowProjectAdminRotateSecret` | New client secret, **shown once** |
-| `GET`, `PUT /applications/{id}/redirect-uris` | as settings | `{ redirectUris, postLogoutRedirectUris }`. Exact match, no wildcards. These are `GlobalOnly` settings |
+| `GET /projects` | project admin (sees only the own), global admin (all) | Paged list |
+| `GET /projects/{projectId}` | project (own) / global | One project |
+| `POST /projects` | global | Create a project: `{ projectKey, name, description }`. The key never changes. Add applications next |
+| `PUT /projects/{projectId}` | project admin (rename only) / global | Name, description, `isEnabled` (+ `reason`). **Only a global admin may disable or enable.** Disabling revokes all tokens, authorizations and sessions of the project in one transaction and writes an audit event with the admin and the reason. `_global` cannot be disabled |
+| `DELETE /projects/{projectId}` | global | Delete with all its data and its applications. Not `_global` |
+| `GET /projects/{projectId}/settings` | project (own) / global | Project settings JSON, with `ETag: "v3"` |
+| `PUT /projects/{projectId}/settings` | project (own) / global | Replace the settings. A project admin may change only `ProjectAdminEditable` settings; others give `403` and the list of paths |
 
-In single-application mode `POST` and `DELETE` on applications give `403`, and `projectKey` is `null`.
+### Applications (clients of a project)
 
-### Users (of the application the call works on)
+| Route | Who | Does |
+|---|---|---|
+| `GET /projects/{projectId}/applications` | project (own) / global | The applications of the project |
+| `GET /projects/{projectId}/applications/{applicationId}` | project (own) / global | One application. An application of another project is `404` |
+| `POST /projects/{projectId}/applications` | global | `{ name, clientId?, redirectUris?, postLogoutRedirectUris?, allowedScopes? }`. The client id is `{projectkey}.{name}` unless given (it must be unique on the server). The answer holds `clientSecret` (**shown once**) and `setup`, a copy-paste client configuration |
+| `PUT /projects/{projectId}/applications/{applicationId}` | global | Name, `isEnabled` (+ `reason`), redirect URIs, scopes. Disabling revokes only the tokens of that client |
+| `DELETE /projects/{projectId}/applications/{applicationId}` | global | Delete with its tokens and authorizations. The `_global` application cannot be deleted |
+| `GET .../{applicationId}/setup` | project (own) / global | The client setup (server URL, `ProjectKey`, `ApplicationName`, client id and a C# snippet). The secret is **not** part of it |
+| `POST .../{applicationId}/secret/rotate` | global; project admin only if `Clients.AllowProjectAdminRotateSecret` | New client secret, **shown once** (also in `setup.clientSecret`) |
+| `GET .../{applicationId}/settings`, `PUT` | project (own) read / global write | Application settings JSON (UI mode, cookie lifetime, token lifetimes, CORS origins, Self UI, shown providers), with `ETag` |
+| `GET`, `PUT .../{applicationId}/redirect-uris` | read: project (own) / write: global | `{ redirectUris, postLogoutRedirectUris }`. Exact match, no wildcards. These are fields of the OpenIddict application |
+
+Applications are created, changed and deleted only through the OpenIddict application manager, never with raw SQL.
+In single-project mode `POST` and `DELETE` on projects give `403`, and `projectKey` is `null`.
+
+### Users (of the project in the route)
+
+The routes of users, roles, permissions, groups, audit and external identity are relative to `/projects/{projectId}`; for example `GET /projects/{projectId}/users`.
+
 
 | Route | Does |
 |---|---|
 | `GET /users` | Paged. `q` searches user name, email and phone. `sort`: `username`, `email`, `created`. `lockedOut=true/false` |
 | `GET /users/{id}` | One user, with `ETag` |
-| `POST /users` | Create. If the person **already exists**, only the membership is added and **no password is set** (the person uses password reset or the join flow). Answer: `{ userId, userWasCreated, joinedApplication }` |
+| `POST /users` | Create. If the person **already exists**, only the membership is added and **no password is set** (the person uses password reset or the join flow). Answer: `{ userId, userWasCreated, joinedProject }` |
 | `PUT /users/{id}` | First name, last name, display name, culture, `isActive`. Deactivating ends the sessions |
-| `DELETE /users/{id}` | Multi mode: removes the person from this application (roles, groups, grants of this application go too). Single mode: deletes the user |
+| `DELETE /users/{id}` | Multi mode: removes the person from this project (roles, groups, grants of this project go too). Single mode: deletes the user |
 | `POST /users/{id}/lock` | Body `{ "untilUtc": null }`. Ends the sessions |
 | `POST /users/{id}/unlock` | Unlock and reset the failed count |
 | `POST /users/{id}/reset-2fa` | Two-factor off, key and recovery codes gone, sessions end |
 | `GET`, `DELETE /users/{id}/sessions`, `DELETE /users/{id}/sessions/{sessionId}` | List and end sessions |
 | `GET /users/{id}/access` | Effective roles, permissions, groups |
 | `PUT`, `DELETE /users/{id}/roles/{roleId}` | Give or take a role. Only a global admin may handle `GlobalAdmin` |
-| `PUT /users/{id}/project-admin` | Make the user a project admin of the application (creates the role the first time) |
+| `PUT /users/{id}/project-admin` | Make the user a project admin of the project (creates the role the first time) |
 | `PUT`, `DELETE /users/{id}/permissions/{key}` | Direct permission |
 | `PUT`, `DELETE /users/{id}/groups/{groupId}` | Group membership |
 
@@ -94,38 +105,36 @@ The effects on access are described in [authorization.md](authorization.md).
 
 ### Audit
 
-`GET /audit-events?action=&actorUserId=&targetType=&from=&to=&q=&page=&pageSize=` returns events, newest first, of the application the call works on.
-A global admin may add `all=true` to see every application. A project admin who adds it gets `403`.
-
-Not built: `external-providers` (experimental, phase 14).
+`GET /audit-events?action=&actorUserId=&targetType=&from=&to=&q=&page=&pageSize=` returns events, newest first, of the project in the route (`/projects/{projectId}/audit-events`). Every event has `projectId` and an optional `applicationId` (the client that did it).
+A global admin may add `all=true` to see every project. A project admin who adds it gets `403`.
 
 ## External identity routes
 
-Providers, mappings, home-realm routes and the support routes for logins and passkeys. They follow the same rules as the other routes: a project admin works on **the own application only** (other applications answer 404), a global admin may name any application in the route.
-Every write creates an audit event (`external.provider.created`, `.updated`, `.deleted`, `.secret_rotated`, `external.mapping.*`, `passkey.*`, ...) with names and counts, **never secrets**, raises the `SettingsVersion` of the application and reloads the providers on all instances ([external-identity.md](external-identity.md#changing-providers-at-runtime)).
+Providers, mappings, home-realm routes and the support routes for logins and passkeys. They follow the same rules as the other routes: a project admin works on **the own project only** (other projects answer 404), a global admin may name any project in the route.
+Every write creates an audit event (`external.provider.created`, `.updated`, `.deleted`, `.secret_rotated`, `external.mapping.*`, `passkey.*`, ...) with names and counts, **never secrets**, raises the `SettingsVersion` of the project and reloads the providers on all instances ([external-identity.md](external-identity.md#changing-providers-at-runtime)).
 
 | Route | Who | What |
 |---|---|---|
 | `GET /external-provider-types` | Project | The eight provider types with their `fields`, `defaultScopes`, `setupDocsAnchor` and `emailVerifiedByDefault` (a form can be drawn from it) |
-| `GET /applications/{id}/external-providers` | Project | Providers, **without secrets**: `secretIsSet` says which secrets exist; `urls` are the addresses to enter at the provider (`callback`, or `acs`, `slo`, `metadata`); `warnings` (certificate expires in 30 days, IdP-initiated on, certificate check off) |
-| `POST /applications/{id}/external-providers` | Project | Create. Body is the provider JSON with a `kind` (`oidc`, `saml`, `ldap`). Secrets are sent in plain fields: `clientSecret`, `privateKey` (Apple), `bindPassword` (LDAP). They are encrypted and never come back. `409` when the name exists |
-| `PUT /applications/{id}/external-providers/{name}` | Project | Update. **`If-Match: "v{settingsVersion}"` is required** (`409` when it is old). An empty or missing secret keeps the old one. The name and the type cannot change |
+| `GET /projects/{projectId}/external-providers` | Project | Providers, **without secrets**: `secretIsSet` says which secrets exist; `urls` are the addresses to enter at the provider (`callback`, or `acs`, `slo`, `metadata`); `warnings` (certificate expires in 30 days, IdP-initiated on, certificate check off) |
+| `POST /projects/{projectId}/external-providers` | Project | Create. Body is the provider JSON with a `kind` (`oidc`, `saml`, `ldap`). Secrets are sent in plain fields: `clientSecret`, `privateKey` (Apple), `bindPassword` (LDAP). They are encrypted and never come back. `409` when the name exists |
+| `PUT /projects/{projectId}/external-providers/{name}` | Project | Update. **`If-Match: "v{settingsVersion}"` is required** (`409` when it is old). An empty or missing secret keeps the old one. The name and the type cannot change |
 | `POST .../{name}/rotate-secret` | Project | Body `{ "clientSecret" }`, `{ "privateKey" }` or `{ "bindPassword" }` |
 | `POST .../{name}/test` | Project | OIDC: reads discovery, reports issuer and endpoints. SAML: reads metadata, reports entity id, endpoints, certificate expiry. LDAP: TLS connect and service-account bind. Answer `{ ok, errorCode, reason, details }` (never secrets) |
 | `POST .../{name}/ldap/test-user` | Project | Body `{ "userName" }`. Shows the DN, unique id, attributes and groups of that user, **no password** |
 | `POST .../{name}/saml/refresh-metadata` | Project | Reads the identity provider metadata again now |
 | `POST .../{name}/saml/generate-sp-certificate` | Project | Makes a new service provider certificate. Answer: the **public** PEM, expiry and thumbprint |
-| `DELETE /applications/{id}/external-providers/{name}` | Project | Removes the provider. The links of users stay in the database |
-| `GET/POST/PUT/DELETE /applications/{id}/external-group-mappings[/{mappingId}]` | Project | Mappings. `sourceType` Group, Claim or Attribute; `matchType` Exact or Prefix (no regex); `targetType` Role, Group or Permission. The target must belong to the application; `GlobalAdmin` and system roles are refused |
-| `GET/PUT /applications/{id}/email-domain-routes` | Project | `[ { "providerName", "domains": [] } ]`. PUT replaces all; one provider per domain |
+| `DELETE /projects/{projectId}/external-providers/{name}` | Project | Removes the provider. The links of users stay in the database |
+| `GET/POST/PUT/DELETE /projects/{projectId}/external-group-mappings[/{mappingId}]` | Project | Mappings. `sourceType` Group, Claim or Attribute; `matchType` Exact or Prefix (no regex); `targetType` Role, Group or Permission. The target must belong to the project; `GlobalAdmin` and system roles are refused |
+| `GET/PUT /projects/{projectId}/email-domain-routes` | Project | `[ { "providerName", "domains": [] } ]`. PUT replaces all; one provider per domain |
 | `GET /users/{id}/external-logins`, `DELETE /users/{id}/external-logins/{provider}` | Project | Support: list and remove. The last way to sign in is protected (`cannot_remove_last_login_method`); a global admin may add `?force=true` |
 | `GET /users/{id}/passkeys`, `DELETE /users/{id}/passkeys/{passkeyId}` | Project | List and remove (a lost device) |
 | `GET/PUT /passkeys/blocked-aaguids` | Global | Authenticator models that cannot be registered. Joined with `Auth2:Passkeys:BlockedAaguids` |
 
-**Who may change what.** Some provider fields are only for a global admin: a project admin cannot **turn on** `TrustProviderEmailVerification`, `TrustProviderMfa`, `AllowIdpInitiated` or turn **off** `ValidateServerCertificate` (answer `403 forbidden` with the field names). The generic `PUT /applications/{id}/settings` never changes the provider list (it keeps it as it is), and `GET .../settings` shows providers without any secret.
+**Who may change what.** Some provider fields are only for a global admin: a project admin cannot **turn on** `TrustProviderEmailVerification`, `TrustProviderMfa`, `AllowIdpInitiated` or turn **off** `ValidateServerCertificate` (answer `403 forbidden` with the field names). The generic `PUT /projects/{projectId}/settings` never changes the provider list (it keeps it as it is), and `GET .../settings` shows providers without any secret.
 
 ```json
-POST /api/auth2/admin/applications/{id}/external-providers
+POST /api/auth2/admin/projects/{projectId}/external-providers
 { "kind": "oidc", "name": "google", "type": "Google", "enabled": true,
   "clientId": "123.apps.googleusercontent.com", "clientSecret": "GOCSPX-...", "hostedDomain": "corp.com" }
 
@@ -140,15 +149,14 @@ POST /api/auth2/admin/applications/{id}/external-providers
 ## Example
 
 ```http
-POST /api/auth2/admin/users
+POST /api/auth2/admin/projects/0198.../users
 Authorization: Bearer <admin user token>
-X-Auth2-Application: blog
 
 { "userName": "nina", "email": "nina@example.com", "password": "A-Strong-Pass-1" }
 ```
 
 ```json
-{ "userId": "0198...", "userWasCreated": true, "joinedApplication": true }
+{ "userId": "0198...", "userWasCreated": true, "joinedProject": true }
 ```
 
 ## Common problems
@@ -156,10 +164,16 @@ X-Auth2-Application: blog
 | Problem | Cause |
 |---|---|
 | `403 insufficient_scope` | The token has no `auth2.admin` scope. Add it to the client's `AllowedScopes` and request it |
-| `403 forbidden` for a person you made admin | Global admins must sign in to `_global`. Project admins need the `ProjectAdmin` role **in that application** (`PUT /users/{id}/project-admin`) |
-| `404` for an object you can see elsewhere | You work on another application. Check the token and `X-Auth2-Application` |
+| `403 forbidden` for a person you made admin | Global admins must sign in to `_global`. Project admins need the `ProjectAdmin` role **in that project** (`PUT /users/{id}/project-admin`) |
+| `404` for an object you can see elsewhere | The project id in the route is not the project of your token, or the application belongs to another project |
 | `409 conflict` on update | Someone else changed it. Read again and send the new `If-Match` |
 | `403` on settings | A project admin touched a `GlobalOnly` setting. The error lists the paths |
+
+## How to implement / extend
+
+- Routes are in `Endpoints/AdminEndpoints.cs`. The filter `AdminApiFilter` finds who calls (in the home project of the token), reads `projectId` from the route and works as the target project. Add a project-level route to the `p` group (`/projects/{projectId:guid}`), a global one to `g`.
+- Logic lives in services (`IAdminProjectService`, `IAdminApplicationService`, ...), not in the endpoints. A new service gets a test that also checks that a project admin gets `404` for another project.
+- Every write calls `IAuditService`. Never put a secret into an audit entry.
 
 ## Related pages
 

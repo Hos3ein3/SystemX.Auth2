@@ -5,14 +5,14 @@ namespace SystemX.Auth2.Client.Options;
 
 /// <summary>
 /// Main options of the client. Section name <c>Auth2</c> when you use <c>AddAuth2Client(IConfigurationSection)</c>.
-/// <c>ProjectKey</c> is set with <c>ServerWithMultiApplication(projectKey)</c> and only when the server is multi-application.
+/// <c>ProjectKey</c> is set with <c>ServerWithMultiProject(projectKey)</c> and only when the server serves many projects. It is an identifier check, not a secret.
 /// </summary>
 public sealed class Auth2ClientOptions
 {
     /// <summary>Address of the SystemX.Auth2 Server, for example <c>https://auth.example.com</c>.</summary>
     public string ServerUrl { get; set; } = "";
 
-    /// <summary>Name of this application. The handshake checks it against the name on the server.</summary>
+    /// <summary>Name of this application (the client) inside its project. The handshake checks it against the name on the server.</summary>
     public string ApplicationName { get; set; } = "";
 
     /// <summary>OAuth client id of this application.</summary>
@@ -22,8 +22,8 @@ public sealed class Auth2ClientOptions
     public string ClientSecret { get; set; } = "";
 
     /// <summary>
-    /// Project key of this application on a multi-application server. Null for a single-application server.
-    /// Set it with <c>ServerWithMultiApplication(projectKey)</c>.
+    /// Project key of this application on a multi-project server. Null for a single-project server (a key sent there is ignored with a warning).
+    /// Set it with <c>ServerWithMultiProject(projectKey)</c>. It is not a secret and not proof of anything: the server finds the project from the client id.
     /// </summary>
     public string? ProjectKey { get; set; }
 
@@ -31,7 +31,7 @@ public sealed class Auth2ClientOptions
     public StartupFailureBehavior OnServerUnavailable { get; set; } = StartupFailureBehavior.Continue;
 
     /// <summary>What to do when the application is not found or the server rejects the client. Default <see cref="StartupFailureBehavior.Throw"/>.</summary>
-    public StartupFailureBehavior OnApplicationNotFound { get; set; } = StartupFailureBehavior.Throw;
+    public StartupFailureBehavior OnProjectNotFound { get; set; } = StartupFailureBehavior.Throw;
 
     /// <summary>Make the handshake when the application starts. Default true.</summary>
     public bool HandshakeOnStartup { get; set; } = true;
@@ -72,7 +72,7 @@ public sealed class Auth2MachineOptions
 }
 
 /// <summary>Options of permission handling.</summary>
-public sealed class Auth2PermissionOptions
+public sealed partial class Auth2PermissionOptions : CatalogOptions<SystemX.Auth2.Contracts.Access.PermissionDefinition>
 {
     /// <summary>How permissions move between this application and the server. Default <see cref="PermissionSyncPolicy.None"/>.</summary>
     public PermissionSyncPolicy SyncPolicy { get; set; } = PermissionSyncPolicy.None;
@@ -80,7 +80,7 @@ public sealed class Auth2PermissionOptions
     /// <summary>Where permissions come from. Default <see cref="ScanningPolicy.Manual"/>.</summary>
     public ScanningPolicy ScanningPolicy { get; set; } = ScanningPolicy.Manual;
 
-    /// <summary>Permissions you list by hand.</summary>
+    /// <summary>Permissions you list by hand. A shortcut: the same as <c>Add(...)</c> for each item. See also <c>AddFromClass</c>, <c>AddFromEnum</c>, <c>AddFromString</c>, <c>AddProvider</c> and the other sources.</summary>
     public List<SystemX.Auth2.Contracts.Access.PermissionDefinition> PermissionList { get; set; } = [];
 
     /// <summary>Assemblies to scan for attributes (used with <see cref="ScanningPolicy.AssemblyScan"/> or <see cref="ScanningPolicy.Both"/>).</summary>
@@ -88,7 +88,7 @@ public sealed class Auth2PermissionOptions
 }
 
 /// <summary>Options of role handling.</summary>
-public sealed class Auth2RoleOptions
+public sealed partial class Auth2RoleOptions : CatalogOptions<SystemX.Auth2.Contracts.Access.RoleDefinition>
 {
     /// <summary>How roles move between this application and the server. Default <see cref="RoleSyncPolicy.None"/>.</summary>
     public RoleSyncPolicy SyncPolicy { get; set; } = RoleSyncPolicy.None;
@@ -96,7 +96,7 @@ public sealed class Auth2RoleOptions
     /// <summary>Where roles come from. Default <see cref="ScanningPolicy.Manual"/>.</summary>
     public ScanningPolicy ScanningPolicy { get; set; } = ScanningPolicy.Manual;
 
-    /// <summary>Roles you list by hand.</summary>
+    /// <summary>Roles you list by hand. A shortcut: the same as <c>Add(...)</c> for each item.</summary>
     public List<SystemX.Auth2.Contracts.Access.RoleDefinition> RoleList { get; set; } = [];
 
     /// <summary>Assemblies to scan for attributes.</summary>
@@ -104,7 +104,7 @@ public sealed class Auth2RoleOptions
 }
 
 /// <summary>Options of group handling. Pushing groups needs <c>Clients.GroupSyncAllowed</c> on the server (off by default); it only adds missing groups.</summary>
-public sealed class Auth2GroupOptions
+public sealed partial class Auth2GroupOptions : CatalogOptions<SystemX.Auth2.Contracts.Access.GroupDefinition>
 {
     /// <summary>How groups move between this application and the server. Default <see cref="GroupSyncPolicy.None"/>.</summary>
     public GroupSyncPolicy SyncPolicy { get; set; } = GroupSyncPolicy.None;
@@ -112,7 +112,7 @@ public sealed class Auth2GroupOptions
     /// <summary>Where groups come from when they are pushed. Default <see cref="ScanningPolicy.Manual"/>.</summary>
     public ScanningPolicy ScanningPolicy { get; set; } = ScanningPolicy.Manual;
 
-    /// <summary>Groups you list by hand.</summary>
+    /// <summary>Groups you list by hand. A shortcut: the same as <c>Add(...)</c> for each item.</summary>
     public List<SystemX.Auth2.Contracts.Access.GroupDefinition> GroupList { get; set; } = [];
 
     /// <summary>Assemblies to scan for <c>[Auth2Group]</c> attributes.</summary>
@@ -120,7 +120,7 @@ public sealed class Auth2GroupOptions
 }
 
 /// <summary>Options of custom scopes (for example <c>reports.read</c>). Names starting with <c>auth2.</c> and the standard OpenID Connect scopes are never sent.</summary>
-public sealed class Auth2ScopeOptions
+public sealed partial class Auth2ScopeOptions : CatalogOptions<SystemX.Auth2.Contracts.Access.ScopeDefinition>
 {
     /// <summary>How scopes move between this application and the server. Default <see cref="ScopeSyncPolicy.None"/>.</summary>
     public ScopeSyncPolicy SyncPolicy { get; set; } = ScopeSyncPolicy.None;
@@ -128,7 +128,7 @@ public sealed class Auth2ScopeOptions
     /// <summary>Where scopes come from. Default <see cref="ScanningPolicy.Manual"/>.</summary>
     public ScanningPolicy ScanningPolicy { get; set; } = ScanningPolicy.Manual;
 
-    /// <summary>Scopes you list by hand.</summary>
+    /// <summary>Scopes you list by hand. A shortcut: the same as <c>Add(...)</c> for each item.</summary>
     public List<SystemX.Auth2.Contracts.Access.ScopeDefinition> ScopeList { get; set; } = [];
 
     /// <summary>Assemblies to scan for <c>[Auth2Scope]</c> attributes.</summary>

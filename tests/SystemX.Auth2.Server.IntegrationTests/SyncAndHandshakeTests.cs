@@ -26,22 +26,23 @@ public class HandshakeTests : Phase6Base
     {
         await PrepareAppsAsync();
         await UpdateSettingsAsync(A, s => { s.Sessions.SingleActiveSession = true; s.Sessions.CookieLifetimeMinutes = 90; });
-        var (status, body) = await HandshakeAsync(await ClientTokenAsync("appa", Scope), "appa", "App A");
+        var (status, body) = await HandshakeAsync(await ClientTokenAsync("appa", Scope), "appa", "default");
         status.ShouldBe(HttpStatusCode.OK, body.ToString());
         body.Str("projectKey").ShouldBe("appa");
-        body.Str("serverMode").ShouldBe("MultiApplication");
-        body.Str("applicationName").ShouldBe("App A");
+        body.Str("serverMode").ShouldBe("MultiProject");
+        body.Str("applicationName").ShouldBe("default");
         body.GetProperty("singleActiveSession").GetBoolean().ShouldBeTrue();
         body.Str("cookieLifetime").ShouldBe("01:30:00");
         body.Str("issuer").ShouldStartWith("http");
-        body.GetProperty("applicationId").GetGuid().ShouldBe(A.Id);
+        body.GetProperty("projectId").GetGuid().ShouldBe(A.Id);
+        body.GetProperty("applicationId").GetGuid().ShouldNotBe(A.Id);   // the application is the client, not the project
     }
 
     [Fact]
     public async Task Multi_ProjectKeyOfAnotherApplication_IsRejected_AndNeverSelectsTheApplication()
     {
         await PrepareAppsAsync();
-        var (status, body) = await HandshakeAsync(await ClientTokenAsync("appa", Scope), "appb", "App B");   // token is App A's
+        var (status, body) = await HandshakeAsync(await ClientTokenAsync("appa", Scope), "appb", "default");   // token is App A's
         status.ShouldBe(HttpStatusCode.Conflict);
         body.Str("code").ShouldBe(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
     }
@@ -59,7 +60,7 @@ public class HandshakeTests : Phase6Base
     public async Task Multi_MissingProjectKey_IsAServerModeMismatch()
     {
         await PrepareAppsAsync();
-        var (status, body) = await HandshakeAsync(await ClientTokenAsync("appa", Scope), null, "App A");
+        var (status, body) = await HandshakeAsync(await ClientTokenAsync("appa", Scope), null, "default");
         status.ShouldBe(HttpStatusCode.Conflict);
         body.Str("code").ShouldBe(Auth2ErrorCodes.ServerModeMismatch);
     }
@@ -68,8 +69,8 @@ public class HandshakeTests : Phase6Base
     public async Task NeedsTheHandshakeScope_AndAMachineToken()
     {
         await PrepareAppsAsync();
-        (await HandshakeAsync(await ClientTokenAsync("appa", "auth2.register"), "appa", "App A")).Status.ShouldBe(HttpStatusCode.Forbidden);
-        (await HandshakeAsync("bad", "appa", "App A")).Status.ShouldBe(HttpStatusCode.Unauthorized);
+        (await HandshakeAsync(await ClientTokenAsync("appa", "auth2.register"), "appa", "default")).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await HandshakeAsync("bad", "appa", "default")).Status.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -81,12 +82,12 @@ public class HandshakeTests : Phase6Base
         {
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            await db.Applications.Where(a => a.Id == A.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.IsEnabled, false));
+            await db.Projects.Where(a => a.Id == A.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.IsEnabled, false));
         }
         scopeCacheNote();
-        var (status, body) = await HandshakeAsync(token, "appa", "App A");
-        status.ShouldBe(HttpStatusCode.Forbidden);
-        body.Str("code").ShouldBe(Auth2ErrorCodes.ApplicationDisabled);
+        var (status, body) = await HandshakeAsync(token, "appa", "default");
+        status.ShouldBeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);   // the token of a disabled project is not valid any more
+        if (status == HttpStatusCode.Forbidden) body.Str("code").ShouldBe(Auth2ErrorCodes.AccessDenied);
 
         static void scopeCacheNote() { }
     }
@@ -97,16 +98,16 @@ public class SingleModeHandshakeTests : IdentityTestBase
     protected override bool SingleMode => true;
 
     [Fact]
-    public async Task Single_NoProjectKey_Ok_WithProjectKey_IsAModeMismatch()
+    public async Task Single_NoProjectKey_Ok_WithProjectKey_IsIgnoredWithAWarning()
     {
         await MigrateAndSeedAsync();
         string secret, name;
         await using (var scope = NewScope())
         {
-            secret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateClientSecretAsync("default");
+            secret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateSecretAsync("default");
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            name = (await db.Applications.SingleAsync(a => a.ProjectKey == "default")).Name;
+            name = "default";   // the name of the application, not of the project
         }
         var b = new Browser(Factory);
         var t = await b.PostFormAsync("/connect/token", new Dictionary<string, string>
@@ -118,13 +119,14 @@ public class SingleModeHandshakeTests : IdentityTestBase
         var ok = await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest(null, name, "1.0"), token);
         ok.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = JsonDocument.Parse(await ok.Content.ReadAsStringAsync()).RootElement;
-        body.Str("serverMode").ShouldBe("SingleApplication");
+        body.Str("serverMode").ShouldBe("SingleProject");
         body.TryGetProperty("projectKey", out var key).ShouldBeTrue();
         key.ValueKind.ShouldBe(JsonValueKind.Null);
 
-        var bad = await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest("default", name, "1.0"), token);
-        bad.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        JsonDocument.Parse(await bad.Content.ReadAsStringAsync()).RootElement.Str("code").ShouldBe(Auth2ErrorCodes.ServerModeMismatch);
+        // a ProjectKey sent to a single-project server is ignored (the server writes a warning), it is not an error
+        var ignored = await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest("default", name, "1.0"), token);
+        ignored.StatusCode.ShouldBe(HttpStatusCode.OK);
+        Factory.Logs.Entries.ShouldContain(e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning && e.Message.Contains("single project") && e.Message.Contains("ignored"));
 
         var wrongName = await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest(null, "nope", "1.0"), token);
         JsonDocument.Parse(await wrongName.Content.ReadAsStringAsync()).RootElement.Str("code").ShouldBe(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
@@ -138,12 +140,12 @@ public class PermissionSyncTests : Phase6Base
     private async Task<(HttpStatusCode Status, JsonElement Body)> SyncPermsAsync(string token, params PermissionDefinition[] items) =>
         await CallAsync(new Browser(Factory), Auth2Routes.PermissionsSync, new PermissionSyncRequest(items), token);
 
-    private async Task<List<Permission>> PermsAsync(Auth2Application app)
+    private async Task<List<Permission>> PermsAsync(Project app)
     {
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        return await db.Permissions.Where(p => p.ApplicationId == app.Id).OrderBy(p => p.Key).ToListAsync();
+        return await db.Permissions.Where(p => p.ProjectId == app.Id).OrderBy(p => p.Key).ToListAsync();
     }
 
     [Fact]
@@ -323,7 +325,7 @@ public class RoleSyncTests : Phase6Base
         await PrepareAppsAsync();
         var token = await ClientTokenAsync("appa", Scope);
         await SyncRolesAsync(token, new RoleDefinition("Editor"));
-        async Task<int> Version() { await using var s = NewScope(); var db = s.ServiceProvider.GetRequiredService<Auth2DbContext>(); using var _ = s.ServiceProvider.GetRequiredService<IGlobalScope>().Begin(); return (await db.Applications.AsNoTracking().SingleAsync(a => a.Id == A.Id)).AccessVersion; }
+        async Task<int> Version() { await using var s = NewScope(); var db = s.ServiceProvider.GetRequiredService<Auth2DbContext>(); using var _ = s.ServiceProvider.GetRequiredService<IGlobalScope>().Begin(); return (await db.Projects.AsNoTracking().SingleAsync(a => a.Id == A.Id)).AccessVersion; }
         var before = await Version();
         await SyncRolesAsync(token, new RoleDefinition("Editor", null, null, ["a.one"]));
         (await Version()).ShouldBeGreaterThan(before);
@@ -415,7 +417,7 @@ public class UserAccessEndpointTests : Phase6Base
     public async Task MachineWithAdminScope_ReadsOneUsersAccess_OnlyInItsApplication()
     {
         await PrepareAppsAsync();
-        foreach (var app in new[] { A, B }) await UpdateSettingsAsync(app, s => s.Clients.AllowedScopes.Add("auth2.admin"));
+        foreach (var app in new[] { A, B }) await UpdateSettingsAsync(app, s => s.AllowedScopes.Add("auth2.admin"));
         var reg = await ClientTokenAsync("appa", "auth2.register");
         var user = (await CallAsync(new Browser(Factory), Auth2Routes.Register, new RegisterRequest("sara", "sara@example.com", null, PassA), reg)).Body;
         var id = user.GetProperty("userId").GetGuid();

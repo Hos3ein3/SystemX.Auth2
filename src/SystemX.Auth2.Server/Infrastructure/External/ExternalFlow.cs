@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using SystemX.Auth2.Contracts.Auth;
@@ -37,10 +38,16 @@ public sealed record ExternalFlowResult
 /// </summary>
 public sealed class ExternalFlow(
     IExternalProviderRegistry registry, IEnumerable<IExternalIdentitySource> sources, IExternalLoginService external, IExternalLinkService links,
-    IAuthFlowResolver flow, IReturnUrlValidator urls, IClientIdAccessor clientId, Microsoft.Extensions.Options.IOptions<Auth2ServerOptions> options, IAuditService audit)
+    IAuthFlowResolver flow, IReturnUrlValidator urls, IProjectSelection selection, IClientIdAccessor clientIds, Microsoft.AspNetCore.DataProtection.IDataProtectionProvider protection,
+    Microsoft.Extensions.Options.IOptions<Auth2ServerOptions> options, IAuditService audit)
 {
     /// <summary>Name of the state cookie.</summary>
     public const string StateCookie = ".SystemX.Auth2.ExternalState";
+
+    /// <summary>Name of the cookie that remembers which application started the sign-in (sealed). Its redirect URIs are the ones that count when the provider answers.</summary>
+    public const string ClientCookie = ".SystemX.Auth2.ExternalClient";
+
+    private Microsoft.AspNetCore.DataProtection.IDataProtector ClientProtector => protection.CreateProtector("SystemX.Auth2.ExternalClient");
 
     private string Issuer(HttpContext http) =>
         !string.IsNullOrWhiteSpace(options.Value.Issuer) ? options.Value.Issuer.TrimEnd('/') : $"{http.Request.Scheme}://{http.Request.Host}{http.Request.PathBase}";
@@ -48,9 +55,10 @@ public sealed class ExternalFlow(
     /// <summary>The enabled providers of the current application, in the form the login page needs.</summary>
     public async Task<IReadOnlyList<ExternalProviderInfoDto>> ListAsync(CancellationToken ct)
     {
-        var app = await flow.GetApplicationAsync(ct);
-        if (!app.IsEnabled) return [];
-        return [.. registry.ListForApplication(app.Id).Select(p => new ExternalProviderInfoDto(p.Name, p.Settings.DisplayName ?? p.Name, p.Type,
+        var app = await flow.GetProjectAsync(ct);
+        if (await flow.CheckGateAsync(ct) is not null) return [];
+        var effective = await flow.GetEffectiveAsync(ct);
+        return [.. effective.FilterProviders(registry.ListForProject(app.Id), p => p.Name).Select(p => new ExternalProviderInfoDto(p.Name, p.Settings.DisplayName ?? p.Name, p.Type,
             p.Type == ExternalProviderType.Ldap ? null : "/Account/External/Challenge", p.Type == ExternalProviderType.Ldap))];
     }
 
@@ -58,7 +66,7 @@ public sealed class ExternalFlow(
     public async Task<string?> DiscoverAsync(string? hint, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(hint)) return null;
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var direct = registry.Get(app.Id, hint.Trim());
         if (direct is not null) return direct.Name;
         var at = hint.LastIndexOf('@');
@@ -68,14 +76,15 @@ public sealed class ExternalFlow(
     /// <summary>Starts a sign-in (or a link when <paramref name="linkUserId"/> is set). Returns the provider address, or an error code.</summary>
     public async Task<ExternalStartResult> StartAsync(HttpContext http, string providerName, string? returnUrl, string? hint, string? linkUserId, CancellationToken ct)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
-        var provider = app.IsEnabled ? registry.Get(app.Id, providerName ?? "") : null;
+        var provider = await flow.CheckGateAsync(ct) is null ? registry.Get(app.Id, providerName ?? "") : null;
         if (provider is null || provider.Type == ExternalProviderType.Ldap) return new ExternalStartResult(null, null, Auth2ErrorCodes.ExternalProviderDisabled);
         var source = sources.OfType<IRedirectIdentitySource>().FirstOrDefault(x => x.Handles(provider.Type));
         if (source is null) return new ExternalStartResult(null, null, Auth2ErrorCodes.ExternalProviderDisabled);
 
-        var safeReturn = urls.IsAllowed(returnUrl, settings.Redirects.AllowedRedirectUris) ? returnUrl! : "";
+        var effective = await flow.GetEffectiveAsync(ct);
+        var safeReturn = urls.IsAllowed(returnUrl, effective.AllowedRedirectUris) ? returnUrl! : "";
         try
         {
             var challenge = await source.ChallengeAsync(new ExternalChallengeContext(provider, Issuer(http), safeReturn, hint, linkUserId), ct);
@@ -85,6 +94,12 @@ public sealed class ExternalFlow(
                 SameSite = http.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,   // Apple answers with a cross-site POST
                 IsEssential = true,
             });
+            if ((await flow.GetClientAsync(ct)) is { } client)
+                http.Response.Cookies.Append(ClientCookie, ClientProtector.Protect(client.ClientId), new CookieOptions
+                {
+                    HttpOnly = true, Secure = http.Request.IsHttps, MaxAge = challenge.StateLifetime, Path = "/",
+                    SameSite = http.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax, IsEssential = true,
+                });
             return new ExternalStartResult(challenge.RedirectUri.ToString(), challenge.PostFields, null);
         }
         catch (ExternalLoginException ex)
@@ -99,8 +114,19 @@ public sealed class ExternalFlow(
     {
         var provider = registry.FindByUrl(slug, name);
         if (provider is null) return new ExternalFlowResult { ErrorCode = Auth2ErrorCodes.ExternalProviderDisabled };
-        clientId.ClientId = provider.ClientId;   // the URL decides the application; nothing else is trusted
-        var app = await flow.GetApplicationAsync(ct);
+        selection.ProjectKey = provider.ProjectSlug == ExternalProviderUrls.SingleModeSlug ? null : provider.ProjectSlug;   // the URL decides the project; nothing else is trusted
+        var app = await flow.GetProjectAsync(ct);
+        // The application that started the sign-in (sealed cookie). It is used only when it belongs to this project.
+        if (http.Request.Cookies[ClientCookie] is { Length: > 0 } sealedClient)
+        {
+            try
+            {
+                clientIds.ClientId = ClientProtector.Unprotect(sealedClient);
+                if ((await flow.GetClientAsync(ct)) is { } started && started.ProjectId != app.Id) clientIds.ClientId = null;
+            }
+            catch (System.Security.Cryptography.CryptographicException) { clientIds.ClientId = null; }
+            http.Response.Cookies.Delete(ClientCookie, new CookieOptions { Path = "/", Secure = http.Request.IsHttps, SameSite = http.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax });
+        }
         var settings = await flow.GetSettingsAsync(ct);
 
         var state = http.Request.Cookies[StateCookie];
@@ -124,7 +150,7 @@ public sealed class ExternalFlow(
         {
             var session = await http.AuthenticateAsync(Auth2Cookie.Scheme);
             var sameUser = session.Succeeded && session.Principal!.FindFirst("sub")?.Value == callback.LinkUserId
-                && session.Principal.FindFirst(Auth2Claims.ApplicationId)?.Value == app.Id.ToString("D");
+                && session.Principal.FindFirst(Auth2Claims.ProjectId)?.Value == app.Id.ToString("D");
             if (!sameUser) return new ExternalFlowResult { ErrorCode = Auth2ErrorCodes.InvalidToken };
             var user = await http.RequestServices.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<Domain.Entities.AppUser>>().FindByIdAsync(callback.LinkUserId);
             if (user is null) return new ExternalFlowResult { ErrorCode = Auth2ErrorCodes.InvalidToken };
@@ -140,14 +166,15 @@ public sealed class ExternalFlow(
     }
 
     /// <summary>Turns an outcome into the next step: sign the user in, ask for the second factor, ask for the email, or fail.</summary>
-    public async Task<ExternalFlowResult> FinishAsync(HttpContext http, Domain.Entities.Auth2Application app, ApplicationSettings settings, ExternalLoginOutcome outcome, CancellationToken ct)
+    public async Task<ExternalFlowResult> FinishAsync(HttpContext http, Domain.Entities.Project app, ProjectSettings settings, ExternalLoginOutcome outcome, CancellationToken ct)
     {
         if (outcome.NeedsEmail) return new ExternalFlowResult { PendingToken = outcome.PendingToken, ReturnUrl = outcome.ReturnUrl };
         var login = outcome.Login;
         if (login is { Succeeded: true })
         {
-            await Auth2Cookie.SignInAsync(http, login.User!, app, settings, login.Amr, login.SessionId, login.IdentityProvider);
-            return new ExternalFlowResult { RedirectTo = urls.Resolve(outcome.ReturnUrl, settings.Redirects.RedirectAfterLogin, settings) };
+            var effective = await flow.GetEffectiveAsync(ct);
+            await Auth2Cookie.SignInAsync(http, login.User!, app, effective.Application, effective, login.Amr, login.SessionId, login.IdentityProvider);
+            return new ExternalFlowResult { RedirectTo = urls.Resolve(outcome.ReturnUrl, settings.Redirects.RedirectAfterLogin, effective) };
         }
         if (login?.ErrorCode == Auth2ErrorCodes.TwoFactorRequired) return new ExternalFlowResult { TwoFactorToken = login.TwoFactorToken, ReturnUrl = outcome.ReturnUrl };
         return new ExternalFlowResult { ErrorCode = outcome.ErrorCode ?? login?.ErrorCode ?? Auth2ErrorCodes.ExternalClaimsInvalid };

@@ -8,11 +8,11 @@ public sealed class Auth2ServerOptions
     /// <summary>Configuration section name.</summary>
     public const string SectionName = "Auth2";
 
-    /// <summary>Server mode. Use <c>ServerWithSingleApplication()</c> to set single mode.</summary>
-    public ServerMode Mode { get; set; } = ServerMode.MultiApplication;
+    /// <summary>Server mode. Use <c>ServerWithSingleProject()</c> to set single mode.</summary>
+    public ServerMode Mode { get; set; } = ServerMode.MultiProject;
 
     /// <summary>Server-wide credential scope.</summary>
-    public CredentialScope CredentialScope { get; set; } = CredentialScope.PerApplication;
+    public CredentialScope CredentialScope { get; set; } = CredentialScope.PerProject;
 
     /// <summary>When true, an application may override the credential scope in its settings.</summary>
     public bool AllowCredentialScopeOverride { get; set; }
@@ -26,8 +26,15 @@ public sealed class Auth2ServerOptions
     /// <summary>Run migrations at startup in Production.</summary>
     public bool AutoMigrate { get; set; }
 
-    /// <summary>Single-application options.</summary>
-    public SingleApplicationOptions SingleApplication { get; set; } = new();
+    /// <summary>
+    /// How long the "is this project / application enabled" answer is cached where tokens are validated, in seconds.
+    /// A disabled project is refused at the next validation after this window (at once on the instance that made the change).
+    /// 0 turns the cache off.
+    /// </summary>
+    public int ProjectStatusCacheSeconds { get; set; } = 10;
+
+    /// <summary>Single-project options.</summary>
+    public SingleProjectOptions SingleProject { get; set; } = new();
 
     /// <summary>Options that only work in Development.</summary>
     public DevelopmentOptions Development { get; set; } = new();
@@ -182,8 +189,8 @@ public sealed class DevelopmentOptions
     public bool LogMessageBodies { get; set; }
 }
 
-/// <summary>Options for single-application mode. Section <c>Auth2:SingleApplication</c>.</summary>
-public sealed class SingleApplicationOptions
+/// <summary>Options for single-project mode. Section <c>Auth2:SingleProject</c>.</summary>
+public sealed class SingleProjectOptions
 {
     /// <summary>Name of the one fixed application.</summary>
     public string Name { get; set; } = "Default";

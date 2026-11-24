@@ -231,7 +231,7 @@ public interface IAuth2WebService
 
 internal sealed class WebService(IAuth2ApiClientService api, ClientAccessLoader loader, IOptions<Auth2CookieOptions> cookie, IOptions<Auth2ClientOptions> client, Microsoft.Extensions.Options.IOptions<Auth2AuthFlags> flags) : IAuth2WebService
 {
-    private static readonly string[] CopiedClaims = ["sub", "preferred_username", "name", "given_name", "family_name", "email", "email_verified", "phone_number", "locale", Auth2Claims.AccessVersion, "scope"];
+    private static readonly string[] CopiedClaims = ["sub", "preferred_username", "name", "given_name", "family_name", "email", "email_verified", "phone_number", "locale", Auth2Claims.AccessVersion, "scope", Auth2Claims.ProjectId, Auth2Claims.ProjectKey, Auth2Claims.ApplicationId, Auth2Claims.ClientId, Auth2Claims.SessionId, Auth2Claims.IdentityProvider, Auth2Claims.Amr];
 
     public Task<Result<LoginResponse>> LoginAsync(HttpContext http, LoginRequest request, bool isPersistent = false, CancellationToken ct = default) =>
         SignInAsync(http, api.LoginAsync(request, ct), isPersistent, ct);

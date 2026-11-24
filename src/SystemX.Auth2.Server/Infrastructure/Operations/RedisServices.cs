@@ -23,7 +23,7 @@ public sealed class RedisOtpService(RedisConnection redis, IAuthFlowResolver flo
 
     private async Task<RedisKey> KeyAsync(AppUser user, string purpose, CancellationToken ct)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         return redis.Key($"otp:{app.Id:N}:{user.Id:N}:{purpose}");
     }
 
@@ -78,15 +78,15 @@ public sealed class RedisSettingsInvalidationBus(RedisConnection redis) : ISetti
     public string Channel => redis.Key("settings-changed");
 
     /// <inheritdoc />
-    public async Task PublishAsync(Guid applicationId, CancellationToken ct = default) =>
-        await redis.Multiplexer.GetSubscriber().PublishAsync(RedisChannel.Literal(Channel), applicationId.ToString("N"));
+    public async Task PublishAsync(Guid projectId, CancellationToken ct = default) =>
+        await redis.Multiplexer.GetSubscriber().PublishAsync(RedisChannel.Literal(Channel), projectId.ToString("N"));
 }
 
 /// <summary>Without Redis there is nothing to tell: the cache of this instance is cleared directly.</summary>
 public sealed class NoOpSettingsInvalidationBus : ISettingsInvalidationBus
 {
     /// <inheritdoc />
-    public Task PublishAsync(Guid applicationId, CancellationToken ct = default) => Task.CompletedTask;
+    public Task PublishAsync(Guid projectId, CancellationToken ct = default) => Task.CompletedTask;
 }
 
 /// <summary>Listens for settings changes of other instances.</summary>
@@ -97,7 +97,11 @@ internal sealed class SettingsInvalidationListener(RedisConnection redis, IMemor
         var channel = RedisChannel.Literal(redis.Key("settings-changed"));
         redis.Multiplexer.GetSubscriber().Subscribe(channel, (_, value) =>
         {
-            if (Guid.TryParseExact((string?)value, "N", out var id)) cache.Remove(ApplicationSettingsProvider.CacheKey(id));
+            if (Guid.TryParseExact((string?)value, "N", out var id))
+            {
+                cache.Remove(ProjectSettingsProvider.CacheKey(id));
+                cache.Remove(ProjectStatusCache.ProjectKey(id));
+            }
         });
         return Task.CompletedTask;
     }

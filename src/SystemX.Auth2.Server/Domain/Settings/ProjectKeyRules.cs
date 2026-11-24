@@ -15,6 +15,6 @@ public static partial class ProjectKeyRules
     public static bool IsValidShape(string? key) => key is not null && Pattern().IsMatch(key);
 
     /// <summary>True when the key may be used for a new, user-created application.</summary>
-    public static bool IsValidForNewApplication(string? key) =>
+    public static bool IsValidForNewProject(string? key) =>
         IsValidShape(key) && !string.Equals(key, GlobalProjectKey, StringComparison.Ordinal);
 }

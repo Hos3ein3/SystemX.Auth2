@@ -30,7 +30,7 @@ public static class Auth2ServerServiceCollectionExtensions
 
     /// <summary>
     /// Registers the Server services: database, Identity, OpenIddict core, application context, seeding.
-    /// The server is multi-application unless you also call <see cref="ServerWithSingleApplication"/>.
+    /// The server is multi-project unless you also call <see cref="ServerWithSingleProject"/>.
     /// </summary>
     public static IServiceCollection AddSystemXAuth2Server(this IServiceCollection services, IConfiguration configuration,
         Action<Auth2ServerOptions>? configure = null)
@@ -44,19 +44,20 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddMemoryCache();
         services.TryAddSingleton(TimeProvider.System);
 
-        services.AddScoped<ApplicationScope>();
-        services.AddScoped<IApplicationScope>(sp => sp.GetRequiredService<ApplicationScope>());
-        services.AddScoped<IGlobalScope>(sp => sp.GetRequiredService<ApplicationScope>());
-        services.AddScoped<IClientIdAccessor>(sp => sp.GetRequiredService<ApplicationScope>());
-        services.AddScoped<IApplicationSelection>(sp => sp.GetRequiredService<ApplicationScope>());
-        services.TryAddScoped<IApplicationContext, ModeApplicationContext>();
-        services.AddScoped<IApplicationSettingsProvider, ApplicationSettingsProvider>();
+        services.AddScoped<ProjectScope>();
+        services.AddScoped<IProjectScope>(sp => sp.GetRequiredService<ProjectScope>());
+        services.AddScoped<IGlobalScope>(sp => sp.GetRequiredService<ProjectScope>());
+        services.AddScoped<IClientIdAccessor>(sp => sp.GetRequiredService<ProjectScope>());
+        services.AddScoped<IProjectSelection>(sp => sp.GetRequiredService<ProjectScope>());
+        services.AddScoped<IProjectCookieKey>(sp => sp.GetRequiredService<ProjectScope>());
+        services.TryAddScoped<IProjectContext, ModeProjectContext>();
+        services.AddScoped<IProjectSettingsProvider, ProjectSettingsProvider>();
         services.AddExternalIdentityCore();
 
         services.AddDbContext<Auth2DbContext>(o =>
         {
             o.UseNpgsql(connectionString);
-            o.UseOpenIddict<Guid>();
+            o.UseOpenIddict<Auth2Application, Auth2Authorization, Auth2Scope, Auth2Token, Guid>();
         });
 
         // Keys live in the database so every instance shares them (scale-out). The application name is fixed.
@@ -73,7 +74,7 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<Auth2IdentityErrorDescriber>();
         services.AddIdentityCore<AppUser>(o =>
             {
-                // Rules that depend on the project come from ApplicationSettings through IAuthFlowResolver.
+                // Rules that depend on the project come from ProjectSettings through IAuthFlowResolver.
                 // These are the global ones: email is unique, and the standard character and lockout rules are switched off
                 // because Auth2UserValidator and Auth2UserManager apply the project rules.
                 // Email uniqueness is checked by Auth2UserValidator (and the unique index), so a person may also have no email (phone only).
@@ -116,7 +117,7 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddSingleton<ISecretHasher, Sha256SecretHasher>();
         services.AddScoped<IAuthFlowResolver, AuthFlowResolver>();
         services.AddScoped<UserRowCredentialState>();
-        services.AddScoped<UserApplicationCredentialState>();
+        services.AddScoped<UserProjectCredentialState>();
         services.AddScoped<ICredentialStateProvider, CredentialStateProvider>();
         services.AddScoped<IAuth2Localizer, Auth2Localizer>();
 
@@ -144,6 +145,7 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IAdminUserService, SystemX.Auth2.Server.Infrastructure.Admin.AdminUserService>();
         services.AddScoped<IServerValues, SystemX.Auth2.Server.Infrastructure.Admin.ServerValues>();
         services.AddScoped<IAdminExternalService, SystemX.Auth2.Server.Infrastructure.Admin.AdminExternalService>();
+        services.AddScoped<IAdminProjectService, SystemX.Auth2.Server.Infrastructure.Admin.AdminProjectService>();
         services.AddScoped<IAdminApplicationService, SystemX.Auth2.Server.Infrastructure.Admin.AdminApplicationService>();
         services.AddScoped<IAuditReader, SystemX.Auth2.Server.Infrastructure.Admin.AuditReader>();
         services.AddScoped<SystemX.Auth2.Server.Endpoints.Q>();
@@ -159,7 +161,10 @@ public static class Auth2ServerServiceCollectionExtensions
 
         services.AddScoped<IClientProvisioner, OpenIddictClientProvisioner>();
         services.AddScoped<IAuditService, AuditService>();
-        services.AddScoped<IApplicationService, ApplicationService>();
+        services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IApplicationService, SystemX.Auth2.Server.Persistence.Services.ApplicationService>();
+        services.AddScoped<IClientApplicationContext, ClientApplicationContext>();
+        services.AddSingleton<IProjectStatusCache, ProjectStatusCache>();
         services.AddScoped<Auth2Seeder>();
         services.AddScoped<DatabaseInitializer>();
         return services;
@@ -207,17 +212,17 @@ public static class Auth2ServerServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Switches the server to single-application mode. Server layer only: the Client has no such method.
+    /// Switches the server to single-project mode. Server layer only: the Client has no such method.
     /// In this mode <c>ProjectKey</c> and <c>user_applications</c> are not used.
     /// </summary>
-    public static IServiceCollection ServerWithSingleApplication(this IServiceCollection services)
+    public static IServiceCollection ServerWithSingleProject(this IServiceCollection services)
     {
         services.Configure<Auth2ServerOptions>(o =>
         {
-            o.Mode = ServerMode.SingleApplication;
+            o.Mode = ServerMode.SingleProject;
             o.CredentialScope = CredentialScope.Shared;
         });
-        services.Replace(ServiceDescriptor.Scoped<IApplicationContext, SingleApplicationContext>());
+        services.Replace(ServiceDescriptor.Scoped<IProjectContext, SingleProjectContext>());
         return services;
     }
 }

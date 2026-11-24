@@ -1,6 +1,6 @@
 # SAML with Okta
 
-Single sign-on with an Okta SAML 2.0 application.
+Single sign-on with an Okta SAML 2.0 project.
 
 ## How to use (for operators)
 
@@ -17,7 +17,7 @@ Three things you give the identity provider (from the Server), and three you giv
 **From the identity provider**: its **metadata URL** (best, it also updates itself) or the metadata XML, or by hand: entity id, single sign-on URL and the **signing certificate**.
 
 1. Okta admin > **Applications > Create App Integration > SAML 2.0**.
-2. *Single sign-on URL*: the ACS URL. *Audience URI (SP Entity ID)*: the entity id. *Name ID format*: **Persistent** (or EmailAddress). *Application username*: Okta username or email.
+2. *Single sign-on URL*: the ACS URL. *Audience URI (SP Entity ID)*: the entity id. *Name ID format*: **Persistent** (or EmailAddress). *Project username*: Okta username or email.
 3. *Attribute statements*: `email` = `user.email`, `givenname` = `user.firstName`, `surname` = `user.lastName`. *Group attribute statements*: name `groups`, filter as you need.
 4. After saving, *Sign On > Metadata URL*: copy it into `idpMetadataUrl`.
 5. Assign people or groups to the app.
@@ -35,7 +35,7 @@ Three things you give the identity provider (from the Server), and three you giv
 }
 ```
 
-Also add `External` to `Methods.AllowedLoginMethods` of the application. See [external-identity.md](../external-identity.md) for every field.
+Also add `External` to `Methods.AllowedLoginMethods` of the project. See [external-identity.md](../external-identity.md) for every field.
 
 ## Common problems
 

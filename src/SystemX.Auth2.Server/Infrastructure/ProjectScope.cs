@@ -3,12 +3,12 @@ using SystemX.Auth2.Server.Application;
 namespace SystemX.Auth2.Server.Infrastructure;
 
 /// <summary>Scoped holder of the current application and the global-scope switch. Registered as scoped.</summary>
-public sealed class ApplicationScope : IApplicationScope, IGlobalScope, IClientIdAccessor, IApplicationSelection
+public sealed class ProjectScope : IProjectScope, IGlobalScope, IClientIdAccessor, IProjectSelection, IProjectCookieKey
 {
     private int _globalDepth;
 
     /// <inheritdoc />
-    public Guid? ApplicationId { get; private set; }
+    public Guid? ProjectId { get; private set; }
 
     /// <inheritdoc />
     public bool IsGlobalActive => Volatile.Read(ref _globalDepth) > 0;
@@ -26,13 +26,17 @@ public sealed class ApplicationScope : IApplicationScope, IGlobalScope, IClientI
     public string? CurrentProjectKey { get; private set; }
 
     /// <inheritdoc />
-    public void Set(Guid applicationId) => ApplicationId = applicationId;
+    public string? CookieProjectKey { get; set; }
+
+    /// <inheritdoc />
+    public void Set(Guid applicationId) => ProjectId = applicationId;
 
     /// <inheritdoc />
     public void Set(Guid applicationId, string? projectKey)
     {
-        ApplicationId = applicationId;
+        ProjectId = applicationId;
         CurrentProjectKey = projectKey;
+        if (projectKey is not null) CookieProjectKey = projectKey;
     }
 
     /// <inheritdoc />
@@ -42,7 +46,7 @@ public sealed class ApplicationScope : IApplicationScope, IGlobalScope, IClientI
         return new Releaser(this);
     }
 
-    private sealed class Releaser(ApplicationScope owner) : IDisposable
+    private sealed class Releaser(ProjectScope owner) : IDisposable
     {
         private int _disposed;
 

@@ -16,7 +16,7 @@ public class SecretRedactorTests
     public void SecretLikeNames_AreSensitive(string name) => SecretRedactor.IsSensitive(name).ShouldBeTrue();
 
     [Theory]
-    [InlineData("ApplicationId")]
+    [InlineData("ProjectId")]
     [InlineData("StatusCode")]
     [InlineData("CorrelationId")]
     [InlineData("RequestPath")]

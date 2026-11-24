@@ -15,7 +15,7 @@ public static partial class ExternalProviderSettingsValidator
     private static partial Regex NamePattern();
 
     /// <summary>Validates the provider list and the passkey settings.</summary>
-    public static void Validate(ApplicationSettings s, Action<string, string> err)
+    public static void Validate(ProjectSettings s, Action<string, string> err)
     {
         var list = s.ExternalProviders;
         if (list.Count > MaxProviders) err("ExternalProviders", $"At most {MaxProviders} providers are allowed.");

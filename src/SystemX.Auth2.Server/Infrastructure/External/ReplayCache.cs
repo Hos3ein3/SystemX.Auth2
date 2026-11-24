@@ -18,7 +18,7 @@ public sealed class DatabaseReplayCache(IServiceScopeFactory scopes, TimeProvide
         var now = clock.GetUtcNow();
         // An old entry with the same key that already expired must not block a new one.
         await db.ReplayEntries.Where(r => r.Key == key && r.ExpiresAtUtc < now).ExecuteDeleteAsync(ct);
-        db.ReplayEntries.Add(new ReplayEntry { Key = key.Length > 400 ? key[..400] : key, ApplicationId = applicationId, ExpiresAtUtc = expiresAtUtc });
+        db.ReplayEntries.Add(new ReplayEntry { Key = key.Length > 400 ? key[..400] : key, ProjectId = applicationId, ExpiresAtUtc = expiresAtUtc });
         try
         {
             await db.SaveChangesAsync(ct);

@@ -19,7 +19,7 @@ public sealed class SettingEditabilityAttribute(SettingEditor editor) : Attribut
     public SettingEditor Editor { get; } = editor;
 }
 
-/// <summary>Join mode of an application.</summary>
+/// <summary>Join mode of a project.</summary>
 public enum JoinMode
 {
     /// <summary>A user with proof of ownership may join.</summary>
@@ -42,10 +42,10 @@ public enum TwoFactorMode
 }
 
 /// <summary>
-/// All settings of one application. Stored as jsonb. Every field has a safe default.
+/// All settings of one project (the project level). Applications override a few of them, see <see cref="ClientApplicationSettings"/>. Stored as jsonb. Every field has a safe default.
 /// See <c>docs/server-settings.md</c>.
 /// </summary>
-public sealed class ApplicationSettings
+public sealed class ProjectSettings
 {
     /// <summary>Current JSON schema version.</summary>
     public const int CurrentSchemaVersion = 1;
@@ -85,7 +85,7 @@ public sealed class ApplicationSettings
     /// <summary>Passkey rules.</summary>
     public PasskeySettings Passkeys { get; set; } = new();
 
-    /// <summary>Per-application override of the server credential scope. Only used if the server allows it.</summary>
+    /// <summary>Per-project override of the server credential scope. Only used if the server allows it.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public CredentialScope? CredentialScope { get; set; }
 }
 
@@ -224,7 +224,7 @@ public sealed class SessionSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public ConsentMode ConsentMode { get; set; } = ConsentMode.Implicit;
 }
 
-/// <summary>Redirect rules. Fallbacks only; a valid return URL wins.</summary>
+/// <summary>Redirect fallbacks. A valid return URL wins. The allowed redirect URIs are OpenIddict fields of each application.</summary>
 public sealed class RedirectSettings
 {
     /// <summary>Where to go after login.</summary>
@@ -233,21 +233,14 @@ public sealed class RedirectSettings
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string? RedirectAfterRegister { get; set; }
     /// <summary>Where to go after logout.</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string? RedirectAfterLogout { get; set; }
-    /// <summary>Allowed redirect URIs. Exact match, no wildcards.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AllowedRedirectUris { get; set; } = [];
-    /// <summary>Allowed post-logout redirect URIs. Exact match, no wildcards.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AllowedPostLogoutRedirectUris { get; set; } = [];
 }
 
-/// <summary>Client behaviour.</summary>
+/// <summary>Client behaviour (project defaults for all applications).</summary>
 public sealed class ClientSettings
 {
     /// <summary>Allowed client types.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)]
     public List<ClientType> AllowedClientTypes { get; set; } = [ClientType.Api, ClientType.Mvc, ClientType.RazorPages, ClientType.Blazor, ClientType.Machine];
-    /// <summary>Scopes clients may request.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)]
-    public List<string> AllowedScopes { get; set; } = ["openid", "profile", "email", "phone", "roles", "offline_access", "auth2.me", "auth2.client.handshake", "auth2.register", "auth2.login", "auth2.permissions.sync", "auth2.roles.sync", "auth2.groups.read", "auth2.groups.sync", "auth2.scopes.sync"];
     /// <summary>Permission sync is allowed.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool PermissionSyncAllowed { get; set; } = true;
     /// <summary>Custom scope sync is allowed. A client can then register its own scopes (not <c>auth2.*</c>, not the standard ones) and allow them for itself.</summary>
@@ -262,10 +255,6 @@ public sealed class ClientSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public bool AllowProjectAdminRotateSecret { get; set; }
     /// <summary>Default UI mode.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public UiMode DefaultUiMode { get; set; } = UiMode.Hosted;
-    /// <summary>Enables the password grant for this application.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public bool AllowSelfUiLogin { get; set; }
-    /// <summary>Allowed CORS origins. CORS is off when empty.</summary>
-    [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AllowedCorsOrigins { get; set; } = [];
 }
 
 /// <summary>Localization and branding.</summary>

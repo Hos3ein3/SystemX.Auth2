@@ -21,7 +21,7 @@ public class ApiClientServiceTests
     [Fact]
     public async Task Register_SendsTheBodyWithAMachineToken_AndReadsTheAnswer()
     {
-        var (api, server) = Start((_, _) => FakeServer.Json(HttpStatusCode.OK, """{"userId":"0198a1b2-0000-7000-8000-000000000009","userWasCreated":true,"joinedApplication":true,"confirmationRequired":false}"""));
+        var (api, server) = Start((_, _) => FakeServer.Json(HttpStatusCode.OK, """{"userId":"0198a1b2-0000-7000-8000-000000000009","userWasCreated":true,"joinedProject":true,"confirmationRequired":false}"""));
         var result = await api.RegisterAsync(new RegisterRequest("sara", "sara@example.com", null, "Pass-12345!"));
         result.IsSuccess.ShouldBeTrue();
         result.Value!.UserWasCreated.ShouldBeTrue();
@@ -173,8 +173,8 @@ public class ApiClientServiceTests
     [Fact]
     public async Task Handshake_UpdatesTheState()
     {
-        var (api, _) = Start((_, _) => FakeServer.Json(HttpStatusCode.NotFound, """{"code":"application_not_found"}"""), b => b.ServerWithMultiApplication("blog"));
+        var (api, _) = Start((_, _) => FakeServer.Json(HttpStatusCode.NotFound, """{"code":"project_not_found"}"""), b => b.ServerWithMultiProject("blog"));
         var result = await api.HandshakeAsync();
-        result.Error!.Code.ShouldBe("application_not_found");
+        result.Error!.Code.ShouldBe("project_not_found");
     }
 }

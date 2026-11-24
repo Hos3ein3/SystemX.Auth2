@@ -8,7 +8,7 @@ namespace SystemX.Auth2.Client.Handshake;
 
 /// <summary>
 /// Makes the handshake when the application starts. What happens on failure is set by
-/// <c>OnServerUnavailable</c> and <c>OnApplicationNotFound</c>. With <c>Continue</c> and an unreachable server it retries in the background
+/// <c>OnServerUnavailable</c> and <c>OnProjectNotFound</c>. With <c>Continue</c> and an unreachable server it retries in the background
 /// (2 s, 4 s, ... up to 60 s, 6 tries by default). A wrong configuration (not found, rejected) is never retried.
 /// </summary>
 public sealed class HandshakeHostedService(HandshakeRunner runner, Auth2ClientState state, IOptions<Auth2ClientOptions> options, TimeProvider clock,
@@ -29,6 +29,7 @@ public sealed class HandshakeHostedService(HandshakeRunner runner, Auth2ClientSt
         {
             case HandshakeStatus.Ok:
                 log.LogInformation("Handshake with the Auth2 server worked.");
+                if (!string.IsNullOrEmpty(outcome.Message)) log.LogWarning("{Message}", outcome.Message);   // for example: a ProjectKey for a single-project server is ignored
                 return;
             case HandshakeStatus.ServerUnavailable:
                 if (o.OnServerUnavailable == StartupFailureBehavior.Throw)
@@ -38,7 +39,7 @@ public sealed class HandshakeHostedService(HandshakeRunner runner, Auth2ClientSt
                 _retry = Task.Run(() => RetryAsync(_stop.Token), CancellationToken.None);
                 return;
             default:
-                if (o.OnApplicationNotFound == StartupFailureBehavior.Throw)
+                if (o.OnProjectNotFound == StartupFailureBehavior.Throw)
                     throw new Auth2StartupException($"The handshake with the Auth2 server failed ({outcome.Status}). {outcome.Message}", outcome.Status);
                 log.LogError("The handshake with the Auth2 server failed ({Status}, {Code}): {Message} The application starts anyway; this is a configuration error and is not retried.",
                     outcome.Status, outcome.Code, outcome.Message);

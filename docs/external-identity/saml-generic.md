@@ -16,7 +16,7 @@ Three things you give the identity provider (from the Server), and three you giv
 
 **From the identity provider**: its **metadata URL** (best, it also updates itself) or the metadata XML, or by hand: entity id, single sign-on URL and the **signing certificate**.
 
-1. Create a SAML application (a "relying party" or "service provider") at the identity provider. Enter the three values from the Server.
+1. Create a SAML project (a "relying party" or "service provider") at the identity provider. Enter the three values from the Server.
 2. Choose the **NameID**: *persistent* is best (a stable id). *Email* works if emails never change. *Transient* cannot link users and should not be used.
 3. Send these attributes: email, first name, last name and, if you want group mapping, a groups attribute. Their names are free: tell the Server with `AttributeMappings` and `GroupsAttribute`.
 4. Turn on **signing of the assertion** at the identity provider (the Server requires it by default).
@@ -38,7 +38,7 @@ Three things you give the identity provider (from the Server), and three you giv
 }
 ```
 
-Also add `External` to `Methods.AllowedLoginMethods` of the application. See [external-identity.md](../external-identity.md) for every field.
+Also add `External` to `Methods.AllowedLoginMethods` of the project. See [external-identity.md](../external-identity.md) for every field.
 
 ## Common problems
 

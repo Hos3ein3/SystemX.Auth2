@@ -48,7 +48,7 @@ public class HardeningTests : Phase6Base
     public async Task Cors_IsOffByDefault_AndAllowsOnlyListedOrigins()
     {
         await PrepareAppsAsync();
-        await UpdateSettingsAsync(A, s => s.Clients.AllowedCorsOrigins.Add("https://spa.test"));
+        await UpdateSettingsAsync(A, s => s.App.AllowedCorsOrigins.Add("https://spa.test"));
         var b = new Browser(Factory);
         var token = await ClientTokenAsync("appa", "auth2.permissions.sync");
 
@@ -121,7 +121,7 @@ public class RateLimitTests : Phase6Base
         var token = await ClientTokenAsync("appa", "auth2.client.handshake auth2.login");
         var b = new Browser(Factory);
         var statuses = new List<HttpStatusCode>();
-        for (var i = 0; i < 3; i++) statuses.Add((await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest("appa", "App A", "1"), token)).StatusCode);
+        for (var i = 0; i < 3; i++) statuses.Add((await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest("appa", "default", "1"), token)).StatusCode);
         statuses.ShouldBe([HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.TooManyRequests]);
 
         var otp = new List<HttpStatusCode>();
@@ -235,11 +235,11 @@ public class JobsTests : Phase6Base
         {
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             db.OtpCodes.AddRange(
-                new OtpCode { UserId = user.Id, ApplicationId = A.Id, Purpose = "login", CodeHash = "x", ExpiresAtUtc = DateTimeOffset.UtcNow.AddDays(-3) },
-                new OtpCode { UserId = user.Id, ApplicationId = A.Id, Purpose = "login", CodeHash = "y", ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(5) });
+                new OtpCode { UserId = user.Id, ProjectId = A.Id, Purpose = "login", CodeHash = "x", ExpiresAtUtc = DateTimeOffset.UtcNow.AddDays(-3) },
+                new OtpCode { UserId = user.Id, ProjectId = A.Id, Purpose = "login", CodeHash = "y", ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(5) });
             db.AuditEvents.AddRange(
-                new AuditEvent { OccurredAtUtc = DateTimeOffset.UtcNow.AddDays(-400), Action = "old.event", ApplicationId = A.Id },
-                new AuditEvent { OccurredAtUtc = DateTimeOffset.UtcNow, Action = "new.event", ApplicationId = A.Id });
+                new AuditEvent { OccurredAtUtc = DateTimeOffset.UtcNow.AddDays(-400), Action = "old.event", ProjectId = A.Id },
+                new AuditEvent { OccurredAtUtc = DateTimeOffset.UtcNow, Action = "new.event", ProjectId = A.Id });
             await db.SaveChangesAsync();
         }
         var ran = await Factory.Services.GetRequiredService<MaintenanceJobs>().RunOnceAsync();
@@ -334,7 +334,7 @@ public class ScaleOutTests : Phase6Base
         async Task<string?> BrandOnSecond()
         {
             await using var scope = second.Services.CreateAsyncScope();
-            return (await scope.ServiceProvider.GetRequiredService<IApplicationSettingsProvider>().GetAsync(A.Id)).Localization.BrandName;
+            return (await scope.ServiceProvider.GetRequiredService<IProjectSettingsProvider>().GetAsync(A.Id)).Localization.BrandName;
         }
         (await BrandOnSecond()).ShouldBeNull();   // now cached on the second instance
         await UpdateSettingsAsync(A, s => s.Localization.BrandName = "Blog");

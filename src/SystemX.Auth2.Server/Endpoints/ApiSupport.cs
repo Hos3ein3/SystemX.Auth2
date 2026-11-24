@@ -23,7 +23,7 @@ internal enum TokenKind
 /// <summary>
 /// Checks the access token of an API call and picks the application <b>from the token</b> (its audience), never from the request body.
 /// Answers with <see cref="ApiError"/> JSON: 401 <c>invalid_token</c>, 403 <c>forbidden</c> or <c>insufficient_scope</c>,
-/// 404 <c>application_not_found</c>, 403 <c>application_disabled</c>.
+/// 404 <c>project_not_found</c>, 403 <c>access_denied</c> (project or application disabled).
 /// </summary>
 internal sealed class Auth2ApiFilter(string scope, TokenKind kind) : IEndpointFilter
 {
@@ -49,12 +49,14 @@ internal sealed class Auth2ApiFilter(string scope, TokenKind kind) : IEndpointFi
         http.RequestServices.GetRequiredService<IClientIdAccessor>().ClientId = principal.GetAudiences().FirstOrDefault();
         try
         {
-            var app = await http.RequestServices.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync(http.RequestAborted);
-            if (!app.IsEnabled) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.ApplicationDisabled);
+            var flow = http.RequestServices.GetRequiredService<IAuthFlowResolver>();
+            await flow.GetProjectAsync(http.RequestAborted);
+            if (await flow.CheckGateAsync(http.RequestAborted) is not null)
+                return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.AccessDenied);
         }
-        catch (ApplicationNotFoundException)
+        catch (ProjectNotFoundException)
         {
-            return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ApplicationNotFound);
+            return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ProjectNotFound);
         }
 
         if (kind == TokenKind.User)
@@ -90,8 +92,8 @@ internal static class ApiResults
     {
         // invalid_token is 400 here (a bad confirmation or reset token). The auth filter answers 401 for a bad access token by itself.
         Auth2ErrorCodes.Forbidden or Auth2ErrorCodes.InsufficientScope or Auth2ErrorCodes.RegistrationDisabled
-            or Auth2ErrorCodes.ApplicationDisabled or Auth2ErrorCodes.TwoFactorNotAllowed or Auth2ErrorCodes.SyncNotAllowed => StatusCodes.Status403Forbidden,
-        Auth2ErrorCodes.NotFound or Auth2ErrorCodes.ApplicationNotFound => StatusCodes.Status404NotFound,
+            or Auth2ErrorCodes.ProjectDisabled or Auth2ErrorCodes.ApplicationDisabled or Auth2ErrorCodes.AccessDenied or Auth2ErrorCodes.TwoFactorNotAllowed or Auth2ErrorCodes.SyncNotAllowed => StatusCodes.Status403Forbidden,
+        Auth2ErrorCodes.NotFound or Auth2ErrorCodes.ProjectNotFound => StatusCodes.Status404NotFound,
         Auth2ErrorCodes.Conflict or Auth2ErrorCodes.ProjectKeyOrNameMismatch or Auth2ErrorCodes.ServerModeMismatch => StatusCodes.Status409Conflict,
         Auth2ErrorCodes.LockedOut => StatusCodes.Status423Locked,
         Auth2ErrorCodes.RateLimited => StatusCodes.Status429TooManyRequests,

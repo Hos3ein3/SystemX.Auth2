@@ -4,18 +4,18 @@ using SystemX.Auth2.Server.Domain.Settings;
 namespace SystemX.Auth2.Server.Application;
 
 /// <summary>Resolves the application of the current request. One abstraction, two strategies (single and multi).</summary>
-public interface IApplicationContext
+public interface IProjectContext
 {
-    /// <summary>Returns the current application. Also sets <see cref="IApplicationScope"/> so query filters work.</summary>
-    /// <exception cref="ApplicationNotFoundException">No application matches.</exception>
-    Task<Auth2Application> GetRequiredAsync(CancellationToken ct = default);
+    /// <summary>Returns the current application. Also sets <see cref="IProjectScope"/> so query filters work.</summary>
+    /// <exception cref="ProjectNotFoundException">No application matches.</exception>
+    Task<Project> GetRequiredAsync(CancellationToken ct = default);
 }
 
 /// <summary>Scoped state: which application the current request works for. Read by the EF query filters.</summary>
-public interface IApplicationScope
+public interface IProjectScope
 {
     /// <summary>Current application id, or null when none is selected.</summary>
-    Guid? ApplicationId { get; }
+    Guid? ProjectId { get; }
 
     /// <summary>True while a global scope is active (query filters are bypassed).</summary>
     bool IsGlobalActive { get; }
@@ -51,62 +51,162 @@ public interface IClientIdAccessor
 }
 
 /// <summary>Used by the admin API: the project an admin selected.</summary>
-public interface IApplicationSelection
+public interface IProjectSelection
 {
     /// <summary>Selected project key, or null.</summary>
     string? ProjectKey { get; set; }
 }
 
-/// <summary>Reads cached settings of an application.</summary>
-public interface IApplicationSettingsProvider
+/// <summary>
+/// The project key that names the session cookie (<c>.SystemX.Auth2.Session.{projectkey}</c>). It is set very early in the request
+/// (before authentication runs) from the client id or from the only session cookie the browser sent.
+/// </summary>
+public interface IProjectCookieKey
+{
+    /// <summary>The project key for the session cookie of this request, or null when it is not known.</summary>
+    string? CookieProjectKey { get; set; }
+}
+
+/// <summary>Reads cached settings of a project.</summary>
+public interface IProjectSettingsProvider
 {
     /// <summary>Gets the settings. Cached per application and settings version.</summary>
-    Task<ApplicationSettings> GetAsync(Guid applicationId, CancellationToken ct = default);
+    Task<ProjectSettings> GetAsync(Guid projectId, CancellationToken ct = default);
 
     /// <summary>Removes the cached value.</summary>
-    void Invalidate(Guid applicationId);
+    void Invalidate(Guid projectId);
 }
 
-/// <summary>Creates and updates applications.</summary>
-public interface IApplicationService
+/// <summary>Creates and updates projects.</summary>
+public interface IProjectService
 {
-    /// <summary>Creates an application and its OpenIddict client. The client secret is in the result and is shown only once.</summary>
-    Task<ApplicationCreationResult> CreateAsync(string projectKey, string name, string? description, string? clientId, CancellationToken ct = default);
+    /// <summary>Creates a project (no application). The project key never changes afterwards.</summary>
+    Task<Project> CreateAsync(string projectKey, string name, string? description, CancellationToken ct = default);
 
-    /// <summary>Finds an application by project key (global scope).</summary>
-    Task<Auth2Application?> FindByProjectKeyAsync(string projectKey, CancellationToken ct = default);
+    /// <summary>
+    /// Creates a project and its first application, named <c>default</c>. The client id is <paramref name="clientId"/>, or the project key
+    /// when it is null. The client secret is in the result and is shown only once. Used by the commands and by small setups.
+    /// </summary>
+    Task<ProjectCreationResult> CreateWithApplicationAsync(string projectKey, string name, string? description, string? clientId, CancellationToken ct = default);
 
-    /// <summary>Makes a new client secret. The old one stops working. The new one is shown only once.</summary>
-    Task<string> RotateClientSecretAsync(string projectKey, CancellationToken ct = default);
+    /// <summary>Finds a project by id (global scope).</summary>
+    Task<Project?> FindAsync(Guid projectId, CancellationToken ct = default);
 
-    /// <summary>Replaces the settings after validation. Raises the settings version and clears the cache.</summary>
-    Task UpdateSettingsAsync(Guid applicationId, ApplicationSettings settings, CancellationToken ct = default);
+    /// <summary>Finds a project by project key (global scope).</summary>
+    Task<Project?> FindByProjectKeyAsync(string projectKey, CancellationToken ct = default);
+
+    /// <summary>Replaces the project settings after validation. Raises the settings version and clears the cache.</summary>
+    Task UpdateSettingsAsync(Guid projectId, ProjectSettings settings, CancellationToken ct = default);
+
+    /// <summary>
+    /// Enables or disables a project. Disabling revokes all authorizations, tokens and sessions of the project in one transaction,
+    /// writes an audit event with the admin id and the reason, and keeps all data. <c>_global</c> cannot be disabled.
+    /// </summary>
+    Task SetEnabledAsync(Guid projectId, bool enabled, string? reason, Guid? actorUserId, CancellationToken ct = default);
 }
 
-/// <summary>A new application and its client secret (plain text, shown once).</summary>
-public sealed record ApplicationCreationResult(Auth2Application Application, string ClientSecret);
-
-/// <summary>Result of making sure the OpenIddict client exists. <c>NewClientSecret</c> is set only when the client was just created.</summary>
-public sealed record ClientProvisionResult(Guid Id, string? NewClientSecret);
+/// <summary>A new project with its first application and the client secret (plain text, shown once).</summary>
+public sealed record ProjectCreationResult(Project Project, ClientApplicationInfo Application, string ClientSecret);
 
 /// <summary>
-/// Creates or updates the OpenIddict client that belongs to an application: client id, hashed secret, permissions,
-/// redirect URIs and consent type, all from the application settings.
+/// A client application as the rest of the server sees it. It is a copy of the OpenIddict application row (client id, redirect URIs,
+/// scopes, consent type) and of the extra fields, so OpenIddict types stay inside the infrastructure folder.
+/// </summary>
+public sealed record ClientApplicationInfo(
+    Guid Id,
+    Guid ProjectId,
+    string ClientId,
+    string Name,
+    bool IsEnabled,
+    IReadOnlyList<string> RedirectUris,
+    IReadOnlyList<string> PostLogoutRedirectUris,
+    IReadOnlyList<string> AllowedScopes,
+    string? ConsentType,
+    ClientApplicationSettings Settings,
+    int SettingsVersion,
+    DateTimeOffset CreatedAtUtc);
+
+/// <summary>What an admin gives to create an application.</summary>
+public sealed record ApplicationSpec(
+    string Name,
+    string? ClientId = null,
+    IReadOnlyList<string>? RedirectUris = null,
+    IReadOnlyList<string>? PostLogoutRedirectUris = null,
+    IReadOnlyList<string>? AllowedScopes = null,
+    ClientApplicationSettings? Settings = null);
+
+/// <summary>A new application and its client secret (plain text, shown once).</summary>
+public sealed record ApplicationCreationResult(ClientApplicationInfo Application, string ClientSecret);
+
+/// <summary>The client application of the current request (from the client id of the token or the authorize request).</summary>
+public interface IClientApplicationContext
+{
+    /// <summary>The calling application, or null when the request has no client id.</summary>
+    Task<ClientApplicationInfo?> GetAsync(CancellationToken ct = default);
+
+    /// <summary>The calling application.</summary>
+    /// <exception cref="ProjectNotFoundException">No application matches.</exception>
+    Task<ClientApplicationInfo> GetRequiredAsync(CancellationToken ct = default);
+}
+
+/// <summary>Creates and changes applications. Everything goes through <c>IOpenIddictApplicationManager</c>, never raw EF.</summary>
+public interface IApplicationService
+{
+    /// <summary>Creates an application in a project. The client id is <c>{projectkey}.{name}</c> unless the spec gives one. The secret is shown once.</summary>
+    Task<ApplicationCreationResult> CreateAsync(Guid projectId, ApplicationSpec spec, CancellationToken ct = default);
+
+    /// <summary>Changes name, redirect URIs, allowed scopes and settings. Null values stay as they are.</summary>
+    Task<ClientApplicationInfo> UpdateAsync(Guid applicationId, ApplicationSpec spec, CancellationToken ct = default);
+
+    /// <summary>Enables or disables one application. Disabling revokes only the tokens and authorizations of that client.</summary>
+    Task SetEnabledAsync(Guid applicationId, bool enabled, string? reason, Guid? actorUserId, CancellationToken ct = default);
+
+    /// <summary>Deletes an application with its tokens and authorizations.</summary>
+    Task DeleteAsync(Guid applicationId, CancellationToken ct = default);
+
+    /// <summary>Makes a new client secret. The old one stops working. The new one is shown only once.</summary>
+    Task<string> RotateSecretAsync(string clientId, CancellationToken ct = default);
+
+    /// <summary>Finds an application by id (global scope).</summary>
+    Task<ClientApplicationInfo?> FindAsync(Guid applicationId, CancellationToken ct = default);
+
+    /// <summary>Finds an application by client id (global scope).</summary>
+    Task<ClientApplicationInfo?> FindByClientIdAsync(string clientId, CancellationToken ct = default);
+
+    /// <summary>Lists the applications of a project.</summary>
+    Task<IReadOnlyList<ClientApplicationInfo>> ListAsync(Guid projectId, CancellationToken ct = default);
+}
+
+/// <summary>Result of a provisioning call. <c>NewClientSecret</c> is set only when the client was just created.</summary>
+public sealed record ClientProvisionResult(ClientApplicationInfo Application, string? NewClientSecret);
+
+/// <summary>
+/// The only code that creates, changes or deletes OpenIddict application rows. It uses the OpenIddict manager so OpenIddict
+/// validation and caching stay correct, and reads the extra fields from the same row afterwards.
 /// </summary>
 public interface IClientProvisioner
 {
-    /// <summary>Ensures the OpenIddict client exists and matches the settings. Secrets are never changed on update.</summary>
-    Task<ClientProvisionResult> EnsureClientAsync(Auth2Application application, CancellationToken ct = default);
+    /// <summary>Creates an application row with a new secret.</summary>
+    Task<ClientProvisionResult> CreateAsync(Project project, ApplicationSpec spec, DateTimeOffset now, CancellationToken ct = default);
+
+    /// <summary>Changes the row. Null values of the spec stay as they are. Secrets are never changed here.</summary>
+    Task<ClientApplicationInfo> UpdateAsync(Guid applicationId, ProjectSettings projectSettings, ApplicationSpec spec, bool? isEnabled, DateTimeOffset now, CancellationToken ct = default);
+
+    /// <summary>Writes the values derived from the project settings (consent type, grants) into every application of the project.</summary>
+    Task ResyncProjectAsync(Guid projectId, ProjectSettings projectSettings, DateTimeOffset now, CancellationToken ct = default);
 
     /// <summary>Creates a new secret for the client and returns it (shown once).</summary>
-    Task<string> RotateSecretAsync(Auth2Application application, CancellationToken ct = default);
+    Task<string> RotateSecretAsync(string clientId, CancellationToken ct = default);
 
-    /// <summary>Deletes the OpenIddict client of an application, with its tokens and authorizations. Nothing happens when it does not exist.</summary>
-    Task DeleteClientAsync(Auth2Application application, CancellationToken ct = default);
+    /// <summary>Deletes the application row. Its tokens and authorizations go with it. Nothing happens when it does not exist.</summary>
+    Task DeleteAsync(Guid applicationId, CancellationToken ct = default);
+
+    /// <summary>Revokes all tokens and authorizations of one application (or of all applications of a project when <paramref name="applicationId"/> is null).</summary>
+    Task<int> RevokeAsync(Guid projectId, Guid? applicationId, CancellationToken ct = default);
 }
 
 /// <summary>One audit entry. Never put secrets in it.</summary>
-public sealed record AuditEntry(string Action, Guid? ApplicationId = null, Guid? ActorUserId = null, string? ActorClientId = null,
+public sealed record AuditEntry(string Action, Guid? ProjectId = null, Guid? ActorUserId = null, string? ActorClientId = null,
     string? TargetType = null, string? TargetId = null, string? IpAddress = null, string? UserAgent = null,
     IReadOnlyDictionary<string, object?>? Data = null);
 
@@ -126,4 +226,4 @@ public sealed class SettingsValidationException(IReadOnlyList<SettingsError> err
 }
 
 /// <summary>No application matches the request.</summary>
-public sealed class ApplicationNotFoundException(string message) : Exception(message);
+public sealed class ProjectNotFoundException(string message) : Exception(message);

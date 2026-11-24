@@ -117,19 +117,20 @@ public class Auth2ServerFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Auth2", _connectionString);
+        builder.UseSetting("Auth2:ProjectStatusCacheSeconds", "0");   // tests change the database directly and expect the change at once
         foreach (var (key, value) in Settings) builder.UseSetting(key, value);
         builder.ConfigureLogging(l => l.AddProvider(Logs));
         builder.ConfigureTestServices(ConfigureAuth2);
     }
 }
 
-/// <summary>Server with <c>ServerWithSingleApplication()</c>.</summary>
+/// <summary>Server with <c>ServerWithSingleProject()</c>.</summary>
 public sealed class SingleModeFactory : Auth2ServerFactory
 {
     protected override void ConfigureAuth2(IServiceCollection services)
     {
         base.ConfigureAuth2(services);
-        services.ServerWithSingleApplication();
+        services.ServerWithSingleProject();
     }
 }
 

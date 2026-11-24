@@ -4,7 +4,7 @@ using SystemX.Auth2.Server.Domain.Settings;
 
 namespace SystemX.Auth2.Server.Persistence;
 
-/// <summary>Reads and writes <see cref="ApplicationSettings"/> as JSON (jsonb column).</summary>
+/// <summary>Reads and writes <see cref="ProjectSettings"/> as JSON (jsonb column).</summary>
 public static class SettingsJson
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
@@ -15,11 +15,21 @@ public static class SettingsJson
     };
 
     /// <summary>Writes settings to JSON.</summary>
-    public static string Serialize(ApplicationSettings settings) => JsonSerializer.Serialize(settings, Options);
+    public static string Serialize(ProjectSettings settings) => JsonSerializer.Serialize(settings, Options);
+
+    /// <summary>Writes any settings object (for example <see cref="ClientApplicationSettings"/>) to JSON.</summary>
+    public static string Serialize<T>(T settings) where T : class => JsonSerializer.Serialize(settings, Options);
+
+    /// <summary>Reads any settings object. An empty or null value gives defaults.</summary>
+    public static T Deserialize<T>(string? json) where T : class, new() =>
+        string.IsNullOrWhiteSpace(json) ? new T() : JsonSerializer.Deserialize<T>(json, Options) ?? new T();
+
+    /// <summary>Deep copy of any settings object.</summary>
+    public static T Clone<T>(T settings) where T : class, new() => Deserialize<T>(Serialize(settings));
 
     /// <summary>Reads settings from JSON. An empty or null value gives defaults.</summary>
-    public static ApplicationSettings Deserialize(string? json) =>
-        string.IsNullOrWhiteSpace(json) ? new ApplicationSettings() : JsonSerializer.Deserialize<ApplicationSettings>(json, Options) ?? new ApplicationSettings();
+    public static ProjectSettings Deserialize(string? json) =>
+        string.IsNullOrWhiteSpace(json) ? new ProjectSettings() : JsonSerializer.Deserialize<ProjectSettings>(json, Options) ?? new ProjectSettings();
 
     /// <summary>Reads one external provider (the <c>kind</c> field tells which one).</summary>
     public static ExternalProviderSettings DeserializeProvider(string json) => JsonSerializer.Deserialize<ExternalProviderSettings>(json, Options)!;
@@ -39,7 +49,7 @@ public static class SettingsJson
     }
 
     /// <summary>Writes the settings with every secret of the external providers removed (for admin answers).</summary>
-    public static string SerializeRedacted(ApplicationSettings settings, Func<ExternalProviderSettings, ExternalProviderSettings> redact)
+    public static string SerializeRedacted(ProjectSettings settings, Func<ExternalProviderSettings, ExternalProviderSettings> redact)
     {
         var copy = Clone(settings);
         copy.ExternalProviders = [.. copy.ExternalProviders.Select(redact)];
@@ -53,5 +63,5 @@ public static class SettingsJson
         JsonSerializer.Deserialize<ExternalProviderSettings>(JsonSerializer.Serialize<ExternalProviderSettings>(provider, Options), Options)!;
 
     /// <summary>Deep copy.</summary>
-    public static ApplicationSettings Clone(ApplicationSettings settings) => Deserialize(Serialize(settings));
+    public static ProjectSettings Clone(ProjectSettings settings) => Deserialize(Serialize(settings));
 }

@@ -33,7 +33,7 @@ dotnet test
 ## Features
 
 - OpenID Connect / OAuth 2.0 server on ASP.NET Core Identity and OpenIddict, PostgreSQL, many applications.
-- Permissions, roles and groups per application, synchronised from your code.
+- Permissions, roles and groups per project, synchronised from your code. A project has many applications (clients); see [docs/concepts.md](docs/concepts.md).
 - Sign in with Google, Microsoft, GitHub, Apple, Facebook, any OpenID Connect provider, SAML 2.0, LDAP / Active Directory and passkeys. See [docs/external-identity.md](docs/external-identity.md).
 - Admin JSON API, rate limiting, Redis, key rotation, observability.
 - Client package for APIs, cookie apps, Blazor and Self UI.

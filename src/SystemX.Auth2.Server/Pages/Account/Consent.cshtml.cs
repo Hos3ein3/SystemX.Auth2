@@ -31,7 +31,7 @@ public sealed class ConsentModel(IClientIdAccessor clientId, IAuthFlowResolver f
     {
         if (!await PrepareAsync()) return Page();
         var user = await Svc<Microsoft.AspNetCore.Identity.UserManager<Domain.Entities.AppUser>>().FindByIdAsync(User.FindFirst("sub")!.Value);
-        var token = Svc<IConsentService>().CreateGrantToken(user!, Application!, Scopes);
+        var token = Svc<IConsentService>().CreateGrantToken(user!, Client!, Scopes);
         return Redirect(ReturnUrl + "&consent=" + Uri.EscapeDataString(token));
     }
 
@@ -47,9 +47,9 @@ public sealed class ConsentModel(IClientIdAccessor clientId, IAuthFlowResolver f
 
     private async Task<bool> PrepareAsync()
     {
-        if (!await LoadApplicationAsync()) return false;
+        if (!await LoadProjectAsync()) return false;
         // The cookie must be the sign-in for this application, and ReturnUrl must be an authorize request of ours.
-        if (User.FindFirst(Auth2Claims.ApplicationId)?.Value != Application!.Id.ToString("D")
+        if (User.FindFirst(Auth2Claims.ProjectId)?.Value != Project!.Id.ToString("D")
             || ReturnUrl is null || !ReturnUrl.StartsWith("/connect/authorize?", StringComparison.Ordinal) || !Svc<IReturnUrlValidator>().IsAllowed(ReturnUrl, []))
         {
             Fail(Auth2ErrorCodes.ValidationFailed, StatusCodes.Status400BadRequest);
@@ -57,7 +57,7 @@ public sealed class ConsentModel(IClientIdAccessor clientId, IAuthFlowResolver f
         }
         Scopes = (ReturnUrlQuery.Get(ReturnUrl, "scope") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var redirect = ReturnUrlQuery.Get(ReturnUrl, "redirect_uri");
-        RedirectUri = Svc<IReturnUrlValidator>().IsAllowed(redirect, Settings.Redirects.AllowedRedirectUris) ? redirect : null;
+        RedirectUri = Svc<IReturnUrlValidator>().IsAllowed(redirect, Effective.AllowedRedirectUris) ? redirect : null;
         return true;
     }
 }

@@ -18,9 +18,9 @@ internal sealed class RegisterService(
 {
     public async Task<RegisterOutcome> RegisterAsync(RegisterRequest request, string? returnUrl = null, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
-        if (!app.IsEnabled) return Fail(Auth2ErrorCodes.ApplicationDisabled);
+        if (await flow.CheckGateAsync(ct) is not null) return Fail(Auth2ErrorCodes.AccessDenied);
         if (!settings.Registration.RegistrationEnabled) return Fail(Auth2ErrorCodes.RegistrationDisabled);
 
         var email = Clean(request.Email);
@@ -86,12 +86,12 @@ internal sealed class RegisterService(
             UserId = user.Id,
             User = user,
             UserWasCreated = true,
-            JoinedApplication = true,
+            JoinedProject = true,
             ConfirmationRequired = (settings.Email.RequireConfirmedEmail && email is not null) || (settings.Phone.RequireConfirmedPhone && phone is not null),
         };
     }
 
-    private async Task<RegisterOutcome> AfterRaceAsync(string name, string? email, string? phone, Auth2Application app, CancellationToken ct)
+    private async Task<RegisterOutcome> AfterRaceAsync(string name, string? email, string? phone, Project app, CancellationToken ct)
     {
         var existing = await FindExistingAsync(name, email, phone, ct);
         return existing.Count == 1 ? await ExistingAsync(existing[0], app, ct) : Silent();
@@ -101,13 +101,13 @@ internal sealed class RegisterService(
     /// The person exists. Already a member: nothing changes (idempotent; the password is NOT changed).
     /// Not a member: send a proof code. No row is added and no password is set until the proof is given.
     /// </summary>
-    private async Task<RegisterOutcome> ExistingAsync(AppUser user, Auth2Application app, CancellationToken ct)
+    private async Task<RegisterOutcome> ExistingAsync(AppUser user, Project app, CancellationToken ct)
     {
         if (await lookup.HasRowAsync(user, app, ct))
-            return new RegisterOutcome { UserId = user.Id, UserWasCreated = false, JoinedApplication = true };
+            return new RegisterOutcome { UserId = user.Id, UserWasCreated = false, JoinedProject = true };
 
         await join.RequestForUserAsync(user, ct);
-        return new RegisterOutcome { UserId = user.Id, UserWasCreated = false, JoinedApplication = false, ConfirmationRequired = true };
+        return new RegisterOutcome { UserId = user.Id, UserWasCreated = false, JoinedProject = false, ConfirmationRequired = true };
     }
 
     private async Task<List<AppUser>> FindExistingAsync(string name, string? email, string? phone, CancellationToken ct)
@@ -139,10 +139,10 @@ internal sealed class JoinService(
 
     public async Task RequestForUserAsync(AppUser user, CancellationToken ct = default)
     {
-        if (options.Value.Mode == ServerMode.SingleApplication) return;
-        var app = await flow.GetApplicationAsync(ct);
+        if (options.Value.Mode == ServerMode.SingleProject) return;
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
-        if (!app.IsEnabled || !user.IsActive || settings.Registration.JoinMode != JoinMode.AutoJoin || await lookup.HasRowAsync(user, app, ct)) return;
+        if (await flow.CheckGateAsync(ct) is not null || !user.IsActive || settings.Registration.JoinMode != JoinMode.AutoJoin || await lookup.HasRowAsync(user, app, ct)) return;
 
         // Proof of ownership: a code to an email or phone that was confirmed BEFORE. An unconfirmed address proves nothing.
         var channel = user.EmailConfirmed && !string.IsNullOrEmpty(user.Email) ? NotificationChannel.Email
@@ -163,18 +163,18 @@ internal sealed class JoinService(
 
     public async Task<OperationResult> CompleteAsync(string login, string code, string newPassword, CancellationToken ct = default)
     {
-        if (options.Value.Mode == ServerMode.SingleApplication) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
-        var app = await flow.GetApplicationAsync(ct);
+        if (options.Value.Mode == ServerMode.SingleProject) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
-        var perApplication = await flow.GetCredentialScopeAsync(ct) == CredentialScope.PerApplication;
+        var perProject = await flow.GetCredentialScopeAsync(ct) == CredentialScope.PerProject;
 
         // Every failure about the person or the code looks the same.
         var user = await lookup.FindAsync(login, settings, ct);
-        if (user is null || !user.IsActive || !app.IsEnabled || settings.Registration.JoinMode != JoinMode.AutoJoin || await lookup.HasRowAsync(user, app, ct))
+        if (user is null || !user.IsActive || await flow.CheckGateAsync(ct) is not null || settings.Registration.JoinMode != JoinMode.AutoJoin || await lookup.HasRowAsync(user, app, ct))
             return OperationResult.Fail(Auth2ErrorCodes.InvalidOtp);
 
         // Check the new password first, so a weak password does not use up the proof code.
-        if (perApplication)
+        if (perProject)
         {
             var problems = new List<IdentityError>();
             foreach (var validator in users.PasswordValidators)
@@ -190,17 +190,17 @@ internal sealed class JoinService(
 
         // The row first, then the password, in one transaction.
         await using var tx = await db.Database.BeginTransactionAsync(ct);
-        db.UserApplications.Add(new UserApplication
+        db.UserProjects.Add(new UserProject
         {
             UserId = user.Id,
-            ApplicationId = app.Id,
+            ProjectId = app.Id,
             JoinedAtUtc = clock.GetUtcNow(),
-            Status = UserApplicationStatus.Active,
+            Status = UserProjectStatus.Active,
             LockoutEnabled = settings.Lockout.LockoutEnabled && settings.Lockout.LockoutForNewUsers,
         });
         await db.SaveChangesAsync(ct);
 
-        if (perApplication)
+        if (perProject)
         {
             var set = await users.AddPasswordAsync(user, newPassword);
             if (!set.Succeeded) { await tx.RollbackAsync(ct); return OperationResult.Fail(set.Errors); }

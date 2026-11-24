@@ -6,19 +6,19 @@ namespace SystemX.Auth2.Server.Application;
 /// <summary>One validation error. <c>Path</c> is like <c>Password.MinLength</c>.</summary>
 public sealed record SettingsError(string Path, string Message);
 
-/// <summary>Rejects unsafe or broken application settings.</summary>
-public static class ApplicationSettingsValidator
+/// <summary>Rejects unsafe or broken project settings.</summary>
+public static class ProjectSettingsValidator
 {
     /// <summary>Smallest allowed password length.</summary>
     public const int AbsoluteMinPasswordLength = 6;
 
     /// <summary>Validates settings. Returns an empty list when all is fine.</summary>
-    public static IReadOnlyList<SettingsError> Validate(ApplicationSettings s)
+    public static IReadOnlyList<SettingsError> Validate(ProjectSettings s)
     {
         var e = new List<SettingsError>();
         void Err(string path, string msg) => e.Add(new SettingsError(path, msg));
 
-        if (s.SchemaVersion < 1 || s.SchemaVersion > ApplicationSettings.CurrentSchemaVersion)
+        if (s.SchemaVersion < 1 || s.SchemaVersion > ProjectSettings.CurrentSchemaVersion)
             Err("SchemaVersion", "Unknown schema version.");
 
         if (s.Methods.AllowedLoginMethods.Count == 0) Err("Methods.AllowedLoginMethods", "At least one login method is needed.");
@@ -57,8 +57,6 @@ public static class ApplicationSettingsValidator
         if (se.IdentityTokenMinutes is < 1 or > 1440) Err("Sessions.IdentityTokenMinutes", "Must be between 1 and 1440.");
         if (se.CookieLifetimeMinutes is < 1) Err("Sessions.CookieLifetimeMinutes", "Must be at least 1 when set.");
 
-        CheckUris("Redirects.AllowedRedirectUris", s.Redirects.AllowedRedirectUris, Err);
-        CheckUris("Redirects.AllowedPostLogoutRedirectUris", s.Redirects.AllowedPostLogoutRedirectUris, Err);
         foreach (var (path, value) in new[]
         {
             ("Redirects.RedirectAfterLogin", s.Redirects.RedirectAfterLogin),
@@ -69,10 +67,6 @@ public static class ApplicationSettingsValidator
             if (!string.IsNullOrEmpty(value) && !IsLocalPath(value) && !IsSafeAbsoluteUri(value))
                 Err(path, "Must be a local path (starting with a single '/') or an absolute http(s) URL.");
         }
-
-        foreach (var origin in s.Clients.AllowedCorsOrigins)
-            if (origin.Contains('*') || !IsSafeAbsoluteUri(origin))
-                Err("Clients.AllowedCorsOrigins", $"'{origin}' must be an absolute http(s) origin without wildcards.");
 
         var lo = s.Localization;
         if (string.IsNullOrWhiteSpace(lo.DefaultCulture)) Err("Localization.DefaultCulture", "Is required.");
@@ -85,7 +79,7 @@ public static class ApplicationSettingsValidator
     }
 
     /// <summary>Throws <see cref="SettingsValidationException"/> when the settings are not valid.</summary>
-    public static void ValidateOrThrow(ApplicationSettings s)
+    public static void ValidateOrThrow(ProjectSettings s)
     {
         var errors = Validate(s);
         if (errors.Count > 0) throw new SettingsValidationException(errors);
@@ -104,7 +98,8 @@ public static class ApplicationSettingsValidator
         }
     }
 
-    private static void CheckUris(string path, List<string> uris, Action<string, string> err)
+    /// <summary>Checks that every URI is absolute, http(s), without wildcards and without a fragment.</summary>
+    public static void CheckUris(string path, IEnumerable<string> uris, Action<string, string> err)
     {
         foreach (var uri in uris)
         {
@@ -113,9 +108,26 @@ public static class ApplicationSettingsValidator
         }
     }
 
-    private static bool IsSafeAbsoluteUri(string? value) =>
+    internal static bool IsSafeAbsoluteUri(string? value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
 
     private static bool IsLocalPath(string value) =>
         value.Length > 0 && value[0] == '/' && (value.Length == 1 || (value[1] != '/' && value[1] != '\\'));
+}
+
+/// <summary>Rejects unsafe or broken application (client) settings.</summary>
+public static class ClientApplicationSettingsValidator
+{
+    /// <summary>Validates the settings of one application and reports every problem.</summary>
+    public static void Validate(ClientApplicationSettings s, Action<string, string> err)
+    {
+        if (s.SchemaVersion < 1 || s.SchemaVersion > ClientApplicationSettings.CurrentSchemaVersion) err("SchemaVersion", "Unknown schema version.");
+        if (s.AccessTokenMinutes is { } a && (a < 1 || a > 1440)) err("AccessTokenMinutes", "Must be between 1 and 1440.");
+        if (s.RefreshTokenDays is { } r && (r < 1 || r > 365)) err("RefreshTokenDays", "Must be between 1 and 365.");
+        if (s.IdentityTokenMinutes is { } i && (i < 1 || i > 1440)) err("IdentityTokenMinutes", "Must be between 1 and 1440.");
+        if (s.CookieLifetimeMinutes is < 1) err("CookieLifetimeMinutes", "Must be at least 1 when set.");
+        foreach (var origin in s.AllowedCorsOrigins)
+            if (origin.Contains('*') || !ProjectSettingsValidator.IsSafeAbsoluteUri(origin))
+                err("AllowedCorsOrigins", $"'{origin}' must be an absolute http(s) origin without wildcards.");
+    }
 }

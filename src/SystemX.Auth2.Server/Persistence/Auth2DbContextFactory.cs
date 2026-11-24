@@ -11,7 +11,7 @@ internal sealed class Auth2DbContextFactory : IDesignTimeDbContextFactory<Auth2D
     {
         var builder = new DbContextOptionsBuilder<Auth2DbContext>();
         builder.UseNpgsql("Host=localhost;Database=auth2_design;Username=postgres;Password=design-time-only");
-        builder.UseOpenIddict<Guid>();
-        return new Auth2DbContext(builder.Options, new ApplicationScope());
+        builder.UseOpenIddict<SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Application, SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Authorization, SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Scope, SystemX.Auth2.Server.Infrastructure.OpenIddict.Auth2Token, Guid>();
+        return new Auth2DbContext(builder.Options, new ProjectScope());
     }
 }

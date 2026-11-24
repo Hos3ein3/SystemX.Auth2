@@ -21,9 +21,9 @@ internal sealed class PasskeyService(
     SignInManager<AppUser> signIn, UserManager<AppUser> users, Auth2DbContext db, IAuthFlowResolver flow, ILoginService login, UserLookup lookup,
     IAuditService audit, IServerValues serverValues, IOptions<Auth2ServerOptions> options, IHostEnvironment env) : IPasskeyService
 {
-    private async Task<(Auth2Application App, PasskeySettings Settings, ApplicationSettings All)> GateAsync(CancellationToken ct)
+    private async Task<(Project App, PasskeySettings Settings, ProjectSettings All)> GateAsync(CancellationToken ct)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var all = await flow.GetSettingsAsync(ct);
         return (app, all.Passkeys, all);
     }
@@ -34,7 +34,7 @@ internal sealed class PasskeyService(
     private async Task<string?> RefusalAsync(CancellationToken ct, bool forSignIn = false)
     {
         var (app, passkeys, all) = await GateAsync(ct);
-        if (!app.IsEnabled) return Auth2ErrorCodes.ApplicationDisabled;
+        if (!app.IsEnabled) return Auth2ErrorCodes.ProjectDisabled;
         if (!passkeys.AllowPasskeys || !DomainIsOk) return Auth2ErrorCodes.PasskeyNotAllowed;
         if (forSignIn && !all.Methods.AllowedLoginMethods.Contains(LoginMethod.Passkey)) return Auth2ErrorCodes.LoginMethodNotAllowed;
         return null;
@@ -85,7 +85,7 @@ internal sealed class PasskeyService(
         if (!saved.Succeeded) return PasskeyOutcome<PasskeyDto>.Fail(Auth2ErrorCodes.ValidationFailed);
         if (aaguid is not null)
         {
-            var row = await db.Set<AppUserPasskey>().FirstAsync(x => x.ApplicationId == app.Id && x.CredentialId == passkey.CredentialId, ct);
+            var row = await db.Set<AppUserPasskey>().FirstAsync(x => x.ProjectId == app.Id && x.CredentialId == passkey.CredentialId, ct);
             row.Aaguid = aaguid;
             await db.SaveChangesAsync(ct);
         }
@@ -94,7 +94,7 @@ internal sealed class PasskeyService(
         return PasskeyOutcome<PasskeyDto>.Ok(ToDto(passkey));
     }
 
-    private async Task<PasskeyOutcome<PasskeyDto>> BlockedAsync(Auth2Application app, AppUser user, Guid? aaguid)
+    private async Task<PasskeyOutcome<PasskeyDto>> BlockedAsync(Project app, AppUser user, Guid? aaguid)
     {
         await audit.WriteAsync(new AuditEntry("passkey.blocked", app.Id, ActorUserId: user.Id, TargetType: "user", TargetId: user.Id.ToString(),
             Data: new Dictionary<string, object?> { ["aaguid"] = aaguid?.ToString() }));

@@ -24,8 +24,8 @@ public sealed class SloModel(IClientIdAccessor clientId, IAuthFlowResolver flow,
     {
         var provider = registry.FindByUrl(slug, name);
         if (provider is null || provider.Type != ExternalProviderType.Saml) { Fail(Auth2ErrorCodes.ExternalProviderDisabled, StatusCodes.Status404NotFound); return Page(); }
-        Svc<IClientIdAccessor>().ClientId = provider.ClientId;
-        await LoadApplicationAsync();
+        Svc<IProjectSelection>().ProjectKey = provider.ProjectSlug == SystemX.Auth2.Server.Application.ExternalProviderUrls.SingleModeSlug ? null : provider.ProjectSlug;
+        await LoadProjectAsync();
         var issuer = !string.IsNullOrWhiteSpace(options.Value.Issuer) ? options.Value.Issuer.TrimEnd('/') : $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
         try
         {
@@ -36,8 +36,8 @@ public sealed class SloModel(IClientIdAccessor clientId, IAuthFlowResolver flow,
             var user = await users.FindByLoginAsync(provider.Name, result.NameId);
             if (user is not null)
             {
-                await Svc<ISessionService>().RevokeAllAsync(user, Application!, "saml.single_logout", ct: HttpContext.RequestAborted);
-                await audit.WriteAsync(new AuditEntry("saml.slo", Application!.Id, ActorUserId: user.Id, TargetType: "user", TargetId: user.Id.ToString(),
+                await Svc<ISessionService>().RevokeAllAsync(user, Project!, "saml.single_logout", ct: HttpContext.RequestAborted);
+                await audit.WriteAsync(new AuditEntry("saml.slo", Project!.Id, ActorUserId: user.Id, TargetType: "user", TargetId: user.Id.ToString(),
                     Data: new Dictionary<string, object?> { ["provider"] = provider.Name }), HttpContext.RequestAborted);
             }
             var session = await HttpContext.AuthenticateAsync(Auth2Cookie.Scheme);
@@ -46,7 +46,7 @@ public sealed class SloModel(IClientIdAccessor clientId, IAuthFlowResolver flow,
         }
         catch (ExternalLoginException ex)
         {
-            await audit.WriteAsync(new AuditEntry("saml.assertion.rejected", Application?.Id, Data: new Dictionary<string, object?> { ["provider"] = provider.Name, ["code"] = ex.ErrorCode, ["reason"] = ex.Reason }), HttpContext.RequestAborted);
+            await audit.WriteAsync(new AuditEntry("saml.assertion.rejected", Project?.Id, Data: new Dictionary<string, object?> { ["provider"] = provider.Name, ["code"] = ex.ErrorCode, ["reason"] = ex.Reason }), HttpContext.RequestAborted);
             Fail(ex.ErrorCode);
             return Page();
         }

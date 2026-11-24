@@ -12,13 +12,16 @@ Read it before you go live. The **production checklist** at the end is the short
 
 | Area | Behaviour |
 |---|---|
-| Passwords | Hashed by ASP.NET Core Identity. Rules per application (length, characters). Never logged |
+| Passwords | Hashed by ASP.NET Core Identity. Rules per project (length, characters). Never logged |
 | Client secrets | Hashed; shown **once** when created or rotated |
 | One-time codes (OTP) | Hashed, short life, limited attempts, resend delay, work once, compared in constant time. Stored in the database, or in Redis when Redis is on |
 | Two-factor | The authenticator key is encrypted (Data Protection). Recovery codes are hashed |
-| Lockout | Per application, from the settings |
+| Lockout | Per project, from the settings |
+| Project and application status | A disabled **project** blocks every sign-in path and every token of the project; a disabled **application** blocks only itself. One shared check (`AccessGate`) is used by every path, and OpenIddict event handlers refuse tokens issued before. The public answer is the generic `access_denied`, the real reason is only in the audit log. A cached status (`Auth2:ProjectStatusCacheSeconds`, default 10 s) means a token of a project that was just disabled stops working within that window (at once on the instance that made the change; other instances are told through Redis when it is on) |
+| Login cookie | The hosted-UI cookie has the project key in its name (`.SystemX.Auth2.Session.{projectkey}`), so a login in one project never counts in another project on the same domain. Applications of one project share it |
+| Project key | An identifier, not a secret, never hashed, never proof of anything. The server finds the project from the client id; the client id and secret (confidential), PKCE and exact redirect URIs are the real protection |
 | User enumeration | Login, register, forgot password and resend answer the same for known and unknown people |
-| Account hijacking | A second application is joined only with proof of ownership (a code to a **confirmed** email or phone). An admin never sets a password for an existing person |
+| Account hijacking | A second project is joined only with proof of ownership (a code to a **confirmed** email or phone). An admin never sets a password for an existing person |
 | Open redirect | Return URLs, `redirect_uri` and `post_logout_redirect_uri` use exact match or local paths only |
 | PKCE | Only `S256` |
 | Tokens | Signed JWTs. Refresh tokens rotate, and reuse of an old one revokes the chain |
@@ -59,7 +62,7 @@ Counters are in memory by default (right for **one** instance). With **Redis** t
 - Cookies: `HttpOnly`, `SameSite=Lax`, `Secure` outside Development.
 - Anti-forgery on all pages that post.
 - **Forwarded headers**: set `Auth2:Security:UseForwardedHeaders=true` behind a reverse proxy, and list the proxies in `KnownProxies` (or `TrustAllProxies=true` only when nobody else can reach the server). Set `Auth2:Issuer` to the public HTTPS address.
-- **CORS** is off. An origin is allowed when it is listed in `Clients.AllowedCorsOrigins` of an enabled application (exact match). Credentials are never allowed. The list is read again every minute.
+- **CORS** is off. An origin is allowed when it is listed in `AllowedCorsOrigins` of an enabled application of an enabled project (exact match). Credentials are never allowed. The list is read again every minute.
 
 ### Keys and rotation
 
@@ -98,14 +101,14 @@ What the Server does so that a wrong or hostile provider cannot take over an acc
 | Risk | Defence |
 |---|---|
 | Account takeover by email (someone makes a provider account with your email) | Linking by email only when the provider **proves** the email (`email_verified`, per-type defaults, off for unknown providers). Otherwise `external_email_exists_not_verified`. Only a global admin can trust a provider's email |
-| Login CSRF and replay | OIDC `state`, `nonce` and PKCE; the state is sealed, expires in 10 minutes, is bound to one provider and one application and is **single use** (shared `replay_entries`) |
-| Mix-up between providers or applications | Callback URLs are unique per application and provider; a state made for another provider or application is refused |
+| Login CSRF and replay | OIDC `state`, `nonce` and PKCE; the state is sealed, expires in 10 minutes, is bound to one provider and one project (and remembers the application that started it) and is **single use** (shared `replay_entries`) |
+| Mix-up between providers or projects | Callback URLs are unique per project and provider; a state made for another provider or project is refused |
 | Forged SAML | XXE-safe XML, size limit, exactly one assertion, no duplicate ids, pinned certificates, issuer, destination, audience, `InResponseTo`, time window, single-use assertion ids, IdP-initiated off by default, `RelayState` never trusted for redirects |
 | LDAP injection and downgrade | Filters are escaped (RFC 4515); TLS required with chain and name check; no anonymous bind, no empty passwords; the unique id (not the DN) is the link key; same answer for unknown user and wrong password |
 | SSRF through provider addresses | Every call to a provider uses a client that refuses private, loopback, link-local and metadata addresses, no redirects, https only |
 | Secret leaks | Client secrets, Apple keys, SAML private keys and bind passwords are encrypted (Data Protection), never returned by the API, never logged or audited |
-| Privilege escalation by group mapping | Mappings only add things of the same application; `GlobalAdmin` and system roles can never be mapped; only mapped targets are removed |
-| Passkey theft or reuse | Per-application store, single-use challenges, signature counter, origin and domain checks, user verification rule, AAGUID block list, limits |
+| Privilege escalation by group mapping | Mappings only add things of the same project; `GlobalAdmin` and system roles can never be mapped; only mapped targets are removed |
+| Passkey theft or reuse | Per-project store, single-use challenges, signature counter, origin and domain checks, user verification rule, AAGUID block list, limits |
 | Locking yourself out | The last way to sign in cannot be removed; one passkey needs a backup |
 
 ## Limits (what this is not)

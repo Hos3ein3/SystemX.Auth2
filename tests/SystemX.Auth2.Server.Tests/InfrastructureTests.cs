@@ -9,12 +9,12 @@ using SystemX.Auth2.Server.Persistence.Seeding;
 
 namespace SystemX.Auth2.Server.Tests;
 
-public class ApplicationScopeTests
+public class ProjectScopeTests
 {
     [Fact]
     public void Begin_ActivatesGlobalScope_AndDisposeEndsIt()
     {
-        var scope = new ApplicationScope();
+        var scope = new ProjectScope();
         scope.IsGlobalActive.ShouldBeFalse();
         var d = scope.Begin();
         scope.IsGlobalActive.ShouldBeTrue();
@@ -25,7 +25,7 @@ public class ApplicationScopeTests
     [Fact]
     public void Begin_Nested_StaysActiveUntilAllDisposed()
     {
-        var scope = new ApplicationScope();
+        var scope = new ProjectScope();
         var a = scope.Begin();
         var b = scope.Begin();
         a.Dispose();
@@ -36,12 +36,12 @@ public class ApplicationScopeTests
     }
 
     [Fact]
-    public void Set_StoresApplicationId()
+    public void Set_StoresProjectId()
     {
-        var scope = new ApplicationScope();
+        var scope = new ProjectScope();
         var id = Guid.NewGuid();
         scope.Set(id);
-        scope.ApplicationId.ShouldBe(id);
+        scope.ProjectId.ShouldBe(id);
     }
 }
 
@@ -60,26 +60,26 @@ public class ServerModeRegistrationTests
     }
 
     [Fact]
-    public void Default_IsMultiApplication()
+    public void Default_IsMultiProject()
     {
         using var sp = Base().BuildServiceProvider();
-        sp.GetRequiredService<IOptions<Auth2ServerOptions>>().Value.Mode.ShouldBe(ServerMode.MultiApplication);
+        sp.GetRequiredService<IOptions<Auth2ServerOptions>>().Value.Mode.ShouldBe(ServerMode.MultiProject);
     }
 
     [Fact]
-    public void ServerWithSingleApplication_SetsModeAndSharedCredentials()
+    public void ServerWithSingleProject_SetsModeAndSharedCredentials()
     {
-        using var sp = Base(s => s.ServerWithSingleApplication()).BuildServiceProvider();
+        using var sp = Base(s => s.ServerWithSingleProject()).BuildServiceProvider();
         var o = sp.GetRequiredService<IOptions<Auth2ServerOptions>>().Value;
-        o.Mode.ShouldBe(ServerMode.SingleApplication);
+        o.Mode.ShouldBe(ServerMode.SingleProject);
         o.CredentialScope.ShouldBe(CredentialScope.Shared);
     }
 
     [Fact]
-    public void ServerWithSingleApplication_RegistersSingleApplicationContext()
+    public void ServerWithSingleProject_RegistersSingleProjectContext()
     {
-        var services = Base(s => s.ServerWithSingleApplication());
-        services.Last(d => d.ServiceType == typeof(IApplicationContext)).ImplementationType.ShouldBe(typeof(SingleApplicationContext));
+        var services = Base(s => s.ServerWithSingleProject());
+        services.Last(d => d.ServiceType == typeof(IProjectContext)).ImplementationType.ShouldBe(typeof(SingleProjectContext));
     }
 
     [Fact]
@@ -91,11 +91,11 @@ public class ServerModeRegistrationTests
 public class SnakeCaseTests
 {
     [Theory]
-    [InlineData("ApplicationId", "application_id")]
+    [InlineData("ProjectId", "project_id")]
     [InlineData("OpenIddictApplications", "open_iddict_applications")]
     [InlineData("UserAccessVersion", "user_access_version")]
     [InlineData("PK_Users", "pk_users")]
-    [InlineData("IX_roles_ApplicationId_NormalizedName", "ix_roles_application_id_normalized_name")]
+    [InlineData("IX_roles_ProjectId_NormalizedName", "ix_roles_project_id_normalized_name")]
     [InlineData("already_snake", "already_snake")]
     public void Snake_Converts(string input, string expected) => Auth2DbContext.Snake(input).ShouldBe(expected);
 }
@@ -111,6 +111,6 @@ public class SeederHelperTests
     {
         var slug = Auth2Seeder.SlugFor(name);
         slug.ShouldBe(expected);
-        SystemX.Auth2.Server.Domain.Settings.ProjectKeyRules.IsValidForNewApplication(slug).ShouldBeTrue();
+        SystemX.Auth2.Server.Domain.Settings.ProjectKeyRules.IsValidForNewProject(slug).ShouldBeTrue();
     }
 }

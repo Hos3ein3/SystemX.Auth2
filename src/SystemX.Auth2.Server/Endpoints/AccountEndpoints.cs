@@ -83,14 +83,14 @@ public static class AccountEndpoints
     {
         var outcome = await register.RegisterAsync(r, await SafeReturnUrlAsync(r.ReturnUrl, urls, flow, http), http.RequestAborted);
         if (!outcome.Result.Succeeded) return ApiResults.From(http, outcome.Result);
-        return Results.Ok(new RegisterResponse(outcome.UserId ?? Guid.Empty, outcome.UserWasCreated, outcome.JoinedApplication, outcome.ConfirmationRequired));
+        return Results.Ok(new RegisterResponse(outcome.UserId ?? Guid.Empty, outcome.UserWasCreated, outcome.JoinedProject, outcome.ConfirmationRequired));
     }
 
     /// <summary>A return URL goes into emails, so it must pass the same checks as every redirect. Otherwise it is dropped.</summary>
     private static async Task<string?> SafeReturnUrlAsync(string? returnUrl, IReturnUrlValidator urls, IAuthFlowResolver flow, HttpContext http)
     {
         if (string.IsNullOrEmpty(returnUrl)) return null;
-        var settings = await flow.GetSettingsAsync(http.RequestAborted);
-        return urls.IsAllowed(returnUrl, settings.Redirects.AllowedRedirectUris) ? returnUrl : null;
+        var settings = await flow.GetEffectiveAsync(http.RequestAborted);
+        return urls.IsAllowed(returnUrl, settings.AllowedRedirectUris) ? returnUrl : null;
     }
 }

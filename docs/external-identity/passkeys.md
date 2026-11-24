@@ -18,7 +18,7 @@ Auth2:Passkeys:ServerDomain = auth.example.com
 - **Do not change it later.** Every passkey made for the old domain stops working.
 - Passkeys need **HTTPS**. Origins are checked: only the address of the Server (the `Auth2:Issuer`, or the request address in Development) is accepted.
 
-### 2. Turn them on per application
+### 2. Turn them on per project
 
 ```json
 {
@@ -40,7 +40,7 @@ All fields are for developers (global admin) only. `Passkey` must be in `Allowed
 
 | Rule | Meaning |
 |---|---|
-| Per application | A passkey made in application A is **not found** in application B (the same person registers again there) |
+| Per project | A passkey made in project A is **not found** in project B (the same person registers again there) |
 | `maxPasskeysPerUser`, `passkeyNameMaxLength` | Limits. `passkey_limit_reached`, `validation_failed` |
 | `passkeyUserVerification` | `required` (default): a passkey without fingerprint/PIN is refused at registration and sign-in |
 | `requirePasskeyBackupMethod` | A person whose only other way to sign in is one external login cannot remove it while they have **one** passkey; they must add a second one first. Without a password, a login or a passkey, nothing can be removed (`cannot_remove_last_login_method`) |
@@ -60,7 +60,7 @@ See [ui-handover.md](../ui-handover.md#passkey-routes-json-for-the-ui-script): t
 ## How to implement or extend
 
 - `PasskeyService` (`Infrastructure/External/PasskeyService.cs`) uses the passkey support of ASP.NET Core Identity (`SignInManager.MakePasskeyCreationOptionsAsync`, `PerformPasskeyAttestationAsync`, `MakePasskeyRequestOptionsAsync`, `PerformPasskeyAssertionAsync`). The challenge state lives in the short-lived, single-use cookie scheme `Identity.TwoFactorUserId` (cookie `.SystemX.Auth2.PasskeyState`).
-- The Identity options are global, so the per-application rules are added to the options JSON and **checked again on the server** (user verification, limits).
-- **How the per-application store works**: `AppUserPasskey` has `ApplicationId` in its key, and `user_passkeys` has a query filter by the current application. `Auth2UserStore` overrides the passkey methods so that every call needs a current application. Test: `PasskeyStoreTests`, `PasskeyFlowTests.APasskey_OfApplicationA_IsNotAcceptedByApplicationB`.
+- The Identity options are global, so the per-project rules are added to the options JSON and **checked again on the server** (user verification, limits).
+- **How the per-project store works**: `AppUserPasskey` has `ApplicationId` in its key, and `user_passkeys` has a query filter by the current project. `Auth2UserStore` overrides the passkey methods so that every call needs a current project. Test: `PasskeyStoreTests`, `PasskeyFlowTests.APasskey_OfApplicationA_IsNotAcceptedByApplicationB`.
 - The AAGUID is read from the attestation object (`authData`) with `System.Formats.Cbor`.
 - Tests use `SoftwareAuthenticator` (ES256, attestation "none") that makes the same JSON a browser makes.

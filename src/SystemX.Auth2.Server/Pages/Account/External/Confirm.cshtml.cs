@@ -25,16 +25,16 @@ public sealed class ConfirmModel(IClientIdAccessor clientId, IAuthFlowResolver f
 
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         if (!string.IsNullOrEmpty(ConfirmationToken))
         {
             var outcome = await external.ConfirmEmailAsync(ConfirmationToken, HttpContext.RequestAborted);
-            var result = await externalFlow.FinishAsync(HttpContext, Application!, Settings, outcome, HttpContext.RequestAborted);
+            var result = await externalFlow.FinishAsync(HttpContext, Project!, Settings, outcome, HttpContext.RequestAborted);
             if (result.RedirectTo is not null) return Redirect(result.RedirectTo);
             if (result.TwoFactorToken is not null)
             {
                 TempData["TwoFactorToken"] = result.TwoFactorToken;
-                return RedirectToPage("/Account/TwoFactor", new { ReturnUrl = result.ReturnUrl, ClientId = Application!.ClientId });
+                return RedirectToPage("/Account/TwoFactor", new { ReturnUrl = result.ReturnUrl, ClientId = ClientIdForLinks });
             }
             Fail(result.ErrorCode ?? Auth2ErrorCodes.InvalidToken);
             return Page();
@@ -46,7 +46,7 @@ public sealed class ConfirmModel(IClientIdAccessor clientId, IAuthFlowResolver f
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         if (string.IsNullOrEmpty(PendingToken) || string.IsNullOrWhiteSpace(Email) || !ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
         var url = Url.Page("/Account/External/Confirm")!;
         EmailSent = await external.SendEmailConfirmationAsync(PendingToken, Email, url, HttpContext.RequestAborted);

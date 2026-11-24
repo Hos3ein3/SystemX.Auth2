@@ -62,7 +62,7 @@ Scopes set with `.EnableMachineToMachine(o => o.Scopes = [...])` are used when y
 | Problem | Fix |
 |---|---|
 | `invalid_client` | `ClientId` or `ClientSecret` is wrong (was the secret rotated?) |
-| `invalid_scope` | The application does not allow that scope. Add it to `Clients.AllowedScopes` |
+| `invalid_scope` | The application does not allow that scope. Add it to `the allowed scopes of the application` |
 | A `401` from the other API | It does not trust this server, or the scope is missing in the token |
 | Many token requests | You use many different scope sets. Use one set per target API |
 

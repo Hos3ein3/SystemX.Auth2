@@ -12,8 +12,8 @@ namespace SystemX.Auth2.Client.Tests;
 
 public class HandshakeRunnerTests
 {
-    private const string Ok = """{"applicationId":"0198a1b2-0000-7000-8000-000000000001","projectKey":"blog","applicationName":"Blog","serverMode":"MultiApplication","issuer":"https://auth.test","settingsVersion":1,"cookieLifetime":"01:30:00","singleActiveSession":false}""";
-    private const string OkSingle = """{"applicationId":"0198a1b2-0000-7000-8000-000000000001","projectKey":null,"applicationName":"Blog","serverMode":"SingleApplication","issuer":"https://auth.test","settingsVersion":1,"cookieLifetime":null,"singleActiveSession":false}""";
+    private const string Ok = """{"applicationId":"0198a1b2-0000-7000-8000-000000000001","projectKey":"blog","applicationName":"Blog","serverMode":"MultiProject","issuer":"https://auth.test","settingsVersion":1,"cookieLifetime":"01:30:00","singleActiveSession":false}""";
+    private const string OkSingle = """{"applicationId":"0198a1b2-0000-7000-8000-000000000001","projectKey":null,"applicationName":"Blog","serverMode":"SingleProject","issuer":"https://auth.test","settingsVersion":1,"cookieLifetime":null,"singleActiveSession":false}""";
 
     private static (HandshakeRunner Runner, FakeServer Server) Start(Func<HttpResponseMessage> handshake, string? projectKey = "blog", Action<Client.Options.Auth2ClientOptions>? options = null)
     {
@@ -21,7 +21,7 @@ public class HandshakeRunnerTests
         {
             Respond = (r, _) => Task.FromResult(r.RequestUri!.AbsolutePath == "/connect/token" ? FakeServer.Token() : handshake()),
         };
-        var sp = TestHost.Build(server, b => { if (projectKey is not null) b.ServerWithMultiApplication(projectKey); }, options: options);
+        var sp = TestHost.Build(server, b => { if (projectKey is not null) b.ServerWithMultiProject(projectKey); }, options: options);
         return (sp.GetRequiredService<HandshakeRunner>(), server);
     }
 
@@ -33,7 +33,7 @@ public class HandshakeRunnerTests
         var (runner, server) = Start(() => FakeServer.Json(HttpStatusCode.OK, Ok));
         var outcome = await runner.RunAsync();
         outcome.Status.ShouldBe(HandshakeStatus.Ok);
-        outcome.Response!.ServerMode.ShouldBe(ServerMode.MultiApplication);
+        outcome.Response!.ServerMode.ShouldBe(ServerMode.MultiProject);
         outcome.Response.CookieLifetime.ShouldBe(TimeSpan.FromMinutes(90));
         var call = server.Calls.Single(c => c.Path == Auth2Routes.Handshake);
         call.Authorization.ShouldBe("Bearer machine-token");
@@ -47,11 +47,12 @@ public class HandshakeRunnerTests
         (await Start(() => FakeServer.Json(HttpStatusCode.OK, OkSingle), projectKey: null).Runner.RunAsync()).Status.ShouldBe(HandshakeStatus.Ok);
 
     [Fact]
-    public async Task ProjectKey_AgainstASingleServer_IsRejected_WithTheRightMessage()
+    public async Task ProjectKey_AgainstASingleServer_IsIgnored_WithAWarningMessage()
     {
-        var outcome = await Start(() => FakeServer.Json(HttpStatusCode.OK, OkSingle)).Runner.RunAsync();   // client has a key
-        outcome.Status.ShouldBe(HandshakeStatus.Rejected);
-        outcome.Message.ShouldBe("The server is single-application. Remove ServerWithMultiApplication.");
+        var outcome = await Start(() => FakeServer.Json(HttpStatusCode.OK, OkSingle)).Runner.RunAsync();   // client has a key: the server ignores it
+        outcome.Status.ShouldBe(HandshakeStatus.Ok);
+        outcome.Message.ShouldBe(HandshakeRunner.SingleServerMessage);
+        outcome.Message!.ShouldContain("ignored");
     }
 
     [Fact]
@@ -59,16 +60,17 @@ public class HandshakeRunnerTests
     {
         var outcome = await Start(() => FakeServer.Json(HttpStatusCode.OK, Ok), projectKey: null).Runner.RunAsync();
         outcome.Status.ShouldBe(HandshakeStatus.Rejected);
-        outcome.Message.ShouldBe("The server is multi-application. Call ServerWithMultiApplication(projectKey).");
+        outcome.Message.ShouldBe(HandshakeRunner.MultiServerMessage);
+        outcome.Message!.ShouldContain("ServerWithMultiProject(projectKey)");
     }
 
     [Fact]
     public async Task ServerModeMismatch409_GetsTheFriendlyMessageForTheClientsSide()
     {
         var withKey = await Start(() => Err(HttpStatusCode.Conflict, Auth2ErrorCodes.ServerModeMismatch)).Runner.RunAsync();
-        withKey.Message!.ShouldContain("Remove ServerWithMultiApplication");
+        withKey.Message!.ShouldContain("Remove ServerWithMultiProject");
         var withoutKey = await Start(() => Err(HttpStatusCode.Conflict, Auth2ErrorCodes.ServerModeMismatch), projectKey: null).Runner.RunAsync();
-        withoutKey.Message!.ShouldContain("Call ServerWithMultiApplication(projectKey)");
+        withoutKey.Message!.ShouldContain("Call ServerWithMultiProject(projectKey)");
         withKey.Status.ShouldBe(HandshakeStatus.Rejected);
     }
 
@@ -118,7 +120,7 @@ public class HandshakeRunnerTests
 
 public class HandshakeHostedServiceTests
 {
-    private const string Ok = """{"applicationId":"0198a1b2-0000-7000-8000-000000000001","projectKey":"blog","applicationName":"Blog","serverMode":"MultiApplication","issuer":"https://auth.test","settingsVersion":1,"cookieLifetime":null,"singleActiveSession":false}""";
+    private const string Ok = """{"applicationId":"0198a1b2-0000-7000-8000-000000000001","projectKey":"blog","applicationName":"Blog","serverMode":"MultiProject","issuer":"https://auth.test","settingsVersion":1,"cookieLifetime":null,"singleActiveSession":false}""";
 
     /// <summary>A server whose handshake answers come from a queue (the last one repeats).</summary>
     private static (IHostedService Service, Auth2ClientState State, FakeServer Server, FakeTimeProvider Time) Start(
@@ -135,13 +137,13 @@ public class HandshakeHostedServiceTests
             },
         };
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        var sp = TestHost.Build(server, b => b.ServerWithMultiApplication("blog"), time, options);
+        var sp = TestHost.Build(server, b => b.ServerWithMultiProject("blog"), time, options);
         return (sp.GetRequiredService<HandshakeHostedService>(), sp.GetRequiredService<Auth2ClientState>(), server, time);
     }
 
     private static HttpResponseMessage Up() => FakeServer.Json(HttpStatusCode.OK, Ok);
     private static HttpResponseMessage Down() => FakeServer.Json(HttpStatusCode.ServiceUnavailable, "{}");
-    private static HttpResponseMessage NotFound() => FakeServer.Json(HttpStatusCode.NotFound, """{"code":"application_not_found"}""");
+    private static HttpResponseMessage NotFound() => FakeServer.Json(HttpStatusCode.NotFound, """{"code":"project_not_found"}""");
     private static HttpResponseMessage Rejected() => FakeServer.Json(HttpStatusCode.Forbidden, """{"code":"forbidden"}""");
 
     private static async Task Until(Func<bool> done, FakeTimeProvider time, TimeSpan step)
@@ -228,7 +230,7 @@ public class HandshakeHostedServiceTests
     {
         foreach (var answer in new Func<HttpResponseMessage>[] { NotFound, Rejected })
         {
-            var (service, state, _, _) = Start([answer], o => o.OnApplicationNotFound = behavior);
+            var (service, state, _, _) = Start([answer], o => o.OnProjectNotFound = behavior);
             var ex = await Should.ThrowAsync<Auth2StartupException>(() => service.StartAsync(default));
             ex.Status.ShouldBeOneOf(HandshakeStatus.NotFound, HandshakeStatus.Rejected);
             state.IsReady.ShouldBeFalse();
@@ -238,7 +240,7 @@ public class HandshakeHostedServiceTests
     [Fact]
     public async Task NotFound_WithContinue_LogsAndStarts_WithoutRetrying()
     {
-        var (service, state, server, time) = Start([NotFound], o => o.OnApplicationNotFound = StartupFailureBehavior.Continue);
+        var (service, state, server, time) = Start([NotFound], o => o.OnProjectNotFound = StartupFailureBehavior.Continue);
         await service.StartAsync(default);
         state.Status.ShouldBe(HandshakeStatus.NotFound);
         for (var i = 0; i < 30; i++) { time.Advance(TimeSpan.FromSeconds(10)); await Task.Delay(5); }

@@ -7,20 +7,31 @@ using SystemX.Auth2.Server.Domain.Settings;
 namespace SystemX.Auth2.Server.Infrastructure.Identity;
 
 /// <summary>Reads rules of the current application. Scoped.</summary>
-public sealed class AuthFlowResolver(IApplicationContext context, IApplicationSettingsProvider settings, IOptions<Auth2ServerOptions> options) : IAuthFlowResolver
+public sealed class AuthFlowResolver(IProjectContext context, IClientApplicationContext clients, IProjectSettingsProvider settings, IOptions<Auth2ServerOptions> options) : IAuthFlowResolver
 {
     /// <inheritdoc />
-    public Task<Auth2Application> GetApplicationAsync(CancellationToken ct = default) => context.GetRequiredAsync(ct);
+    public Task<Project> GetProjectAsync(CancellationToken ct = default) => context.GetRequiredAsync(ct);
 
     /// <inheritdoc />
-    public async Task<ApplicationSettings> GetSettingsAsync(CancellationToken ct = default) =>
+    public async Task<ProjectSettings> GetSettingsAsync(CancellationToken ct = default) =>
         await settings.GetAsync((await context.GetRequiredAsync(ct)).Id, ct);
+
+    /// <inheritdoc />
+    public Task<ClientApplicationInfo?> GetClientAsync(CancellationToken ct = default) => clients.GetAsync(ct);
+
+    /// <inheritdoc />
+    public async Task<EffectiveSettings> GetEffectiveAsync(CancellationToken ct = default) =>
+        new(await GetSettingsAsync(ct), await GetClientAsync(ct));
+
+    /// <inheritdoc />
+    public async Task<string?> CheckGateAsync(CancellationToken ct = default) =>
+        AccessGate.Check(await context.GetRequiredAsync(ct), await GetClientAsync(ct));
 
     /// <inheritdoc />
     public async Task<CredentialScope> GetCredentialScopeAsync(CancellationToken ct = default)
     {
         var o = options.Value;
-        if (o.Mode == ServerMode.SingleApplication) return CredentialScope.Shared;
+        if (o.Mode == ServerMode.SingleProject) return CredentialScope.Shared;
         if (o.AllowCredentialScopeOverride)
         {
             var s = await GetSettingsAsync(ct);

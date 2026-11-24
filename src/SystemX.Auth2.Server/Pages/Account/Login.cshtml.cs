@@ -52,16 +52,16 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
 
         if (result.Succeeded)
         {
-            await Auth2Cookie.SignInAsync(HttpContext, result.User!, Application!, Settings, result.Amr, result.SessionId);
+            await Auth2Cookie.SignInAsync(HttpContext, result.User!, Project!, Client, Effective, result.Amr, result.SessionId);
             return Redirect(ResolveRedirect(Settings.Redirects.RedirectAfterLogin));
         }
         switch (result.ErrorCode)
         {
             case Auth2ErrorCodes.TwoFactorRequired:
                 TempData["TwoFactorToken"] = result.TwoFactorToken;
-                return RedirectToPage("TwoFactor", new { ReturnUrl, ClientId = Application!.ClientId });
+                return RedirectToPage("TwoFactor", new { ReturnUrl, ClientId = ClientIdForLinks });
             case Auth2ErrorCodes.LockedOut:
-                return RedirectToPage("Lockout", new { ReturnUrl, ClientId = Application!.ClientId });
+                return RedirectToPage("Lockout", new { ReturnUrl, ClientId = ClientIdForLinks });
             default:
                 Fail(result.ErrorCode ?? Auth2ErrorCodes.InvalidCredentials, StatusCodes.Status400BadRequest);
                 return Page();
@@ -70,7 +70,7 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
 
     private async Task<bool> PrepareAsync()
     {
-        if (!await LoadApplicationAsync()) return false;
+        if (!await LoadProjectAsync()) return false;
         var methods = Settings.Methods.AllowedLoginMethods;
         ShowUserNameLogin = methods.Contains(LoginMethod.UserNamePassword);
         ShowEmailLogin = methods.Contains(LoginMethod.EmailPassword);

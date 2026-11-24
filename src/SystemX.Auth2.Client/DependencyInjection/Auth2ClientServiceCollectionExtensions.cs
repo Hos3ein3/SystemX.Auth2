@@ -70,12 +70,14 @@ public static class Auth2ClientServiceCollectionExtensions
         services.TryAddSingleton<IAuth2CurrentUserService, CurrentUserService>();
         services.TryAddScoped<IAuth2AccessProvider, AccessProvider>();
         services.TryAddScoped<ICurrentUser, CurrentUserImpl>();
+        services.TryAddScoped<ICurrentClient, CurrentClientImpl>();
 
         // Scanners and sync (they do nothing while the policies are None)
         services.TryAddSingleton<IPermissionScanner, PermissionScanner>();
         services.TryAddSingleton<IRoleScanner, RoleScanner>();
         services.TryAddSingleton<IScopeScanner, ScopeScanner>();
         services.TryAddSingleton<IGroupScanner, GroupScanner>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<Microsoft.Extensions.Hosting.IHostedService, Auth2CatalogStartupService>());   // checks all catalog sources when the host starts
         services.TryAddSingleton<Auth2Catalog>();
         services.TryAddSingleton<IAuth2Catalog>(sp => sp.GetRequiredService<Auth2Catalog>());
         if (!services.Any(d => d.ServiceType == typeof(Auth2SyncHostedService)))
@@ -98,10 +100,10 @@ public static class Auth2ClientServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Says that the server is <b>multi-application</b> and what the project key of this application is.
-    /// Leave this call out for a single-application server. The handshake checks that you chose right.
+    /// Says that the server is <b>multi-project</b> and what the project key of this application is.
+    /// Leave this call out for a single-project server. The handshake checks that you chose right.
     /// </summary>
-    public static IAuth2ClientBuilder ServerWithMultiApplication(this IAuth2ClientBuilder builder, string projectKey)
+    public static IAuth2ClientBuilder ServerWithMultiProject(this IAuth2ClientBuilder builder, string projectKey)
     {
         builder.Services.Configure<Auth2ClientOptions>(o => o.ProjectKey = projectKey);
         return builder;

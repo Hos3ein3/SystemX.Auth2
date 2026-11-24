@@ -21,11 +21,11 @@ public class TokenEndpointTests : IdentityTestBase
     private Task<(HttpStatusCode Status, JsonElement Body)> PasswordGrantAsync(Browser b, string user, string password, string clientId = "appa", string scope = "openid offline_access roles auth2.me") =>
         TokenAsync(b, new Dictionary<string, string> { ["grant_type"] = "password", ["username"] = user, ["password"] = password, ["scope"] = scope }, clientId);
 
-    private async Task PrepareAsync(bool selfUi = true, Action<Domain.Settings.ApplicationSettings>? more = null)
+    private async Task PrepareAsync(bool selfUi = true, Action<TestEdit>? more = null)
     {
         await SetUpAsync();
         await CreateUserInAsync("appa");
-        await UpdateSettingsAsync(A, s => { s.Clients.AllowSelfUiLogin = selfUi; more?.Invoke(s); });
+        await UpdateSettingsAsync(A, s => { s.App.AllowSelfUiLogin = selfUi; more?.Invoke(s); });
     }
 
     // ---------------------------------------------------------------- client credentials
@@ -42,7 +42,7 @@ public class TokenEndpointTests : IdentityTestBase
         var claims = HttpExtensions.JwtPayload(body.Str("access_token"));
         claims.Str("machine").ShouldBe("true");
         claims.Str("sub").ShouldBe("appa");
-        claims.Str("app").ShouldBe(A.Id.ToString("D"));
+        claims.Str("project_id").ShouldBe(A.Id.ToString("D"));
         claims.Values("scope").SelectMany(x => x.Split(' ')).ShouldBe(["auth2.client.handshake", "auth2.permissions.sync"], ignoreOrder: true);
         claims.TryGetProperty("sid", out _).ShouldBeFalse();
         claims.TryGetProperty("amr", out _).ShouldBeFalse();
@@ -78,7 +78,7 @@ public class TokenEndpointTests : IdentityTestBase
         await DisableAsync("appa");
         var (status, body) = await TokenAsync(new Browser(Factory), new Dictionary<string, string> { ["grant_type"] = "client_credentials" });
         status.ShouldBe(HttpStatusCode.BadRequest);
-        body.Str("error_code").ShouldBe(Auth2ErrorCodes.ApplicationDisabled);
+        body.Str("error_code").ShouldBe(Auth2ErrorCodes.AccessDenied);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class TokenEndpointTests : IdentityTestBase
 
         string newSecret;
         await using (var scope = NewScope())
-            newSecret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateClientSecretAsync("appa");
+            newSecret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateSecretAsync("appa");
         newSecret.ShouldNotBe(ASecret);
         (await TokenAsync(b, new Dictionary<string, string> { ["grant_type"] = "client_credentials" })).Status.ShouldBe(HttpStatusCode.Unauthorized);
         (await TokenAsync(b, new Dictionary<string, string> { ["grant_type"] = "client_credentials" }, secret: newSecret)).Status.ShouldBe(HttpStatusCode.OK);
@@ -102,7 +102,7 @@ public class TokenEndpointTests : IdentityTestBase
         await PrepareAsync(selfUi: false);
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-        var stored = await db.Database.SqlQuery<string>($"SELECT client_secret AS \"Value\" FROM openiddict_applications WHERE client_id = 'appa'").SingleAsync();
+        var stored = await db.Database.SqlQuery<string>($"SELECT client_secret AS \"Value\" FROM applications WHERE client_id = 'appa'").SingleAsync();
         stored.ShouldNotBeNullOrEmpty();
         stored.ShouldNotContain(ASecret);
     }
@@ -113,8 +113,8 @@ public class TokenEndpointTests : IdentityTestBase
         await PrepareAsync(selfUi: false);
         var (_, body) = await TokenAsync(new Browser(Factory), new Dictionary<string, string> { ["grant_type"] = "client_credentials", ["scope"] = "auth2.client.handshake" });
         var claims = HttpExtensions.JwtPayload(body.Str("access_token"));
-        claims.Str("app").ShouldBe(A.Id.ToString("D"));
-        claims.Str("app").ShouldNotBe(B.Id.ToString("D"));
+        claims.Str("project_id").ShouldBe(A.Id.ToString("D"));
+        claims.Str("project_id").ShouldNotBe(B.Id.ToString("D"));
         claims.Values("aud").ShouldBe(["appa"]);
         // appa's secret does not open appb
         (await TokenAsync(new Browser(Factory), new Dictionary<string, string> { ["grant_type"] = "client_credentials" }, clientId: "appb", secret: ASecret)).Status.ShouldBe(HttpStatusCode.Unauthorized);
@@ -138,7 +138,7 @@ public class TokenEndpointTests : IdentityTestBase
         await using (var scope = ScopeFor("appa"))
         {
             var roles = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.RoleManager<AppRole>>();
-            await roles.CreateAsync(new AppRole("writer") { ApplicationId = A.Id });
+            await roles.CreateAsync(new AppRole("writer") { ProjectId = A.Id });
         }
         await InAsync("appa", async m => await m.AddToRoleAsync((await m.FindByNameAsync("sara"))!, "writer"));
 
@@ -179,7 +179,7 @@ public class TokenEndpointTests : IdentityTestBase
     public async Task PasswordGrant_UserOfAppAIsNotAcceptedByAppB()
     {
         await PrepareAsync();
-        await UpdateSettingsAsync(B, s => s.Clients.AllowSelfUiLogin = true);
+        await UpdateSettingsAsync(B, s => s.App.AllowSelfUiLogin = true);
         var (status, body) = await PasswordGrantAsync(new Browser(Factory), "sara", PassA, clientId: "appb");
         status.ShouldBe(HttpStatusCode.BadRequest);
         body.Str("error_code").ShouldBe(Auth2ErrorCodes.InvalidCredentials);
@@ -201,7 +201,7 @@ public class TokenEndpointTests : IdentityTestBase
         await PrepareAsync();
         await DisableAsync("appa");
         var (_, body) = await PasswordGrantAsync(new Browser(Factory), "sara", PassA);
-        body.Str("error_code").ShouldBe(Auth2ErrorCodes.ApplicationDisabled);
+        body.Str("error_code").ShouldBe(Auth2ErrorCodes.AccessDenied);
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public class TokenEndpointTests : IdentityTestBase
     {
         await PrepareAsync();
         (await PasswordGrantAsync(new Browser(Factory), "sara", PassA)).Status.ShouldBe(HttpStatusCode.OK);
-        await UpdateSettingsAsync(A, s => s.Clients.AllowSelfUiLogin = false);
+        await UpdateSettingsAsync(A, s => s.App.AllowSelfUiLogin = false);
         var (status, body) = await PasswordGrantAsync(new Browser(Factory), "sara", PassA);
         status.ShouldBe(HttpStatusCode.BadRequest);
         body.Str("error").ShouldBe("unauthorized_client");
@@ -302,7 +302,7 @@ public class TokenEndpointTests : IdentityTestBase
         HttpExtensions.JwtPayload(first.Str("access_token")).Values("role").ShouldBeEmpty();
 
         await using (var scope = ScopeFor("appa"))
-            await scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.RoleManager<AppRole>>().CreateAsync(new AppRole("editor") { ApplicationId = A.Id });
+            await scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.RoleManager<AppRole>>().CreateAsync(new AppRole("editor") { ProjectId = A.Id });
         await InAsync("appa", async m => await m.AddToRoleAsync((await m.FindByNameAsync("sara"))!, "editor"));
 
         var refreshed = await RefreshAsync(b, first.Str("refresh_token"));
@@ -348,7 +348,7 @@ public class TokenEndpointTests : IdentityTestBase
         var user = await InAsync("appa", async m => (await m.FindByNameAsync("sara"))!);
         await JoinAsync(user, B);
         await InAsync("appb", async m => await m.AddPasswordAsync((await m.FindByNameAsync("sara"))!, PassB));
-        await UpdateSettingsAsync(B, s => { s.Clients.AllowSelfUiLogin = true; s.Sessions.SingleActiveSession = true; });
+        await UpdateSettingsAsync(B, s => { s.App.AllowSelfUiLogin = true; s.Sessions.SingleActiveSession = true; });
 
         var b = new Browser(Factory);
         var a1 = (await PasswordGrantAsync(b, "sara", PassA)).Body;
@@ -364,7 +364,7 @@ public class TokenEndpointTests : IdentityTestBase
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        (await db.AuditEvents.CountAsync(e => e.Action == "session.revoked_others" && e.ApplicationId == A.Id)).ShouldBeGreaterThanOrEqualTo(2);
+        (await db.AuditEvents.CountAsync(e => e.Action == "session.revoked_others" && e.ProjectId == A.Id)).ShouldBeGreaterThanOrEqualTo(2);
     }
 
     [Fact]
@@ -439,7 +439,7 @@ public class TokenEndpointTests : IdentityTestBase
     {
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-        (await db.Applications.SingleAsync(a => a.ProjectKey == projectKey)).IsEnabled = false;
+        (await db.Projects.SingleAsync(a => a.ProjectKey == projectKey)).IsEnabled = false;
         await db.SaveChangesAsync();
     }
 }

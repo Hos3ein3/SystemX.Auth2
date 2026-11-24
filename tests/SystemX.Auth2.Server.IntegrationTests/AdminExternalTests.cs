@@ -36,11 +36,12 @@ public abstract class AdminExternalBase : AdminBase
         ["kind"] = "oidc", ["name"] = name, ["type"] = "Google", ["enabled"] = enabled, ["clientId"] = "id-1", ["clientSecret"] = secret, ["displayName"] = "Google",
     };
 
-    protected string P(Guid id, string tail = "") => $"/applications/{id}/external-providers{tail}";
+    protected string P(Guid id, string tail = "") => $"/projects/{id}/external-providers{tail}";
 
     protected async Task<(HttpStatusCode Status, JsonElement Body, string Text)> CallAsync(HttpMethod m, string path, string? token, object? body = null, params (string, string)[] headers)
     {
-        var r = await new Browser(Factory).SendJsonAsync(m, Admin + path, body, token, headers);
+        var (route, rest) = Route(path, token, headers);
+        var r = await new Browser(Factory).SendJsonAsync(m, Admin + route, body, token, rest);
         var text = await r.Content.ReadAsStringAsync();
         return (r.StatusCode, text.Length == 0 ? default : JsonDocument.Parse(text).RootElement.Clone(), text);
     }
@@ -84,7 +85,7 @@ public class AdminExternalProviderTests : AdminExternalBase
         await using (var scope = NewScope())
         {
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            var raw = await scope.ServiceProvider.GetRequiredService<Auth2DbContext>().Database.SqlQuery<string>($"select settings_json::text as \"Value\" from applications where id = {A.Id}").SingleAsync();
+            var raw = await scope.ServiceProvider.GetRequiredService<Auth2DbContext>().Database.SqlQuery<string>($"select settings_json::text as \"Value\" from projects where id = {A.Id}").SingleAsync();
             raw.ShouldNotContain("super-secret-value");
         }
         var providers = await (await new Browser(Factory).GetAsync("/connect/external/providers?client_id=appa")).JsonAsync();
@@ -309,7 +310,7 @@ public class AdminMappingAndDomainTests : AdminExternalBase
             using var _ = s2.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
             var d2 = s2.ServiceProvider.GetRequiredService<Auth2DbContext>();
             globalAdmin = await d2.Roles.Where(r => r.Name == Auth2Roles.GlobalAdmin).Select(r => r.Id).SingleAsync();
-            var r = new AppRole("b-role") { ApplicationId = B.Id };
+            var r = new AppRole("b-role") { ProjectId = B.Id };
             d2.Roles.Add(r);
             await d2.SaveChangesAsync();
             other = r.Id;
@@ -410,7 +411,7 @@ public class AdminUserExternalTests : AdminExternalBase
     public async Task Passkeys_CanBeListedAndRemoved_AndTheBlockedListIsForGlobalAdminsOnly()
     {
         await StartAsync();
-        await UpdateSettingsAsync(A, s => { s.Methods.AllowedLoginMethods.Add(LoginMethod.Passkey); s.Passkeys.AllowPasskeys = true; s.Redirects.AllowedRedirectUris.Add("https://client.test/cb"); });
+        await UpdateSettingsAsync(A, s => { s.Methods.AllowedLoginMethods.Add(LoginMethod.Passkey); s.Passkeys.AllowPasskeys = true; s.RedirectUris.Add("https://client.test/cb"); });
         var session = new Browser(Factory);
         (await session.PostPageAsync("/Account/Login?ClientId=appa", new Dictionary<string, string> { ["Input.Login"] = "plain", ["Input.Password"] = PassA })).StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var key = new SoftwareAuthenticator("https://auth.test");

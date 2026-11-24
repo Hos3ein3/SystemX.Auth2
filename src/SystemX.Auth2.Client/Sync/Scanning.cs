@@ -119,7 +119,10 @@ internal sealed class PermissionScanner(IEnumerable<EndpointDataSource> endpoint
                 foreach (var key in attribute.Permissions) Add(new PermissionDefinition(key), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
+        {
+            foreach (var d in o.Merge()) Add(d, manual: true);   // AddFromClass, AddFromEnum, AddFromString, providers, ...
             foreach (var d in o.PermissionList) Add(d, manual: true);
+        }
 
         return [.. result.Values.OrderBy(d => d.Key, StringComparer.Ordinal)];
     }
@@ -148,7 +151,10 @@ internal sealed class RoleScanner(IEnumerable<EndpointDataSource> endpoints, IOp
                 foreach (var name in attribute.RoleNames) Add(new RoleDefinition(name), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
+        {
+            foreach (var d in o.Merge()) Add(d, manual: true);
             foreach (var d in o.RoleList) Add(d, manual: true);
+        }
 
         return [.. result.Values.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
     }
@@ -181,7 +187,10 @@ internal sealed class ScopeScanner(IEnumerable<EndpointDataSource> endpoints, IO
                 foreach (var name in attribute.Scopes) Add(new ScopeDefinition(name), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
+        {
+            foreach (var d in o.Merge()) Add(d, manual: true);
             foreach (var d in o.ScopeList) Add(d, manual: true);
+        }
 
         return [.. result.Values.OrderBy(d => d.Name, StringComparer.Ordinal)];
     }
@@ -209,7 +218,10 @@ internal sealed class GroupScanner(IEnumerable<EndpointDataSource> endpoints, IO
                 foreach (var name in attribute.Groups) Add(new GroupDefinition(name), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
+        {
+            foreach (var d in o.Merge()) Add(d, manual: true);
             foreach (var d in o.GroupList) Add(d, manual: true);
+        }
 
         return [.. result.Values.OrderBy(d => d.Name, StringComparer.Ordinal)];
     }
