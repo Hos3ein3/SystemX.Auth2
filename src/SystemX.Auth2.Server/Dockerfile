@@ -1,4 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Node builds the Tailwind stylesheet (the MSBuild target Auth2Tailwind runs npm ci and the CSS build; the build fails on an error).
+RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm && rm -rf /var/lib/apt/lists/*
 WORKDIR /repo
 
 # Copy props and shared files

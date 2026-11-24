@@ -1,0 +1,14 @@
+{
+  "name": "systemx-auth2-server-assets",
+  "version": "1.0.0",
+  "scripts": {
+    "build:css": "tailwindcss -i ./Styles/site.css -o ./wwwroot/css/site.css --minify",
+    "watch:css": "tailwindcss -i ./Styles/site.css -o ./wwwroot/css/site.css --watch"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.3.5",
+    "tailwindcss": "^4.3.5"
+  },
+  "private": true
+}

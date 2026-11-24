@@ -122,10 +122,10 @@
                     var failedPct = (double)Model.Metrics.LoginsFailed24h / totalAttempts * 100.0;
                     var lockoutPct = (double)Model.Metrics.Lockouts24h / totalAttempts * 100.0;
                 }
-                <div class="h-4 w-full bg-gray-100 rounded-full overflow-hidden flex shadow-inner">
-                    <div style="width: @(Math.Round(successPct, 1))%" class="bg-green-500 hover:bg-green-600 transition-all" title="Successful: @Model.Metrics.LoginsSuccess24h"></div>
-                    <div style="width: @(Math.Round(failedPct, 1))%" class="bg-amber-400 hover:bg-amber-500 transition-all" title="Failed: @Model.Metrics.LoginsFailed24h"></div>
-                    <div style="width: @(Math.Round(lockoutPct, 1))%" class="bg-red-500 hover:bg-red-600 transition-all" title="Lockouts: @Model.Metrics.Lockouts24h"></div>
+                <div class="space-y-1">
+                    <progress class="block h-3 w-full accent-green-600" max="100" value="@Math.Round(successPct, 1)" aria-label="Successful logins">@Math.Round(successPct, 1)%</progress>
+                    <progress class="block h-3 w-full accent-amber-500" max="100" value="@Math.Round(failedPct, 1)" aria-label="Failed logins">@Math.Round(failedPct, 1)%</progress>
+                    <progress class="block h-3 w-full accent-red-600" max="100" value="@Math.Round(lockoutPct, 1)" aria-label="Lockouts">@Math.Round(lockoutPct, 1)%</progress>
                 </div>
 
                 <!-- Legend & Counts -->

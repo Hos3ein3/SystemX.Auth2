@@ -16,7 +16,7 @@
     <!-- Filter Form -->
     <form method="get" class="flex flex-wrap items-center gap-3">
         <a2-search name="q" value="@Model.Q" placeholder="Search by subject ID..." />
-        <select name="status" onchange="this.form.submit()" class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+        <select name="status" data-autosubmit class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
             <option value="">All Statuses</option>
             <option value="valid" selected="@(Model.Status == "valid" ? "selected" : null)">Valid</option>
             <option value="revoked" selected="@(Model.Status == "revoked" ? "selected" : null)">Revoked</option>
@@ -71,7 +71,7 @@
                             <td class="px-6 py-4 text-right">
                                 @if (a.Status == "valid")
                                 {
-                                    <form method="post" asp-page-handler="Revoke" asp-route-id="@a.Id" class="inline" onsubmit="return confirm('Revoke this authorization and all associated tokens?');">
+                                    <form method="post" asp-page-handler="Revoke" asp-route-id="@a.Id" class="inline" data-confirm="Revoke this authorization and all associated tokens?">
                                         <button type="submit" class="text-xs text-red-600 hover:underline font-medium">Revoke</button>
                                     </form>
                                 }

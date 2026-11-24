@@ -15,13 +15,15 @@ internal sealed class SecurityHeadersMiddleware(RequestDelegate next, IOptions<A
 {
     public Task InvokeAsync(HttpContext http)
     {
+        var nonce = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+        http.Items["Auth2.CspNonce"] = nonce;
         http.Response.OnStarting(() =>
         {
             var h = http.Response.Headers;
             h.TryAdd("X-Content-Type-Options", "nosniff");
             h.TryAdd("Referrer-Policy", "no-referrer");
             h.TryAdd("X-Frame-Options", "DENY");
-            h.TryAdd("Content-Security-Policy", options.Value.Security.ContentSecurityPolicy);
+            h.TryAdd("Content-Security-Policy", options.Value.Security.ContentSecurityPolicy.Replace("{nonce}", nonce, StringComparison.Ordinal));
             h.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
             // Token and account answers must not be stored by caches.
             var path = http.Request.Path.Value ?? "";

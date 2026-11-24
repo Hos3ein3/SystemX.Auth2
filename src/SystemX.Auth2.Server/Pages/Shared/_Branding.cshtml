@@ -19,7 +19,7 @@
     var title = settings?.Localization?.BrandName ?? project?.Name ?? "SystemX Auth2";
 }
 
-<style>
+<style nonce="@(Context.Items["Auth2.CspNonce"])">
     :root {
         --a2-color-primary: @primary;
         --a2-color-primary-text: @primaryText;

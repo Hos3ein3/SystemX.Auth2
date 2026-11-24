@@ -15,7 +15,7 @@
         </div>
         @if (!s?.IsGlobal == true || Model.IsGlobalAdmin)
         {
-            <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Delete this scope?');">
+            <form method="post" asp-page-handler="Delete" data-confirm="Delete this scope?">
                 <a2-button type="submit" variant="danger">Delete Scope</a2-button>
             </form>
         }

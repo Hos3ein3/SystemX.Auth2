@@ -162,8 +162,11 @@ public sealed class SecurityOptions
     /// <summary>Addresses of trusted proxies.</summary>
     public List<string> KnownProxies { get; set; } = [];
 
-    /// <summary>Value of <c>Content-Security-Policy</c>. Configured for hosted UI pages with Tailwind CDN and branding assets.</summary>
-    public string ContentSecurityPolicy { get; set; } = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+    /// <summary>
+    /// Value of <c>Content-Security-Policy</c>. <c>{nonce}</c> is replaced by a random value per request; the branding style block carries it.
+    /// No inline scripts, no inline event handlers, no <c>unsafe-eval</c>, no CDN.
+    /// </summary>
+    public string ContentSecurityPolicy { get; set; } = "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-{nonce}'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 }
 
 /// <summary>Background jobs. Section <c>Auth2:Jobs</c>. One instance runs each job at a time (a database lock).</summary>

@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@source "../Pages";
+@source "../Admin";
+@source "../Components";
+/* Utilities for the branding tokens, always generated (components may use them from tag helpers). */
+@source inline("{bg,text,border,ring}-a2-{primary,primary-text,bg,surface,text,muted,error,success}");
+
+/* Branding writes these variables per request (see Pages/Shared/_Branding.cshtml). The defaults are the Server theme. */
+:root {
+  --a2-color-primary: #1d4ed8;
+  --a2-color-primary-text: #ffffff;
+  --a2-color-background: #f9fafb;
+  --a2-color-surface: #ffffff;
+  --a2-color-text: #111827;
+  --a2-color-muted: #6b7280;
+  --a2-color-error: #b91c1c;
+  --a2-color-success: #15803d;
+  --a2-radius: 0.375rem;
+  --a2-font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Tokens as Tailwind colors: a color change at runtime changes the page without a rebuild (spike S1). */
+@theme inline {
+  --color-a2-primary: var(--a2-color-primary);
+  --color-a2-primary-text: var(--a2-color-primary-text);
+  --color-a2-bg: var(--a2-color-background);
+  --color-a2-surface: var(--a2-color-surface);
+  --color-a2-text: var(--a2-color-text);
+  --color-a2-muted: var(--a2-color-muted);
+  --color-a2-error: var(--a2-color-error);
+  --color-a2-success: var(--a2-color-success);
+}

@@ -63,7 +63,7 @@
                                     </button>
                                 </form>
                                 <span class="text-gray-300">|</span>
-                                <form method="post" asp-page-handler="Delete" asp-route-key="@p.Key" class="inline" onsubmit="return confirm('Delete permission @p.Key?');">
+                                <form method="post" asp-page-handler="Delete" asp-route-key="@p.Key" class="inline" data-confirm="Delete permission @p.Key?">
                                     <button type="submit" class="text-xs text-red-600 hover:underline">Delete</button>
                                 </form>
                             </td>

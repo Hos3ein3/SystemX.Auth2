@@ -38,7 +38,7 @@
         <h4 class="text-sm font-semibold text-gray-800 mb-2">C# / ASP.NET Core Setup Snippet</h4>
         <div class="relative">
             <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-xs overflow-x-auto select-all leading-relaxed">@setup?.Snippet</pre>
-            <button type="button" onclick="navigator.clipboard.writeText(this.nextElementSibling ? this.nextElementSibling.innerText : this.parentElement.querySelector('pre').innerText); this.innerText='Copied!';" class="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs font-sans">
+            <button type="button" data-copy="pre" class="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs font-sans">
                 Copy
             </button>
         </div>

@@ -11,7 +11,7 @@
         <div class="space-y-4">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p class="text-sm text-gray-600">Connecting to provider...</p>
-            <form id="autoPostForm" method="post" action="@Model.PostAction">
+            <form id="autoPostForm" data-autopost method="post" action="@Model.PostAction">
                 @foreach (var field in Model.PostFields)
                 {
                     <input type="hidden" name="@field.Key" value="@field.Value" />
@@ -20,9 +20,6 @@
                     <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded text-sm">Click here to continue</button>
                 </noscript>
             </form>
-            <script>
-                document.getElementById('autoPostForm').submit();
-            </script>
         </div>
     }
     else

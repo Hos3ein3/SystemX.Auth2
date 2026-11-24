@@ -17,7 +17,7 @@
             <a2-link-button href="/admin/p/@Model.ProjectKey/applications/setup?id=@app?.Id" variant="secondary">
                 View Setup Snippets
             </a2-link-button>
-            <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Delete this application permanently?');">
+            <form method="post" asp-page-handler="Delete" data-confirm="Delete this application permanently?">
                 <a2-button type="submit" variant="danger">Delete</a2-button>
             </form>
         </div>
@@ -95,7 +95,7 @@
                     Generating a new secret invalidates the existing client secret immediately.
                 </p>
             </div>
-            <form method="post" asp-page-handler="RotateSecret" onsubmit="return confirm('Rotate client secret now? Any existing application relying on the old secret will need to be updated.');">
+            <form method="post" asp-page-handler="RotateSecret" data-confirm="Rotate client secret now? Any existing application relying on the old secret will need to be updated.">
                 <a2-button type="submit" variant="secondary">
                     Rotate Secret Now
                 </a2-button>

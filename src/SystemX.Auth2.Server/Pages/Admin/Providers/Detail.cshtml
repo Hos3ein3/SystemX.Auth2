@@ -17,7 +17,7 @@
             <form method="post" asp-page-handler="Test">
                 <a2-button type="submit" variant="secondary">Test Connection</a2-button>
             </form>
-            <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Delete provider @p?.Name?');">
+            <form method="post" asp-page-handler="Delete" data-confirm="Delete provider @p?.Name?">
                 <a2-button type="submit" variant="danger">Delete Provider</a2-button>
             </form>
         </div>

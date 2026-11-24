@@ -34,4 +34,16 @@
   <ItemGroup>
     <ProjectReference Include="..\SystemX.Auth2.Contracts\SystemX.Auth2.Contracts.csproj" />
   </ItemGroup>
+
+  <!-- Tailwind CSS v4 (CLI). The generated wwwroot/css/site.css is not committed. Set -p:SkipTailwind=true to skip (no Node installed). -->
+  <Target Name="Auth2Tailwind" BeforeTargets="BeforeBuild;BeforePublish" Condition="'$(SkipTailwind)' != 'true'" Inputs="Styles/site.css;package.json;@(TailwindSources)" Outputs="wwwroot/css/site.css">
+    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(MSBuildProjectDirectory)" Condition="!Exists('$(MSBuildProjectDirectory)/node_modules/.bin/tailwindcss')" />
+    <Exec Command="npm run build:css" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+  <ItemGroup>
+    <TailwindSources Include="Pages/**/*.cshtml;Pages/**/*.cs;Admin/**/*;Components/**/*" />
+    <Content Remove="node_modules/**;package.json;package-lock.json" />
+    <None Remove="node_modules/**" />
+    <Compile Remove="node_modules/**" />
+  </ItemGroup>
 </Project>

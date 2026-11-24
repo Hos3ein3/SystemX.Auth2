@@ -27,7 +27,7 @@
                 </form>
             }
             <form method="post" asp-page-handler="RemoveFromProject">
-                <a2-button type="submit" variant="danger" onclick="return confirm('Remove user from this project?')">Remove from Project</a2-button>
+                <a2-button type="submit" variant="danger" data-confirm="Remove user from this project?">Remove from Project</a2-button>
             </form>
         </div>
     </div>
@@ -132,7 +132,7 @@
                         @if (u?.TwoFactorEnabled == true)
                         {
                             <form method="post" asp-page-handler="Reset2Fa">
-                                <a2-button type="submit" variant="secondary" onclick="return confirm('Reset 2FA for this user?')">Reset 2FA</a2-button>
+                                <a2-button type="submit" variant="secondary" data-confirm="Reset 2FA for this user?">Reset 2FA</a2-button>
                             </form>
                         }
                         else

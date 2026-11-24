@@ -11,7 +11,7 @@
             <h1 class="text-2xl font-bold text-gray-900">Key Ring Management</h1>
             <p class="mt-1 text-sm text-gray-500">Global JWT token signing and payload encryption keys kept in PostgreSQL.</p>
         </div>
-        <form method="post" asp-page-handler="Rotate" onsubmit="return confirm('Rotate signing and encryption keys now? New tokens will be signed with the fresh key.');">
+        <form method="post" asp-page-handler="Rotate" data-confirm="Rotate signing and encryption keys now? New tokens will be signed with the fresh key.">
             <a2-button type="submit" variant="primary">
                 Rotate Keys Now
             </a2-button>
@@ -56,7 +56,7 @@
                             <td class="px-6 py-4 text-right">
                                 @if (!isRetired)
                                 {
-                                    <form method="post" asp-page-handler="Retire" asp-route-id="@k.Id" class="inline" onsubmit="return confirm('Retire this key early?');">
+                                    <form method="post" asp-page-handler="Retire" asp-route-id="@k.Id" class="inline" data-confirm="Retire this key early?">
                                         <button type="submit" class="text-xs text-amber-600 hover:underline font-medium">Retire</button>
                                     </form>
                                 }

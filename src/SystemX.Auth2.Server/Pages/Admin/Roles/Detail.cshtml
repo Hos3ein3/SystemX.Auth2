@@ -15,7 +15,7 @@
         </div>
         @if (r?.IsSystem == false)
         {
-            <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Are you sure you want to delete this role?');">
+            <form method="post" asp-page-handler="Delete" data-confirm="Are you sure you want to delete this role?">
                 <a2-button type="submit" variant="danger">Delete Role</a2-button>
             </form>
         }

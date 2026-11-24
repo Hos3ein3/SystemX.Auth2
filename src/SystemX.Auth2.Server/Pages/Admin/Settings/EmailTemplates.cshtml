@@ -45,7 +45,7 @@
                             <td class="px-6 py-4 text-right">
                                 @if (t.IsCustom)
                                 {
-                                    <form method="post" asp-page-handler="Reset" asp-route-name="@t.Name" asp-route-culture="@t.Culture" class="inline" onsubmit="return confirm('Reset this template to system default?');">
+                                    <form method="post" asp-page-handler="Reset" asp-route-name="@t.Name" asp-route-culture="@t.Culture" class="inline" data-confirm="Reset this template to system default?">
                                         <button type="submit" class="text-xs text-amber-600 hover:underline">Reset</button>
                                     </form>
                                 }
