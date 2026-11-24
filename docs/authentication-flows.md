@@ -220,6 +220,8 @@ Every failure is `invalid_otp`, and wrong codes count as failed attempts, so too
 
 ### Two-factor (authenticator app)
 
+The full guide (settings, the service, every route, the sign-in step, the admin reset, examples) is [two-factor.md](two-factor.md). In short:
+
 Endpoints for a signed-in user (token scope `auth2.me`), or the pages `Manage/TwoFactor/Enable` and `Manage/TwoFactor/RecoveryCodes`:
 
 1. `POST /api/auth2/2fa/setup` makes a key and returns `sharedKey` (to type) and `authenticatorUri` (an `otpauth://` URI for a QR code). Calling it again before turning it on makes a new key.
@@ -347,3 +349,4 @@ Every application is an OpenIddict client with a **secret**. OpenIddict stores o
 - [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
 - [Architecture](architecture.md)
 - [Current user and current client](client-current-user.md)
+- [Client setup](client-setup.md)

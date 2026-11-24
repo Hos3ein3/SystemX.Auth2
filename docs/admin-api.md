@@ -203,3 +203,7 @@ Authorization: Bearer <admin user token>
 - [Troubleshooting external sign-in](external-identity/troubleshooting.md)
 - [Authentication flows](authentication-flows.md)
 - [Documentation index](index.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)
+- [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
+- [Error codes](error-codes.md)
+- [Security](security.md)

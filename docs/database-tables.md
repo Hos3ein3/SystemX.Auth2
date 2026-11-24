@@ -806,3 +806,7 @@ Primary key: `id`.
 - [Documentation index](index.md)
 - [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
 - [Current user and current client](client-current-user.md)
+- [Enums reference](enums-reference.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Contracts reference](contracts-reference.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)

@@ -95,3 +95,7 @@ the user links it again there. Reason: the projects can have different providers
 - [Documentation index](index.md)
 - [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
 - [Current user and current client](client-current-user.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)
+- [Client setup](client-setup.md)
+- [Security](security.md)
+- [Passkeys](external-identity/passkeys.md)

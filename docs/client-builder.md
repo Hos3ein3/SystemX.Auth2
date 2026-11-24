@@ -373,3 +373,7 @@ builder.Services.AddHttpClient("reports", c => c.BaseAddress = new Uri("https://
 - [Documentation index](index.md)
 - [Contracts reference](contracts-reference.md)
 - [Server settings](server-settings.md)
+- [Enums reference](enums-reference.md)
+- [Database tables](database-tables.md)
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)

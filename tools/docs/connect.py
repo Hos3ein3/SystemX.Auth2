@@ -16,6 +16,8 @@ FAMILIES = [
     ['getting-started.md', 'concepts.md', 'server-setup.md', 'client-setup.md', 'seeding.md', 'troubleshooting.md'],
     ['concepts.md', 'architecture.md', 'database-tables.md', 'credential-scope.md', 'decisions.md', 'comparison-and-limits.md'],
     ['identity-stores.md', 'database-tables.md', 'credential-scope.md', 'authentication-flows.md', 'authorization.md', 'server-settings.md', 'architecture.md', 'client-current-user.md'],
+    ['two-factor.md', 'authentication-flows.md', 'identity-stores.md', 'credential-scope.md', 'server-settings.md', 'admin-api.md', 'client-setup.md', 'error-codes.md', 'security.md', 'external-identity/passkeys.md'],
+    ['enums-reference.md', 'server-settings.md', 'client-builder.md', 'contracts-reference.md', 'database-tables.md', 'external-identity.md', 'two-factor.md'],
     # server
     ['server-setup.md', 'server-settings.md', 'seeding.md', 'deployment-and-scaling.md', 'security.md', 'observability.md', 'email-and-sms.md', 'server-reference.md'],
     ['server-settings.md', 'server-reference.md', 'credential-scope.md', 'email-and-sms.md', 'admin-api.md', 'localization.md', 'external-identity.md'],

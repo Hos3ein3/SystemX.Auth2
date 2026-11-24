@@ -45,7 +45,7 @@ public interface ICurrentClient
     /// The name is the one the project chose for the provider.
     /// </summary>
     string? Idp { get; }
-    /// <summary>How the user proved who they are (claim <c>amr</c>): <c>pwd</c>, <c>otp</c>, <c>fed</c> (external provider), <c>swk</c>/<c>hwk</c> (passkey), <c>mfa</c> (several factors).</summary>
+    /// <summary>How the user proved who they are (claim <c>amr</c>): <c>pwd</c>, <c>otp</c>, <c>fed</c> (external provider), <c>swk</c>/<c>hwk</c> (passkey), <c>mfa</c> (a user-verified passkey, or an external provider that reports several factors; a local password plus an authenticator code gives <c>pwd</c> and <c>otp</c>).</summary>
     IReadOnlyList<string> Amr { get; }
 }
 

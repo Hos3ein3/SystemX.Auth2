@@ -240,3 +240,7 @@ Guides: [OpenLDAP](external-identity/ldap-openldap.md), [Active Directory](exter
 - [Error codes](error-codes.md)
 - [Contributing workflow](contributing-workflow.md)
 - [Documentation index](index.md)
+- [Enums reference](enums-reference.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Contracts reference](contracts-reference.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)

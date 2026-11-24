@@ -966,7 +966,7 @@ Signing and encryption keys kept by the Server (when no certificate files are co
 
 ### ILoginService
 
-The one place that decides if a login is valid. Order: application enabled, user belongs to the application (multi mode), login method allowed, lockout, password, two-factor, single active session. Consent is checked by the authorize endpoint (phase 6). Wrong user, wrong password and "not registered here" all return `invalid_credentials`.
+The one place that decides if a login is valid. Order: application enabled, user belongs to the application (multi mode), login method allowed, lockout, password, two-factor, single active session. Consent is checked by the authorize endpoint. Wrong user, wrong password and "not registered here" all return `invalid_credentials`.
 
 | Member | What it does |
 |---|---|
@@ -2204,7 +2204,6 @@ Registration rules.
 | `AssignedRoles` | Role names every new member of the project gets (by self registration, joining with proof, or the first external sign-in). The roles must exist in the project. A missing one is skipped and written to the audit log. The built-in admin roles are refused. |
 | `AssignedGroups` | Group names every new member gets (keys: lowercase letters, digits and `. _ : -`). The groups must exist. A missing one is skipped and audited. |
 | `AssignedPermissions` | Permission keys every new member gets directly (for example `orders.read`). The permissions must exist. A missing one is skipped and audited. |
-| `SendConfirmationSMS` | Send the confirmation SMS right after registration. |
 
 
 ### SamlBinding

@@ -6,7 +6,7 @@ namespace SystemX.Auth2.Contracts.Enums;
 [JsonConverter(typeof(JsonStringEnumConverter<UiMode>))]
 public enum UiMode
 {
-    /// <summary>Nothing happens.</summary>
+    /// <summary>No sign-in screens (an API: only 401 / 403 answers).</summary>
     None,
     /// <summary>The server shows the login pages.</summary>
     Hosted,

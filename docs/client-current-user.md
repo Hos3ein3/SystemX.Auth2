@@ -48,7 +48,7 @@ You do not need to call `EnableCurrentUser()` for either service to work: they a
 | `IsMachine` | `machine` | `true` when the claim is `"true"`: the token came from the client-credentials grant (a program). User tokens never have it |
 | `SessionId` | `sid` | The id of the sign-in session of a user token; `null` for a machine token |
 | `Idp` | `idp` | The name of the **external provider** the person signed in with (the name your project gave it: `google`, `corp-saml`, `ad`). `null` after a local sign-in |
-| `Amr` | `amr` | How the person proved who they are. The values are `pwd` (password), `otp` (one-time code), `fed` (external provider), `swk` or `hwk` (a passkey in software or hardware) and `mfa` (several factors). Several claims are collected into one distinct list |
+| `Amr` | `amr` | How the person proved who they are. The values are `pwd` (password), `otp` (one-time code), `fed` (external provider), `swk` or `hwk` (a passkey in software or hardware) and `mfa` (a user-verified passkey, or an external provider that reports several factors; a local password plus an authenticator code gives `pwd` and `otp`). Several claims are collected into one distinct list |
 
 Everything is read from the claims **as they are in the request**. If a claim is missing the member is `null`, `false` or empty; nothing throws.
 
@@ -56,7 +56,7 @@ Everything is read from the claims **as they are in the request**. If a claim is
 
 ```csharp
 // refuse a sensitive action unless the person used several factors
-if (!client.Amr.Contains("mfa")) return Results.Forbid();
+if (!client.Amr.Contains("mfa") && !client.Amr.Contains("otp")) return Results.Forbid();
 
 // audit which application and which sign-in produced an action
 logger.LogInformation("{Client} in {Project} via {Idp}", client.ClientId, client.ProjectKey, client.Idp ?? "local");

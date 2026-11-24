@@ -10,6 +10,6 @@ public enum ScanningPolicy
     Manual,
     /// <summary>Find items from endpoints and attributes.</summary>
     AssemblyScan,
-    /// <summary>Push first, then pull.</summary>
+    /// <summary>Your lists and sources, plus what the scan finds in endpoints and attributes.</summary>
     Both,
 }

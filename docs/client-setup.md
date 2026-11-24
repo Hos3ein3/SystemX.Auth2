@@ -181,6 +181,12 @@ Calls that **change something** (register, login, password calls, refresh) are *
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Server settings](server-settings.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)
+- [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
+- [Credential scope](credential-scope.md)
+- [Error codes](error-codes.md)
+- [Security](security.md)
+- [Passkeys](external-identity/passkeys.md)
 
 ## Sign-in for browser apps (UI modes)
 

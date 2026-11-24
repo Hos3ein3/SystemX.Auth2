@@ -650,7 +650,7 @@ The calling **client** of the current request, read from the token. Everything h
 | `IsMachine` | True when the token belongs to a program (client credentials), not a person. |
 | `SessionId` | Session id (`sid`) of a user token, or null. |
 | `Idp` | The external provider the user signed in with (claim `idp`, for example `google` or `corp-saml`), or null for a local sign-in. The name is the one the project chose for the provider. |
-| `Amr` | How the user proved who they are (claim `amr`): `pwd`, `otp`, `fed` (external provider), `swk`/`hwk` (passkey), `mfa` (several factors). |
+| `Amr` | How the user proved who they are (claim `amr`): `pwd`, `otp`, `fed` (external provider), `swk`/`hwk` (passkey), `mfa` (a user-verified passkey, or an external provider that reports several factors; a local password plus an authenticator code gives `pwd` and `otp`). |
 
 
 ### ICurrentUser

@@ -38,6 +38,11 @@ if (!result.IsSuccess && result.Error!.Code == Auth2ErrorCodes.InvalidCredential
 - [Server reference](server-reference.md)
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Enums reference](enums-reference.md)
+- [Server settings](server-settings.md)
+- [Database tables](database-tables.md)
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)
 
 ## Types (generated)
 
@@ -1265,7 +1270,7 @@ Where the client finds permissions and roles.
 |---|---|
 | `Manual` | Only the lists written in options. |
 | `AssemblyScan` | Find items from endpoints and attributes. |
-| `Both` | Push first, then pull. |
+| `Both` | Your lists and sources, plus what the scan finds in endpoints and attributes. |
 
 
 ### ScopeSyncPolicy
@@ -1306,7 +1311,7 @@ Who shows the login screens.
 
 | Member | What it does |
 |---|---|
-| `None` | Nothing happens. |
+| `None` | No sign-in screens (an API: only 401 / 403 answers). |
 | `Hosted` | The server shows the login pages. |
 | `Self` | The client app shows its own login pages. |
 

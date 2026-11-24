@@ -40,6 +40,8 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 | Page | Topic |
 |---|---|
 | [authentication-flows.md](authentication-flows.md) | Login, tokens, grants, register, join, OTP, reset, two-factor, consent |
+| [enums-reference.md](enums-reference.md) | Every enum: values, where it is used, which value to choose and why |
+| [two-factor.md](two-factor.md) | Two-factor sign-in (authenticator app): enable, `TwoFactorService`, the sign-in step, recovery codes, admin reset |
 | [authorization.md](authorization.md) | Permissions, roles, groups, effective access, `/me` |
 | [permission-sync.md](permission-sync.md) | Push and pull of permissions, roles, scopes and groups |
 | [handshake-and-startup.md](handshake-and-startup.md) | The startup check and the server mode |

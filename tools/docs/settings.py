@@ -68,8 +68,8 @@ def build(cfg, rows_by_class, notes):
         if not picked: continue
         out += [f'## {title}', '', blurb.strip(), '']
         for r in picked:
-            n = notes.get(r['path'])
-            if n is None: missing.append(f"{cls}.{r['path']}"); continue
+            n = notes.get(cfg.get('notekey', lambda c, p: p)(cls, r['path']))
+            if n is None: missing.append(f"{cfg['file']}: {cfg.get('notekey', lambda c, p: p)(cls, r['path'])}"); continue
             out.append(render_entry(r, n, cfg['example'](cls)))
     out.append(cfg['outro'].rstrip('\n'))
     return '\n'.join(out) + '\n', missing
