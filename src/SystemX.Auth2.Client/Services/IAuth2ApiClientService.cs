@@ -67,6 +67,12 @@ public interface IAuth2ApiClientService
     /// <summary>Reads the custom scopes this application allows.</summary>
     Task<Result<IReadOnlyList<ScopeDto>>> GetScopesAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Reads the external sign-in providers that are on for this application (name, button text, kind, whether a user name and password form is needed).
+    /// Use it with <c>UseSelfUi</c> to show the choices; then send the user to the hosted login of the Server. Secrets are never part of the list.
+    /// </summary>
+    Task<Result<IReadOnlyList<ExternalProviderInfoDto>>> GetExternalProvidersAsync(CancellationToken ct = default);
+
     /// <summary>Reads the permissions of this application.</summary>
     Task<Result<IReadOnlyList<PermissionDto>>> GetPermissionsAsync(CancellationToken ct = default);
 

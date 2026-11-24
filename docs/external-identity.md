@@ -195,6 +195,12 @@ Setup guides: [generic](external-identity/saml-generic.md), [Entra ID](external-
 The user types a directory user name and password into the normal login page. The Server finds the user with a **service account**, checks the password by binding as the user, reads attributes and groups, and then uses the same decision table and login pipeline as every other external sign-in.
 Guides: [OpenLDAP](external-identity/ldap-openldap.md), [Active Directory](external-identity/ldap-active-directory.md), [troubleshooting](external-identity/troubleshooting.md). Safety rules in short: TLS is required (LDAPS or StartTLS) with chain and name checks, filter input is escaped, the link key is the unique id (not the DN), empty passwords are never sent, attempts are rate limited and counted toward the lockout, and secrets never reach logs.
 
+## Using it from an application (Client package)
+
+- **Hosted UI, cookie and Blazor**: no change. The user picks the provider on the login page of the Server. The token has `idp` and `amr`; use `ICurrentUser.IdentityProvider` and `ICurrentUser.AuthenticationMethods` ([client-current-user.md](client-current-user.md)).
+- **Self UI**: social login, OIDC, SAML and passkeys cannot work in your own form (they need a redirect or the Server's domain). Directory (LDAP) passwords work through the token endpoint when `AllowSelfUiLogin` is on. `IAuth2ApiClientService.GetExternalProvidersAsync()` (route `GET /api/auth2/external-providers`, machine token) lists the providers so that your page can show the choices and send the user to the hosted login ([client-setup.md](client-setup.md#self-ui)).
+- **API-only clients**: nothing to do.
+
 ## How to implement or extend
 
 - **LDAP source**: `LdapDirectory`, `LdapText`, `LdapAwareLoginService` (see [ldap-openldap.md](external-identity/ldap-openldap.md#how-to-implement-or-extend)).

@@ -19,7 +19,7 @@ namespace SystemX.Auth2.Server.Infrastructure.External;
 /// <inheritdoc />
 internal sealed class PasskeyService(
     SignInManager<AppUser> signIn, UserManager<AppUser> users, Auth2DbContext db, IAuthFlowResolver flow, ILoginService login, UserLookup lookup,
-    IAuditService audit, IOptions<Auth2ServerOptions> options, IHostEnvironment env) : IPasskeyService
+    IAuditService audit, IServerValues serverValues, IOptions<Auth2ServerOptions> options, IHostEnvironment env) : IPasskeyService
 {
     private async Task<(Auth2Application App, PasskeySettings Settings, ApplicationSettings All)> GateAsync(CancellationToken ct)
     {
@@ -72,7 +72,9 @@ internal sealed class PasskeyService(
 
         var aaguid = AaguidOf(passkey.AttestationObject);
         var server = options.Value.Passkeys;
-        if (aaguid is { } id && server.BlockedAaguids.Contains(id)) return await BlockedAsync(app, user, id);
+        var blocked = server.BlockedAaguids.AsEnumerable();
+        if (await serverValues.GetAsync("passkeys.blocked_aaguids", ct) is { Length: > 0 } stored) blocked = blocked.Concat(stored.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse));
+        if (aaguid is { } id && blocked.Contains(id)) return await BlockedAsync(app, user, id);
         if (server.AttestationMode == "AaguidAllowList" && (aaguid is null || !server.AllowedAaguids.Contains(aaguid.Value))) return await BlockedAsync(app, user, aaguid);
 
         // The same credential id must not exist for any user in this application.

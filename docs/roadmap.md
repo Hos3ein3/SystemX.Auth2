@@ -5,8 +5,11 @@
 - UI pages for the server and the admin area (written by a separate step, see `ui-handover.md` later).
 - MVC sample and `docker-compose` file.
 - Gateway package (YARP).
-- SAML and LDAP / Active Directory.
-- Passkeys: from experimental to stable.
+- SAML **identity provider** role (issuing assertions to other applications): not planned, apps use OpenID Connect with this Server.
+- Background directory sync and user federation (LDAP is read at login only).
+- Upstream single logout for OpenID Connect providers; SP-initiated SAML single logout.
+- Passkey attestation validation (AAGUID is read as the authenticator reports it).
+- A queue of real-provider tests (Google, Microsoft, GitHub, Apple, Facebook) outside the fake providers.
 - Source generator for permission constants.
 - Helm chart.
 - Webhook cache invalidation.
@@ -24,7 +27,7 @@ Every `TODO` in code must be listed here.
 - Phase 3: the settings cache is per instance; with Redis, pub/sub clears it on all instances (phase 10).
 - Phase 4: the claim `locale` (saved user culture) is read by the culture provider, but nothing writes it yet. Phase 5 adds it to tokens and cookies.
 - Phase 4: `convert-to-single` / `convert-to-multi` must move credentials between the two places described in `credential-scope.md`.
-- Pages still to come: `Admin/*` (phase 9), `External/Callback` and `Manage/Passkeys` (phase 14).
+- Pages still to come: `Admin/*` (the admin UI). External sign-in pages and `Manage/Passkeys`, `Manage/ExternalLogins` exist as page models (external identity work package).
 - Phase 5: rate limiting of `/connect/token` and the login page: done in phase 10.
 - Phase 5: temporary keys are replaced by the key ring; `rotate-keys` and `IKeyRing` exist (phase 10).
 - Phase 5: the `locale` claim is now written to tokens. The culture provider reads it from the hosted session cookie only after the cookie also carries it (phase 6, with the user culture setting).

@@ -142,6 +142,8 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IScopeSyncService, ScopeSyncService>();
         services.AddScoped<IClientHandshakeService, ClientHandshakeService>();
         services.AddScoped<IAdminUserService, SystemX.Auth2.Server.Infrastructure.Admin.AdminUserService>();
+        services.AddScoped<IServerValues, SystemX.Auth2.Server.Infrastructure.Admin.ServerValues>();
+        services.AddScoped<IAdminExternalService, SystemX.Auth2.Server.Infrastructure.Admin.AdminExternalService>();
         services.AddScoped<IAdminApplicationService, SystemX.Auth2.Server.Infrastructure.Admin.AdminApplicationService>();
         services.AddScoped<IAuditReader, SystemX.Auth2.Server.Infrastructure.Admin.AuditReader>();
         services.AddScoped<SystemX.Auth2.Server.Endpoints.Q>();

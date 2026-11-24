@@ -99,6 +99,44 @@ A global admin may add `all=true` to see every application. A project admin who 
 
 Not built: `external-providers` (experimental, phase 14).
 
+## External identity routes
+
+Providers, mappings, home-realm routes and the support routes for logins and passkeys. They follow the same rules as the other routes: a project admin works on **the own application only** (other applications answer 404), a global admin may name any application in the route.
+Every write creates an audit event (`external.provider.created`, `.updated`, `.deleted`, `.secret_rotated`, `external.mapping.*`, `passkey.*`, ...) with names and counts, **never secrets**, raises the `SettingsVersion` of the application and reloads the providers on all instances ([external-identity.md](external-identity.md#changing-providers-at-runtime)).
+
+| Route | Who | What |
+|---|---|---|
+| `GET /external-provider-types` | Project | The eight provider types with their `fields`, `defaultScopes`, `setupDocsAnchor` and `emailVerifiedByDefault` (a form can be drawn from it) |
+| `GET /applications/{id}/external-providers` | Project | Providers, **without secrets**: `secretIsSet` says which secrets exist; `urls` are the addresses to enter at the provider (`callback`, or `acs`, `slo`, `metadata`); `warnings` (certificate expires in 30 days, IdP-initiated on, certificate check off) |
+| `POST /applications/{id}/external-providers` | Project | Create. Body is the provider JSON with a `kind` (`oidc`, `saml`, `ldap`). Secrets are sent in plain fields: `clientSecret`, `privateKey` (Apple), `bindPassword` (LDAP). They are encrypted and never come back. `409` when the name exists |
+| `PUT /applications/{id}/external-providers/{name}` | Project | Update. **`If-Match: "v{settingsVersion}"` is required** (`409` when it is old). An empty or missing secret keeps the old one. The name and the type cannot change |
+| `POST .../{name}/rotate-secret` | Project | Body `{ "clientSecret" }`, `{ "privateKey" }` or `{ "bindPassword" }` |
+| `POST .../{name}/test` | Project | OIDC: reads discovery, reports issuer and endpoints. SAML: reads metadata, reports entity id, endpoints, certificate expiry. LDAP: TLS connect and service-account bind. Answer `{ ok, errorCode, reason, details }` (never secrets) |
+| `POST .../{name}/ldap/test-user` | Project | Body `{ "userName" }`. Shows the DN, unique id, attributes and groups of that user, **no password** |
+| `POST .../{name}/saml/refresh-metadata` | Project | Reads the identity provider metadata again now |
+| `POST .../{name}/saml/generate-sp-certificate` | Project | Makes a new service provider certificate. Answer: the **public** PEM, expiry and thumbprint |
+| `DELETE /applications/{id}/external-providers/{name}` | Project | Removes the provider. The links of users stay in the database |
+| `GET/POST/PUT/DELETE /applications/{id}/external-group-mappings[/{mappingId}]` | Project | Mappings. `sourceType` Group, Claim or Attribute; `matchType` Exact or Prefix (no regex); `targetType` Role, Group or Permission. The target must belong to the application; `GlobalAdmin` and system roles are refused |
+| `GET/PUT /applications/{id}/email-domain-routes` | Project | `[ { "providerName", "domains": [] } ]`. PUT replaces all; one provider per domain |
+| `GET /users/{id}/external-logins`, `DELETE /users/{id}/external-logins/{provider}` | Project | Support: list and remove. The last way to sign in is protected (`cannot_remove_last_login_method`); a global admin may add `?force=true` |
+| `GET /users/{id}/passkeys`, `DELETE /users/{id}/passkeys/{passkeyId}` | Project | List and remove (a lost device) |
+| `GET/PUT /passkeys/blocked-aaguids` | Global | Authenticator models that cannot be registered. Joined with `Auth2:Passkeys:BlockedAaguids` |
+
+**Who may change what.** Some provider fields are only for a global admin: a project admin cannot **turn on** `TrustProviderEmailVerification`, `TrustProviderMfa`, `AllowIdpInitiated` or turn **off** `ValidateServerCertificate` (answer `403 forbidden` with the field names). The generic `PUT /applications/{id}/settings` never changes the provider list (it keeps it as it is), and `GET .../settings` shows providers without any secret.
+
+```json
+POST /api/auth2/admin/applications/{id}/external-providers
+{ "kind": "oidc", "name": "google", "type": "Google", "enabled": true,
+  "clientId": "123.apps.googleusercontent.com", "clientSecret": "GOCSPX-...", "hostedDomain": "corp.com" }
+
+201 Created
+{ "name": "google", "type": "Google", "enabled": true, "displayName": null,
+  "settings": { "kind": "oidc", "name": "google", "clientId": "123.apps.googleusercontent.com", "hostedDomain": "corp.com", "...": "..." },
+  "secretIsSet": { "clientSecret": true, "privateKey": false },
+  "urls": { "callback": "https://auth.example.com/callback/login/shop/google" },
+  "registrationName": "ext-0198...-google", "warnings": [] }
+```
+
 ## Example
 
 ```http

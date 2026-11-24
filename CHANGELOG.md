@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- External identity step 10: Client `ICurrentUser.IdentityProvider` and `AuthenticationMethods` (`idp`, `amr` claims), `IAuth2ApiClientService.GetExternalProvidersAsync()` and the server route `GET /api/auth2/external-providers`. Docs: Self UI limits in `client-setup`, `client-current-user`, `external-identity`.
+- External identity step 9: admin API for external providers (`IAdminExternalService`): types, list, create, update with row version, rotate secret, delete, test, LDAP user lookup, SAML metadata refresh and SP certificate, mappings, email domain routes, user external logins and passkeys, blocked AAGUIDs (`server_values` table).
+  Secrets are never returned or audited; project admins cannot turn on trust flags; the generic settings route keeps the provider list and hides secrets. Migration `Phase14ServerValues`.
 - External identity step 8: passkeys (`IPasskeyService`) on the ASP.NET Core Identity passkey support with a per-application store: registration and sign-in routes (`/account/passkey/*`), management routes and page (`/account/passkeys`, `Manage/Passkeys`),
   limits, user verification rule, backup rule when unlinking, blocked AAGUIDs and allow list, `Auth2:Passkeys:ServerDomain` (required in Production), `amr` `swk`/`hwk` + `mfa`, local two-factor skipped for a user-verified passkey, rate limit policy `passkey`.
   Docs: passkeys guide, JSON contract in `ui-handover`.

@@ -42,6 +42,13 @@ public interface ICurrentUser
     IReadOnlyList<string> Scopes { get; }
     /// <summary>True when the token belongs to a program (client credentials), not a person.</summary>
     bool IsMachine { get; }
+    /// <summary>
+    /// The external provider the user signed in with (claim <c>idp</c>, for example <c>google</c> or <c>corp-saml</c>), or null for a local sign-in.
+    /// The name is the one the application chose for the provider.
+    /// </summary>
+    string? IdentityProvider { get; }
+    /// <summary>How the user proved who they are (claim <c>amr</c>): <c>pwd</c>, <c>otp</c>, <c>fed</c> (external provider), <c>swk</c>/<c>hwk</c> (passkey), <c>mfa</c> (several factors).</summary>
+    IReadOnlyList<string> AuthenticationMethods { get; }
 
     /// <summary>Roles. Empty for a machine token.</summary>
     Task<IReadOnlyList<string>> GetRolesAsync(CancellationToken ct = default);
@@ -247,6 +254,8 @@ internal sealed class CurrentUserImpl(IHttpContextAccessor http, IAuth2AccessPro
     public string? LastName => Claim("family_name");
     public string? FullName => Claim("name");
     public IReadOnlyList<string> Scopes => ScopeClaims.Read(Principal);
+    public string? IdentityProvider => Claim(Auth2Claims.IdentityProvider);
+    public IReadOnlyList<string> AuthenticationMethods => [.. Principal.FindAll(Auth2Claims.Amr).Select(c => c.Value).Distinct(StringComparer.Ordinal)];
 
     public async Task<IReadOnlyList<string>> GetRolesAsync(CancellationToken ct = default) => (await access.GetAccessAsync(Principal, ct)).Roles;
     public async Task<IReadOnlyList<string>> GetPermissionsAsync(CancellationToken ct = default) => (await access.GetAccessAsync(Principal, ct)).Permissions;

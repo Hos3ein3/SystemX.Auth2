@@ -214,6 +214,18 @@ app.MapPost("/login", async (HttpContext http, IAuth2WebService web, LoginForm f
 });
 ```
 
+**External sign-in and Self UI (limits).** With Self UI your app shows the form and the Server only sees a password or a code, so these ways to sign in **do not work inside your form**: social login, generic OpenID Connect, SAML (all need a redirect to the provider), and passkeys (they need the Server's domain). The user must go through the Server's hosted login page.
+What works: a **directory (LDAP) password** works through your own form, because it goes to the token endpoint like a normal password (the application needs `AllowSelfUiLogin` and the login method `Ldap`).
+To show the choices in your own page, ask the Server which providers are on and send the user to the hosted login:
+
+```csharp
+var providers = await api.GetExternalProvidersAsync();   // IAuth2ApiClientService: name, displayName, kind, loginFormRequired
+// show a button per provider, then:
+return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, ["Auth2"]);   // hosted login (UseHostedUi)
+```
+
+Hosted UI, cookie and Blazor apps need nothing new: the user picks a provider on the Server's page and your app sees a normal code flow. The token has the claims `idp` and `amr`, available as `ICurrentUser.IdentityProvider` and `ICurrentUser.AuthenticationMethods`.
+
 `IAuth2WebService`: `LoginAsync`, `TwoFactorLoginAsync`, `OtpLoginAsync` (each makes the cookie when it works), `LogoutAsync` (revokes the refresh token and removes the cookie), `ChallengeAsync(http, returnUrl)`. `/auth2/logout` is mapped for you.
 
 ### Cookie options (`UseCookieAuthentication`)

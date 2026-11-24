@@ -88,6 +88,8 @@ public interface ISamlProviderMaterial
 {
     /// <summary>The material for the provider. Throws <see cref="ExternalLoginException"/> when it cannot be built.</summary>
     Task<SamlIdpMaterial> GetAsync(RegisteredProvider provider, CancellationToken ct);
+    /// <summary>Forgets the cached copy of the metadata of this provider and reads it again now.</summary>
+    Task<SamlIdpMaterial> RefreshAsync(RegisteredProvider provider, CancellationToken ct);
 }
 
 /// <inheritdoc />
@@ -111,6 +113,13 @@ public sealed class SamlProviderMaterial(IHttpClientFactory http, IMemoryCache c
             log.LogWarning(ex, "The SAML identity provider material of {Provider} cannot be read.", provider.RegistrationName);
             throw new ExternalLoginException(Auth2ErrorCodes.SamlResponseInvalid, "saml_idp_material_invalid", ex);
         }
+    }
+
+    /// <inheritdoc />
+    public Task<SamlIdpMaterial> RefreshAsync(RegisteredProvider provider, CancellationToken ct)
+    {
+        if (((SamlProviderSettings)provider.Settings).IdpMetadataUrl is { Length: > 0 } url) cache.Remove("saml-idp-meta:" + new Uri(url));
+        return GetAsync(provider, ct);
     }
 
     private async Task<SamlIdpMaterial> FromUrlAsync(Uri url, CancellationToken ct)

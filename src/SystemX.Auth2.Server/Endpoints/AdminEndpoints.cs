@@ -122,6 +122,7 @@ public static class AdminEndpoints
         MapApplications(g);
         MapUsers(g);
         MapAccess(g);
+        MapExternal(g);
 
         // Keys (global admin only). Rotation: new keys sign from now on, old keys keep checking old tokens until they are removed.
         g.MapGet("/keys", async (HttpContext http, IKeyRing keys) => Results.Ok(await keys.ListAsync(http.RequestAborted))).Require(AdminLevel.Global);
@@ -139,6 +140,138 @@ public static class AdminEndpoints
         }).Require(AdminLevel.Project);
 
         return routes;
+    }
+
+    // ------------------------------------------------------------------ external identity
+
+    private static async Task<string> BodyAsync(HttpContext http)
+    {
+        using var reader = new StreamReader(http.Request.Body);
+        return await reader.ReadToEndAsync(http.RequestAborted);
+    }
+
+    private static IResult NotFoundOrFail(HttpContext http, OperationResult result) =>
+        ApiResults.From(http, result);
+
+    private static void MapExternal(RouteGroupBuilder g)
+    {
+        g.MapGet("/external-provider-types", (HttpContext http, IAdminExternalService svc) => Results.Ok(svc.Types())).Require(AdminLevel.Project);
+
+        g.MapGet("/applications/{id:guid}/external-providers", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            return await svc.ListProvidersAsync(id, http.RequestAborted) is { } list ? Results.Ok(list) : Hidden(http);
+        }).Require(AdminLevel.Project);
+
+        g.MapPost("/applications/{id:guid}/external-providers", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var (result, provider) = await svc.CreateProviderAsync(id, await BodyAsync(http), http.Ctx().IsGlobalAdmin, http.RequestAborted);
+            return result.Succeeded ? Created(provider!) : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+
+        g.MapPut("/applications/{id:guid}/external-providers/{name}", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var (result, provider) = await svc.UpdateProviderAsync(id, name, await BodyAsync(http), http.Ctx().IsGlobalAdmin, ParseVersion(http.Request.Headers.IfMatch.FirstOrDefault()), http.RequestAborted);
+            return result.Succeeded ? Results.Ok(provider) : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+
+        g.MapPost("/applications/{id:guid}/external-providers/{name}/rotate-secret", async (HttpContext http, Guid id, string name, RotateProviderSecretRequest r, IAdminExternalService svc) =>
+            !Allowed(http, id) ? Hidden(http) : NotFoundOrFail(http, await svc.RotateSecretAsync(id, name, r, http.RequestAborted))).Require(AdminLevel.Project);
+
+        g.MapDelete("/applications/{id:guid}/external-providers/{name}", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+            !Allowed(http, id) ? Hidden(http) : NotFoundOrFail(http, await svc.DeleteProviderAsync(id, name, http.RequestAborted))).Require(AdminLevel.Project);
+
+        g.MapPost("/applications/{id:guid}/external-providers/{name}/test", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var (result, test) = await svc.TestProviderAsync(id, name, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(test) : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+
+        g.MapPost("/applications/{id:guid}/external-providers/{name}/ldap/test-user", async (HttpContext http, Guid id, string name, LdapTestUserRequest r, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var (result, found) = await svc.LdapTestUserAsync(id, name, r.UserName, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(found) : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+
+        g.MapPost("/applications/{id:guid}/external-providers/{name}/saml/refresh-metadata", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var (result, test) = await svc.SamlRefreshMetadataAsync(id, name, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(test) : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+
+        g.MapPost("/applications/{id:guid}/external-providers/{name}/saml/generate-sp-certificate", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var (result, cert) = await svc.SamlGenerateCertificateAsync(id, name, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(cert) : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+
+        // ---- mappings
+        g.MapGet("/applications/{id:guid}/external-group-mappings", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+            !Allowed(http, id) ? Hidden(http) : Results.Ok(await svc.ListMappingsAsync(id, http.RequestAborted))).Require(AdminLevel.Project);
+        g.MapPost("/applications/{id:guid}/external-group-mappings", async (HttpContext http, Guid id, ExternalMappingRequest r, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var (result, mapping) = await svc.CreateMappingAsync(id, r, http.RequestAborted);
+            return result.Succeeded ? Created(mapping!) : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+        g.MapPut("/applications/{id:guid}/external-group-mappings/{mappingId:guid}", async (HttpContext http, Guid id, Guid mappingId, ExternalMappingRequest r, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var (result, mapping) = await svc.UpdateMappingAsync(id, mappingId, r, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(mapping) : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+        g.MapDelete("/applications/{id:guid}/external-group-mappings/{mappingId:guid}", async (HttpContext http, Guid id, Guid mappingId, IAdminExternalService svc) =>
+            !Allowed(http, id) ? Hidden(http) : NotFoundOrFail(http, await svc.DeleteMappingAsync(id, mappingId, http.RequestAborted))).Require(AdminLevel.Project);
+
+        // ---- home-realm discovery
+        g.MapGet("/applications/{id:guid}/email-domain-routes", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            return await svc.ListEmailDomainRoutesAsync(id, http.RequestAborted) is { } list ? Results.Ok(list) : Hidden(http);
+        }).Require(AdminLevel.Project);
+        g.MapPut("/applications/{id:guid}/email-domain-routes", async (HttpContext http, Guid id, List<EmailDomainRouteDto> routes, IAdminExternalService svc) =>
+        {
+            if (!Allowed(http, id)) return Hidden(http);
+            var result = await svc.SetEmailDomainRoutesAsync(id, routes, http.RequestAborted);
+            return result.Succeeded ? Results.NoContent() : NotFoundOrFail(http, result);
+        }).Require(AdminLevel.Project);
+
+        // ---- users
+        g.MapGet("/users/{id:guid}/external-logins", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        {
+            var (result, list) = await svc.ListUserLoginsAsync(id, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(list) : Hidden(http);
+        }).Require(AdminLevel.Project);
+        g.MapDelete("/users/{id:guid}/external-logins/{provider}", async (HttpContext http, Guid id, string provider, bool? force, IAdminExternalService svc) =>
+        {
+            if (force == true && !http.Ctx().IsGlobalAdmin) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.Forbidden);
+            var result = await svc.RemoveUserLoginAsync(id, provider, force == true, http.RequestAborted);
+            return result.Succeeded ? Results.NoContent() : result.ErrorCode == Auth2ErrorCodes.NotFound ? Hidden(http) : ApiResults.From(http, result);
+        }).Require(AdminLevel.Project);
+        g.MapGet("/users/{id:guid}/passkeys", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        {
+            var (result, list) = await svc.ListUserPasskeysAsync(id, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(list) : Hidden(http);
+        }).Require(AdminLevel.Project);
+        g.MapDelete("/users/{id:guid}/passkeys/{passkeyId}", async (HttpContext http, Guid id, string passkeyId, IAdminExternalService svc) =>
+        {
+            var result = await svc.RemoveUserPasskeyAsync(id, passkeyId, http.RequestAborted);
+            return result.Succeeded ? Results.NoContent() : result.ErrorCode == Auth2ErrorCodes.NotFound ? Hidden(http) : ApiResults.From(http, result);
+        }).Require(AdminLevel.Project);
+
+        // ---- authenticator models that cannot be registered (global admin only)
+        g.MapGet("/passkeys/blocked-aaguids", async (HttpContext http, IAdminExternalService svc) => Results.Ok(await svc.GetBlockedAaguidsAsync(http.RequestAborted))).Require(AdminLevel.Global);
+        g.MapPut("/passkeys/blocked-aaguids", async (HttpContext http, BlockedAaguidsDto body, IAdminExternalService svc) =>
+        {
+            var result = await svc.SetBlockedAaguidsAsync(body.Aaguids, http.RequestAborted);
+            return result.Succeeded ? Results.NoContent() : ApiResults.From(http, result);
+        }).Require(AdminLevel.Global);
     }
 
     // ------------------------------------------------------------------ applications
@@ -175,7 +308,7 @@ public static class AdminEndpoints
             if (!Allowed(http, id)) return Hidden(http);
             if (await apps.GetSettingsAsync(id, http.RequestAborted) is not { } s) return Hidden(http);
             http.Response.Headers.ETag = $"\"v{s.Version}\"";
-            return Results.Content(SettingsJson.Serialize(s.Settings), "application/json");
+            return Results.Content(SettingsJson.SerializeRedacted(s.Settings, http.RequestServices.GetRequiredService<SystemX.Auth2.Server.Infrastructure.External.IExternalSecretProtector>().Redact), "application/json");
         }).Require(AdminLevel.Project);
 
         g.MapPut("/applications/{id:guid}/settings", async (HttpContext http, Guid id, IAdminApplicationService apps) =>

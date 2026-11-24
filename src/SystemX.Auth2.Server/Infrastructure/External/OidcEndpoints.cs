@@ -18,7 +18,7 @@ public sealed record OidcEndpoints(
 public interface IOidcEndpointResolver
 {
     /// <summary>Resolves the endpoints. Throws <see cref="ExternalLoginException"/> with <c>external_claims_invalid</c> when the provider cannot be reached or answers badly.</summary>
-    Task<OidcEndpoints> ResolveAsync(RegisteredProvider provider, CancellationToken ct);
+    Task<OidcEndpoints> ResolveAsync(RegisteredProvider provider, CancellationToken ct, bool refresh = false);
 }
 
 /// <summary>The one HTTP client name used for every call to an upstream provider.</summary>
@@ -34,7 +34,7 @@ public sealed class OidcEndpointResolver(IHttpClientFactory http, IMemoryCache c
     private bool Insecure => options.Value.ExternalProviders.AllowPrivateNetworks;
 
     /// <inheritdoc />
-    public async Task<OidcEndpoints> ResolveAsync(RegisteredProvider provider, CancellationToken ct)
+    public async Task<OidcEndpoints> ResolveAsync(RegisteredProvider provider, CancellationToken ct, bool refresh = false)
     {
         var o = (OidcProviderSettings)provider.Settings;
         switch (o.Type)
@@ -56,6 +56,7 @@ public sealed class OidcEndpointResolver(IHttpClientFactory http, IMemoryCache c
             ExternalProviderType.Microsoft => $"https://login.microsoftonline.com/{(string.IsNullOrWhiteSpace(o.TenantId) ? "common" : o.TenantId)}/v2.0",
             _ => o.Authority ?? throw new ExternalLoginException(Auth2ErrorCodes.ExternalClaimsInvalid, "no_authority"),
         };
+        if (refresh) cache.Remove("oidc-discovery:" + authority);
         return await cache.GetOrCreateAsync("oidc-discovery:" + authority, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);

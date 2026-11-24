@@ -50,6 +50,8 @@ public static class Auth2Routes
     public const string GroupsSync = Base + "/groups/sync";
     /// <summary>Custom scopes of the application (GET pull).</summary>
     public const string Scopes = Base + "/scopes";
+    /// <summary>Lists the enabled external sign-in providers of the application (client-credentials token with the handshake scope).</summary>
+    public const string ExternalProviders = Base + "/external-providers";
     /// <summary>Scope sync (POST).</summary>
     public const string ScopesSync = Base + "/scopes/sync";
     /// <summary>Access of one user. Replace <c>{id}</c>.</summary>

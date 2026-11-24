@@ -113,3 +113,14 @@ public class ReplayEntry
     /// <summary>Remove after this time.</summary>
     public DateTimeOffset ExpiresAtUtc { get; set; }
 }
+
+/// <summary>A server-wide value that an admin may change at run time (for example the blocked passkey models).</summary>
+public class ServerValue
+{
+    /// <summary>Name of the value.</summary>
+    public string Key { get; set; } = "";
+    /// <summary>The value as text.</summary>
+    public string Value { get; set; } = "";
+    /// <summary>Last change.</summary>
+    public DateTimeOffset UpdatedAtUtc { get; set; }
+}

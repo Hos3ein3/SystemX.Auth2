@@ -91,7 +91,27 @@ Every `Auth2:Jobs:IntervalMinutes` (60) one instance runs, under a database lock
 
 The first admin (`globaladmin`, password `Admin@12345!ChangeMe`) is in the source code. **Change it before production.** See [seeding.md](seeding.md). The Server logs a warning at every start while the default password is still set.
 
+## External identity (social, OIDC, SAML, LDAP, passkeys)
+
+What the Server does so that a wrong or hostile provider cannot take over an account. Details and tests are in [external-identity.md](external-identity.md).
+
+| Risk | Defence |
+|---|---|
+| Account takeover by email (someone makes a provider account with your email) | Linking by email only when the provider **proves** the email (`email_verified`, per-type defaults, off for unknown providers). Otherwise `external_email_exists_not_verified`. Only a global admin can trust a provider's email |
+| Login CSRF and replay | OIDC `state`, `nonce` and PKCE; the state is sealed, expires in 10 minutes, is bound to one provider and one application and is **single use** (shared `replay_entries`) |
+| Mix-up between providers or applications | Callback URLs are unique per application and provider; a state made for another provider or application is refused |
+| Forged SAML | XXE-safe XML, size limit, exactly one assertion, no duplicate ids, pinned certificates, issuer, destination, audience, `InResponseTo`, time window, single-use assertion ids, IdP-initiated off by default, `RelayState` never trusted for redirects |
+| LDAP injection and downgrade | Filters are escaped (RFC 4515); TLS required with chain and name check; no anonymous bind, no empty passwords; the unique id (not the DN) is the link key; same answer for unknown user and wrong password |
+| SSRF through provider addresses | Every call to a provider uses a client that refuses private, loopback, link-local and metadata addresses, no redirects, https only |
+| Secret leaks | Client secrets, Apple keys, SAML private keys and bind passwords are encrypted (Data Protection), never returned by the API, never logged or audited |
+| Privilege escalation by group mapping | Mappings only add things of the same application; `GlobalAdmin` and system roles can never be mapped; only mapped targets are removed |
+| Passkey theft or reuse | Per-application store, single-use challenges, signature counter, origin and domain checks, user verification rule, AAGUID block list, limits |
+| Locking yourself out | The last way to sign in cannot be removed; one passkey needs a backup |
+
 ## Limits (what this is not)
+
+- The Server is **not a SAML identity provider**: it does not issue SAML assertions to other applications.
+- Directory data (LDAP) and groups are read **at login**, not synchronised in the background. A user who is disabled in the directory keeps a session until the access token and refresh token end (revoke sessions in the admin API to cut it earlier).
 
 - Not a certified OpenID Connect provider.
 - The password grant is for your own trusted clients. It is off by default.
@@ -112,6 +132,8 @@ The first admin (`globaladmin`, password `Admin@12345!ChangeMe`) is in the sourc
 - [ ] Rate limits checked against your traffic.
 - [ ] Logs and traces go to a store with access control.
 - [ ] `rotate-keys` is in your calendar.
+- [ ] Passkeys: `Auth2:Passkeys:ServerDomain` is set (and never changed afterwards).
+- [ ] External providers: only `External`, `Ldap` and `Passkey` login methods that you use are in `AllowedLoginMethods`; provider secrets are rotated when they expire; SAML certificates are watched ([saml-certificate-rotation.md](external-identity/saml-certificate-rotation.md)).
 
 ## Related pages
 

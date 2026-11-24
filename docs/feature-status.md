@@ -14,8 +14,8 @@ What works today. "Done" means: code, tests, docs and a CHANGELOG entry exist.
 | SAML 2.0 service provider (ACS, metadata, SLO, rotation) | Done | Step 6 |
 | LDAP and Active Directory | Done | Step 7 |
 | Passkeys (per application, limits, backup rule, AAGUID block list) | Done | Step 8 |
-| Admin API for providers | Planned | Step 9 |
-| Client changes for external identity | Planned | Step 10 |
+| Admin API for providers, mappings, domain routes, support routes | Done | Step 9 |
+| Client changes for external identity (`IdentityProvider`, `AuthenticationMethods`, `GetExternalProvidersAsync`) | Done | Step 10 |
 | Samples and final docs | Planned | |
 
 This page is updated at every step of the external identity work package.

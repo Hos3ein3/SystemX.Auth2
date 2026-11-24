@@ -33,7 +33,13 @@ The map of all documentation pages. Pages marked *(planned)* are written in a la
 | [machine-to-machine.md](machine-to-machine.md) | Client credentials tokens | Written |
 | [client-authorization.md](client-authorization.md) | Attributes, Minimal API extensions, API authentication | Written |
 | [client-current-user.md](client-current-user.md) | `ICurrentUser`, cache, stores | Written |
-| getting-started.md, gateway.md, comparison-and-limits.md, feature-status.md, troubleshooting.md, ui-handover.md | | *(planned)* |
+| [external-identity.md](external-identity.md) | Social login, OIDC, SAML, LDAP, passkeys, brokering | Written |
+| [external-identity/](external-identity/google.md) | Setup guides per provider, group mapping, brokering, passkeys, troubleshooting | Written |
+| [ui-handover.md](ui-handover.md) | Pages and JSON contracts for the UI | Written (grows) |
+| [feature-status.md](feature-status.md) | What works today | Written |
+| [comparison-and-limits.md](comparison-and-limits.md) | What is and is not supported | Written |
+| [troubleshooting.md](troubleshooting.md) | Symptom, cause, fix | Written |
+| getting-started.md, gateway.md | | *(planned)* |
 
 ## Related pages
 

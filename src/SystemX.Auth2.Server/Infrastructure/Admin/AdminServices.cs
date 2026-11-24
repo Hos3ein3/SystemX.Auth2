@@ -362,6 +362,9 @@ internal sealed class AdminApplicationService(
         }
         if (ifMatchVersion is { } v && v != version) return (OperationResult.Fail(Auth2ErrorCodes.Conflict), version);
 
+        // The providers have their own routes (they have secrets and extra rules). This route never changes them.
+        settings.ExternalProviders = current.ExternalProviders;
+
         var errors = ApplicationSettingsValidator.Validate(settings);
         if (errors.Count > 0) return (AdminSupport.Invalid(errors), version);
         if (!isGlobalAdmin)

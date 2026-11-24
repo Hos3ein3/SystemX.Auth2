@@ -1096,6 +1096,28 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.ToTable("role_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.ServerValue", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("Key")
+                        .HasName("pk_server_values");
+
+                    b.ToTable("server_values", (string)null);
+                });
+
             modelBuilder.Entity("SystemX.Auth2.Server.Domain.Entities.UserApplication", b =>
                 {
                     b.Property<Guid>("UserId")

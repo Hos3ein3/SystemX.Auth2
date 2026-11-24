@@ -141,6 +141,9 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
     public async Task<Result<IReadOnlyList<ScopeDto>>> GetScopesAsync(CancellationToken ct = default) =>
         ToList(await CallAsync<List<ScopeDto>>(HttpMethod.Get, Auth2Routes.Scopes, null, [Auth2Scopes.ScopesSync], null, idempotent: true, ct));
 
+    public async Task<Result<IReadOnlyList<ExternalProviderInfoDto>>> GetExternalProvidersAsync(CancellationToken ct = default) =>
+        ToList(await CallAsync<List<ExternalProviderInfoDto>>(HttpMethod.Get, Auth2Routes.ExternalProviders, null, [Auth2Scopes.ClientHandshake], null, idempotent: true, ct));
+
     public async Task<Result<IReadOnlyList<PermissionDto>>> GetPermissionsAsync(CancellationToken ct = default) =>
         ToList(await CallAsync<List<PermissionDto>>(HttpMethod.Get, Auth2Routes.Permissions, null, [Auth2Scopes.PermissionsSync], null, idempotent: true, ct));
 

@@ -35,6 +35,9 @@ public static class ClientEndpoints
         routes.MapPost(Auth2Routes.ScopesSync, async (HttpContext http, ScopeSyncRequest r, IScopeSyncService sync) =>
             ApiResults.From(http, await sync.SyncAsync(r, http.RequestAborted))).RequireClient(Auth2Scopes.ScopesSync);
 
+        routes.MapGet(Auth2Routes.ExternalProviders, async (HttpContext http, SystemX.Auth2.Server.Infrastructure.External.ExternalFlow flow) =>
+            Results.Ok(await flow.ListAsync(http.RequestAborted))).RequireClient(Auth2Scopes.ClientHandshake);
+
         routes.MapGet(Auth2Routes.Scopes, async (HttpContext http, IScopeSyncService sync) =>
             Results.Ok(await sync.ListAsync(http.RequestAborted))).RequireClient(Auth2Scopes.ScopesSync);
 

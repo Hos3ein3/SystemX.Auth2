@@ -106,6 +106,20 @@ Authorization: Bearer <user token with auth2.me>
 
 `204 No Content`. The other sessions of this user in this application end. The calling session stays.
 
+## External sign-in endpoints
+
+| Method and route | Auth | What |
+|---|---|---|
+| `GET /connect/external/providers?client_id=&hint=` | none | Enabled providers (`providers`, `suggestedProvider`). No secrets |
+| `POST /connect/external/challenge` | anti-forgery | Form `provider`, `returnUrl`, `hint`, `client_id`. Redirects to the provider (or JSON with `postAction`/`postFields` for the SAML POST binding) |
+| `GET/POST /callback/login/{slug}/{name}` | state cookie | OIDC callback (page) |
+| `POST /saml/{slug}/{name}/acs`, `GET .../metadata`, `GET .../slo` | cookie / none / signed request | SAML (pages) |
+| `POST /account/passkey/creation-options`, `/account/passkey/register` | session + anti-forgery header | Register a passkey |
+| `POST /account/passkey/request-options`, `/account/passkey/signin` | none, rate limited | Sign in with a passkey |
+| `GET /account/passkeys`, `PATCH`/`DELETE /account/passkeys/{id}` | session | Manage passkeys |
+
+Details and JSON examples: [ui-handover.md](ui-handover.md). The admin routes for providers are in [admin-api.md](admin-api.md#external-identity-routes).
+
 ## Admin endpoints
 
 All routes under `/api/auth2/admin` need the token of a signed-in admin with scope `auth2.admin`. See [admin-api.md](admin-api.md).

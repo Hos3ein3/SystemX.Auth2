@@ -52,6 +52,8 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
     /// <summary>Rules that turn external groups, claims and attributes into roles, groups and permissions.</summary>
     public DbSet<ExternalGroupMapping> ExternalGroupMappings => Set<ExternalGroupMapping>();
+    /// <summary>Server-wide values changed at run time.</summary>
+    public DbSet<ServerValue> ServerValues => Set<ServerValue>();
     /// <summary>One-time values (SAML ids, login nonces).</summary>
     public DbSet<ReplayEntry> ReplayEntries => Set<ReplayEntry>();
     /// <summary>Data Protection keys (scale-out).</summary>
@@ -130,6 +132,12 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IApplicati
             e.HasIndex(x => new { x.ApplicationId, x.ProviderName });
             e.HasOne<Auth2Application>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
             e.HasQueryFilter(x => FiltersBypassed || x.ApplicationId == CurrentApplicationId);
+        });
+        b.Entity<ServerValue>(e =>
+        {
+            e.ToTable("server_values");
+            e.HasKey(x => x.Key);
+            e.Property(x => x.Key).HasMaxLength(100);
         });
         b.Entity<ReplayEntry>(e =>
         {

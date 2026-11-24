@@ -22,8 +22,14 @@ app.MapGet("/me", async (ICurrentUser user) => new
 
 | Member | Source |
 |---|---|
-| `IsAuthenticated`, `UserId`, `UserName`, `Email`, `PhoneNumber`, `FirstName`, `LastName`, `FullName`, `Scopes`, `IsMachine` | The token (no call) |
+| `IsAuthenticated`, `UserId`, `UserName`, `Email`, `PhoneNumber`, `FirstName`, `LastName`, `FullName`, `Scopes`, `IsMachine`, `IdentityProvider`, `AuthenticationMethods` | The token (no call) |
 | `GetRolesAsync`, `GetPermissionsAsync`, `GetGroupsAsync`, `HasPermissionAsync`, `HasRoleAsync` | Access data (cache, else the server) |
+
+`IdentityProvider` is the name of the external provider the user signed in with (claim `idp`, for example `google` or `corp-saml`), or null after a local sign-in. `AuthenticationMethods` is the list of `amr` values: `pwd`, `otp`, `fed` (an external provider), `swk` or `hwk` (a passkey) and `mfa` (several factors). Use them for example to ask for a stronger sign-in before a sensitive action:
+
+```csharp
+if (!user.AuthenticationMethods.Contains("mfa")) return Results.Forbid();
+```
 
 A **machine token** (client credentials) has no person: `IsMachine` is true, `UserId` is null, the lists are empty, and the server is never asked. Nothing throws.
 
