@@ -139,3 +139,4 @@ Every real change writes an audit event: `permission.created`, `permission.obsol
 - [Client package reference](client-reference.md)
 - [Seeding (first admin)](seeding.md)
 - [Documentation index](index.md)
+- [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)

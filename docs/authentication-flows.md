@@ -344,3 +344,6 @@ Every application is an OpenIddict client with a **secret**. OpenIddict stores o
 - [Admin JSON API](admin-api.md)
 - [Troubleshooting external sign-in](external-identity/troubleshooting.md)
 - [Documentation index](index.md)
+- [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
+- [Architecture](architecture.md)
+- [Current user and current client](client-current-user.md)

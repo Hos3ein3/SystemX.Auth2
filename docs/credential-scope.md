@@ -93,3 +93,5 @@ the user links it again there. Reason: the projects can have different providers
 - [Authorization: permissions, roles and groups](authorization.md)
 - [UI handover](ui-handover.md)
 - [Documentation index](index.md)
+- [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
+- [Current user and current client](client-current-user.md)

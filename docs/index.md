@@ -32,6 +32,7 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 | [observability.md](observability.md) | Logs, traces, metrics, health |
 | [security.md](security.md) | Threat model, rate limits, keys, checklist |
 | [key-ring.md](key-ring.md) | The key ring and its in-memory snapshot: keys, rotation, use |
+| [identity-stores.md](identity-stores.md) | The Identity stores and managers (`Persistence.Identity`): credentials, roles, lockout per project |
 | [database-tables.md](database-tables.md) | Every database table: what it holds, who writes it, columns |
 
 ## How sign-in and access work

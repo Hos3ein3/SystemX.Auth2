@@ -804,3 +804,5 @@ Primary key: `id`.
 - [Seeding (first admin)](seeding.md)
 - [Contributing workflow](contributing-workflow.md)
 - [Documentation index](index.md)
+- [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
+- [Current user and current client](client-current-user.md)

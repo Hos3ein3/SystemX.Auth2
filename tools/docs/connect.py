@@ -15,6 +15,7 @@ FAMILIES = [
     # start here
     ['getting-started.md', 'concepts.md', 'server-setup.md', 'client-setup.md', 'seeding.md', 'troubleshooting.md'],
     ['concepts.md', 'architecture.md', 'database-tables.md', 'credential-scope.md', 'decisions.md', 'comparison-and-limits.md'],
+    ['identity-stores.md', 'database-tables.md', 'credential-scope.md', 'authentication-flows.md', 'authorization.md', 'server-settings.md', 'architecture.md', 'client-current-user.md'],
     # server
     ['server-setup.md', 'server-settings.md', 'seeding.md', 'deployment-and-scaling.md', 'security.md', 'observability.md', 'email-and-sms.md', 'server-reference.md'],
     ['server-settings.md', 'server-reference.md', 'credential-scope.md', 'email-and-sms.md', 'admin-api.md', 'localization.md', 'external-identity.md'],
@@ -31,7 +32,7 @@ FAMILIES = [
     ['ui-handover.md', 'external-identity.md', 'external-identity/passkeys.md', 'localization.md', 'server-reference.md', 'authentication-flows.md'],
     ['localization.md', 'email-and-sms.md', 'server-settings.md'],
     ['email-and-sms.md', 'authentication-flows.md', 'security.md', 'database-tables.md', 'server-reference.md'],
-    ['credential-scope.md', 'database-tables.md', 'authentication-flows.md', 'server-settings.md'],
+    ['credential-scope.md', 'identity-stores.md', 'database-tables.md', 'authentication-flows.md', 'server-settings.md'],
     ['seeding.md', 'database-tables.md', 'authorization.md'],
     ['handshake-and-startup.md', 'client-setup.md', 'concepts.md', 'server-setup.md', 'permission-sync.md'],
     # client

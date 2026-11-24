@@ -69,3 +69,6 @@ The Client never references the Server.
 - [Getting started](getting-started.md)
 - [Observability](observability.md)
 - [Documentation index](index.md)
+- [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
+- [Authentication flows](authentication-flows.md)
+- [Current user and current client](client-current-user.md)
