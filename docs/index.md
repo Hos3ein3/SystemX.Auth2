@@ -27,6 +27,8 @@ The map of all documentation pages.
 | [handshake-and-startup.md](handshake-and-startup.md) | Startup check and server mode | Written |
 | [admin-api.md](admin-api.md) | Global and project admin API | Written |
 | [email-and-sms.md](email-and-sms.md) | Email and SMS providers per project and application (SMTP, Google) | Written |
+| [key-ring.md](key-ring.md) | The key ring and its in-memory snapshot: keys, rotation, use | Written |
+| [database-tables.md](database-tables.md) | Every database table: what it holds, who writes it, columns | Written |
 | [security.md](security.md) | Threat model, rate limits, keys, checklist | Written |
 | [deployment-and-scaling.md](deployment-and-scaling.md) | Several instances, Redis, probes | Written |
 | [observability.md](observability.md) | Logs, traces, metrics, health | Written |

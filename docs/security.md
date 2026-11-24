@@ -66,6 +66,8 @@ Counters are in memory by default (right for **one** instance). With **Redis** t
 
 ### Keys and rotation
 
+The key ring in depth (properties, the in-memory snapshot, lifecycle, problems): [key-ring.md](key-ring.md).
+
 Tokens are signed and encrypted with keys. Two sources:
 
 1. **Certificate files** (`Auth2:Keys:SigningCertificates` and `EncryptionCertificates`). You manage them. Several are allowed: the one valid the longest signs, all of them check.

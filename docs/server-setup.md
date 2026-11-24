@@ -68,10 +68,12 @@ builder.Services.AddSystemXAuth2Server(builder.Configuration, o =>
 
 ## Keys, issuer and the production guard
 
-In `Development` and `Testing` the server makes temporary keys. In every other environment it **refuses to start** unless:
+Tokens are signed and encrypted with keys. Two sources:
 
-- `Auth2:Keys` has at least one signing and one encryption certificate (PFX files), and
-- `Auth2:Issuer` is an `https://` URL.
+- **The key ring** (default). No setup: the first start makes a signing key and an encryption key, keeps them in the database (encrypted with Data Protection) and every instance shares them. Rotation without a restart: [key-ring.md](key-ring.md).
+- **Certificate files** (`Auth2:Keys:SigningCertificates` and `EncryptionCertificates`, PFX). You make and rotate them. When at least one of each is set the key ring is not used.
+
+Outside `Development` and `Testing` the server **refuses to start** unless `Auth2:Issuer` is an `https://` URL. Keys are not part of that check: the key ring is accepted in Production.
 
 ```json
 {
@@ -85,7 +87,7 @@ In `Development` and `Testing` the server makes temporary keys. In every other e
 }
 ```
 
-Keep the passwords in environment variables or a secret store (`Auth2__Keys__SigningCertificates__0__Password`). The session cookie is `Secure` outside Development and Testing.
+(The `Keys` part is only needed when you want your own certificates.) Keep the passwords in environment variables or a secret store (`Auth2__Keys__SigningCertificates__0__Password`). The session cookie is `Secure` outside Development and Testing.
 
 ## Single-project mode
 

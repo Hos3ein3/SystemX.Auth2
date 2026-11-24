@@ -18,8 +18,8 @@ public partial class DocsTests
     private static string Slug(string heading)
     {
         var s = heading.Trim().ToLowerInvariant();
-        s = Regex.Replace(s, @"[`*_]", "");
-        s = Regex.Replace(s, @"[^\p{L}\p{N}\s-]", "");
+        s = Regex.Replace(s, @"[`*]", "");   // GitHub keeps underscores in anchors (#user_projects)
+        s = Regex.Replace(s, @"[^\p{L}\p{N}\s_-]", "");
         return Regex.Replace(s.Replace(' ', '-'), "-+$", "");
     }
 

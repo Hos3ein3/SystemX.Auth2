@@ -114,8 +114,8 @@ The `two_factor_token` is a Data Protection time-limited token (5 minutes) that 
 ## ADR-037: SingleActiveSession and the security stamp
 Revoking tokens and authorizations is per OpenIddict client, so it is per application. The security stamp is changed only with per-application credentials. With shared credentials the stamp is global, and changing it would sign the user out of other applications too. `ActiveSessionId` in `user_applications` is not used: we revoke all earlier sessions at login, so no session id has to be remembered (and single mode has no such table).
 
-## ADR-038: Keys
-In Development and Testing the server creates temporary keys (RSA signing key and a symmetric encryption key). We do not use `AddDevelopmentSigningCertificate`, because it writes to the machine's certificate store. Other environments need PFX certificates in `Auth2:Keys` and an HTTPS issuer, or the startup guard stops the app. Rotation is done by `IKeyRing` and the `rotate-keys` command.
+## ADR-038: Keys (superseded by ADR-067)
+In Development and Testing the server created temporary keys (RSA signing key and a symmetric encryption key). We do not use `AddDevelopmentSigningCertificate`, because it writes to the machine's certificate store. Other environments need PFX certificates in `Auth2:Keys` and an HTTPS issuer, or the startup guard stops the app. Rotation is done by `IKeyRing` and the `rotate-keys` command.
 
 ## ADR-039: Only S256
 `plain` is removed from `CodeChallengeMethods`. PKCE is required for the authorization code flow.
@@ -203,6 +203,7 @@ A project admin may change only settings marked `ProjectAdminEditable`; `Setting
 ASP.NET's built-in limiter cannot count in Redis, so `RateLimitMiddleware` maps a request to a named policy (`login`, `token`, `register`, `otp`, `password-reset`, `handshake`, `permission-sync`, `admin`) and counts with `IRateLimiter` (memory or Redis, fixed window). Each request is counted for "address + client id + login" and for the address alone (5x the limit). The identity part is the client id and the login together (a client serves many users). Bearer tokens are hashed, never stored. Over the limit: 429, `Retry-After`, `rate_limited`.
 
 ## ADR-067: Keys live in a key ring in the database; no temporary keys any more
+How it works and how to use it: [key-ring.md](key-ring.md).
 When no certificate files are configured, the Server creates a signing and an encryption certificate on first start, stores them protected by Data Protection (`key_ring` table) and every instance uses them. Rotation adds a pair and retires the old one (kept `RetiredKeyDays`=35 for checking and decrypting, then removed by a job). OpenIddict prefers the key with the latest "not after" date, so a new key always gets a strictly later date. Each instance re-reads the table every 30 s; a change fires an options change token so OpenIddict rebuilds its options. The **validation** options copy the server keys when they are built, so a post-configure step refreshes them too (found by a test: new tokens were refused after a rotation). If the table does not exist yet (not migrated), temporary keys keep the server answering until the real keys can be read. The production guard now only requires an HTTPS issuer.
 
 ## ADR-068: Redis scope
