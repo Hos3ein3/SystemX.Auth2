@@ -24,3 +24,9 @@ Until it exists, use your own reverse proxy and turn on `Auth2:Security:UseForwa
 
 - [roadmap.md](roadmap.md)
 - [deployment-and-scaling.md](deployment-and-scaling.md)
+- [Observability](observability.md)
+- [Server setup](server-setup.md)
+- [Feature status](feature-status.md)
+- [Comparison and limits](comparison-and-limits.md)
+- [Decisions (ADR list)](decisions.md)
+- [Documentation index](index.md)

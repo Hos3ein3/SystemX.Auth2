@@ -19,3 +19,15 @@ SAML trust is based on certificates. They expire and must be replaced **without*
 ## How to implement or extend
 
 `SamlProviderMaterial` (`Infrastructure/External/SamlMaterial.cs`) reads and caches the identity provider material; `SamlSpCertificates` makes and reads the SP certificate; `SamlIdpMaterial.ExpiringWithin` powers the warning. Tests: `SamlMetadataTests`, `SamlOptionsTests.TwoIdpCertificates_BothWork_ForRotation`.
+
+## Related pages
+
+- [SAML 2.0: enable and use](saml.md)
+- [SAML 2.0: generic identity provider](saml-generic.md)
+- [SAML with Microsoft Entra ID](saml-entra-id.md)
+- [SAML with Okta](saml-okta.md)
+- [SAML with Active Directory Federation Services (ADFS)](saml-adfs.md)
+- [SAML with Keycloak](saml-keycloak.md)
+- [Group mapping](group-mapping.md)
+- [Troubleshooting external sign-in](troubleshooting.md)
+- [Documentation index](../index.md)

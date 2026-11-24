@@ -47,3 +47,11 @@ Each page has: What this is, When to use it, Step by step, Example, Common probl
 ## Related pages
 
 - [testing.md](testing.md)
+- [Decisions (ADR list)](decisions.md)
+- [Architecture](architecture.md)
+- [The key ring and its snapshot](key-ring.md)
+- [Email and SMS](email-and-sms.md)
+- [Database tables](database-tables.md)
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
+- [Reference generator](../tools/docs/README.md)
+- [Documentation index](index.md)

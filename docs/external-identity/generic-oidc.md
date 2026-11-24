@@ -47,3 +47,13 @@ The secret is sent in plain text **once** when you save. The Server encrypts it 
 ## How to implement or extend
 
 The engine is OpenIddict.Client: a generic registration with discovery from the `Authority` (`ExternalClientRegistrations`); `OpenIddictIdentitySource` runs the code flow (PKCE, `state`, `nonce`) and reads the claims named by `NameClaim`, `EmailClaim` and `GroupsClaim`. The type has its own descriptor in `ExternalProviderDescriptors.cs`. See [social-webintegration.md](social-webintegration.md) for the shared engine. Tests: `OidcSourceTests.cs`, `ExternalClientIntegrationTests.cs`, with `FakeOidcProvider`.
+
+## Related pages
+
+- [Sign in with Google](google.md)
+- [Sign in with Microsoft](microsoft.md)
+- [Sign in with GitHub](github.md)
+- [Sign in with Apple](apple.md)
+- [Sign in with Facebook](facebook.md)
+- [Troubleshooting external sign-in](troubleshooting.md)
+- [Documentation index](../index.md)

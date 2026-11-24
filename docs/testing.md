@@ -44,3 +44,8 @@ Set `SingleMode => true` to test `ServerWithSingleProject()`.
 ## Related pages
 
 - [contributing-workflow.md](contributing-workflow.md)
+- [Architecture](architecture.md)
+- [Decisions (ADR list)](decisions.md)
+- [Getting started](getting-started.md)
+- [Observability](observability.md)
+- [Documentation index](index.md)

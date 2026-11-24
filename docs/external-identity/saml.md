@@ -52,3 +52,12 @@ A customer says "our users must sign in with our company directory" and their Id
 ## How to implement or extend
 
 `SamlIdentitySource` (challenge, ACS checks, SLO), `SamlProviderMaterial` (metadata and certificates), `SamlMetadataBuilder`, pages `Pages/Saml/{Acs,Metadata,Slo}`. Tests: `SamlSourceTests.cs` with `FakeSamlIdp`. To read one more attribute, extend `BuildIdentity`.
+
+## Related pages
+
+- [LDAP and Active Directory: enable and use](ldap.md)
+- [Passkeys](passkeys.md)
+- [Brokering: your app trusts only the Server](brokering.md)
+- [Admin JSON API](../admin-api.md)
+- [Authentication flows](../authentication-flows.md)
+- [Documentation index](../index.md)

@@ -2,53 +2,113 @@
 
 ## What this is
 
-The map of all documentation pages.
+The map of all documentation pages. Every page is listed here and every page links back here from its "Related pages" section.
 
-## Pages
+## When to use it
 
-| Page | Topic | Status |
-|---|---|---|
-| [architecture.md](architecture.md) | Solution layout, layers | Written |
-| [contributing-workflow.md](contributing-workflow.md) | How we work: code, tests, docs | Written |
-| [testing.md](testing.md) | How to run tests | Written |
-| [decisions.md](decisions.md) | Design decisions (ADR list) | Written |
-| [api-reference.md](api-reference.md) | Public endpoints | Written |
-| [error-codes.md](error-codes.md) | Stable error codes | Written |
-| [roadmap.md](roadmap.md) | Future work and open notes | Written |
-| [concepts.md](concepts.md) | Main ideas | Written |
-| [server-setup.md](server-setup.md) | Run and configure the server | Written |
-| [seeding.md](seeding.md) | First admin and the seeder | Written |
-| [server-settings.md](server-settings.md) | Every application setting | Written |
-| [credential-scope.md](credential-scope.md) | Where passwords and 2FA live | Written |
-| [localization.md](localization.md) | resx texts, culture order, add a language | Written |
-| [authentication-flows.md](authentication-flows.md) | Login, tokens, grants, register, join, OTP, reset, 2FA, consent | Written |
-| [authorization.md](authorization.md) | Permissions, roles, groups, effective access, `/me` | Written |
-| [permission-sync.md](permission-sync.md) | Push and pull of permissions and roles | Written |
-| [handshake-and-startup.md](handshake-and-startup.md) | Startup check and server mode | Written |
-| [admin-api.md](admin-api.md) | Global and project admin API | Written |
-| [email-and-sms.md](email-and-sms.md) | Email and SMS providers per project and application (SMTP, Google) | Written |
-| [key-ring.md](key-ring.md) | The key ring and its in-memory snapshot: keys, rotation, use | Written |
-| [database-tables.md](database-tables.md) | Every database table: what it holds, who writes it, columns | Written |
-| [security.md](security.md) | Threat model, rate limits, keys, checklist | Written |
-| [deployment-and-scaling.md](deployment-and-scaling.md) | Several instances, Redis, probes | Written |
-| [observability.md](observability.md) | Logs, traces, metrics, health | Written |
-| [client-setup.md](client-setup.md) | Add the Client package, handshake, options | Written |
-| [machine-to-machine.md](machine-to-machine.md) | Client credentials tokens | Written |
-| [client-authorization.md](client-authorization.md) | Attributes, Minimal API extensions, API authentication | Written |
-| [client-current-user.md](client-current-user.md) | `ICurrentUser`, cache, stores | Written |
-| [external-identity.md](external-identity.md) | Social login, OIDC, SAML, LDAP, passkeys, brokering | Written |
-| [external-identity/social-webintegration.md](external-identity/social-webintegration.md) | Enable and use social login (OpenIddict.Client.WebIntegration) | Written |
-| [external-identity/saml.md](external-identity/saml.md) | Enable and use SAML 2.0 | Written |
-| [external-identity/ldap.md](external-identity/ldap.md) | Enable and use LDAP and Active Directory | Written |
-| [external-identity/passkeys.md](external-identity/passkeys.md) | Enable and use passkeys | Written |
-| [external-identity/](external-identity/google.md) | Setup guides per provider, group mapping, brokering, troubleshooting | Written |
-| [ui-handover.md](ui-handover.md) | Pages and JSON contracts for the UI | Written |
-| [feature-status.md](feature-status.md) | What works today | Written |
-| [comparison-and-limits.md](comparison-and-limits.md) | What is and is not supported | Written |
-| [troubleshooting.md](troubleshooting.md) | Symptom, cause, fix | Written |
-| [getting-started.md](getting-started.md) | Run the Server and the sample applications | Written |
-| [gateway.md](gateway.md) | The gateway project | Written (not built) |
+Start with **Start here** if you are new. Use the other groups to find the page for one job. The repository [README](../README.md) is the short version; the packages have their own READMEs: [Client](../src/SystemX.Auth2.Client/README.md) and [Server](../src/SystemX.Auth2.Server/README.md).
+
+## Start here
+
+| Page | Topic |
+|---|---|
+| [getting-started.md](getting-started.md) | Run the Server and the two samples |
+| [concepts.md](concepts.md) | Project, application, membership, settings, tokens |
+| [comparison-and-limits.md](comparison-and-limits.md) | What is and is not supported |
+| [feature-status.md](feature-status.md) | What works today |
+| [roadmap.md](roadmap.md) | What is not built yet and the known limits |
+
+## Run and configure the Server
+
+| Page | Topic |
+|---|---|
+| [server-setup.md](server-setup.md) | Run it, configuration keys, commands, production guard |
+| [server-settings.md](server-settings.md) | Every project and application setting |
+| [seeding.md](seeding.md) | The first admin and the sample data |
+| [credential-scope.md](credential-scope.md) | Where passwords and two-factor live |
+| [email-and-sms.md](email-and-sms.md) | Email and SMS providers per project and application (SMTP, Google) |
+| [localization.md](localization.md) | Texts, culture order, add a language |
+| [deployment-and-scaling.md](deployment-and-scaling.md) | Several instances, Redis, probes |
+| [observability.md](observability.md) | Logs, traces, metrics, health |
+| [security.md](security.md) | Threat model, rate limits, keys, checklist |
+| [key-ring.md](key-ring.md) | The key ring and its in-memory snapshot: keys, rotation, use |
+| [database-tables.md](database-tables.md) | Every database table: what it holds, who writes it, columns |
+
+## How sign-in and access work
+
+| Page | Topic |
+|---|---|
+| [authentication-flows.md](authentication-flows.md) | Login, tokens, grants, register, join, OTP, reset, two-factor, consent |
+| [authorization.md](authorization.md) | Permissions, roles, groups, effective access, `/me` |
+| [permission-sync.md](permission-sync.md) | Push and pull of permissions, roles, scopes and groups |
+| [handshake-and-startup.md](handshake-and-startup.md) | The startup check and the server mode |
+| [machine-to-machine.md](machine-to-machine.md) | Client-credentials tokens |
+
+## Use the Client package
+
+| Page | Topic |
+|---|---|
+| [client-setup.md](client-setup.md) | Add the package, options, UI modes, handshake |
+| [client-authorization.md](client-authorization.md) | Attributes, Minimal API extensions, API authentication |
+| [client-current-user.md](client-current-user.md) | `ICurrentUser`, `ICurrentClient`, the cache and the stores |
+| [client-reference.md](client-reference.md) | Every public type, member and overload of the Client package |
+
+## External identity
+
+| Page | Topic |
+|---|---|
+| [external-identity.md](external-identity.md) | Overview: social login, OIDC, SAML, LDAP, passkeys, brokering |
+| [external-identity/social-webintegration.md](external-identity/social-webintegration.md) | Enable and use social login (OpenIddict.Client.WebIntegration) |
+| [external-identity/saml.md](external-identity/saml.md) | Enable and use SAML 2.0 |
+| [external-identity/ldap.md](external-identity/ldap.md) | Enable and use LDAP and Active Directory |
+| [external-identity/passkeys.md](external-identity/passkeys.md) | Enable and use passkeys |
+| [external-identity/brokering.md](external-identity/brokering.md) | Brokering: the Server between your app and a provider |
+| [external-identity/group-mapping.md](external-identity/group-mapping.md) | Turn provider groups into roles, groups and permissions |
+| [external-identity/troubleshooting.md](external-identity/troubleshooting.md) | Symptom, cause, fix for external sign-in |
+
+## Setup guides per provider
+
+| Page | Topic |
+|---|---|
+| [external-identity/google.md](external-identity/google.md) | Sign in with Google |
+| [external-identity/microsoft.md](external-identity/microsoft.md) | Sign in with Microsoft |
+| [external-identity/github.md](external-identity/github.md) | Sign in with GitHub |
+| [external-identity/apple.md](external-identity/apple.md) | Sign in with Apple |
+| [external-identity/facebook.md](external-identity/facebook.md) | Sign in with Facebook |
+| [external-identity/generic-oidc.md](external-identity/generic-oidc.md) | Generic OpenID Connect (Keycloak, Okta, Auth0 and others) |
+| [external-identity/saml-generic.md](external-identity/saml-generic.md) | SAML 2.0: generic identity provider |
+| [external-identity/saml-entra-id.md](external-identity/saml-entra-id.md) | SAML with Microsoft Entra ID |
+| [external-identity/saml-okta.md](external-identity/saml-okta.md) | SAML with Okta |
+| [external-identity/saml-adfs.md](external-identity/saml-adfs.md) | SAML with Active Directory Federation Services (ADFS) |
+| [external-identity/saml-keycloak.md](external-identity/saml-keycloak.md) | SAML with Keycloak |
+| [external-identity/saml-certificate-rotation.md](external-identity/saml-certificate-rotation.md) | SAML certificate rotation |
+| [external-identity/ldap-openldap.md](external-identity/ldap-openldap.md) | LDAP login with OpenLDAP (and other LDAP servers) |
+| [external-identity/ldap-active-directory.md](external-identity/ldap-active-directory.md) | LDAP login with Active Directory |
+
+## Admin and UI
+
+| Page | Topic |
+|---|---|
+| [admin-api.md](admin-api.md) | Global and project admin JSON API |
+| [ui-handover.md](ui-handover.md) | Pages and JSON contracts for a UI |
+| [api-reference.md](api-reference.md) | Public routes |
+| [error-codes.md](error-codes.md) | Stable error codes |
+| [contracts-reference.md](contracts-reference.md) | Every type of the Contracts package |
+| [server-reference.md](server-reference.md) | The public surface of the Server: registration, services, settings classes |
+
+## About the project
+
+| Page | Topic |
+|---|---|
+| [architecture.md](architecture.md) | Solution layout and layers |
+| [decisions.md](decisions.md) | Design decisions (ADR list) |
+| [contributing-workflow.md](contributing-workflow.md) | How we work: code, tests, docs |
+| [testing.md](testing.md) | How to run the tests |
+| [troubleshooting.md](troubleshooting.md) | Symptom, cause, fix |
+| [gateway.md](gateway.md) | The gateway project (not built) |
 
 ## Related pages
 
 - [Root README](../README.md)
+- [Changelog](../CHANGELOG.md)
+- [Reference generator](../tools/docs/README.md)

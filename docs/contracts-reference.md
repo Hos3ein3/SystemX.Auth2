@@ -27,6 +27,16 @@ if (!result.IsSuccess && result.Error!.Code == Auth2ErrorCodes.InvalidCredential
 - [api-reference.md](api-reference.md)
 - [client-reference.md](client-reference.md)
 - [error-codes.md](error-codes.md)
+- [Machine to machine (client credentials)](machine-to-machine.md)
+- [Authentication flows](authentication-flows.md)
+- [Troubleshooting](troubleshooting.md)
+- [Client setup](client-setup.md)
+- [Client authorization](client-authorization.md)
+- [Current user and current client](client-current-user.md)
+- [Handshake and startup](handshake-and-startup.md)
+- [Getting started](getting-started.md)
+- [Server reference](server-reference.md)
+- [Documentation index](index.md)
 
 ## Types (generated)
 

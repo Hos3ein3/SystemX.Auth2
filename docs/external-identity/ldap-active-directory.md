@@ -55,3 +55,9 @@ See [troubleshooting.md](troubleshooting.md#ldap).
 ## How to implement or extend
 
 See [ldap-openldap.md](ldap-openldap.md#how-to-implement-or-extend).
+
+## Related pages
+
+- [LDAP and Active Directory: enable and use](ldap.md)
+- [Group mapping](group-mapping.md)
+- [Documentation index](../index.md)

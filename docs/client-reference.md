@@ -171,6 +171,14 @@ Services return `Result`. Building blocks (token provider, handler, start-up) th
 - [client-current-user.md](client-current-user.md)
 - [permission-sync.md](permission-sync.md)
 - [contracts-reference.md](contracts-reference.md)
+- [Authorization: permissions, roles and groups](authorization.md)
+- [Admin JSON API](admin-api.md)
+- [Error codes](error-codes.md)
+- [Authentication flows](authentication-flows.md)
+- [Handshake and startup](handshake-and-startup.md)
+- [Getting started](getting-started.md)
+- [Server reference](server-reference.md)
+- [Documentation index](index.md)
 
 ## API tables (generated)
 

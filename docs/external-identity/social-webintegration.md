@@ -86,3 +86,14 @@ See [troubleshooting.md](troubleshooting.md). The most common: the callback URL 
 - Registrations: `ExternalClientRegistrations.Build` has one `case` per type (`web.AddGoogle(...)`, `AddMicrosoft`, `AddGitHub`, `AddFacebook`, `AddApple`). To add a service that WebIntegration already has, add the type and a `case`: the worked example "GitLab" is in [external-identity.md](../external-identity.md#how-to-add-a-new-oidc-provider-type-worked-example).
 - The flow runs in `OpenIddictIdentitySource` (challenge, callback, rules of each type). Why the library and what was learned: [ADR-096](../decisions.md).
 - Tests: `OidcSourceTests`, `ExternalClientIntegrationTests`, `OpenIddictClientSpikeTests` (a WebIntegration provider from a row, two projects, mixed-up and replayed callbacks refused), with `FakeOidcProvider`.
+
+## Related pages
+
+- [SAML 2.0: enable and use](saml.md)
+- [LDAP and Active Directory: enable and use](ldap.md)
+- [Passkeys](passkeys.md)
+- [Brokering: your app trusts only the Server](brokering.md)
+- [Group mapping](group-mapping.md)
+- [Admin JSON API](../admin-api.md)
+- [Authentication flows](../authentication-flows.md)
+- [Documentation index](../index.md)

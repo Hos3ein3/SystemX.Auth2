@@ -86,3 +86,12 @@ API errors always return the stable `code` too, so your program never has to rea
 
 - [error-codes.md](error-codes.md)
 - [server-settings.md](server-settings.md)
+- [Server reference](server-reference.md)
+- [Credential scope](credential-scope.md)
+- [Email and SMS](email-and-sms.md)
+- [Admin JSON API](admin-api.md)
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
+- [UI handover](ui-handover.md)
+- [Passkeys](external-identity/passkeys.md)
+- [Authentication flows](authentication-flows.md)
+- [Documentation index](index.md)

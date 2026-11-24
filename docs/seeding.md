@@ -77,6 +77,20 @@ To add more admins, use the `create-admin` command (see [server-setup.md](server
 
 - [server-setup.md](server-setup.md)
 - `security.md` and `getting-started.md` (planned; they will link here)
+- [Getting started](getting-started.md)
+- [Concepts](concepts.md)
+- [Client setup](client-setup.md)
+- [Troubleshooting](troubleshooting.md)
+- [Server settings](server-settings.md)
+- [Deployment and scaling](deployment-and-scaling.md)
+- [Security](security.md)
+- [Observability](observability.md)
+- [Email and SMS](email-and-sms.md)
+- [Server reference](server-reference.md)
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
+- [Database tables](database-tables.md)
+- [Authorization: permissions, roles and groups](authorization.md)
+- [Documentation index](index.md)
 
 ## Using the admin API
 

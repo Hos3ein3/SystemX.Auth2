@@ -34,3 +34,24 @@ Example: members of the group `Finance-EMEA` get the role `accountant`:
 ## How to implement or extend
 
 `ExternalMappingService` (`Infrastructure/External/ExternalLoginService.cs`) computes the wanted set and the mentioned set and uses `IAccessService` and `IGroupService`, so every change has the normal audit events and version bumps. To support a new kind of source value, return it as `ExternalIdentity.Groups` or `ExternalIdentity.Attributes`. Tests: `ExternalMappingTests`.
+
+## Related pages
+
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](../external-identity.md)
+- [Social login with OpenIddict.Client.WebIntegration](social-webintegration.md)
+- [SAML 2.0: enable and use](saml.md)
+- [LDAP and Active Directory: enable and use](ldap.md)
+- [Passkeys](passkeys.md)
+- [Brokering: your app trusts only the Server](brokering.md)
+- [Troubleshooting external sign-in](troubleshooting.md)
+- [UI handover](../ui-handover.md)
+- [SAML 2.0: generic identity provider](saml-generic.md)
+- [SAML with Microsoft Entra ID](saml-entra-id.md)
+- [SAML with Okta](saml-okta.md)
+- [SAML with Active Directory Federation Services (ADFS)](saml-adfs.md)
+- [SAML with Keycloak](saml-keycloak.md)
+- [SAML certificate rotation](saml-certificate-rotation.md)
+- [LDAP login with OpenLDAP (and other LDAP servers)](ldap-openldap.md)
+- [LDAP login with Active Directory](ldap-active-directory.md)
+- [Authentication flows](../authentication-flows.md)
+- [Documentation index](../index.md)

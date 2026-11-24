@@ -33,3 +33,9 @@ What works today. "Done" means: code, tests, docs and a CHANGELOG entry exist. W
 | Gateway | Not built | [gateway.md](gateway.md) |
 
 This page is updated whenever a feature is finished.
+
+## Related pages
+
+- [Comparison and limits](comparison-and-limits.md)
+- [Changelog](../CHANGELOG.md)
+- [Documentation index](index.md)

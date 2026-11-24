@@ -332,3 +332,19 @@ While this package was implemented, another process changed the same working tre
 **Decision.** `Registration.AssignedRoles`, `AssignedGroups` and `AssignedPermissions` list what every new member of a project gets. One service (`IRegistrationDefaults`) does it and is called from the three places that create a member by themselves: register, join with proof of ownership, and the first external sign-in. Admin-created users are not touched (the admin chooses).
 **Rules.** The settings are `GlobalOnly` (they decide what rights a stranger gets). The validator refuses `GlobalAdmin`, `Developer` and `ProjectAdmin`, bad names, duplicates and more than 50 entries; the service refuses the admin roles again at run time. A name that does not exist is skipped, logged by count and written to the audit event `register.defaults_applied` with an `assigned` and a `skipped` list; it never fails a registration.
 **Scopes are left out on purpose.** A scope is what a **client** may ask for (it lives on the application), and a person has no scopes, so there is nothing to assign at registration. Which scopes an application may use is the `allowedScopes` of the application.
+
+## Related pages
+
+- [Concepts](concepts.md)
+- [Architecture](architecture.md)
+- [Database tables](database-tables.md)
+- [Credential scope](credential-scope.md)
+- [Comparison and limits](comparison-and-limits.md)
+- [Roadmap](roadmap.md)
+- [Feature status](feature-status.md)
+- [Gateway](gateway.md)
+- [Contributing workflow](contributing-workflow.md)
+- [Email and SMS](email-and-sms.md)
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
+- [Testing](testing.md)
+- [Documentation index](index.md)

@@ -40,7 +40,17 @@ dotnet test
 
 ## Documentation
 
-Start at [docs/index.md](docs/index.md).
+Start at [docs/index.md](docs/index.md) (the map of every page).
+
+| I want to | Read |
+|---|---|
+| Try it in an hour | [docs/getting-started.md](docs/getting-started.md) |
+| Understand the words (project, application, membership) | [docs/concepts.md](docs/concepts.md) |
+| Run and configure the Server | [Server README](src/SystemX.Auth2.Server/README.md), [docs/server-setup.md](docs/server-setup.md), [docs/server-settings.md](docs/server-settings.md) |
+| Add the Client package to my app | [Client README](src/SystemX.Auth2.Client/README.md), [docs/client-setup.md](docs/client-setup.md), [docs/client-reference.md](docs/client-reference.md) |
+| Sign in with Google, SAML, LDAP or a passkey | [docs/external-identity.md](docs/external-identity.md) |
+| Know what each database table is | [docs/database-tables.md](docs/database-tables.md), [docs/key-ring.md](docs/key-ring.md) |
+| See what works and what does not | [docs/feature-status.md](docs/feature-status.md), [docs/roadmap.md](docs/roadmap.md), [docs/comparison-and-limits.md](docs/comparison-and-limits.md) |
 
 ## Licence
 

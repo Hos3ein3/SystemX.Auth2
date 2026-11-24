@@ -168,6 +168,17 @@ Calls that **change something** (register, login, password calls, refresh) are *
 - [handshake-and-startup.md](handshake-and-startup.md) (the server side)
 - [permission-sync.md](permission-sync.md)
 - [authentication-flows.md](authentication-flows.md)
+- [Getting started](getting-started.md)
+- [Seeding (first admin)](seeding.md)
+- [Troubleshooting](troubleshooting.md)
+- [Client package reference](client-reference.md)
+- [Authorization: permissions, roles and groups](authorization.md)
+- [Admin JSON API](admin-api.md)
+- [Client authorization](client-authorization.md)
+- [Current user and current client](client-current-user.md)
+- [Contracts reference](contracts-reference.md)
+- [Client package README](../src/SystemX.Auth2.Client/README.md)
+- [Documentation index](index.md)
 
 ## Sign-in for browser apps (UI modes)
 

@@ -131,3 +131,16 @@ All routes under `/api/auth2/admin` need the token of a signed-in admin with sco
 |---|---|
 | `GET /health/live` | The process is up |
 | `GET /health/ready` | The process can serve (database reachable). See [observability.md](observability.md) and [deployment-and-scaling.md](deployment-and-scaling.md) |
+
+## Related pages
+
+- [Credential scope](credential-scope.md)
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
+- [Server settings](server-settings.md)
+- [Email and SMS](email-and-sms.md)
+- [The key ring and its snapshot](key-ring.md)
+- [Contracts reference](contracts-reference.md)
+- [Client package reference](client-reference.md)
+- [Machine to machine (client credentials)](machine-to-machine.md)
+- [Server reference](server-reference.md)
+- [Documentation index](index.md)

@@ -30,3 +30,16 @@ Logout is local: the Server session and its tokens end. The upstream session is 
 ## How to implement or extend
 
 The path is: source (`OpenIddictIdentitySource`, `SamlIdentitySource` or the LDAP directory) -> `ExternalFlow` (cookie and redirects) -> `IExternalLoginService` (decision table) -> `ILoginService.ExternalLoginAsync` (the one login pipeline) -> `ITokenIssuer` (`idp` and `amr` claims). To add claims to tokens, change `TokenIssuer.CreateUserPrincipalAsync` and `ApplyDestinations`.
+
+## Related pages
+
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](../external-identity.md)
+- [Social login with OpenIddict.Client.WebIntegration](social-webintegration.md)
+- [SAML 2.0: enable and use](saml.md)
+- [LDAP and Active Directory: enable and use](ldap.md)
+- [Passkeys](passkeys.md)
+- [Troubleshooting external sign-in](troubleshooting.md)
+- [UI handover](../ui-handover.md)
+- [Admin JSON API](../admin-api.md)
+- [Authentication flows](../authentication-flows.md)
+- [Documentation index](../index.md)

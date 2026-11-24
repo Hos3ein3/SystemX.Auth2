@@ -82,3 +82,17 @@ Every code has an English text in `Errors.resx`. See [localization.md](localizat
 | `passkey_not_allowed` | 400 | Passkeys are off for this application |
 | `passkey_limit_reached` | 400 | The user has the most passkeys that are allowed |
 | `passkey_blocked_authenticator` | 400 | This authenticator model is on the block list |
+- [Authentication flows](authentication-flows.md)
+- [Authorization: permissions, roles and groups](authorization.md)
+- [Credential scope](credential-scope.md)
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](external-identity.md)
+- [UI handover](ui-handover.md)
+- [Server settings](server-settings.md)
+- [Contracts reference](contracts-reference.md)
+- [Client package reference](client-reference.md)
+- [Machine to machine (client credentials)](machine-to-machine.md)
+- [Troubleshooting](troubleshooting.md)
+- [Getting started](getting-started.md)
+- [Observability](observability.md)
+- [Troubleshooting external sign-in](external-identity/troubleshooting.md)
+- [Documentation index](index.md)

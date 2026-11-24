@@ -73,3 +73,18 @@ See [ui-handover.md](../ui-handover.md#passkey-routes-json-for-the-ui-script): t
 - **How the per-project store works**: `AppUserPasskey` has `ApplicationId` in its key, and `user_passkeys` has a query filter by the current project. `Auth2UserStore` overrides the passkey methods so that every call needs a current project. Test: `PasskeyStoreTests`, `PasskeyFlowTests.APasskey_OfApplicationA_IsNotAcceptedByApplicationB`.
 - The AAGUID is read from the attestation object (`authData`) with `System.Formats.Cbor`.
 - Tests use `SoftwareAuthenticator` (ES256, attestation "none") that makes the same JSON a browser makes.
+
+## Related pages
+
+- [External identity: social login, OIDC, brokering, SAML, LDAP and passkeys](../external-identity.md)
+- [Localization](../localization.md)
+- [Server reference](../server-reference.md)
+- [Authentication flows](../authentication-flows.md)
+- [Social login with OpenIddict.Client.WebIntegration](social-webintegration.md)
+- [SAML 2.0: enable and use](saml.md)
+- [LDAP and Active Directory: enable and use](ldap.md)
+- [Brokering: your app trusts only the Server](brokering.md)
+- [Group mapping](group-mapping.md)
+- [Troubleshooting external sign-in](troubleshooting.md)
+- [Server settings](../server-settings.md)
+- [Documentation index](../index.md)

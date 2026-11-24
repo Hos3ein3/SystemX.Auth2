@@ -39,3 +39,8 @@ Each limit below is a design choice or is stated in the page named next to it.
 ## Rule for open items
 
 Every `TODO` in code must be listed on this page.
+
+## Related pages
+
+- [Changelog](../CHANGELOG.md)
+- [Documentation index](index.md)

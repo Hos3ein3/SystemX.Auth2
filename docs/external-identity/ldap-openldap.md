@@ -65,3 +65,9 @@ See [troubleshooting.md](troubleshooting.md#ldap).
 - `LdapDirectory` (`Infrastructure/External/LdapDirectory.cs`) is the only code that talks to the directory (library: Novell.Directory.Ldap.NETStandard, see ADR-087). `LdapText` has the escape function. `LdapAwareLoginService` decides the order of local password and directory, and rate limits.
 - **To read another attribute**: add it to the `wanted` list in `FindUserAsync`; it is then in `ExternalIdentity.Attributes`, usable by attribute mappings and `ClaimMappings`. To make it a named field (like email), add a setting and read it in `AuthenticateAsync`.
 - Tests: `LdapSourceTests.cs` run against an OpenLDAP container with its own CA (`LdapFixture`).
+
+## Related pages
+
+- [LDAP and Active Directory: enable and use](ldap.md)
+- [LDAP login with Active Directory](ldap-active-directory.md)
+- [Documentation index](../index.md)

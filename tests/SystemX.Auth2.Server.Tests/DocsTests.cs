@@ -56,6 +56,51 @@ public partial class DocsTests
         broken.ShouldBeEmpty();
     }
 
+    private static IEnumerable<string> DocPages(string root) =>
+        Directory.EnumerateFiles(Path.Combine(root, "docs"), "*.md", SearchOption.AllDirectories);
+
+    private static HashSet<string> LinkedFiles(string file)
+    {
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Match m in LinkPattern().Matches(File.ReadAllText(file)))
+        {
+            var target = m.Groups[1].Value.Split('#', 2)[0];
+            if (target.Length == 0 || target.StartsWith("http", StringComparison.OrdinalIgnoreCase) || target.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)) continue;
+            result.Add(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file)!, target)));
+        }
+        return result;
+    }
+
+    [Fact]
+    public void EveryDocPage_IsListedInTheIndex_AndHasRelatedPages()
+    {
+        var root = Root();
+        var index = Path.Combine(root, "docs", "index.md");
+        var listed = LinkedFiles(index);
+        var problems = new List<string>();
+        foreach (var page in DocPages(root).Where(p => !p.Equals(index, StringComparison.Ordinal)))
+        {
+            var name = Path.GetRelativePath(Path.Combine(root, "docs"), page);
+            if (!listed.Contains(page)) problems.Add($"{name}: not listed in docs/index.md");
+            var text = File.ReadAllText(page);
+            if (!text.Contains("## Related pages", StringComparison.Ordinal)) problems.Add($"{name}: no 'Related pages' section");
+            else if (!LinkedFiles(page).Contains(index)) problems.Add($"{name}: does not link back to docs/index.md");
+        }
+        problems.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void EveryDocPage_IsLinkedFromAnotherDocPage()
+    {
+        var root = Root();
+        var pages = DocPages(root).ToList();
+        var inbound = pages.ToDictionary(p => p, _ => 0);
+        foreach (var page in pages)
+            foreach (var target in LinkedFiles(page))
+                if (!target.Equals(page, StringComparison.Ordinal) && inbound.ContainsKey(target)) inbound[target]++;
+        inbound.Where(kv => kv.Value < 2).Select(kv => Path.GetRelativePath(root, kv.Key) + $" ({kv.Value} links in)").ShouldBeEmpty();
+    }
+
     [Fact]
     public void ExternalIdentityGuides_HaveAUseAndAnExtendPart()
     {

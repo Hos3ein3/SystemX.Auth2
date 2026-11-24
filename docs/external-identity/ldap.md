@@ -46,3 +46,13 @@ Your users already live in Active Directory or OpenLDAP and must not get a secon
 ## How to implement or extend
 
 `LdapDirectory` (search and bind), `LdapText` (escaping), `LdapAwareLoginService` (the order of local and directory checks). Tests: `LdapSourceTests.cs` run against a real OpenLDAP server in a container (`LdapFixture`). See [ldap-openldap.md](ldap-openldap.md#how-to-implement-or-extend).
+
+## Related pages
+
+- [SAML 2.0: enable and use](saml.md)
+- [Passkeys](passkeys.md)
+- [Brokering: your app trusts only the Server](brokering.md)
+- [UI handover](../ui-handover.md)
+- [Admin JSON API](../admin-api.md)
+- [Authentication flows](../authentication-flows.md)
+- [Documentation index](../index.md)

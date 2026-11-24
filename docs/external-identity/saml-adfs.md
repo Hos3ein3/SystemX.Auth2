@@ -47,3 +47,15 @@ Also add `External` to `Methods.AllowedLoginMethods` of the project. See [extern
 ## How to implement or extend
 
 The flow is described in [how the SAML flow is validated](../external-identity.md#how-the-saml-flow-is-validated). Tests: `SamlSourceTests.cs` with `FakeSamlIdp`.
+
+## Related pages
+
+- [SAML 2.0: enable and use](saml.md)
+- [SAML 2.0: generic identity provider](saml-generic.md)
+- [SAML with Microsoft Entra ID](saml-entra-id.md)
+- [SAML with Okta](saml-okta.md)
+- [SAML with Keycloak](saml-keycloak.md)
+- [SAML certificate rotation](saml-certificate-rotation.md)
+- [Group mapping](group-mapping.md)
+- [Troubleshooting external sign-in](troubleshooting.md)
+- [Documentation index](../index.md)
