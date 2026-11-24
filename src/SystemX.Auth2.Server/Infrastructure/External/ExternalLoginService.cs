@@ -326,6 +326,10 @@ internal sealed class ExternalLinkService(UserManager<AppUser> users, Auth2DbCon
         var logins = await users.GetLoginsAsync(user);
         if (!logins.Any(l => l.LoginProvider == providerName && l.ProviderKey == providerKey)) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
 
+        // A directory login cannot be removed while the directory is the only way to check passwords.
+        if (registry.Get(app.Id, providerName) is { Settings: LdapProviderSettings { Mode: LdapMode.LdapOnly } })
+            return OperationResult.Fail(Auth2ErrorCodes.CannotRemoveLastLoginMethod);
+
         var remaining = logins.Count - 1;
         if (await users.HasPasswordAsync(user)) remaining++;
         remaining += await db.Set<AppUserPasskey>().CountAsync(x => x.UserId == user.Id, ct);

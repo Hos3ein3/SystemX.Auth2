@@ -106,7 +106,8 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddSingleton<IReturnUrlValidator, ReturnUrlValidator>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<ITokenIssuer, TokenIssuer>();
-        services.AddScoped<ILoginService, LoginService>();
+        services.AddScoped<LoginService>();
+        services.AddScoped<ILoginService, LdapAwareLoginService>();
 
         services.AddScoped<UserLookup>();
         services.AddScoped<IOtpService, OtpService>();

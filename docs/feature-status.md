@@ -12,7 +12,7 @@ What works today. "Done" means: code, tests, docs and a CHANGELOG entry exist.
 | Social login and generic OIDC (engine, PKCE, SSRF guard, setup guides) | Done | Step 4. Endpoints that call the engine come in step 5 |
 | Login service, mapping, brokering, unlink rules, pages | Done | Step 5 |
 | SAML 2.0 service provider (ACS, metadata, SLO, rotation) | Done | Step 6 |
-| LDAP and Active Directory | Planned | Step 7 |
+| LDAP and Active Directory | Done | Step 7 |
 | Passkeys | Planned | Step 8 |
 | Admin API for providers | Planned | Step 9 |
 | Client changes for external identity | Planned | Step 10 |

@@ -33,6 +33,7 @@ internal static class ExternalIdentityRegistration
         services.TryAddSingleton<SamlIdentitySource>();
         services.AddSingleton<IExternalIdentitySource>(sp => sp.GetRequiredService<SamlIdentitySource>());
         services.TryAddSingleton<SamlMetadataBuilder>();
+        services.TryAddSingleton<ILdapDirectory, LdapDirectory>();
         services.AddScoped<ExternalFlow>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
         services.AddScoped<IExternalMappingService, ExternalMappingService>();

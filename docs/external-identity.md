@@ -190,8 +190,14 @@ See [authentication-flows.md](authentication-flows.md#external-sign-in-social-oi
 
 Setup guides: [generic](external-identity/saml-generic.md), [Entra ID](external-identity/saml-entra-id.md), [Okta](external-identity/saml-okta.md), [ADFS](external-identity/saml-adfs.md), [Keycloak](external-identity/saml-keycloak.md), [certificate rotation](external-identity/saml-certificate-rotation.md).
 
+## LDAP and Active Directory
+
+The user types a directory user name and password into the normal login page. The Server finds the user with a **service account**, checks the password by binding as the user, reads attributes and groups, and then uses the same decision table and login pipeline as every other external sign-in.
+Guides: [OpenLDAP](external-identity/ldap-openldap.md), [Active Directory](external-identity/ldap-active-directory.md), [troubleshooting](external-identity/troubleshooting.md). Safety rules in short: TLS is required (LDAPS or StartTLS) with chain and name checks, filter input is escaped, the link key is the unique id (not the DN), empty passwords are never sent, attempts are rate limited and counted toward the lockout, and secrets never reach logs.
+
 ## How to implement or extend
 
+- **LDAP source**: `LdapDirectory`, `LdapText`, `LdapAwareLoginService` (see [ldap-openldap.md](external-identity/ldap-openldap.md#how-to-implement-or-extend)).
 - **SAML source**: `SamlIdentitySource` (challenge, ACS checks, SLO), `SamlProviderMaterial` (IdP metadata and certificates), `SamlMetadataBuilder` (SP metadata). Pages: `Pages/Saml/{Acs,Metadata,Slo}`. To read one more attribute, extend `BuildIdentity`. The library is ITfoxtec.Identity.Saml2 (see ADR-086).
 - **Sign-in decisions**: `IExternalLoginService` (`ExternalLoginService`) is the only place with the decision table. Sources (OIDC, SAML, LDAP) only produce an `ExternalIdentity`. `ExternalFlow` is the browser side (state cookie, redirects). Pages: `Pages/Account/External/*`, `Pages/Manage/ExternalLogins`. Routes: `Endpoints/ExternalEndpoints.cs`.
 - **Settings classes**: `Domain/Settings/ExternalProviders.cs`. A new kind needs a `[JsonDerivedType]` and a validator branch in `Application/ExternalProviderSettingsValidator.cs`.

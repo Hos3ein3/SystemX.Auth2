@@ -25,7 +25,7 @@ public sealed record ExternalIdentity(
 }
 
 /// <summary>A failed external sign-in. <c>ErrorCode</c> is a stable code of <c>Auth2ErrorCodes</c>. <c>Reason</c> is a short safe word for the audit log (never user data).</summary>
-public sealed class ExternalLoginException(string errorCode, string reason, Exception? inner = null) : Exception($"{errorCode}: {reason}", inner)
+public class ExternalLoginException(string errorCode, string reason, Exception? inner = null) : Exception($"{errorCode}: {reason}", inner)
 {
     /// <summary>Stable error code.</summary>
     public string ErrorCode { get; } = errorCode;
