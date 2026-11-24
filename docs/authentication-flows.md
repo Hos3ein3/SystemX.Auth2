@@ -52,7 +52,7 @@ The order of the checks:
 Consent is checked by the authorize endpoint (see "Consent" below).
 
 **No user enumeration.** Unknown user, wrong password, inactive user and "not registered in this application" all return `invalid_credentials`. For an unknown user the server still spends the time of a password check. The real reason is written to the audit log (`login.failed`, field `code`).
-The errors that are allowed to differ are the ones that do not tell if an account exists: `application_disabled`, `login_method_not_allowed`, `locked_out` (the account is real, and was locked by many failures), and the confirmation and two-factor-setup errors (shown only after the password was right).
+The errors that are allowed to differ are the ones that do not tell if an account exists: `project_disabled`, `login_method_not_allowed`, `locked_out` (the account is real, and was locked by many failures), and the confirmation and two-factor-setup errors (shown only after the password was right).
 
 Every login writes an audit event (`login.success`, `login.failed`, `login.locked_out`). Events never contain passwords, codes or login names.
 

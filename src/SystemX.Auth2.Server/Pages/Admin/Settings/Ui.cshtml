@@ -1,0 +1,60 @@
+@page "/admin/p/{projectKey}/ui"
+@model SystemX.Auth2.Server.Pages.Admin.Settings.UiModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"UI & Login Configuration - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">UI & Hosted Login Page</h1>
+        <p class="mt-1 text-sm text-gray-500">Configure appearance, input methods, and layout for hosted authentication screens.</p>
+    </div>
+
+    <form method="post" class="space-y-6">
+        <a2-card title="Login Page Titles & Texts">
+            <div class="space-y-4">
+                <a2-field label="Login Heading / Title">
+                    <a2-input name="Input.Title" value="@Model.Input.Title" placeholder="Sign in to your account" />
+                </a2-field>
+
+                <a2-field label="Subtitle / Greeting">
+                    <a2-input name="Input.Subtitle" value="@Model.Input.Subtitle" placeholder="Welcome back" />
+                </a2-field>
+            </div>
+        </a2-card>
+
+        <a2-card title="Identifiers & Controls">
+            <div class="space-y-4">
+                <a2-field label="Primary User Identifier">
+                    <select name="Input.Identifier" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="EmailOrUsername" selected="@(Model.Input.Identifier == "EmailOrUsername" ? "selected" : null)">Email or Username</option>
+                        <option value="Email" selected="@(Model.Input.Identifier == "Email" ? "selected" : null)">Email Address Only</option>
+                        <option value="UserName" selected="@(Model.Input.Identifier == "UserName" ? "selected" : null)">Username Only</option>
+                        <option value="Phone" selected="@(Model.Input.Identifier == "Phone" ? "selected" : null)">Phone Number</option>
+                    </select>
+                </a2-field>
+
+                <a2-field label="Layout Style">
+                    <select name="Input.LayoutVariant" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="centered" selected="@(Model.Input.LayoutVariant == "centered" ? "selected" : null)">Centered Card</option>
+                        <option value="split" selected="@(Model.Input.LayoutVariant == "split" ? "selected" : null)">Split Screen (Branded Hero + Form)</option>
+                        <option value="minimal" selected="@(Model.Input.LayoutVariant == "minimal" ? "selected" : null)">Minimalist</option>
+                    </select>
+                </a2-field>
+
+                <div class="pt-2 space-y-2">
+                    <a2-checkbox name="Input.ShowRememberMe" checked="@Model.Input.ShowRememberMe" label="Show 'Remember me' checkbox" />
+                    <a2-checkbox name="Input.ShowForgotPassword" checked="@Model.Input.ShowForgotPassword" label="Show 'Forgot password' link" />
+                    <a2-checkbox name="Input.ShowRegisterLink" checked="@Model.Input.ShowRegisterLink" label="Show 'Create an account' link" />
+                </div>
+            </div>
+        </a2-card>
+
+        <div class="pt-4 flex justify-end">
+            <a2-button type="submit" variant="primary">
+                Save UI Settings
+            </a2-button>
+        </div>
+    </form>
+</div>

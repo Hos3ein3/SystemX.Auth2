@@ -309,7 +309,7 @@ public class AdminMappingAndDomainTests : AdminExternalBase
             using var _ = s2.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
             var d2 = s2.ServiceProvider.GetRequiredService<Auth2DbContext>();
             globalAdmin = await d2.Roles.Where(r => r.Name == Auth2Roles.GlobalAdmin).Select(r => r.Id).SingleAsync();
-            var r = new AppRole("b-role") { ApplicationId = B.Id };
+            var r = new AppRole("b-role") { ProjectId = B.Id };
             d2.Roles.Add(r);
             await d2.SaveChangesAsync();
             other = r.Id;
@@ -410,7 +410,7 @@ public class AdminUserExternalTests : AdminExternalBase
     public async Task Passkeys_CanBeListedAndRemoved_AndTheBlockedListIsForGlobalAdminsOnly()
     {
         await StartAsync();
-        await UpdateSettingsAsync(A, s => { s.Methods.AllowedLoginMethods.Add(LoginMethod.Passkey); s.Passkeys.AllowPasskeys = true; s.Redirects.AllowedRedirectUris.Add("https://client.test/cb"); });
+        await UpdateSettingsAsync(A, s => { s.Methods.AllowedLoginMethods.Add(LoginMethod.Passkey); s.Passkeys.AllowPasskeys = true; s.RedirectUris.Add("https://client.test/cb"); });
         var session = new Browser(Factory);
         (await session.PostPageAsync("/Account/Login?ClientId=appa", new Dictionary<string, string> { ["Input.Login"] = "plain", ["Input.Password"] = PassA })).StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var key = new SoftwareAuthenticator("https://auth.test");

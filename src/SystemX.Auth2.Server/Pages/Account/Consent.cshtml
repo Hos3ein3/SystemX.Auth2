@@ -1,3 +1,45 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.ConsentModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Authorization Request";
+}
+
+<div class="space-y-6">
+    <div class="text-center">
+        <h2 class="text-lg font-bold text-[var(--a2-color-text,#111827)]">
+            @(Model.ApplicationName ?? "Application") is requesting access
+        </h2>
+        <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)]">
+            The application would like permission to access your account:
+        </p>
+    </div>
+
+    @if (Model.Scopes.Count > 0)
+    {
+        <div class="rounded-md border border-gray-200 bg-gray-50 p-4 divide-y divide-gray-200">
+            @foreach (var scope in Model.Scopes)
+            {
+                <div class="py-2.5 flex items-start space-x-3 first:pt-0 last:pb-0">
+                    <svg class="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <div>
+                        <span class="text-sm font-semibold text-gray-800">@scope</span>
+                        <p class="text-xs text-gray-500">Access to @scope resources on your behalf</p>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <form method="post" class="space-y-3">
+        <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+        <a2-button type="submit" asp-page-handler="Accept" class="w-full">
+            Allow Access
+        </a2-button>
+        <button type="submit" asp-page-handler="Deny" class="w-full inline-flex justify-center rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+            Deny
+        </button>
+    </form>
+</div>

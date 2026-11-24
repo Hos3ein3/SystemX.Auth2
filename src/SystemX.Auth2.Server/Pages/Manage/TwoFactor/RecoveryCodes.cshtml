@@ -1,3 +1,52 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.TwoFactor.RecoveryCodesModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAccount";
+    ViewData["Title"] = "Recovery Codes";
+}
+
+<div class="space-y-6 max-w-xl">
+    <div>
+        <h2 class="text-xl font-bold text-gray-900">Two-Factor Recovery Codes</h2>
+        <p class="mt-1 text-sm text-gray-500">Regenerate recovery codes if you have used existing ones or suspect they have been compromised.</p>
+    </div>
+
+    @if (Model.Codes.Count > 0)
+    {
+        <a2-alert variant="warning">
+            Save these new recovery codes immediately. Your previous codes are no longer valid.
+        </a2-alert>
+
+        <a2-card title="New Recovery Codes">
+            <div class="grid grid-cols-2 gap-2 bg-gray-50 p-4 rounded border font-mono text-sm text-gray-800 mb-4">
+                @foreach (var code in Model.Codes)
+                {
+                    <div class="p-1 bg-white border border-gray-200 rounded text-center">@code</div>
+                }
+            </div>
+
+            <a2-link-button href="/Manage/Index" variant="primary">
+                Return to Account Overview
+            </a2-link-button>
+        </a2-card>
+    }
+    else
+    {
+        <a2-card title="Regenerate Recovery Codes">
+            <p class="text-sm text-gray-600 mb-4">
+                Regenerating recovery codes will invalidate all your old recovery codes.
+                Enter a code from your authenticator app to confirm:
+            </p>
+
+            <form method="post" class="space-y-4">
+                <a2-field label="Authenticator Code" required="true">
+                    <a2-input name="Input.Code" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" />
+                </a2-field>
+
+                <a2-button type="submit" variant="danger">
+                    Generate New Codes
+                </a2-button>
+            </form>
+        </a2-card>
+    }
+</div>

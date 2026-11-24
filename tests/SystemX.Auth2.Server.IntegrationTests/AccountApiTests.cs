@@ -27,7 +27,7 @@ public class RegisterApiTests : Phase6Base
         var (status, body) = await RegisterAsync("appa", token);
         status.ShouldBe(HttpStatusCode.OK);
         body.GetProperty("userWasCreated").GetBoolean().ShouldBeTrue();
-        body.GetProperty("joinedApplication").GetBoolean().ShouldBeTrue();
+        body.GetProperty("joinedProject").GetBoolean().ShouldBeTrue();
         body.GetProperty("confirmationRequired").GetBoolean().ShouldBeFalse();
 
         (await CountsAsync(Email)).ShouldBe((1, 1));
@@ -60,7 +60,7 @@ public class RegisterApiTests : Phase6Base
         var (status, body) = await RegisterAsync("appa", token, password: "Another-Pass-999!");
         status.ShouldBe(HttpStatusCode.OK);
         body.GetProperty("userWasCreated").GetBoolean().ShouldBeFalse();
-        body.GetProperty("joinedApplication").GetBoolean().ShouldBeTrue();
+        body.GetProperty("joinedProject").GetBoolean().ShouldBeTrue();
 
         (await CountsAsync(Email)).ShouldBe((1, 1));
         (await UserTokensAsync(Email, PassA)).Str("token_type").ShouldBe("Bearer");
@@ -94,7 +94,7 @@ public class RegisterApiTests : Phase6Base
         var (status, body) = await RegisterAsync("appb", tokenB, password: "Attacker-Pass-1!");
         status.ShouldBe(HttpStatusCode.OK);
         body.GetProperty("userWasCreated").GetBoolean().ShouldBeFalse();
-        body.GetProperty("joinedApplication").GetBoolean().ShouldBeFalse();
+        body.GetProperty("joinedProject").GetBoolean().ShouldBeFalse();
         body.GetProperty("confirmationRequired").GetBoolean().ShouldBeTrue();
 
         (await CountsAsync(Email)).ShouldBe((1, 1));                 // no new row
@@ -147,7 +147,7 @@ public class RegisterApiTests : Phase6Base
 
         var (status, body) = await RegisterAsync("appb", tokenB, password: "Attacker-Pass-1!");
         status.ShouldBe(HttpStatusCode.OK);
-        body.GetProperty("joinedApplication").GetBoolean().ShouldBeFalse();
+        body.GetProperty("joinedProject").GetBoolean().ShouldBeFalse();
         Factory.Messages.CountTo(Email).ShouldBe(before);             // nothing was sent: an unconfirmed address proves nothing
         (await HasRowAsync(Email, B)).ShouldBeFalse();
         (await AuditAsync("join.no_proof_channel")).Count.ShouldBe(1);
@@ -291,12 +291,12 @@ public class RegisterApiTests : Phase6Base
         await using (var scope = NewScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-            (await db.Applications.SingleAsync(a => a.ProjectKey == "appa")).IsEnabled = false;
+            (await db.Projects.SingleAsync(a => a.ProjectKey == "appa")).IsEnabled = false;
             await db.SaveChangesAsync();
         }
         var disabled = await CallAsync(b, Auth2Routes.Register, new RegisterRequest(null, "y@example.com", null, PassA), tokenA);
         disabled.Status.ShouldBe(HttpStatusCode.Forbidden);
-        ErrorCode(disabled.Body).ShouldBe(Auth2ErrorCodes.ApplicationDisabled);
+        ErrorCode(disabled.Body).ShouldBe(Auth2ErrorCodes.ProjectDisabled);
     }
 }
 

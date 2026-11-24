@@ -26,8 +26,8 @@ When you call the server from your own backend (or you write a client). The `Sys
 |---|---|
 | 400 | Validation or a business rule (`validation_failed`, `password_*`, `invalid_otp`, `invalid_token` for a bad confirmation or reset token, `invalid_credentials`, `login_method_not_allowed`) |
 | 401 | No token or a bad token (`invalid_token`) |
-| 403 | Wrong kind of token (`forbidden`), missing scope (`insufficient_scope`), `registration_disabled`, `application_disabled`, `two_factor_not_allowed` |
-| 404 | The application of the token does not exist (`application_not_found`) |
+| 403 | Wrong kind of token (`forbidden`), missing scope (`insufficient_scope`), `registration_disabled`, `project_disabled`, `two_factor_not_allowed` |
+| 404 | The application of the token does not exist (`project_not_found`) |
 | 409 | `conflict` (for example two-factor is already on), `server_mode_mismatch`, `project_key_or_name_mismatch` |
 | 423 | `locked_out` |
 | 429 | `rate_limited` (rate limiting arrives in phase 10) |

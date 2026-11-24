@@ -1,0 +1,39 @@
+@page
+@model SystemX.Auth2.Server.Pages.Manage.ChangeEmailModel
+@{
+    Layout = "_LayoutAccount";
+    ViewData["Title"] = "Change Email";
+}
+
+<div class="space-y-6 max-w-xl">
+    <div>
+        <h2 class="text-xl font-bold text-gray-900">Change Email Address</h2>
+        <p class="mt-1 text-sm text-gray-500">Update the primary email address associated with your account.</p>
+    </div>
+
+    @if (Model.EmailSent)
+    {
+        <a2-alert variant="success">
+            A confirmation link has been sent to your new email address. Please click the link in that email to confirm the change.
+        </a2-alert>
+    }
+
+    <a2-card>
+        <form method="post" class="space-y-4">
+            <div class="mb-4">
+                <span class="block text-sm font-medium text-gray-500 mb-1">Current email</span>
+                <span class="text-sm font-semibold text-gray-900">@Model.CurrentEmail</span>
+            </div>
+
+            <a2-field label="New email address" required="true">
+                <a2-input name="Input.NewEmail" type="email" value="@Model.Input.NewEmail" required="true" placeholder="new.email@example.com" autocomplete="email" />
+            </a2-field>
+
+            <div class="pt-2">
+                <a2-button type="submit" variant="primary">
+                    Send Confirmation Link
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

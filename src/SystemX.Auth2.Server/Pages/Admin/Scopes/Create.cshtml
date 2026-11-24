@@ -1,0 +1,50 @@
+@page "/admin/p/{projectKey}/scopes/create"
+@model SystemX.Auth2.Server.Pages.Admin.Scopes.CreateModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"New Scope - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-xl mx-auto space-y-6">
+    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+        <a href="/admin/p/@Model.ProjectKey/scopes" class="hover:underline">Scopes</a>
+        <span>/</span>
+        <span class="text-gray-900 font-medium">Create</span>
+    </div>
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Create New Scope</h1>
+        <p class="mt-1 text-sm text-gray-500">Define a new OAuth 2.0 authorization scope.</p>
+    </div>
+
+    <a2-card>
+        <form method="post" class="space-y-4">
+            <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
+
+            <a2-field label="Scope name" required="true" hint="e.g. read:orders, api.full. Cannot contain spaces or quotes.">
+                <a2-input name="Input.Name" value="@Model.Input.Name" required="true" placeholder="read:orders" />
+            </a2-field>
+
+            <a2-field label="Display name" hint="User-friendly name shown on the consent screen.">
+                <a2-input name="Input.DisplayName" value="@Model.Input.DisplayName" placeholder="Read Order History" />
+            </a2-field>
+
+            <a2-field label="Description" hint="Detailed explanation of access granted by this scope.">
+                <a2-textarea name="Input.Description" value="@Model.Input.Description" rows="3" placeholder="Allows read-only access to customer orders." />
+            </a2-field>
+
+            <a2-field label="Associated Resources" hint="Optional space or comma-separated resource server audiences.">
+                <a2-input name="Input.Resources" value="@Model.Input.Resources" placeholder="papertrade-api" />
+            </a2-field>
+
+            <div class="pt-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <a2-link-button href="/admin/p/@Model.ProjectKey/scopes" variant="secondary">
+                    Cancel
+                </a2-link-button>
+                <a2-button type="submit" variant="primary">
+                    Create Scope
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

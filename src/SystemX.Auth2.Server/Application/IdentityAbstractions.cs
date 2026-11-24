@@ -11,10 +11,22 @@ namespace SystemX.Auth2.Server.Application;
 public interface IAuthFlowResolver
 {
     /// <summary>The current application.</summary>
-    Task<Auth2Application> GetApplicationAsync(CancellationToken ct = default);
+    Task<Project> GetProjectAsync(CancellationToken ct = default);
 
-    /// <summary>Settings of the current application.</summary>
-    Task<ApplicationSettings> GetSettingsAsync(CancellationToken ct = default);
+    /// <summary>Settings of the current project.</summary>
+    Task<ProjectSettings> GetSettingsAsync(CancellationToken ct = default);
+
+    /// <summary>The calling application (from the client id of the request), or null when the request has none.</summary>
+    Task<ClientApplicationInfo?> GetClientAsync(CancellationToken ct = default);
+
+    /// <summary>Project settings with the application overrides applied (the effective values for this request).</summary>
+    Task<EffectiveSettings> GetEffectiveAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// The shared gate. Returns <c>project_disabled</c> or <c>application_disabled</c> when the request must be refused, else null.
+    /// Every sign-in path asks this one method. The public answer is always <c>access_denied</c>; the real reason goes to the audit log.
+    /// </summary>
+    Task<string?> CheckGateAsync(CancellationToken ct = default);
 
     /// <summary>Where credentials live for the current application. Single mode always gives <see cref="CredentialScope.Shared"/>.</summary>
     Task<CredentialScope> GetCredentialScopeAsync(CancellationToken ct = default);
@@ -22,7 +34,7 @@ public interface IAuthFlowResolver
 
 /// <summary>
 /// Where the credential state (password, security stamp, 2FA, lockout, TOTP key, recovery codes) of a user is read and written.
-/// Two strategies: the user row, or the <c>user_applications</c> row of the current application.
+/// Two strategies: the user row, or the <c>user_projects</c> row of the current project.
 /// </summary>
 public interface ICredentialState
 {

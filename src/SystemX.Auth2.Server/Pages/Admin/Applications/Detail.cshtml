@@ -1,0 +1,105 @@
+@page "/admin/p/{projectKey}/applications/detail"
+@model SystemX.Auth2.Server.Pages.Admin.Applications.DetailModel
+@{
+    Layout = "_LayoutAdmin";
+    var app = Model.App;
+    ViewData["Title"] = $"Application: {app?.Name}";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <a href="/admin/p/@Model.ProjectKey/applications" class="hover:underline">Applications</a>
+            <span>/</span>
+            <span class="text-gray-900 font-medium">@app?.Name</span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <a2-link-button href="/admin/p/@Model.ProjectKey/applications/setup?id=@app?.Id" variant="secondary">
+                View Setup Snippets
+            </a2-link-button>
+            <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Delete this application permanently?');">
+                <a2-button type="submit" variant="danger">Delete</a2-button>
+            </form>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.RotatedSecret))
+    {
+        <a2-card title="New Secret Generated">
+            <a2-secret-once secret="@Model.RotatedSecret" />
+        </a2-card>
+    }
+
+    <!-- App Header -->
+    <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+            <h1 class="text-2xl font-bold text-gray-900">@app?.Name</h1>
+            <div>
+                @if (app?.IsEnabled == true)
+                {
+                    <a2-badge variant="success">Enabled</a2-badge>
+                }
+                else
+                {
+                    <a2-badge variant="neutral">Disabled</a2-badge>
+                }
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 text-sm">
+            <div>
+                <span class="block text-gray-500 font-medium">Client ID</span>
+                <span class="font-mono text-gray-900 select-all">@app?.ClientId</span>
+            </div>
+            <div>
+                <span class="block text-gray-500 font-medium">Created</span>
+                <span class="text-gray-900">@app?.CreatedAtUtc.ToString("g")</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Application Settings -->
+    <a2-card title="Configuration">
+        <form method="post" asp-page-handler="Update" class="space-y-4">
+            <a2-field label="Application name" required="true">
+                <a2-input name="Input.Name" value="@Model.Input.Name" required="true" />
+            </a2-field>
+
+            <a2-checkbox name="Input.IsEnabled" checked="@Model.Input.IsEnabled" label="Application is enabled" description="When disabled, client credentials and tokens for this application are revoked." />
+
+            <a2-field label="Redirect URIs" hint="One per line. Allowed callback URIs for this client.">
+                <a2-textarea name="Input.RedirectUris" value="@Model.Input.RedirectUris" rows="3" />
+            </a2-field>
+
+            <a2-field label="Post-Logout Redirect URIs" hint="One per line. Allowed targets after signing out.">
+                <a2-textarea name="Input.PostLogoutUris" value="@Model.Input.PostLogoutUris" rows="2" />
+            </a2-field>
+
+            <a2-field label="Allowed Scopes" hint="Space-separated list of scopes this client may request.">
+                <a2-input name="Input.AllowedScopes" value="@Model.Input.AllowedScopes" />
+            </a2-field>
+
+            <div class="pt-4 border-t border-gray-200">
+                <a2-button type="submit" variant="primary">
+                    Save Changes
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+
+    <!-- Credentials & Secret Rotation -->
+    <a2-card title="Credentials & Secrets">
+        <div class="flex items-center justify-between">
+            <div>
+                <h4 class="text-sm font-semibold text-gray-800">Rotate Client Secret</h4>
+                <p class="text-xs text-gray-500 mt-1">
+                    Generating a new secret invalidates the existing client secret immediately.
+                </p>
+            </div>
+            <form method="post" asp-page-handler="RotateSecret" onsubmit="return confirm('Rotate client secret now? Any existing application relying on the old secret will need to be updated.');">
+                <a2-button type="submit" variant="secondary">
+                    Rotate Secret Now
+                </a2-button>
+            </form>
+        </div>
+    </a2-card>
+</div>

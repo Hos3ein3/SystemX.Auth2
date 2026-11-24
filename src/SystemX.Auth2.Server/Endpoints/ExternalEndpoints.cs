@@ -26,9 +26,9 @@ public static class ExternalEndpoints
                 var list = await flow.ListAsync(http.RequestAborted);
                 return Results.Ok(new ExternalProvidersResponse(list, await flow.DiscoverAsync(hint, http.RequestAborted)));
             }
-            catch (ApplicationNotFoundException)
+            catch (ProjectNotFoundException)
             {
-                return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ApplicationNotFound);
+                return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ProjectNotFound);
             }
         });
 
@@ -46,9 +46,9 @@ public static class ExternalEndpoints
                 // SAML with the POST binding: the UI must post this form to the provider.
                 return start.PostFields is not null ? Results.Ok(new { postAction = start.RedirectTo, postFields = start.PostFields }) : Results.Redirect(start.RedirectTo!);
             }
-            catch (ApplicationNotFoundException)
+            catch (ProjectNotFoundException)
             {
-                return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ApplicationNotFound);
+                return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ProjectNotFound);
             }
         });
         return routes;

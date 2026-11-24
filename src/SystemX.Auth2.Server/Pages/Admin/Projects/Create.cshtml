@@ -1,0 +1,46 @@
+@page "/admin/projects/create"
+@model SystemX.Auth2.Server.Pages.Admin.Projects.CreateModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = "Create New Project";
+}
+
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+        <a href="/admin/projects" class="hover:underline">Projects</a>
+        <span>/</span>
+        <span class="text-gray-900 font-medium">Create</span>
+    </div>
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Create New Project</h1>
+        <p class="mt-1 text-sm text-gray-500">A project acts as an isolated tenant owning users, applications, and settings.</p>
+    </div>
+
+    <a2-card>
+        <form method="post" class="space-y-5">
+            <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
+
+            <a2-field label="Project Key (Slug)" required="true" hint="Immutable unique URL identifier (e.g. papertrade, my-app). Lowercase letters, numbers, and hyphens.">
+                <a2-input name="Input.ProjectKey" value="@Model.Input.ProjectKey" required="true" placeholder="my-project" />
+            </a2-field>
+
+            <a2-field label="Display Name" required="true" hint="Human-readable name of the project shown across login pages and console.">
+                <a2-input name="Input.Name" value="@Model.Input.Name" required="true" placeholder="PaperTrade Platform" />
+            </a2-field>
+
+            <a2-field label="Description" hint="Optional description of this project for administrators.">
+                <a2-textarea name="Input.Description" value="@Model.Input.Description" rows="3" placeholder="Production authentication tenant for PaperTrade" />
+            </a2-field>
+
+            <div class="pt-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <a2-link-button href="/admin/projects" variant="secondary">
+                    Cancel
+                </a2-link-button>
+                <a2-button type="submit" variant="primary">
+                    Create Project
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

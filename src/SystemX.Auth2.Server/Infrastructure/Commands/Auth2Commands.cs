@@ -4,7 +4,7 @@ using SystemX.Auth2.Server.Persistence.Seeding;
 
 namespace SystemX.Auth2.Server.Infrastructure.Commands;
 
-/// <summary>Command line commands of the Server executable: <c>migrate</c>, <c>seed</c>, <c>create-application</c>, <c>rotate-client-secret</c>, <c>rotate-keys</c>, <c>create-admin</c>.</summary>
+/// <summary>Command line commands of the Server executable: <c>migrate</c>, <c>seed</c>, <c>create-project</c>, <c>create-application</c>, <c>rotate-client-secret</c>, <c>rotate-keys</c>, <c>create-admin</c>.</summary>
 public static class Auth2Commands
 {
     private static readonly string[] Known = ["migrate", "seed", "create-application", "rotate-client-secret", "rotate-keys", "create-admin"];
@@ -30,24 +30,41 @@ public static class Auth2Commands
                     await sp.GetRequiredService<DatabaseInitializer>().RunAsync(migrate: false, seed: true, ct);
                     log.LogInformation("Seed done.");
                     return 0;
-                case "create-application":
+                case "create-project":
                     if (args.Length < 3)
                     {
-                        Console.Error.WriteLine("Usage: create-application <projectKey> <name>");
+                        Console.Error.WriteLine("Usage: create-project <projectKey> <name>");
                         return 2;
                     }
-                    var created = await sp.GetRequiredService<IApplicationService>().CreateAsync(args[1], args[2], null, null, ct);
-                    log.LogInformation("Application {ProjectKey} created with id {Id}. Client id: {ClientId}.", created.Application.ProjectKey, created.Application.Id, created.Application.ClientId);
-                    // The secret is written to the console only, never to the log. It cannot be shown again.
-                    Console.WriteLine($"Client secret (shown once): {created.ClientSecret}");
+                    var project = await sp.GetRequiredService<IProjectService>().CreateAsync(args[1], args[2], null, ct);
+                    log.LogInformation("Project {ProjectKey} created with id {Id}. Add an application with: create-application {ProjectKey} <name>.", project.ProjectKey, project.Id, project.ProjectKey);
                     return 0;
+                case "create-application":
+                {
+                    if (args.Length < 3)
+                    {
+                        Console.Error.WriteLine("Usage: create-application <projectKey> <name> [clientId]");
+                        return 2;
+                    }
+                    var owner = await sp.GetRequiredService<IProjectService>().FindByProjectKeyAsync(args[1], ct);
+                    if (owner is null)
+                    {
+                        Console.Error.WriteLine($"No project with key '{args[1]}'. Create it first: create-project {args[1]} <name>");
+                        return 1;
+                    }
+                    var createdApp = await sp.GetRequiredService<IApplicationService>().CreateAsync(owner.Id, new ApplicationSpec(args[2], args.Length > 3 ? args[3] : null), ct);
+                    log.LogInformation("Application {Name} created in project {ProjectKey} with id {Id}. Client id: {ClientId}.", createdApp.Application.Name, owner.ProjectKey, createdApp.Application.Id, createdApp.Application.ClientId);
+                    // The secret is written to the console only, never to the log. It cannot be shown again.
+                    Console.WriteLine($"Client secret (shown once): {createdApp.ClientSecret}");
+                    return 0;
+                }
                 case "rotate-client-secret":
                     if (args.Length < 2)
                     {
-                        Console.Error.WriteLine("Usage: rotate-client-secret <projectKey>");
+                        Console.Error.WriteLine("Usage: rotate-client-secret <clientId>");
                         return 2;
                     }
-                    Console.WriteLine($"New client secret (shown once): {await sp.GetRequiredService<IApplicationService>().RotateClientSecretAsync(args[1], ct)}");
+                    Console.WriteLine($"New client secret (shown once): {await sp.GetRequiredService<IApplicationService>().RotateSecretAsync(args[1], ct)}");
                     return 0;
                 case "rotate-keys":
                 {

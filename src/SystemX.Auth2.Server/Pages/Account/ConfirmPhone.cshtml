@@ -1,3 +1,85 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.ConfirmPhoneModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Confirm Phone";
+}
+
+<div class="space-y-6">
+    @if (Model.Confirmed)
+    {
+        <div class="text-center space-y-4">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">Phone Number Confirmed</h2>
+            <p class="text-sm text-[var(--a2-color-muted,#6b7280)]">
+                Your phone number has been successfully verified.
+            </p>
+            <div class="pt-4">
+                <a2-link-button href="@(Model.ContinueUrl ?? "/Account/Login")" variant="primary" class="w-full">
+                    Continue
+                </a2-link-button>
+            </div>
+        </div>
+    }
+    else if (Model.CodeSent)
+    {
+        <div class="text-center">
+            <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">Enter Verification Code</h2>
+            <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)]">
+                We sent a SMS verification code to @Model.Input.Login.
+            </p>
+        </div>
+
+        <form method="post" class="space-y-4">
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+            <input type="hidden" name="Input.Login" value="@Model.Input.Login" />
+
+            <a2-field label="Verification Code" required="true">
+                <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" />
+            </a2-field>
+
+            <a2-button type="submit" variant="primary" class="w-full">
+                Verify Code
+            </a2-button>
+        </form>
+
+        <form method="post" asp-page-handler="Send" class="text-center pt-2">
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+            <input type="hidden" name="Input.Login" value="@Model.Input.Login" />
+            <button type="submit" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline focus:outline-none">
+                Resend Code
+            </button>
+        </form>
+    }
+    else
+    {
+        <div class="text-center">
+            <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">Confirm Phone Number</h2>
+            <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)]">
+                Enter your phone number to receive a verification code via SMS.
+            </p>
+        </div>
+
+        <form method="post" asp-page-handler="Send" class="space-y-4">
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+
+            <a2-field label="Phone Number" required="true">
+                <a2-input name="Input.Login" type="tel" value="@Model.Input.Login" required="true" placeholder="+1234567890" autocomplete="tel" />
+            </a2-field>
+
+            <a2-button type="submit" variant="primary" class="w-full">
+                Send Verification Code
+            </a2-button>
+
+            <div class="text-center pt-2">
+                <a href="@Url.Page("Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
+                    Back to Sign In
+                </a>
+            </div>
+        </form>
+    }
+</div>

@@ -156,7 +156,7 @@ public sealed partial class SamlIdentitySource(
             if (!string.Equals(state.R, p.RegistrationName, StringComparison.Ordinal)) Fail("wrong_provider");
             if (!string.Equals(state.I, inResponseTo, StringComparison.Ordinal)) Fail("in_response_to_mismatch");
             if (ctx.Parameters.TryGetValue("RelayState", out var rs) && !string.Equals(rs, state.RS, StringComparison.Ordinal)) Fail("relay_state_mismatch");
-            if (!await replay.TryAddAsync(p.ApplicationId, $"saml-request:{p.RegistrationName}:{state.I}", DateTimeOffset.FromUnixTimeSeconds(state.E).Add(skew), ct))
+            if (!await replay.TryAddAsync(p.ProjectId, $"saml-request:{p.RegistrationName}:{state.I}", DateTimeOffset.FromUnixTimeSeconds(state.E).Add(skew), ct))
                 Fail("saml_request_replayed", Auth2ErrorCodes.SamlReplayDetected);
         }
 
@@ -219,7 +219,7 @@ public sealed partial class SamlIdentitySource(
 
         // 5. the assertion id is single use until it can no longer be valid
         var keep = (conditions.NotOnOrAfter ?? nowUtc.AddMinutes(10)).Add(skew);
-        if (!await replay.TryAddAsync(p.ApplicationId, $"saml-assertion:{p.RegistrationName}:{token.Id}", new DateTimeOffset(DateTime.SpecifyKind(keep, DateTimeKind.Utc)), ct))
+        if (!await replay.TryAddAsync(p.ProjectId, $"saml-assertion:{p.RegistrationName}:{token.Id}", new DateTimeOffset(DateTime.SpecifyKind(keep, DateTimeKind.Utc)), ct))
             Fail("saml_assertion_replayed", Auth2ErrorCodes.SamlReplayDetected);
 
         var identity = BuildIdentity(p, s, idp, response, authnContext);
@@ -255,7 +255,7 @@ public sealed partial class SamlIdentitySource(
             binding.Unbind(request, logout);
             if (!string.Equals(logout.Issuer, idp.EntityId, StringComparison.Ordinal)) Fail("issuer_mismatch");
             if (logout.NotOnOrAfter is { } limit && limit.UtcDateTime < clock.GetUtcNow().UtcDateTime - TimeSpan.FromSeconds(Math.Clamp(s.ClockSkewSeconds, 0, 300))) Fail("slo_expired");
-            if (!await replay.TryAddAsync(p.ApplicationId, $"saml-logout:{p.RegistrationName}:{logout.IdAsString}", clock.GetUtcNow().AddMinutes(10), ct)) Fail("saml_request_replayed", Auth2ErrorCodes.SamlReplayDetected);
+            if (!await replay.TryAddAsync(p.ProjectId, $"saml-logout:{p.RegistrationName}:{logout.IdAsString}", clock.GetUtcNow().AddMinutes(10), ct)) Fail("saml_request_replayed", Auth2ErrorCodes.SamlReplayDetected);
 
             var response = new Saml2LogoutResponse(config) { Status = Saml2StatusCodes.Success, InResponseTo = logout.Id, Destination = idp.SloUrl };
             var location = idp.SloUrl!;

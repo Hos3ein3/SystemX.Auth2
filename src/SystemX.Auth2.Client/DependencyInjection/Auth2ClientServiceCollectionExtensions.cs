@@ -70,6 +70,7 @@ public static class Auth2ClientServiceCollectionExtensions
         services.TryAddSingleton<IAuth2CurrentUserService, CurrentUserService>();
         services.TryAddScoped<IAuth2AccessProvider, AccessProvider>();
         services.TryAddScoped<ICurrentUser, CurrentUserImpl>();
+        services.TryAddScoped<ICurrentClient, CurrentClientImpl>();
 
         // Scanners and sync (they do nothing while the policies are None)
         services.TryAddSingleton<IPermissionScanner, PermissionScanner>();
@@ -98,10 +99,10 @@ public static class Auth2ClientServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Says that the server is <b>multi-application</b> and what the project key of this application is.
-    /// Leave this call out for a single-application server. The handshake checks that you chose right.
+    /// Says that the server is <b>multi-project</b> and what the project key of this application is.
+    /// Leave this call out for a single-project server. The handshake checks that you chose right.
     /// </summary>
-    public static IAuth2ClientBuilder ServerWithMultiApplication(this IAuth2ClientBuilder builder, string projectKey)
+    public static IAuth2ClientBuilder ServerWithMultiProject(this IAuth2ClientBuilder builder, string projectKey)
     {
         builder.Services.Configure<Auth2ClientOptions>(o => o.ProjectKey = projectKey);
         return builder;

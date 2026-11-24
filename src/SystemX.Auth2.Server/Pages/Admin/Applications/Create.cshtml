@@ -1,0 +1,84 @@
+@page "/admin/p/{projectKey}/applications/create"
+@model SystemX.Auth2.Server.Pages.Admin.Applications.CreateModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"New Application - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+        <a href="/admin/p/@Model.ProjectKey/applications" class="hover:underline">Applications</a>
+        <span>/</span>
+        <span class="text-gray-900 font-medium">Create</span>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.CreatedSecret))
+    {
+        <div class="space-y-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Application Created!</h1>
+                <p class="mt-1 text-sm text-gray-500">Your application @Model.CreatedApp?.Name has been registered successfully.</p>
+            </div>
+
+            <a2-card title="Client Credentials">
+                <div class="mb-4">
+                    <span class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Client ID</span>
+                    <code class="font-mono text-sm bg-gray-100 p-2 rounded block select-all">@Model.CreatedApp?.ClientId</code>
+                </div>
+
+                <a2-secret-once secret="@Model.CreatedSecret" />
+
+                <div class="pt-4 border-t border-gray-200 flex justify-between">
+                    <a2-link-button href="/admin/p/@Model.ProjectKey/applications/setup?id=@Model.CreatedApp?.Id" variant="primary">
+                        View Code Setup Snippets &rarr;
+                    </a2-link-button>
+                    <a2-link-button href="/admin/p/@Model.ProjectKey/applications" variant="secondary">
+                        Done
+                    </a2-link-button>
+                </div>
+            </a2-card>
+        </div>
+    }
+    else
+    {
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Create New Application</h1>
+            <p class="mt-1 text-sm text-gray-500">Register an OAuth / OIDC client in project @Model.CurrentProject?.Name.</p>
+        </div>
+
+        <a2-card>
+            <form method="post" class="space-y-4">
+                <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
+
+                <a2-field label="Application name" required="true" hint="e.g. web-app, mobile-client. Lowercase with hyphens.">
+                    <a2-input name="Input.Name" value="@Model.Input.Name" required="true" placeholder="web-app" />
+                </a2-field>
+
+                <a2-field label="Custom Client ID" hint="Optional. Defaults to {projectKey}.{name} (e.g. papertrade.web-app).">
+                    <a2-input name="Input.ClientId" value="@Model.Input.ClientId" placeholder="@($"{Model.ProjectKey}.web-app")" />
+                </a2-field>
+
+                <a2-field label="Redirect URIs" hint="One per line. Absolute URIs where OpenIddict redirects after authorization.">
+                    <a2-textarea name="Input.RedirectUris" value="@Model.Input.RedirectUris" rows="3" placeholder="https://myapp.example.com/signin-oidc&#10;http://localhost:5000/signin-oidc" />
+                </a2-field>
+
+                <a2-field label="Post-Logout Redirect URIs" hint="One per line. Allowed URIs to redirect to after logout.">
+                    <a2-textarea name="Input.PostLogoutUris" value="@Model.Input.PostLogoutUris" rows="2" placeholder="https://myapp.example.com/signout-callback-oidc" />
+                </a2-field>
+
+                <a2-field label="Allowed Scopes" hint="Space or comma-separated scopes this application is permitted to request.">
+                    <a2-input name="Input.AllowedScopes" value="@Model.Input.AllowedScopes" placeholder="openid profile email" />
+                </a2-field>
+
+                <div class="pt-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+                    <a2-link-button href="/admin/p/@Model.ProjectKey/applications" variant="secondary">
+                        Cancel
+                    </a2-link-button>
+                    <a2-button type="submit" variant="primary">
+                        Create Application
+                    </a2-button>
+                </div>
+            </form>
+        </a2-card>
+    }
+</div>

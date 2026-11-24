@@ -82,7 +82,7 @@ public class LoginServiceTests : IdentityTestBase
         await CreateUserInAsync("appa");
         var result = await LoginAsync("appb", "sara", PassA);
         result.ErrorCode.ShouldBe(Auth2ErrorCodes.InvalidCredentials);
-        (await AuditAsync("login.failed")).ShouldContain(e => e.ApplicationId == B.Id && (e.DataJson ?? "").Contains(Auth2ErrorCodes.NotRegisteredInApplication));
+        (await AuditAsync("login.failed")).ShouldContain(e => e.ProjectId == B.Id && (e.DataJson ?? "").Contains(Auth2ErrorCodes.NotRegisteredInProject));
     }
 
     [Fact]
@@ -105,10 +105,10 @@ public class LoginServiceTests : IdentityTestBase
         await using (var scope = NewScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-            (await db.Applications.SingleAsync(a => a.ProjectKey == "appa")).IsEnabled = false;
+            (await db.Projects.SingleAsync(a => a.ProjectKey == "appa")).IsEnabled = false;
             await db.SaveChangesAsync();
         }
-        (await LoginAsync("appa", "sara", PassA)).ErrorCode.ShouldBe(Auth2ErrorCodes.ApplicationDisabled);
+        (await LoginAsync("appa", "sara", PassA)).ErrorCode.ShouldBe(Auth2ErrorCodes.ProjectDisabled);
     }
 
     [Fact]
@@ -254,7 +254,7 @@ public class LoginServiceTests : IdentityTestBase
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        (await db.UserApplications.SingleAsync(x => x.UserId == user.Id)).LastLoginUtc.ShouldNotBeNull();
+        (await db.UserProjects.SingleAsync(x => x.UserId == user.Id)).LastLoginUtc.ShouldNotBeNull();
     }
 
     protected async Task<(string Key, List<string> Codes)> EnableTotpAsync(string clientId)
@@ -275,7 +275,7 @@ public class SingleModeLoginTests : IdentityTestBase
     protected override bool SingleMode => true;
 
     [Fact]
-    public async Task Login_SingleMode_WorksWithoutUserApplications_AndNeverWritesThem()
+    public async Task Login_SingleMode_WorksWithoutUserProjects_AndNeverWritesThem()
     {
         await MigrateAndSeedAsync();
         await using (var scope = NewScope())
@@ -292,7 +292,7 @@ public class SingleModeLoginTests : IdentityTestBase
         await using var check = NewScope();
         var db = check.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = check.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        (await db.UserApplications.CountAsync()).ShouldBe(0);
+        (await db.UserProjects.CountAsync()).ShouldBe(0);
     }
 
     [Fact]
@@ -312,11 +312,11 @@ public class SingleModeLoginTests : IdentityTestBase
             var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
             (await users.CreateAsync(new AppUser { UserName = "sara", Email = "sara@example.com" }, PassA)).Succeeded.ShouldBeTrue();
             // the seeded client has no known secret: make one, like an operator would with the rotate-client-secret command
-            await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateClientSecretAsync("default");
+            await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateSecretAsync("default");
         }
         string secret;
         await using (var scope = NewScope())
-            secret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateClientSecretAsync("default");
+            secret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateSecretAsync("default");
 
         var b = new Browser(Factory);
         var r = await b.PostFormAsync("/connect/token", new Dictionary<string, string>

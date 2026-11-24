@@ -27,17 +27,17 @@ public sealed class ResetPasswordModel(IClientIdAccessor clientId, IAuthFlowReso
 
     public async Task<IActionResult> OnGetAsync()
     {
-        await LoadApplicationAsync();
+        await LoadProjectAsync();
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         if (!ModelState.IsValid || string.IsNullOrEmpty(Login) || string.IsNullOrEmpty(Token)) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
         var result = await Svc<IPasswordService>().ResetAsync(Login, Token, Input.NewPassword, HttpContext.RequestAborted);
         Input.NewPassword = "";
         if (!result.Succeeded) { Fail(result); return Page(); }
-        return RedirectToPage("Login", new { ReturnUrl, ClientId = Application!.ClientId });
+        return RedirectToPage("Login", new { ReturnUrl, ClientId = ClientIdForLinks });
     }
 }

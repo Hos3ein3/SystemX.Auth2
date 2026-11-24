@@ -122,6 +122,21 @@ public sealed class KeyRing(IServiceScopeFactory scopes, IDataProtectionProvider
     }
 
     /// <inheritdoc />
+    public async Task<bool> RetireAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
+        var entry = await db.KeyRing.FirstOrDefaultAsync(k => k.Id == id, ct);
+        if (entry is null || entry.RetiredAtUtc != null) return false;
+        var now = clock.GetUtcNow();
+        entry.RetiredAtUtc = now;
+        entry.RemoveAtUtc = now.AddDays(options.Value.RetiredKeyDays);
+        await db.SaveChangesAsync(ct);
+        await RefreshAsync(ct);
+        return true;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> RefreshAsync(CancellationToken ct = default)
     {
         await using var scope = scopes.CreateAsyncScope();

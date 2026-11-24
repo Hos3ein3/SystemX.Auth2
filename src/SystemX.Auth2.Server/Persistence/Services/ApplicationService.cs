@@ -1,86 +1,133 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Domain.Settings;
+using SystemX.Auth2.Server.Infrastructure.OpenIddict;
 
 namespace SystemX.Auth2.Server.Persistence.Services;
 
-/// <summary>Creates applications and updates their settings.</summary>
+/// <summary>Creates and changes applications (clients of a project). All writes go through <see cref="IClientProvisioner"/>.</summary>
 public sealed class ApplicationService(
     Auth2DbContext db,
     IGlobalScope globalScope,
     IClientProvisioner provisioner,
-    IApplicationSettingsProvider settingsProvider,
+    IProjectStatusCache statusCache,
     Infrastructure.External.IExternalProviderRegistry externalProviders,
     IAuditService audit,
-    IOptions<Auth2ServerOptions> options,
     TimeProvider clock) : IApplicationService
 {
     /// <inheritdoc />
-    public async Task<ApplicationCreationResult> CreateAsync(string projectKey, string name, string? description, string? clientId, CancellationToken ct = default)
+    public async Task<ApplicationCreationResult> CreateAsync(Guid projectId, ApplicationSpec spec, CancellationToken ct = default)
     {
-        if (options.Value.Mode == ServerMode.SingleApplication)
-            throw new InvalidOperationException("The server is single-application. It has exactly one application, created by the seeder.");
-        if (!ProjectKeyRules.IsValidForNewApplication(projectKey))
-            throw new ArgumentException("ProjectKey must use lowercase letters, digits, '-' or '_', be 3-64 characters long and must not be '_global'.", nameof(projectKey));
-        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name is required.", nameof(name));
-
         using var _ = globalScope.Begin();
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct)
+            ?? throw new ProjectNotFoundException("Project not found.");
+        Validate(spec, requireName: true);
+        if (await db.Set<Auth2Application>().AnyAsync(a => a.ProjectId == projectId && a.Name == spec.Name.Trim(), ct))
+            throw new InvalidOperationException($"The project already has an application named '{spec.Name.Trim()}'.");
 
-        var app = new Auth2Application
-        {
-            ProjectKey = projectKey,
-            Name = name.Trim(),
-            Description = description,
-            ClientId = string.IsNullOrWhiteSpace(clientId) ? projectKey : clientId.Trim(),
-            CreatedAtUtc = clock.GetUtcNow(),
-        };
-        db.Applications.Add(app);
-        await db.SaveChangesAsync(ct);
-        var client = await provisioner.EnsureClientAsync(app, ct);
-        app.OpenIddictApplicationId = client.Id;
-        await db.SaveChangesAsync(ct);
-        await audit.WriteAsync(new AuditEntry("application.created", app.Id, TargetType: "application", TargetId: app.Id.ToString()), ct);
-        await tx.CommitAsync(ct);
-        return new ApplicationCreationResult(app, client.NewClientSecret!);
+        var created = await provisioner.CreateAsync(project, spec, clock.GetUtcNow(), ct);
+        await audit.WriteAsync(new AuditEntry("application.created", projectId, ActorClientId: created.Application.ClientId,
+            TargetType: "application", TargetId: created.Application.Id.ToString()), ct);
+        await externalProviders.RefreshProjectAsync(projectId, ct);
+        return new ApplicationCreationResult(created.Application, created.NewClientSecret!);
     }
 
     /// <inheritdoc />
-    public async Task<string> RotateClientSecretAsync(string projectKey, CancellationToken ct = default)
+    public async Task<ClientApplicationInfo> UpdateAsync(Guid applicationId, ApplicationSpec spec, CancellationToken ct = default)
     {
         using var _ = globalScope.Begin();
-        var app = await db.Applications.FirstOrDefaultAsync(a => a.ProjectKey == projectKey, ct)
-            ?? throw new ApplicationNotFoundException($"No application with project key '{projectKey}'.");
-        var secret = await provisioner.RotateSecretAsync(app, ct);
-        await audit.WriteAsync(new AuditEntry("application.secret_rotated", app.Id, TargetType: "application", TargetId: app.Id.ToString()), ct);
+        Validate(spec, requireName: false);
+        var current = await db.Set<Auth2Application>().AsNoTracking().FirstOrDefaultAsync(a => a.Id == applicationId, ct)
+            ?? throw new ProjectNotFoundException("Application not found.");
+        if (!string.IsNullOrWhiteSpace(spec.Name)
+            && await db.Set<Auth2Application>().AnyAsync(a => a.ProjectId == current.ProjectId && a.Id != applicationId && a.Name == spec.Name.Trim(), ct))
+            throw new InvalidOperationException($"The project already has an application named '{spec.Name.Trim()}'.");
+        var project = await db.Projects.AsNoTracking().FirstAsync(p => p.Id == current.ProjectId, ct);
+
+        var info = await provisioner.UpdateAsync(applicationId, project.Settings, spec, null, clock.GetUtcNow(), ct);
+        statusCache.InvalidateApplication(info.ClientId);
+        await audit.WriteAsync(new AuditEntry("application.updated", project.Id, TargetType: "application", TargetId: applicationId.ToString(),
+            Data: new Dictionary<string, object?> { ["settingsVersion"] = info.SettingsVersion }), ct);
+        return info;
+    }
+
+    /// <inheritdoc />
+    public async Task SetEnabledAsync(Guid applicationId, bool enabled, string? reason, Guid? actorUserId, CancellationToken ct = default)
+    {
+        using var _ = globalScope.Begin();
+        var current = await db.Set<Auth2Application>().AsNoTracking().FirstOrDefaultAsync(a => a.Id == applicationId, ct)
+            ?? throw new ProjectNotFoundException("Application not found.");
+        var project = await db.Projects.AsNoTracking().FirstAsync(p => p.Id == current.ProjectId, ct);
+        if (project.IsGlobalProject && !enabled && current.ClientId == project.ProjectKey)
+            throw new InvalidOperationException("The _global application cannot be disabled.");
+        if (current.IsEnabled == enabled) return;
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await provisioner.UpdateAsync(applicationId, project.Settings, new ApplicationSpec(""), enabled, clock.GetUtcNow(), ct);
+        var revoked = enabled ? 0 : await provisioner.RevokeAsync(project.Id, applicationId, ct);
+        await audit.WriteAsync(new AuditEntry(enabled ? "application.enabled" : "application.disabled", project.Id, ActorUserId: actorUserId,
+            TargetType: "application", TargetId: applicationId.ToString(), Data: new Dictionary<string, object?> { ["reason"] = reason, ["revoked"] = revoked }), ct);
+        await tx.CommitAsync(ct);
+        statusCache.InvalidateApplication(current.ClientId!);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(Guid applicationId, CancellationToken ct = default)
+    {
+        using var _ = globalScope.Begin();
+        var current = await db.Set<Auth2Application>().AsNoTracking().FirstOrDefaultAsync(a => a.Id == applicationId, ct);
+        if (current is null) return;
+        var project = await db.Projects.AsNoTracking().FirstAsync(p => p.Id == current.ProjectId, ct);
+        if (project.IsGlobalProject && current.ClientId == project.ProjectKey)
+            throw new InvalidOperationException("The _global application cannot be deleted.");
+        await provisioner.DeleteAsync(applicationId, ct);
+        statusCache.InvalidateApplication(current.ClientId!);
+        await audit.WriteAsync(new AuditEntry("application.deleted", project.Id, TargetType: "application", TargetId: applicationId.ToString()), ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> RotateSecretAsync(string clientId, CancellationToken ct = default)
+    {
+        using var _ = globalScope.Begin();
+        var app = await db.Set<Auth2Application>().AsNoTracking().FirstOrDefaultAsync(a => a.ClientId == clientId, ct)
+            ?? throw new ProjectNotFoundException($"No application with client id '{clientId}'.");
+        var secret = await provisioner.RotateSecretAsync(clientId, ct);
+        await audit.WriteAsync(new AuditEntry("application.secret_rotated", app.ProjectId, TargetType: "application", TargetId: app.Id.ToString()), ct);
         return secret;
     }
 
     /// <inheritdoc />
-    public async Task<Auth2Application?> FindByProjectKeyAsync(string projectKey, CancellationToken ct = default) =>
-        await db.Applications.AsNoTracking().FirstOrDefaultAsync(a => a.ProjectKey == projectKey, ct);
+    public async Task<ClientApplicationInfo?> FindAsync(Guid applicationId, CancellationToken ct = default)
+    {
+        using var _ = globalScope.Begin();
+        var a = await db.Set<Auth2Application>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == applicationId, ct);
+        return a is null ? null : OpenIddictClientProvisioner.ToInfo(a);
+    }
 
     /// <inheritdoc />
-    public async Task UpdateSettingsAsync(Guid applicationId, ApplicationSettings settings, CancellationToken ct = default)
+    public async Task<ClientApplicationInfo?> FindByClientIdAsync(string clientId, CancellationToken ct = default)
     {
-        ApplicationSettingsValidator.ValidateOrThrow(settings);
         using var _ = globalScope.Begin();
-        var app = await db.Applications.FirstOrDefaultAsync(a => a.Id == applicationId, ct)
-            ?? throw new ApplicationNotFoundException("Application not found.");
-        app.Settings = settings;
-        app.SettingsVersion++;
-        // The value comparer sees no change when the JSON is identical, so we force the property state.
-        db.Entry(app).Property(a => a.Settings).IsModified = true;
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-        await db.SaveChangesAsync(ct);
-        await provisioner.EnsureClientAsync(app, ct);   // redirect URIs, scopes and grants follow the settings
-        await tx.CommitAsync(ct);
-        settingsProvider.Invalidate(applicationId);
-        await externalProviders.RefreshApplicationAsync(applicationId, ct);
-        await audit.WriteAsync(new AuditEntry("application.settings_updated", applicationId, TargetType: "application",
-            TargetId: applicationId.ToString(), Data: new Dictionary<string, object?> { ["settingsVersion"] = app.SettingsVersion }), ct);
+        var a = await db.Set<Auth2Application>().AsNoTracking().FirstOrDefaultAsync(x => x.ClientId == clientId, ct);
+        return a is null ? null : OpenIddictClientProvisioner.ToInfo(a);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ClientApplicationInfo>> ListAsync(Guid projectId, CancellationToken ct = default)
+    {
+        using var _ = globalScope.Begin();
+        var rows = await db.Set<Auth2Application>().AsNoTracking().Where(x => x.ProjectId == projectId).OrderBy(x => x.Name).ToListAsync(ct);
+        return [.. rows.Select(OpenIddictClientProvisioner.ToInfo)];
+    }
+
+    private static void Validate(ApplicationSpec spec, bool requireName)
+    {
+        if (requireName && string.IsNullOrWhiteSpace(spec.Name)) throw new ArgumentException("An application needs a name.", nameof(spec));
+        var errors = new List<SettingsError>();
+        ProjectSettingsValidator.CheckUris("RedirectUris", spec.RedirectUris ?? [], (p, m) => errors.Add(new SettingsError(p, m)));
+        ProjectSettingsValidator.CheckUris("PostLogoutRedirectUris", spec.PostLogoutRedirectUris ?? [], (p, m) => errors.Add(new SettingsError(p, m)));
+        if (spec.Settings is { } s) ClientApplicationSettingsValidator.Validate(s, (p, m) => errors.Add(new SettingsError(p, m)));
+        if (errors.Count > 0) throw new SettingsValidationException(errors);
     }
 }

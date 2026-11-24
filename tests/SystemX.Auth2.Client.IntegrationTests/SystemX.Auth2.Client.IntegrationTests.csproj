@@ -16,6 +16,7 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\SystemX.Auth2.Server.IntegrationTests\TestEdit.cs" Link="TestEdit.cs" />
     <ProjectReference Include="..\..\src\SystemX.Auth2.Server\SystemX.Auth2.Server.csproj" />
     <ProjectReference Include="..\..\src\SystemX.Auth2.Client\SystemX.Auth2.Client.csproj" />
   </ItemGroup>

@@ -22,7 +22,7 @@ public abstract class ExternalLoginTestBase : OidcTestBase
     protected static OidcProviderSettings Corp() => new()
     { Name = "corp", Type = ExternalProviderType.GenericOidc, ClientId = "client-1", Authority = "https://idp.corp.test", DisplayName = "Company login", GroupsClaim = "groups" };
 
-    protected async Task PrepareAsync(Action<OidcProviderSettings>? provider = null, Action<ApplicationSettings>? app = null, bool seedLocalUser = false)
+    protected async Task PrepareAsync(Action<OidcProviderSettings>? provider = null, Action<TestEdit>? app = null, bool seedLocalUser = false)
     {
         await SetUpAsync();
         if (seedLocalUser) await CreateUserInAsync("appa");
@@ -30,7 +30,7 @@ public abstract class ExternalLoginTestBase : OidcTestBase
         provider?.Invoke(p);
         await UpdateSettingsAsync(A, s =>
         {
-            s.Redirects.AllowedRedirectUris.Add(ClientRedirect);
+            s.RedirectUris.Add(ClientRedirect);
             s.Methods.AllowedLoginMethods.Add(LoginMethod.External);
             app?.Invoke(s);
         });
@@ -124,8 +124,8 @@ public class ExternalLoginDecisionTests : ExternalLoginTestBase
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         (await db.Users.CountAsync(u => u.Email == "sara@example.com")).ShouldBe(1);
-        (await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == A.Id)).ShouldBeTrue();
-        (await db.UserLogins.SingleAsync()).ApplicationId.ShouldBe(A.Id);
+        (await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == A.Id)).ShouldBeTrue();
+        (await db.UserLogins.SingleAsync()).ProjectId.ShouldBe(A.Id);
     }
 
     [Fact]
@@ -362,7 +362,7 @@ public class ExternalMappingTests : ExternalLoginTestBase
         await using var scope = NewScope();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-        db.ExternalGroupMappings.Add(new ExternalGroupMapping { ApplicationId = appId, ProviderName = provider, SourceType = source, SourceName = name, MatchType = match, SourceValue = value, TargetType = type, TargetId = target });
+        db.ExternalGroupMappings.Add(new ExternalGroupMapping { ProjectId = appId, ProviderName = provider, SourceType = source, SourceName = name, MatchType = match, SourceValue = value, TargetType = type, TargetId = target });
         await db.SaveChangesAsync();
     }
 
@@ -432,7 +432,7 @@ public class ExternalMappingTests : ExternalLoginTestBase
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             globalAdmin = await db.Roles.Where(r => r.Name == Auth2Roles.GlobalAdmin).Select(r => r.Id).SingleAsync();
-            var other = new AppRole("secret") { ApplicationId = B.Id };
+            var other = new AppRole("secret") { ProjectId = B.Id };
             db.Roles.Add(other);
             await db.SaveChangesAsync();
             otherAppRole = other.Id;

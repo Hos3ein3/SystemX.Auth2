@@ -32,13 +32,11 @@ internal enum AdminLevel
 /// <summary>
 /// Guards the admin API (policies <c>RequireProjectAdmin</c> and <c>RequireGlobalAdmin</c>, in code).
 /// It needs the token of a signed-in user with scope <c>auth2.admin</c> (and <c>auth2.admin.global</c> for global routes).
-/// The caller is found in their <b>home</b> application (the audience of the token). A global admin may work on another application
-/// with the header <c>X-Auth2-Application: {projectKey}</c>; a project admin never can.
+/// The caller is found in their <b>home</b> project (the application in the audience of the token belongs to it). A global admin may work
+/// on another project through the route <c>/projects/{projectId}/...</c>; a project admin never can.
 /// </summary>
 internal sealed class AdminApiFilter(AdminLevel level) : IEndpointFilter
 {
-    public const string ApplicationHeader = "X-Auth2-Application";
-
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var http = context.HttpContext;
@@ -55,45 +53,46 @@ internal sealed class AdminApiFilter(AdminLevel level) : IEndpointFilter
             return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.InsufficientScope);
 
         var options = http.RequestServices.GetRequiredService<IOptions<Auth2ServerOptions>>().Value;
-        var single = options.Mode == ServerMode.SingleApplication;
+        var single = options.Mode == ServerMode.SingleProject;
 
         // Who is calling? Found in a separate scope, so the request scope is still free to work on the target application.
-        Auth2Application home; AppUser admin; bool isGlobal, isProjectAdmin;
+        Project home; AppUser admin; bool isGlobal, isProjectAdmin;
         await using (var child = http.RequestServices.CreateAsyncScope())
         {
             var sp = child.ServiceProvider;
             sp.GetRequiredService<IClientIdAccessor>().ClientId = principal.GetAudiences().FirstOrDefault();
-            try { home = await sp.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync(http.RequestAborted); }
-            catch (ApplicationNotFoundException) { return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ApplicationNotFound); }
-            if (!home.IsEnabled) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.ApplicationDisabled);
+            try { home = await sp.GetRequiredService<IAuthFlowResolver>().GetProjectAsync(http.RequestAborted); }
+            catch (ProjectNotFoundException) { return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ProjectNotFound); }
+            if (await sp.GetRequiredService<IAuthFlowResolver>().CheckGateAsync(http.RequestAborted) is not null) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.AccessDenied);
 
             var users = sp.GetRequiredService<UserManager<AppUser>>();
             var found = await users.FindByIdAsync(principal.GetClaim(Claims.Subject) ?? "");
             if (found is null || !await sp.GetRequiredService<ILoginService>().IsSubjectValidAsync(found, http.RequestAborted))
                 return ApiResults.Error(http, StatusCodes.Status401Unauthorized, Auth2ErrorCodes.InvalidToken);
             admin = found;
-            // GlobalAdmin is a global role: it counts only in the _global project (or the single application).
+            // GlobalAdmin is a global role: it counts only in the _global project (or the single project).
             isGlobal = (home.IsGlobalProject || single) && await users.IsInRoleAsync(admin, Auth2Roles.GlobalAdmin);
             isProjectAdmin = await users.IsInRoleAsync(admin, Auth2Roles.ProjectAdmin);
         }
         if (level == AdminLevel.Global ? !isGlobal : !(isGlobal || isProjectAdmin))
             return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.Forbidden);
 
-        // Which application does the call work on?
+        // Which project does the call work on? The route says (/projects/{projectId}/...). A global admin may use any project,
+        // a project admin only the home project. Another project looks like "not found" to a project admin.
         var target = home;
-        var requested = http.Request.Headers[ApplicationHeader].FirstOrDefault();
-        if (!single && !string.IsNullOrWhiteSpace(requested) && !string.Equals(requested.Trim(), home.ProjectKey, StringComparison.OrdinalIgnoreCase))
+        if (!single && http.Request.RouteValues["projectId"] is string routeId && Guid.TryParse(routeId, out var wanted) && wanted != home.Id)
         {
-            if (!isGlobal) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.Forbidden);
-            var found = await http.RequestServices.GetRequiredService<IApplicationService>().FindByProjectKeyAsync(requested.Trim().ToLowerInvariant(), http.RequestAborted);
-            if (found is null) return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ApplicationNotFound);
+            if (!isGlobal) return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.NotFound);
+            var found = await http.RequestServices.GetRequiredService<IProjectService>().FindAsync(wanted, http.RequestAborted);
+            if (found is null) return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.NotFound);
             target = found;
         }
+        else if (single && http.Request.RouteValues["projectId"] is string single_id && Guid.TryParse(single_id, out var w2) && w2 != home.Id)
+            return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.NotFound);
 
-        // The request scope now works on the target application.
-        http.RequestServices.GetRequiredService<IApplicationSelection>().ProjectKey = single ? null : target.ProjectKey;
-        http.RequestServices.GetRequiredService<IClientIdAccessor>().ClientId = target.ClientId;
-        await http.RequestServices.GetRequiredService<IApplicationContext>().GetRequiredAsync(http.RequestAborted);
+        // The request scope now works on the target project.
+        http.RequestServices.GetRequiredService<IProjectSelection>().ProjectKey = single ? null : target.ProjectKey;
+        await http.RequestServices.GetRequiredService<IProjectContext>().GetRequiredAsync(http.RequestAborted);
 
         http.Items[AdminItems.Context] = new AdminContext(admin.Id, isGlobal, home, target);
         http.Items[AdminItems.Actor] = admin.Id;
@@ -119,10 +118,12 @@ public static class AdminEndpoints
     public static IEndpointRouteBuilder MapAuth2Admin(this IEndpointRouteBuilder routes)
     {
         var g = routes.MapGroup(Auth2Routes.Admin);
+        var p = g.MapGroup("/projects/{projectId:guid}");   // project-level data: the project comes from the route
+        MapProjects(g);
         MapApplications(g);
-        MapUsers(g);
-        MapAccess(g);
-        MapExternal(g);
+        MapUsers(p);
+        MapAccess(p);
+        MapExternal(g, p);
 
         // Keys (global admin only). Rotation: new keys sign from now on, old keys keep checking old tokens until they are removed.
         g.MapGet("/keys", async (HttpContext http, IKeyRing keys) => Results.Ok(await keys.ListAsync(http.RequestAborted))).Require(AdminLevel.Global);
@@ -133,7 +134,7 @@ public static class AdminEndpoints
             return Results.Ok(list);
         }).Require(AdminLevel.Global);
 
-        g.MapGet("/audit-events", async (HttpContext http, IAuditReader reader, string? action, Guid? actorUserId, string? targetType, DateTimeOffset? from, DateTimeOffset? to, bool? all) =>
+        p.MapGet("/audit-events", async (HttpContext http, IAuditReader reader, string? action, Guid? actorUserId, string? targetType, DateTimeOffset? from, DateTimeOffset? to, bool? all) =>
         {
             if (all == true && !http.Ctx().IsGlobalAdmin) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.Forbidden);
             return Results.Ok(await reader.QueryAsync(PageOf(http.Request), action, actorUserId, targetType, from, to, all == true, http.RequestAborted));
@@ -153,58 +154,58 @@ public static class AdminEndpoints
     private static IResult NotFoundOrFail(HttpContext http, OperationResult result) =>
         ApiResults.From(http, result);
 
-    private static void MapExternal(RouteGroupBuilder g)
+    private static void MapExternal(RouteGroupBuilder g, RouteGroupBuilder p)
     {
-        g.MapGet("/external-provider-types", (HttpContext http, IAdminExternalService svc) => Results.Ok(svc.Types())).Require(AdminLevel.Project);
+        p.MapGet("/external-provider-types", (HttpContext http, IAdminExternalService svc) => Results.Ok(svc.Types())).Require(AdminLevel.Project);
 
-        g.MapGet("/applications/{id:guid}/external-providers", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        p.MapGet("/external-providers", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             return await svc.ListProvidersAsync(id, http.RequestAborted) is { } list ? Results.Ok(list) : Hidden(http);
         }).Require(AdminLevel.Project);
 
-        g.MapPost("/applications/{id:guid}/external-providers", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        p.MapPost("/external-providers", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var (result, provider) = await svc.CreateProviderAsync(id, await BodyAsync(http), http.Ctx().IsGlobalAdmin, http.RequestAborted);
             return result.Succeeded ? Created(provider!) : NotFoundOrFail(http, result);
         }).Require(AdminLevel.Project);
 
-        g.MapPut("/applications/{id:guid}/external-providers/{name}", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        p.MapPut("/external-providers/{name}", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, string name, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var (result, provider) = await svc.UpdateProviderAsync(id, name, await BodyAsync(http), http.Ctx().IsGlobalAdmin, ParseVersion(http.Request.Headers.IfMatch.FirstOrDefault()), http.RequestAborted);
             return result.Succeeded ? Results.Ok(provider) : NotFoundOrFail(http, result);
         }).Require(AdminLevel.Project);
 
-        g.MapPost("/applications/{id:guid}/external-providers/{name}/rotate-secret", async (HttpContext http, Guid id, string name, RotateProviderSecretRequest r, IAdminExternalService svc) =>
+        p.MapPost("/external-providers/{name}/rotate-secret", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, string name, RotateProviderSecretRequest r, IAdminExternalService svc) =>
             !Allowed(http, id) ? Hidden(http) : NotFoundOrFail(http, await svc.RotateSecretAsync(id, name, r, http.RequestAborted))).Require(AdminLevel.Project);
 
-        g.MapDelete("/applications/{id:guid}/external-providers/{name}", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        p.MapDelete("/external-providers/{name}", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, string name, IAdminExternalService svc) =>
             !Allowed(http, id) ? Hidden(http) : NotFoundOrFail(http, await svc.DeleteProviderAsync(id, name, http.RequestAborted))).Require(AdminLevel.Project);
 
-        g.MapPost("/applications/{id:guid}/external-providers/{name}/test", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        p.MapPost("/external-providers/{name}/test", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, string name, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var (result, test) = await svc.TestProviderAsync(id, name, http.RequestAborted);
             return result.Succeeded ? Results.Ok(test) : NotFoundOrFail(http, result);
         }).Require(AdminLevel.Project);
 
-        g.MapPost("/applications/{id:guid}/external-providers/{name}/ldap/test-user", async (HttpContext http, Guid id, string name, LdapTestUserRequest r, IAdminExternalService svc) =>
+        p.MapPost("/external-providers/{name}/ldap/test-user", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, string name, LdapTestUserRequest r, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var (result, found) = await svc.LdapTestUserAsync(id, name, r.UserName, http.RequestAborted);
             return result.Succeeded ? Results.Ok(found) : NotFoundOrFail(http, result);
         }).Require(AdminLevel.Project);
 
-        g.MapPost("/applications/{id:guid}/external-providers/{name}/saml/refresh-metadata", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        p.MapPost("/external-providers/{name}/saml/refresh-metadata", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, string name, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var (result, test) = await svc.SamlRefreshMetadataAsync(id, name, http.RequestAborted);
             return result.Succeeded ? Results.Ok(test) : NotFoundOrFail(http, result);
         }).Require(AdminLevel.Project);
 
-        g.MapPost("/applications/{id:guid}/external-providers/{name}/saml/generate-sp-certificate", async (HttpContext http, Guid id, string name, IAdminExternalService svc) =>
+        p.MapPost("/external-providers/{name}/saml/generate-sp-certificate", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, string name, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var (result, cert) = await svc.SamlGenerateCertificateAsync(id, name, http.RequestAborted);
@@ -212,30 +213,30 @@ public static class AdminEndpoints
         }).Require(AdminLevel.Project);
 
         // ---- mappings
-        g.MapGet("/applications/{id:guid}/external-group-mappings", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        p.MapGet("/external-group-mappings", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, IAdminExternalService svc) =>
             !Allowed(http, id) ? Hidden(http) : Results.Ok(await svc.ListMappingsAsync(id, http.RequestAborted))).Require(AdminLevel.Project);
-        g.MapPost("/applications/{id:guid}/external-group-mappings", async (HttpContext http, Guid id, ExternalMappingRequest r, IAdminExternalService svc) =>
+        p.MapPost("/external-group-mappings", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, ExternalMappingRequest r, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var (result, mapping) = await svc.CreateMappingAsync(id, r, http.RequestAborted);
             return result.Succeeded ? Created(mapping!) : NotFoundOrFail(http, result);
         }).Require(AdminLevel.Project);
-        g.MapPut("/applications/{id:guid}/external-group-mappings/{mappingId:guid}", async (HttpContext http, Guid id, Guid mappingId, ExternalMappingRequest r, IAdminExternalService svc) =>
+        p.MapPut("/external-group-mappings/{mappingId:guid}", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, Guid mappingId, ExternalMappingRequest r, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var (result, mapping) = await svc.UpdateMappingAsync(id, mappingId, r, http.RequestAborted);
             return result.Succeeded ? Results.Ok(mapping) : NotFoundOrFail(http, result);
         }).Require(AdminLevel.Project);
-        g.MapDelete("/applications/{id:guid}/external-group-mappings/{mappingId:guid}", async (HttpContext http, Guid id, Guid mappingId, IAdminExternalService svc) =>
+        p.MapDelete("/external-group-mappings/{mappingId:guid}", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, Guid mappingId, IAdminExternalService svc) =>
             !Allowed(http, id) ? Hidden(http) : NotFoundOrFail(http, await svc.DeleteMappingAsync(id, mappingId, http.RequestAborted))).Require(AdminLevel.Project);
 
         // ---- home-realm discovery
-        g.MapGet("/applications/{id:guid}/email-domain-routes", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        p.MapGet("/email-domain-routes", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             return await svc.ListEmailDomainRoutesAsync(id, http.RequestAborted) is { } list ? Results.Ok(list) : Hidden(http);
         }).Require(AdminLevel.Project);
-        g.MapPut("/applications/{id:guid}/email-domain-routes", async (HttpContext http, Guid id, List<EmailDomainRouteDto> routes, IAdminExternalService svc) =>
+        p.MapPut("/email-domain-routes", async (HttpContext http, [Microsoft.AspNetCore.Mvc.FromRoute(Name = "projectId")] Guid id, List<EmailDomainRouteDto> routes, IAdminExternalService svc) =>
         {
             if (!Allowed(http, id)) return Hidden(http);
             var result = await svc.SetEmailDomainRoutesAsync(id, routes, http.RequestAborted);
@@ -243,23 +244,23 @@ public static class AdminEndpoints
         }).Require(AdminLevel.Project);
 
         // ---- users
-        g.MapGet("/users/{id:guid}/external-logins", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        p.MapGet("/users/{id:guid}/external-logins", async (HttpContext http, Guid id, IAdminExternalService svc) =>
         {
             var (result, list) = await svc.ListUserLoginsAsync(id, http.RequestAborted);
             return result.Succeeded ? Results.Ok(list) : Hidden(http);
         }).Require(AdminLevel.Project);
-        g.MapDelete("/users/{id:guid}/external-logins/{provider}", async (HttpContext http, Guid id, string provider, bool? force, IAdminExternalService svc) =>
+        p.MapDelete("/users/{id:guid}/external-logins/{provider}", async (HttpContext http, Guid id, string provider, bool? force, IAdminExternalService svc) =>
         {
             if (force == true && !http.Ctx().IsGlobalAdmin) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.Forbidden);
             var result = await svc.RemoveUserLoginAsync(id, provider, force == true, http.RequestAborted);
             return result.Succeeded ? Results.NoContent() : result.ErrorCode == Auth2ErrorCodes.NotFound ? Hidden(http) : ApiResults.From(http, result);
         }).Require(AdminLevel.Project);
-        g.MapGet("/users/{id:guid}/passkeys", async (HttpContext http, Guid id, IAdminExternalService svc) =>
+        p.MapGet("/users/{id:guid}/passkeys", async (HttpContext http, Guid id, IAdminExternalService svc) =>
         {
             var (result, list) = await svc.ListUserPasskeysAsync(id, http.RequestAborted);
             return result.Succeeded ? Results.Ok(list) : Hidden(http);
         }).Require(AdminLevel.Project);
-        g.MapDelete("/users/{id:guid}/passkeys/{passkeyId}", async (HttpContext http, Guid id, string passkeyId, IAdminExternalService svc) =>
+        p.MapDelete("/users/{id:guid}/passkeys/{passkeyId}", async (HttpContext http, Guid id, string passkeyId, IAdminExternalService svc) =>
         {
             var result = await svc.RemoveUserPasskeyAsync(id, passkeyId, http.RequestAborted);
             return result.Succeeded ? Results.NoContent() : result.ErrorCode == Auth2ErrorCodes.NotFound ? Hidden(http) : ApiResults.From(http, result);
@@ -274,86 +275,139 @@ public static class AdminEndpoints
         }).Require(AdminLevel.Global);
     }
 
-    // ------------------------------------------------------------------ applications
+    // ------------------------------------------------------------------ projects
 
-    private static void MapApplications(RouteGroupBuilder g)
+    private static void MapProjects(RouteGroupBuilder g)
     {
-        g.MapGet("/applications", async (HttpContext http, IAdminApplicationService apps) =>
+        g.MapGet("/projects", async (HttpContext http, IAdminProjectService projects) =>
         {
-            if (http.Ctx().IsGlobalAdmin) return Results.Ok(await apps.ListAsync(PageOf(http.Request), http.RequestAborted));
-            var own = await apps.GetAsync(http.Ctx().Home.Id, http.RequestAborted);   // a project admin sees only the own application
-            return Results.Ok(new PagedResult<ApplicationDto>(own is null ? [] : [own], 1, 50, own is null ? 0 : 1));
+            if (http.Ctx().IsGlobalAdmin) return Results.Ok(await projects.ListAsync(PageOf(http.Request), http.RequestAborted));
+            var own = await projects.GetAsync(http.Ctx().Home.Id, http.RequestAborted);   // a project admin sees only the own project
+            return Results.Ok(new PagedResult<ProjectDto>(own is null ? [] : [own], 1, 50, own is null ? 0 : 1));
         }).Require(AdminLevel.Project);
 
-        g.MapGet("/applications/{id:guid}", async (HttpContext http, Guid id, IAdminApplicationService apps) =>
-            !Allowed(http, id) ? Hidden(http) : await apps.GetAsync(id, http.RequestAborted) is { } app ? Results.Ok(app) : Hidden(http)).Require(AdminLevel.Project);
+        g.MapGet("/projects/{projectId:guid}", async (HttpContext http, Guid projectId, IAdminProjectService projects) =>
+            await projects.GetAsync(projectId, http.RequestAborted) is { } project ? Results.Ok(project) : Hidden(http)).Require(AdminLevel.Project);
 
-        g.MapPost("/applications", async (HttpContext http, CreateApplicationRequest r, IAdminApplicationService apps) =>
+        g.MapPost("/projects", async (HttpContext http, CreateProjectRequest r, IAdminProjectService projects) =>
         {
-            var (result, response) = await apps.CreateAsync(r, http.RequestAborted);
+            var (result, response) = await projects.CreateAsync(r, http.RequestAborted);
             return result.Succeeded ? Created(response!) : ApiResults.From(http, result);
         }).Require(AdminLevel.Global);
 
-        g.MapPut("/applications/{id:guid}", async (HttpContext http, Guid id, UpdateApplicationRequest r, IAdminApplicationService apps) =>
+        g.MapPut("/projects/{projectId:guid}", async (HttpContext http, Guid projectId, UpdateProjectRequest r, IAdminProjectService projects) =>
         {
-            var (result, app) = await apps.UpdateAsync(id, r, http.RequestAborted);
-            return result.Succeeded ? Results.Ok(app) : ApiResults.From(http, result);
-        }).Require(AdminLevel.Global);
+            // A project admin may rename the own project, but only a global admin may disable or enable it.
+            if (!http.Ctx().IsGlobalAdmin)
+            {
+                var current = await projects.GetAsync(projectId, http.RequestAborted);
+                if (current is not null && current.IsEnabled != r.IsEnabled) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.Forbidden);
+            }
+            var (result, project) = await projects.UpdateAsync(projectId, r, http.Ctx().UserId, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(project) : ApiResults.From(http, result);
+        }).Require(AdminLevel.Project);
 
-        g.MapDelete("/applications/{id:guid}", async (HttpContext http, Guid id, IAdminApplicationService apps) =>
-            ApiResults.From(http, await apps.DeleteAsync(id, http.RequestAborted))).Require(AdminLevel.Global);
+        g.MapDelete("/projects/{projectId:guid}", async (HttpContext http, Guid projectId, IAdminProjectService projects) =>
+            ApiResults.From(http, await projects.DeleteAsync(projectId, http.RequestAborted))).Require(AdminLevel.Global);
 
-        g.MapGet("/applications/{id:guid}/settings", async (HttpContext http, Guid id, IAdminApplicationService apps) =>
+        g.MapGet("/projects/{projectId:guid}/settings", async (HttpContext http, Guid projectId, IAdminProjectService projects) =>
         {
-            if (!Allowed(http, id)) return Hidden(http);
-            if (await apps.GetSettingsAsync(id, http.RequestAborted) is not { } s) return Hidden(http);
+            if (await projects.GetSettingsAsync(projectId, http.RequestAborted) is not { } s) return Hidden(http);
             http.Response.Headers.ETag = $"\"v{s.Version}\"";
             return Results.Content(SettingsJson.SerializeRedacted(s.Settings, http.RequestServices.GetRequiredService<SystemX.Auth2.Server.Infrastructure.External.IExternalSecretProtector>().Redact), "application/json");
         }).Require(AdminLevel.Project);
 
-        g.MapPut("/applications/{id:guid}/settings", async (HttpContext http, Guid id, IAdminApplicationService apps) =>
+        g.MapPut("/projects/{projectId:guid}/settings", async (HttpContext http, Guid projectId, IAdminProjectService projects) =>
         {
-            if (!Allowed(http, id)) return Hidden(http);
-            Domain.Settings.ApplicationSettings settings;
+            Domain.Settings.ProjectSettings settings;
             try
             {
                 using var reader = new StreamReader(http.Request.Body);
                 settings = SettingsJson.Deserialize(await reader.ReadToEndAsync(http.RequestAborted));
             }
             catch (JsonException) { return ApiResults.Error(http, StatusCodes.Status400BadRequest, Auth2ErrorCodes.ValidationFailed); }
-            var (result, version) = await apps.UpdateSettingsAsync(id, settings, http.Ctx().IsGlobalAdmin, ParseVersion(http.Request.Headers.IfMatch.FirstOrDefault()), http.RequestAborted);
+            var (result, version) = await projects.UpdateSettingsAsync(projectId, settings, http.Ctx().IsGlobalAdmin, ParseVersion(http.Request.Headers.IfMatch.FirstOrDefault()), http.RequestAborted);
+            if (!result.Succeeded) return ApiResults.From(http, result);
+            http.Response.Headers.ETag = $"\"v{version}\"";
+            return Results.NoContent();
+        }).Require(AdminLevel.Project);
+    }
+
+    // ------------------------------------------------------------------ applications
+
+    private static string ServerUrl(HttpContext http) =>
+        http.RequestServices.GetRequiredService<IOptions<Auth2ServerOptions>>().Value.Issuer?.TrimEnd('/')
+        ?? $"{http.Request.Scheme}://{http.Request.Host}{http.Request.PathBase}";
+
+    private static void MapApplications(RouteGroupBuilder g)
+    {
+        var a = g.MapGroup("/projects/{projectId:guid}/applications");
+
+        a.MapGet("/", async (HttpContext http, Guid projectId, IAdminApplicationService apps) =>
+            Results.Ok(await apps.ListAsync(projectId, http.RequestAborted))).Require(AdminLevel.Project);
+
+        a.MapGet("/{applicationId:guid}", async (HttpContext http, Guid projectId, Guid applicationId, IAdminApplicationService apps) =>
+            await apps.GetAsync(projectId, applicationId, http.RequestAborted) is { } app ? Results.Ok(app) : Hidden(http)).Require(AdminLevel.Project);
+
+        a.MapPost("/", async (HttpContext http, Guid projectId, CreateApplicationRequest r, IAdminApplicationService apps) =>
+        {
+            var (result, response) = await apps.CreateAsync(projectId, r, ServerUrl(http), http.RequestAborted);
+            return result.Succeeded ? Created(response!) : ApiResults.From(http, result);
+        }).Require(AdminLevel.Global);
+
+        a.MapPut("/{applicationId:guid}", async (HttpContext http, Guid projectId, Guid applicationId, UpdateApplicationRequest r, IAdminApplicationService apps) =>
+        {
+            var (result, app) = await apps.UpdateAsync(projectId, applicationId, r, http.Ctx().UserId, http.RequestAborted);
+            return result.Succeeded ? Results.Ok(app) : ApiResults.From(http, result);
+        }).Require(AdminLevel.Global);
+
+        a.MapDelete("/{applicationId:guid}", async (HttpContext http, Guid projectId, Guid applicationId, IAdminApplicationService apps) =>
+            ApiResults.From(http, await apps.DeleteAsync(projectId, applicationId, http.RequestAborted))).Require(AdminLevel.Global);
+
+        // The copy-paste client configuration (the secret is never part of it, it is shown once at creation or rotation).
+        a.MapGet("/{applicationId:guid}/setup", async (HttpContext http, Guid projectId, Guid applicationId, IAdminApplicationService apps) =>
+        {
+            var (result, setup) = await apps.GetSetupAsync(projectId, applicationId, ServerUrl(http), http.RequestAborted);
+            return result.Succeeded ? Results.Ok(setup) : Hidden(http);
+        }).Require(AdminLevel.Project);
+
+        a.MapPost("/{applicationId:guid}/secret/rotate", async (HttpContext http, Guid projectId, Guid applicationId, IAdminApplicationService apps) =>
+        {
+            var (result, setup) = await apps.RotateSecretAsync(projectId, applicationId, http.Ctx().IsGlobalAdmin, ServerUrl(http), http.RequestAborted);
+            return result.Succeeded ? Results.Ok(new RotateSecretResponse(setup!.ClientSecret!, setup)) : ApiResults.From(http, result);
+        }).Require(AdminLevel.Project);
+
+        a.MapGet("/{applicationId:guid}/settings", async (HttpContext http, Guid projectId, Guid applicationId, IAdminApplicationService apps) =>
+        {
+            var (result, settings, version) = await apps.GetSettingsAsync(projectId, applicationId, http.RequestAborted);
+            if (!result.Succeeded) return Hidden(http);
+            http.Response.Headers.ETag = $"\"v{version}\"";
+            return Results.Ok(settings);
+        }).Require(AdminLevel.Project);
+
+        a.MapPut("/{applicationId:guid}/settings", async (HttpContext http, Guid projectId, Guid applicationId, Domain.Settings.ClientApplicationSettings settings, IAdminApplicationService apps) =>
+        {
+            var (result, version) = await apps.UpdateSettingsAsync(projectId, applicationId, settings, http.Ctx().IsGlobalAdmin, ParseVersion(http.Request.Headers.IfMatch.FirstOrDefault()), http.RequestAborted);
             if (!result.Succeeded) return ApiResults.From(http, result);
             http.Response.Headers.ETag = $"\"v{version}\"";
             return Results.NoContent();
         }).Require(AdminLevel.Project);
 
-        g.MapPost("/applications/{id:guid}/secret/rotate", async (HttpContext http, Guid id, IAdminApplicationService apps) =>
-        {
-            if (!Allowed(http, id)) return Hidden(http);
-            var (result, secret) = await apps.RotateSecretAsync(id, http.Ctx().IsGlobalAdmin, http.RequestAborted);
-            return result.Succeeded ? Results.Ok(new RotateSecretResponse(secret!)) : ApiResults.From(http, result);
-        }).Require(AdminLevel.Project);
+        a.MapGet("/{applicationId:guid}/redirect-uris", async (HttpContext http, Guid projectId, Guid applicationId, IAdminApplicationService apps) =>
+            await apps.GetAsync(projectId, applicationId, http.RequestAborted) is { } app ? Results.Ok(new RedirectUrisDto(app.RedirectUris, app.PostLogoutRedirectUris)) : Hidden(http))
+            .Require(AdminLevel.Project);
 
-        g.MapGet("/applications/{id:guid}/redirect-uris", async (HttpContext http, Guid id, IAdminApplicationService apps) =>
+        a.MapPut("/{applicationId:guid}/redirect-uris", async (HttpContext http, Guid projectId, Guid applicationId, RedirectUrisDto r, IAdminApplicationService apps) =>
         {
-            if (!Allowed(http, id)) return Hidden(http);
-            if (await apps.GetSettingsAsync(id, http.RequestAborted) is not { } s) return Hidden(http);
-            return Results.Ok(new RedirectUrisDto(s.Settings.Redirects.AllowedRedirectUris, s.Settings.Redirects.AllowedPostLogoutRedirectUris));
-        }).Require(AdminLevel.Project);
-
-        g.MapPut("/applications/{id:guid}/redirect-uris", async (HttpContext http, Guid id, RedirectUrisDto r, IAdminApplicationService apps) =>
-        {
-            if (!Allowed(http, id)) return Hidden(http);
-            if (await apps.GetSettingsAsync(id, http.RequestAborted) is not { } s) return Hidden(http);
-            var next = SettingsJson.Clone(s.Settings);
-            next.Redirects.AllowedRedirectUris = [.. r.RedirectUris];
-            next.Redirects.AllowedPostLogoutRedirectUris = [.. r.PostLogoutRedirectUris];
-            var (result, _) = await apps.UpdateSettingsAsync(id, next, http.Ctx().IsGlobalAdmin, ParseVersion(http.Request.Headers.IfMatch.FirstOrDefault()), http.RequestAborted);
+            var current = await apps.GetAsync(projectId, applicationId, http.RequestAborted);
+            if (current is null) return Hidden(http);
+            var (result, _) = await apps.UpdateAsync(projectId, applicationId,
+                new UpdateApplicationRequest(current.Name, current.IsEnabled, r.RedirectUris, r.PostLogoutRedirectUris), http.Ctx().UserId, http.RequestAborted);
             return ApiResults.From(http, result);
-        }).Require(AdminLevel.Project);
+        }).Require(AdminLevel.Global);
     }
 
-    /// <summary>A global admin may use any application id. A project admin only the own one.</summary>
+    /// <summary>The route project is checked by the filter already. This only repeats the rule: a global admin may use any project id, a project admin only the own one.</summary>
     private static bool Allowed(HttpContext http, Guid id) => http.Ctx().IsGlobalAdmin || id == http.Ctx().Home.Id;
 
     /// <summary>Other applications do not show up for a project admin: 404, not 403.</summary>
@@ -441,9 +495,9 @@ public static class AdminEndpoints
         {
             if (await q.UserAsync(id, http) is not { } user) return Hidden(http);
             var app = http.Ctx().Target;
-            if (await q.Db.Roles.AnyAsync(r => r.ApplicationId == app.Id && r.NormalizedName == Auth2Roles.ProjectAdmin.ToUpperInvariant(), http.RequestAborted) == false)
+            if (await q.Db.Roles.AnyAsync(r => r.ProjectId == app.Id && r.NormalizedName == Auth2Roles.ProjectAdmin.ToUpperInvariant(), http.RequestAborted) == false)
             {
-                var created = await q.Roles.CreateAsync(new AppRole(Auth2Roles.ProjectAdmin) { ApplicationId = app.Id, IsSystem = true, Description = "Manages this application." });
+                var created = await q.Roles.CreateAsync(new AppRole(Auth2Roles.ProjectAdmin) { ProjectId = app.Id, IsSystem = true, Description = "Manages this application." });
                 if (!created.Succeeded) return ApiResults.Error(http, StatusCodes.Status400BadRequest, Auth2ErrorCodes.ValidationFailed, created.Errors);
             }
             return ApiResults.From(http, await q.Access.AssignRoleAsync(user, Auth2Roles.ProjectAdmin, http.RequestAborted));
@@ -538,18 +592,18 @@ internal sealed class Q(Auth2DbContext db, IAccessService access, IGroupService 
     /// <summary>A member of the application, loaded with the manager of this scope. Null when there is none.</summary>
     public async Task<AppUser?> UserAsync(Guid id, HttpContext http)
     {
-        var app = await flow.GetApplicationAsync(http.RequestAborted);
+        var app = await flow.GetProjectAsync(http.RequestAborted);
         var user = await users.FindByIdAsync(id.ToString("D"));
         return user is not null && await lookup.HasRowOrSingleAsync(user, app, http.RequestAborted) ? user : null;
     }
 
-    private bool IncludeGlobal(Auth2Application app) => app.IsGlobalProject || options.Value.Mode == ServerMode.SingleApplication;
+    private bool IncludeGlobal(Project app) => app.IsGlobalProject || options.Value.Mode == ServerMode.SingleProject;
 
     public async Task<string?> RoleNameAsync(Guid id)
     {
-        var app = await flow.GetApplicationAsync();
+        var app = await flow.GetProjectAsync();
         var global = IncludeGlobal(app);
-        return await db.Roles.AsNoTracking().Where(r => r.Id == id && (r.ApplicationId == app.Id || (global && r.ApplicationId == null))).Select(r => r.Name).FirstOrDefaultAsync();
+        return await db.Roles.AsNoTracking().Where(r => r.Id == id && (r.ProjectId == app.Id || (global && r.ProjectId == null))).Select(r => r.Name).FirstOrDefaultAsync();
     }
 
     public async Task<string?> PermissionKeyAsync(Guid id) => await db.Permissions.AsNoTracking().Where(p => p.Id == id).Select(p => p.Key).FirstOrDefaultAsync();
@@ -557,9 +611,9 @@ internal sealed class Q(Auth2DbContext db, IAccessService access, IGroupService 
 
     public async Task<PagedResult<AdminRoleDto>> RolesAsync(PageQuery pq, CancellationToken ct)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var global = IncludeGlobal(app);
-        var q = db.Roles.AsNoTracking().Where(r => r.ApplicationId == app.Id || (global && r.ApplicationId == null));
+        var q = db.Roles.AsNoTracking().Where(r => r.ProjectId == app.Id || (global && r.ProjectId == null));
         if (pq.SafeSearch is { } s) q = q.Where(r => r.NormalizedName!.Contains(s.ToUpperInvariant()));
         q = pq.Descending ? q.OrderByDescending(r => r.Name) : q.OrderBy(r => r.Name);
         var total = await q.CountAsync(ct);
@@ -567,13 +621,13 @@ internal sealed class Q(Auth2DbContext db, IAccessService access, IGroupService 
         var ids = rows.Select(r => r.Id).ToList();
         var perms = await (from rp in db.RolePermissions.AsNoTracking() join p in db.Permissions.AsNoTracking() on rp.PermissionId equals p.Id
                            where ids.Contains(rp.RoleId) select new { rp.RoleId, p.Key }).ToListAsync(ct);
-        return new PagedResult<AdminRoleDto>([.. rows.Select(r => new AdminRoleDto(r.Id, r.Name!, r.Description, r.ApplicationId is null, r.IsSystem,
+        return new PagedResult<AdminRoleDto>([.. rows.Select(r => new AdminRoleDto(r.Id, r.Name!, r.Description, r.ProjectId is null, r.IsSystem,
             [.. perms.Where(p => p.RoleId == r.Id).Select(p => p.Key).Order(StringComparer.Ordinal)]))], pq.SafePage, pq.SafePageSize, total);
     }
 
     public async Task<PagedResult<AdminPermissionDto>> PermissionsAsync(PageQuery pq, CancellationToken ct)
     {
-        await flow.GetApplicationAsync(ct);
+        await flow.GetProjectAsync(ct);
         var q = db.Permissions.AsNoTracking();
         if (pq.SafeSearch is { } s) q = q.Where(p => p.Key.Contains(s.ToLowerInvariant()));
         q = pq.Descending ? q.OrderByDescending(p => p.Key) : q.OrderBy(p => p.Key);
@@ -584,7 +638,7 @@ internal sealed class Q(Auth2DbContext db, IAccessService access, IGroupService 
 
     public async Task<PagedResult<AdminGroupDto>> GroupsAsync(PageQuery pq, CancellationToken ct)
     {
-        await flow.GetApplicationAsync(ct);
+        await flow.GetProjectAsync(ct);
         var q = db.Groups.AsNoTracking();
         if (pq.SafeSearch is { } s) q = q.Where(g => g.Name.Contains(s.ToLowerInvariant()));
         q = pq.Descending ? q.OrderByDescending(g => g.Name) : q.OrderBy(g => g.Name);

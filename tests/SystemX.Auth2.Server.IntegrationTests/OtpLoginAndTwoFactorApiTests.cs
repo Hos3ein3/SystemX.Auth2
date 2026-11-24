@@ -12,7 +12,7 @@ public class OtpLoginTests : Phase6Base
     private const string Email = "sara@example.com";
     private const string Phone = "+31612345678";
 
-    private async Task<string> StartAsync(Action<ApplicationSettings>? more = null)
+    private async Task<string> StartAsync(Action<TestEdit>? more = null)
     {
         await PrepareAppsAsync(both: s =>
         {
@@ -116,7 +116,7 @@ public class OtpLoginTests : Phase6Base
     public async Task Otp_Grant_IsOffWithoutSelfUiLogin()
     {
         var token = await StartAsync();
-        await UpdateSettingsAsync(A, s => s.Clients.AllowSelfUiLogin = false);
+        await UpdateSettingsAsync(A, s => s.App.AllowSelfUiLogin = false);
         var (status, body) = await OtpGrantAsync(Email, "123456");
         status.ShouldBe(HttpStatusCode.BadRequest);
         body.Str("error").ShouldBe("unauthorized_client");
@@ -143,7 +143,7 @@ public class OtpLoginTests : Phase6Base
 
 public class TwoFactorApiTests : Phase6Base
 {
-    private async Task<(string Bearer, Browser B)> StartAsync(Action<ApplicationSettings>? more = null)
+    private async Task<(string Bearer, Browser B)> StartAsync(Action<TestEdit>? more = null)
     {
         await PrepareAppsAsync(both: more);
         await CreateUserInAsync("appa");

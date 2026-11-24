@@ -75,8 +75,8 @@ internal sealed class UserNotifier(
     public async Task SendEmailConfirmationAsync(AppUser user, string token, string? returnUrl, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(user.Email)) return;
-        var app = await flow.GetApplicationAsync(ct);
-        var link = urls.Build("/Account/ConfirmEmail", Query(user, app, token, returnUrl));
+        var app = await flow.GetProjectAsync(ct);
+        var link = urls.Build("/Account/ConfirmEmail", Query(user, (await flow.GetClientAsync(ct))?.ClientId, token, returnUrl));
         using var _ = Culture(user);
         await email.SendAsync(new EmailMessage(user.Email, text["confirm_email.subject"].Value,
             text["confirm_email.body", Brand(app), link].Value, new Dictionary<string, string> { ["token"] = token, ["link"] = link }), ct);
@@ -85,10 +85,10 @@ internal sealed class UserNotifier(
     public async Task SendPasswordResetAsync(AppUser user, string token, string? returnUrl, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(user.Email)) return;
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var query = new List<KeyValuePair<string, string?>>
         {
-            new("Login", user.Email), new("Token", token), new("ClientId", app.ClientId), new("ReturnUrl", returnUrl),
+            new("Login", user.Email), new("Token", token), new("ClientId", (await flow.GetClientAsync(ct))?.ClientId), new("ReturnUrl", returnUrl),
         };
         var link = urls.Build("/Account/ResetPassword", query);
         using var _ = Culture(user);
@@ -98,7 +98,7 @@ internal sealed class UserNotifier(
 
     public async Task SendOtpAsync(AppUser user, string purpose, string code, NotificationChannel channel, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var data = new Dictionary<string, string> { ["code"] = code, ["purpose"] = purpose };
         using var _ = Culture(user);
         if (channel == NotificationChannel.Email && !string.IsNullOrEmpty(user.Email))
@@ -107,11 +107,11 @@ internal sealed class UserNotifier(
             await sms.SendAsync(new SmsMessage(user.PhoneNumber, text["sms.otp", code, Brand(app)].Value, data), ct);
     }
 
-    private static string Brand(Auth2Application app) => app.Settings.Localization.BrandName ?? app.Name;
+    private static string Brand(Project app) => app.Settings.Localization.BrandName ?? app.Name;
 
-    private static List<KeyValuePair<string, string?>> Query(AppUser user, Auth2Application app, string token, string? returnUrl) =>
+    private static List<KeyValuePair<string, string?>> Query(AppUser user, string? clientId, string token, string? returnUrl) =>
     [
-        new("userId", user.Id.ToString("D")), new("token", token), new("ClientId", app.ClientId), new("ReturnUrl", returnUrl),
+        new("userId", user.Id.ToString("D")), new("token", token), new("ClientId", clientId), new("ReturnUrl", returnUrl),
     ];
 
     /// <summary>Writes the message in the user's saved language when the server has it.</summary>

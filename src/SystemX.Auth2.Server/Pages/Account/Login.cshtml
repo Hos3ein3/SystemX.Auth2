@@ -1,3 +1,88 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.LoginModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Sign In";
+    ViewData["Subtitle"] = "Sign in to your account to continue";
+}
+
+<form method="post" class="space-y-4">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ReturnUrl" />
+    <input type="hidden" asp-for="ClientId" />
+
+    <a2-field label="Email or Username" required="true" for="Input_Login">
+        <a2-input id="Input_Login" name="Input.Login" value="@Model.Input?.Login" placeholder="you@example.com" autocomplete="username" required="true" />
+    </a2-field>
+
+    <a2-field label="Password" required="true" for="Input_Password">
+        <a2-password id="Input_Password" name="Input.Password" placeholder="••••••••••••" required="true" autocomplete="current-password" />
+    </a2-field>
+
+    <div class="flex items-center justify-between text-sm">
+        <div class="flex items-center">
+            <input type="checkbox" id="rememberMe" name="RememberMe" class="h-4 w-4 rounded border-gray-300 text-[var(--a2-color-primary,#2563eb)] focus:ring-[var(--a2-color-primary,#2563eb)]" />
+            <label for="rememberMe" class="ml-2 block text-sm text-[var(--a2-color-muted,#6b7280)]">Remember me</label>
+        </div>
+        <div>
+            <a href="/Account/ForgotPassword?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">Forgot password?</a>
+        </div>
+    </div>
+
+    <div>
+        <a2-button type="submit" variant="primary" class="w-full">Sign in</a2-button>
+    </div>
+
+    @if (Model.ShowRegisterLink)
+    {
+        <div class="mt-6 text-center text-sm">
+            <span class="text-[var(--a2-color-muted,#6b7280)]">Don't have an account?</span>
+            <a href="/Account/Register?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline ml-1">Create an account</a>
+        </div>
+    }
+</form>
+
+@if (Model.ShowDeveloperModal)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-fade-in" id="developerChoiceModal" role="dialog" aria-modal="true">
+        <div class="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-2xl transition-all border border-gray-100">
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Developer Access</h3>
+                    <p class="text-xs text-gray-500">Sign in successful! Where would you like to proceed?</p>
+                </div>
+            </div>
+
+            <div class="mb-5 rounded-lg bg-gray-50 p-3 border border-gray-200 text-xs text-gray-600">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-gray-500">Application:</span>
+                    <span class="font-semibold text-gray-800">@(Model.Client?.Name ?? Model.Project?.Name ?? "Default")</span>
+                </div>
+                <div class="text-gray-400 truncate">
+                    Destination: @Model.RedirectAfterLoginUrl
+                </div>
+            </div>
+
+            <div class="flex flex-col space-y-3">
+                <a href="@Model.DeveloperDashboardUrl" id="btnDashboard" class="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+                    <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Go to Developer Dashboard
+                </a>
+
+                <a href="@Model.RedirectAfterLoginUrl" id="btnRedirect" class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                    Return to RedirectAfterLogin
+                </a>
+            </div>
+        </div>
+    </div>
+}

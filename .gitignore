@@ -8,3 +8,4 @@ coverage*/
 *.log
 .env
 appsettings.*.local.json
+secrets.md

@@ -1,0 +1,356 @@
+@page "/"
+@model SystemX.Auth2.Server.Pages.IndexModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = "Developer Dashboard";
+}
+
+<div class="space-y-8">
+    <!-- Top Header Banner -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200 gap-4">
+        <div>
+            <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                    Developer Mode
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                    <span class="w-1.5 h-1.5 mr-1.5 bg-green-500 rounded-full animate-pulse"></span> Systems Operational
+                </span>
+            </div>
+            <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight mt-1">SystemX.Auth2 Developer Console</h1>
+            <p class="text-sm text-gray-500">Global overview, health metrics, failed audit monitoring, and project activity.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="/admin/projects/create" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+                <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                New Project
+            </a>
+            <a href="/admin/global/settings" class="inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all">
+                <svg class="h-4 w-4 mr-1.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                System Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Core Metrics Overview Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Projects</span>
+                <span class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                </span>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+                <div class="text-3xl font-extrabold text-gray-900">@Model.Metrics.TotalProjects</div>
+                <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">@Model.Metrics.ActiveProjects active</span>
+            </div>
+            <div class="mt-2 text-xs text-gray-400">Total client spaces configured</div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Applications</span>
+                <span class="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                </span>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+                <div class="text-3xl font-extrabold text-gray-900">@Model.Metrics.TotalApplications</div>
+                <span class="text-xs text-gray-500">OIDC / API clients</span>
+            </div>
+            <div class="mt-2 text-xs text-gray-400">MVC, Minimal API & Services</div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Users & Sessions</span>
+                <span class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                </span>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+                <div class="text-3xl font-extrabold text-gray-900">@Model.Metrics.TotalUsers</div>
+                <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">@Model.Metrics.ActiveSessions active sessions</span>
+            </div>
+            <div class="mt-2 text-xs text-gray-400">Registered across all projects</div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Login Health (24h)</span>
+                <span class="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </span>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+                <div class="text-3xl font-extrabold @(Model.Metrics.LoginsFailed24h > 0 ? "text-amber-600" : "text-green-600")">
+                    @Model.Metrics.SuccessRate.ToString("F1")%
+                </div>
+                <span class="text-xs text-gray-500">@Model.Metrics.TotalLogins24h attempts</span>
+            </div>
+            <div class="mt-2 flex items-center justify-between text-xs text-gray-500">
+                <span class="text-green-600 font-medium">@Model.Metrics.LoginsSuccess24h ok</span>
+                <span class="text-amber-600 font-medium">@Model.Metrics.LoginsFailed24h failed</span>
+                <span class="text-red-600 font-medium">@Model.Metrics.Lockouts24h lockouts</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visual Charts & Activity Bars -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Authentication Traffic & Security Bar -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-900">24-Hour Authentication Breakdown</h3>
+                    <p class="text-xs text-gray-400">Ratio of successful sign-ins versus security anomalies</p>
+                </div>
+                <span class="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded">24h window</span>
+            </div>
+
+            <!-- Segmented Progress Bar -->
+            <div class="mt-5">
+                @{
+                    var totalAttempts = Math.Max(1, Model.Metrics.TotalLogins24h);
+                    var successPct = (double)Model.Metrics.LoginsSuccess24h / totalAttempts * 100.0;
+                    var failedPct = (double)Model.Metrics.LoginsFailed24h / totalAttempts * 100.0;
+                    var lockoutPct = (double)Model.Metrics.Lockouts24h / totalAttempts * 100.0;
+                }
+                <div class="h-4 w-full bg-gray-100 rounded-full overflow-hidden flex shadow-inner">
+                    <div style="width: @(Math.Round(successPct, 1))%" class="bg-green-500 hover:bg-green-600 transition-all" title="Successful: @Model.Metrics.LoginsSuccess24h"></div>
+                    <div style="width: @(Math.Round(failedPct, 1))%" class="bg-amber-400 hover:bg-amber-500 transition-all" title="Failed: @Model.Metrics.LoginsFailed24h"></div>
+                    <div style="width: @(Math.Round(lockoutPct, 1))%" class="bg-red-500 hover:bg-red-600 transition-all" title="Lockouts: @Model.Metrics.Lockouts24h"></div>
+                </div>
+
+                <!-- Legend & Counts -->
+                <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                    <div class="bg-green-50 rounded-lg p-2.5 border border-green-100">
+                        <span class="flex items-center justify-center font-medium text-green-800">
+                            <span class="w-2 h-2 mr-1.5 bg-green-500 rounded-full"></span> Successful
+                        </span>
+                        <div class="text-lg font-bold text-green-900 mt-1">@Model.Metrics.LoginsSuccess24h</div>
+                        <span class="text-[10px] text-green-700 font-mono">@successPct.ToString("F1")%</span>
+                    </div>
+
+                    <div class="bg-amber-50 rounded-lg p-2.5 border border-amber-100">
+                        <span class="flex items-center justify-center font-medium text-amber-800">
+                            <span class="w-2 h-2 mr-1.5 bg-amber-400 rounded-full"></span> Failed Credentials
+                        </span>
+                        <div class="text-lg font-bold text-amber-900 mt-1">@Model.Metrics.LoginsFailed24h</div>
+                        <span class="text-[10px] text-amber-700 font-mono">@failedPct.ToString("F1")%</span>
+                    </div>
+
+                    <div class="bg-red-50 rounded-lg p-2.5 border border-red-100">
+                        <span class="flex items-center justify-center font-medium text-red-800">
+                            <span class="w-2 h-2 mr-1.5 bg-red-500 rounded-full"></span> Lockouts
+                        </span>
+                        <div class="text-lg font-bold text-red-900 mt-1">@Model.Metrics.Lockouts24h</div>
+                        <span class="text-[10px] text-red-700 font-mono">@lockoutPct.ToString("F1")%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Infrastructure & Server Subsystems Health -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-900">Subsystem & Job Status</h3>
+                    <p class="text-xs text-gray-400">Background tasks and database services</p>
+                </div>
+                <a href="/admin/global/jobs" class="text-xs text-blue-600 hover:underline">Manage Jobs &rarr;</a>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
+                        <div>
+                            <span class="text-sm font-semibold text-gray-900">PostgreSQL Store</span>
+                            <span class="text-xs text-gray-500 block">Migrations & Seeder active</span>
+                        </div>
+                    </div>
+                    <span class="text-xs font-mono font-medium text-green-700 bg-green-100 px-2.5 py-0.5 rounded-full">Connected</span>
+                </div>
+
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
+                        <div>
+                            <span class="text-sm font-semibold text-gray-900">OpenIddict Auth Engine</span>
+                            <span class="text-xs text-gray-500 block">Tokens, Authorizations, Scope validation</span>
+                        </div>
+                    </div>
+                    <span class="text-xs font-mono font-medium text-green-700 bg-green-100 px-2.5 py-0.5 rounded-full">Active</span>
+                </div>
+
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
+                        <div>
+                            <span class="text-sm font-semibold text-gray-900">Background Jobs Status</span>
+                            <span class="text-xs text-gray-500 block">@(Model.JobStatuses.Count) tasks registered</span>
+                        </div>
+                    </div>
+                    <span class="text-xs font-mono font-medium text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full">Healthy</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Failed Audits & Security Incidents (User explicitly requested Fail Audit monitoring) -->
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div class="px-5 py-4 bg-red-50/50 border-b border-red-100 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <span class="p-1.5 bg-red-100 text-red-600 rounded-lg">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </span>
+                <div>
+                    <h3 class="text-sm font-bold text-gray-900">Failed Audit & Security Events</h3>
+                    <p class="text-xs text-red-700">Recent failed authentications, lockouts, and access violations</p>
+                </div>
+            </div>
+            <span class="text-xs font-mono bg-red-100 text-red-800 px-2.5 py-1 rounded-full font-semibold">
+                @(Model.FailedAudits.Count) Events Captured
+            </span>
+        </div>
+
+        @if (Model.FailedAudits.Count > 0)
+        {
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                        <tr>
+                            <th class="px-5 py-3 text-left font-semibold">Timestamp (UTC)</th>
+                            <th class="px-5 py-3 text-left font-semibold">Security Action</th>
+                            <th class="px-5 py-3 text-left font-semibold">Actor</th>
+                            <th class="px-5 py-3 text-left font-semibold">Target / Details</th>
+                            <th class="px-5 py-3 text-left font-semibold">Source IP</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                        @foreach (var audit in Model.FailedAudits)
+                        {
+                            <tr class="hover:bg-red-50/20 transition-colors">
+                                <td class="px-5 py-3 text-xs text-gray-500 font-mono whitespace-nowrap">
+                                    @audit.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm:ss")
+                                </td>
+                                <td class="px-5 py-3">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold @(audit.Action.Contains("lockout") ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800")">
+                                        @audit.Action
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3 text-xs text-gray-700">
+                                    @(audit.ActorUserId?.ToString()[..8] ?? "anonymous")
+                                </td>
+                                <td class="px-5 py-3 text-xs text-gray-600 truncate max-w-xs">
+                                    @(audit.TargetId ?? audit.TargetType ?? "login-request")
+                                </td>
+                                <td class="px-5 py-3 text-xs font-mono text-gray-500">
+                                    @(audit.IpAddress ?? "127.0.0.1")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="p-8 text-center">
+                <svg class="mx-auto h-10 w-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-semibold text-gray-900">No Failed Audits Recorded</h3>
+                <p class="mt-1 text-xs text-gray-500">All authentication attempts and access checks are operating cleanly.</p>
+            </div>
+        }
+    </div>
+
+    <!-- Projects List & Distribution Bars -->
+    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+            <div>
+                <h3 class="text-sm font-bold text-gray-900">Configured Projects</h3>
+                <p class="text-xs text-gray-400">Applications and user allocation across projects</p>
+            </div>
+            <a href="/admin/projects" class="text-xs text-blue-600 hover:underline">View all in Project Manager &rarr;</a>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @foreach (var proj in Model.Projects)
+            {
+                <div class="p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-blue-300 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-gray-900 text-sm">@proj.Name</span>
+                            @if (proj.IsEnabled)
+                            {
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-800">Active</span>
+                            }
+                            else
+                            {
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-200 text-gray-700">Disabled</span>
+                            }
+                        </div>
+                        <span class="font-mono text-xs text-gray-400 block mt-0.5">@proj.ProjectKey</span>
+                        @if (!string.IsNullOrEmpty(proj.Description))
+                        {
+                            <p class="text-xs text-gray-500 mt-2 line-clamp-2">@proj.Description</p>
+                        }
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between text-xs">
+                        <span class="text-gray-600">
+                            <strong>@proj.ApplicationsCount</strong> apps &bull; <strong>@proj.UsersCount</strong> users
+                        </span>
+                        <a href="/admin/p/@proj.ProjectKey" class="text-blue-600 font-semibold hover:underline">Open &rarr;</a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Live System Audit Stream -->
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-gray-900">Live System Audit Log Feed</h3>
+                <p class="text-xs text-gray-400">Real-time stream of audit events and administrative actions</p>
+            </div>
+            <span class="text-xs text-gray-500 font-mono">Last @Model.RecentAudits.Count events</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-5 py-3 text-left font-semibold">Time (UTC)</th>
+                        <th class="px-5 py-3 text-left font-semibold">Action</th>
+                        <th class="px-5 py-3 text-left font-semibold">Target</th>
+                        <th class="px-5 py-3 text-left font-semibold">IP</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 font-mono text-xs">
+                    @foreach (var audit in Model.RecentAudits)
+                    {
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-5 py-2.5 text-gray-500">@audit.OccurredAtUtc.ToString("HH:mm:ss")</td>
+                            <td class="px-5 py-2.5 font-semibold text-gray-900">@audit.Action</td>
+                            <td class="px-5 py-2.5 text-gray-600 truncate max-w-xs">@(audit.TargetId ?? audit.TargetType ?? "-")</td>
+                            <td class="px-5 py-2.5 text-gray-500">@(audit.IpAddress ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

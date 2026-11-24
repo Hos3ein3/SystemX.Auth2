@@ -13,8 +13,8 @@ public abstract class IdentityTestBase : ServerTestBase
     protected const string PassA = "PassA-12345!x";
     protected const string PassB = "PassB-98765!y";
 
-    protected Auth2Application A = null!;
-    protected Auth2Application B = null!;
+    protected Project A = null!;
+    protected Project B = null!;
     protected string ASecret = "";
     protected string BSecret = "";
 
@@ -22,11 +22,11 @@ public abstract class IdentityTestBase : ServerTestBase
     {
         await MigrateAndSeedAsync();
         await using var scope = NewScope();
-        var svc = scope.ServiceProvider.GetRequiredService<IApplicationService>();
-        var a = await svc.CreateAsync("appa", "App A", null, null);
-        var b = await svc.CreateAsync("appb", "App B", null, null);
-        (A, ASecret) = (a.Application, a.ClientSecret);
-        (B, BSecret) = (b.Application, b.ClientSecret);
+        var svc = scope.ServiceProvider.GetRequiredService<IProjectService>();
+        var a = await svc.CreateWithApplicationAsync("appa", "App A", null, null);
+        var b = await svc.CreateWithApplicationAsync("appb", "App B", null, null);
+        (A, ASecret) = (a.Project, a.ClientSecret);
+        (B, BSecret) = (b.Project, b.ClientSecret);
     }
 
     protected async Task<AppUser> CreateUserInAsync(string clientId, string name = "sara", string password = PassA)
@@ -40,11 +40,11 @@ public abstract class IdentityTestBase : ServerTestBase
     }
 
     /// <summary>Stand-in for the "join an application" service of phase 6: adds the membership row only.</summary>
-    protected async Task JoinAsync(AppUser user, Auth2Application app)
+    protected async Task JoinAsync(AppUser user, Project app)
     {
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-        db.UserApplications.Add(new UserApplication { UserId = user.Id, ApplicationId = app.Id, JoinedAtUtc = DateTimeOffset.UtcNow });
+        db.UserProjects.Add(new UserProject { UserId = user.Id, ProjectId = app.Id, JoinedAtUtc = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
     }
 
@@ -54,17 +54,29 @@ public abstract class IdentityTestBase : ServerTestBase
         return await action(scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>());
     }
 
-    protected async Task UpdateSettingsAsync(Auth2Application app, Action<Domain.Settings.ApplicationSettings> change)
+    /// <summary>Finds a project by key.</summary>
+    protected async Task<Project?> FindProjectAsync(string projectKey)
     {
         await using var scope = NewScope();
-        var settings = await scope.ServiceProvider.GetRequiredService<IApplicationSettingsProvider>().GetAsync(app.Id);
-        var copy = Persistence.SettingsJson.Clone(settings);
-        change(copy);
-        await scope.ServiceProvider.GetRequiredService<IApplicationService>().UpdateSettingsAsync(app.Id, copy);
+        return await scope.ServiceProvider.GetRequiredService<IProjectService>().FindByProjectKeyAsync(projectKey);
+    }
+
+    /// <summary>Changes the project settings and the first application of the project (see <see cref="TestEdit"/>).</summary>
+    protected async Task UpdateSettingsAsync(Project app, Action<TestEdit> change)
+    {
+        await using var scope = NewScope();
+        var apps = scope.ServiceProvider.GetRequiredService<IApplicationService>();
+        var client = (await apps.ListAsync(app.Id)).First();
+        var settings = await scope.ServiceProvider.GetRequiredService<IProjectSettingsProvider>().GetAsync(app.Id);
+        var edit = new TestEdit(Persistence.SettingsJson.Clone(settings), client);
+        change(edit);
+        await scope.ServiceProvider.GetRequiredService<IProjectService>().UpdateSettingsAsync(app.Id, edit.Project);
+        await apps.UpdateAsync(client.Id, new ApplicationSpec("", RedirectUris: edit.RedirectUris, PostLogoutRedirectUris: edit.PostLogoutRedirectUris,
+            AllowedScopes: edit.AllowedScopes, Settings: edit.App));
     }
 }
 
-public class PerApplicationCredentialTests : IdentityTestBase
+public class PerProjectCredentialTests : IdentityTestBase
 {
     [Fact]
     public async Task Register_SameUserInTwoApplications_OneUserRow_TwoRows_TwoPasswords()
@@ -78,7 +90,7 @@ public class PerApplicationCredentialTests : IdentityTestBase
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
         (await db.Users.CountAsync(u => u.UserName == "sara")).ShouldBe(1);
-        (await db.UserApplications.CountAsync(x => x.UserId == user.Id)).ShouldBe(2);
+        (await db.UserProjects.CountAsync(x => x.UserId == user.Id)).ShouldBe(2);
         (await db.Users.SingleAsync(u => u.UserName == "sara")).PasswordHash.ShouldBeNull();
 
         (await InAsync("appa", async m => (await m.CheckPasswordAsync((await m.FindByNameAsync("sara"))!, PassA), await m.CheckPasswordAsync((await m.FindByNameAsync("sara"))!, PassB)))).ShouldBe((true, false));
@@ -108,7 +120,7 @@ public class PerApplicationCredentialTests : IdentityTestBase
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        (await db.UserApplications.CountAsync(x => x.ApplicationId == B.Id)).ShouldBe(0);
+        (await db.UserProjects.CountAsync(x => x.ProjectId == B.Id)).ShouldBe(0);
     }
 
     [Fact]
@@ -119,8 +131,8 @@ public class PerApplicationCredentialTests : IdentityTestBase
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        var row = await db.UserApplications.SingleAsync(x => x.UserId == user.Id);
-        row.ApplicationId.ShouldBe(A.Id);
+        var row = await db.UserProjects.SingleAsync(x => x.UserId == user.Id);
+        row.ProjectId.ShouldBe(A.Id);
         row.PasswordHash.ShouldNotBeNull();
         row.SecurityStamp.ShouldNotBeNull();
         row.LockoutEnabled.ShouldBeTrue();
@@ -136,7 +148,7 @@ public class PerApplicationCredentialTests : IdentityTestBase
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
         (await db.Users.CountAsync(u => u.UserName == "bob")).ShouldBe(0);
-        (await db.UserApplications.CountAsync(x => x.ApplicationId == A.Id)).ShouldBe(0);
+        (await db.UserProjects.CountAsync(x => x.ProjectId == A.Id)).ShouldBe(0);
     }
 
     [Fact]
@@ -163,13 +175,13 @@ public class PerApplicationCredentialTests : IdentityTestBase
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        var stored = (await db.UserApplications.SingleAsync(x => x.UserId == user.Id && x.ApplicationId == A.Id)).AuthenticatorKey;
+        var stored = (await db.UserProjects.SingleAsync(x => x.UserId == user.Id && x.ProjectId == A.Id)).AuthenticatorKey;
         stored.ShouldNotBeNull();
         stored.ShouldNotContain(key);
     }
 
     [Fact]
-    public async Task Lockout_InA_DoesNotLockB_AndUsesApplicationSettings()
+    public async Task Lockout_InA_DoesNotLockB_AndUsesProjectSettings()
     {
         await SetUpAsync();
         var user = await CreateUserInAsync("appa");
@@ -247,13 +259,13 @@ public class RolesAndRulesTests : IdentityTestBase
         {
             await using var scope = ScopeFor(client);
             var roles = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
-            (await roles.CreateAsync(new AppRole("writer") { ApplicationId = app.Id })).Succeeded.ShouldBeTrue();
+            (await roles.CreateAsync(new AppRole("writer") { ProjectId = app.Id })).Succeeded.ShouldBeTrue();
         }
 
         // Duplicate inside the same application is refused.
         await using (var scope = ScopeFor("appa"))
         {
-            var again = await scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>().CreateAsync(new AppRole("Writer") { ApplicationId = A.Id });
+            var again = await scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>().CreateAsync(new AppRole("Writer") { ProjectId = A.Id });
             again.Errors.ShouldContain(e => e.Code == "DuplicateRoleName");
         }
 
@@ -274,18 +286,18 @@ public class RolesAndRulesTests : IdentityTestBase
         {
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            db.Roles.Add(new AppRole("Support") { NormalizedName = "SUPPORT", ApplicationId = null });
+            db.Roles.Add(new AppRole("Support") { NormalizedName = "SUPPORT", ProjectId = null });
             await db.SaveChangesAsync();
         }
         await using (var scope = ScopeFor("appa"))
-            (await scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>().CreateAsync(new AppRole("Support") { ApplicationId = A.Id })).Succeeded.ShouldBeTrue();
+            (await scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>().CreateAsync(new AppRole("Support") { ProjectId = A.Id })).Succeeded.ShouldBeTrue();
 
         await InAsync("appa", async m => await m.AddToRoleAsync((await m.FindByNameAsync("sara"))!, "Support"));
 
         await using var check = NewScope();
         var db2 = check.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var __ = check.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        var assignedRole = await (from ur in db2.UserRoles join r in db2.Roles on ur.RoleId equals r.Id where r.Name == "Support" select r.ApplicationId).SingleAsync();
+        var assignedRole = await (from ur in db2.UserRoles join r in db2.Roles on ur.RoleId equals r.Id where r.Name == "Support" select r.ProjectId).SingleAsync();
         assignedRole.ShouldBe(A.Id);
     }
 
@@ -362,7 +374,7 @@ public class SharedCredentialTests : IdentityTestBase
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
         (await db.Users.SingleAsync(u => u.Id == user.Id)).PasswordHash.ShouldNotBeNull();
-        (await db.UserApplications.CountAsync(x => x.UserId == user.Id)).ShouldBe(0);
+        (await db.UserProjects.CountAsync(x => x.UserId == user.Id)).ShouldBe(0);
     }
 
     [Fact]
@@ -396,7 +408,7 @@ public class SingleModeIdentityTests : IdentityTestBase
     protected override bool SingleMode => true;
 
     [Fact]
-    public async Task SingleMode_CredentialsLiveInUserRow_AndNoUserApplicationsRowIsWritten()
+    public async Task SingleMode_CredentialsLiveInUserRow_AndNoUserProjectsRowIsWritten()
     {
         await MigrateAndSeedAsync();
         await using (var scope = NewScope())
@@ -410,7 +422,7 @@ public class SingleModeIdentityTests : IdentityTestBase
         await using var check = NewScope();
         var db = check.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = check.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        (await db.UserApplications.CountAsync()).ShouldBe(0);
+        (await db.UserProjects.CountAsync()).ShouldBe(0);
         (await db.Users.SingleAsync(u => u.UserName == "sara")).PasswordHash.ShouldNotBeNull();
     }
 }

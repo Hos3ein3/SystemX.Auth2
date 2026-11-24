@@ -1,0 +1,81 @@
+@page "/admin/p/{projectKey}/groups"
+@model SystemX.Auth2.Server.Pages.Admin.Groups.IndexModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Groups - {Model.CurrentProject?.Name}";
+}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">User Groups</h1>
+            <p class="mt-1 text-sm text-gray-500">Organize users and assign bulk roles and permissions in @Model.CurrentProject?.Name.</p>
+        </div>
+        <a2-link-button href="/admin/p/@Model.ProjectKey/groups/create" variant="primary">
+            + New Group
+        </a2-link-button>
+    </div>
+
+    <!-- Filter Form -->
+    <form method="get" class="flex items-center gap-3">
+        <a2-search name="q" value="@Model.Q" placeholder="Search groups..." />
+        <a2-button type="submit" variant="secondary">Search</a2-button>
+    </form>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Group Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Display Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Description</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Roles</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Permissions</th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @if (Model.Groups.Count > 0)
+                {
+                    @foreach (var g in Model.Groups)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-gray-900">
+                                <a href="/admin/p/@Model.ProjectKey/groups/detail?name=@g.Name" class="text-blue-600 hover:underline">
+                                    @g.Name
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 text-gray-800">@(g.DisplayName ?? "-")</td>
+                            <td class="px-6 py-4 text-gray-500">@(g.Description ?? "-")</td>
+                            <td class="px-6 py-4">
+                                <span class="font-mono text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                                    @g.Roles.Count roles
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="font-mono text-xs bg-blue-50 text-blue-800 px-2 py-0.5 rounded">
+                                    @g.Permissions.Count permissions
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right space-x-2">
+                                <a href="/admin/p/@Model.ProjectKey/groups/detail?name=@g.Name" class="text-blue-600 hover:underline text-xs font-semibold">View</a>
+                                <span class="text-gray-300">|</span>
+                                <form method="post" asp-page-handler="Delete" asp-route-name="@g.Name" class="inline" onsubmit="return confirm('Delete group @g.Name?');">
+                                    <button type="submit" class="text-xs text-red-600 hover:underline">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            No groups found.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

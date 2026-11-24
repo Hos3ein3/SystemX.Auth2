@@ -27,14 +27,14 @@ public abstract class SamlTestBase : ExternalLoginTestBase
     protected static SamlProviderSettings Saml() => new()
     { Name = "corp-saml", Type = ExternalProviderType.Saml, Enabled = true, IdpMetadataUrl = FakeSamlIdp.MetadataUrl, DisplayName = "Company SSO", GroupsAttribute = "groups", TrustProviderEmailVerification = true };
 
-    protected async Task PrepareSamlAsync(Action<SamlProviderSettings>? change = null, Action<ApplicationSettings>? app = null)
+    protected async Task PrepareSamlAsync(Action<SamlProviderSettings>? change = null, Action<TestEdit>? app = null)
     {
         await SetUpAsync();
         var p = Saml();
         change?.Invoke(p);
         await UpdateSettingsAsync(A, s =>
         {
-            s.Redirects.AllowedRedirectUris.Add(ClientRedirect);
+            s.RedirectUris.Add(ClientRedirect);
             s.Methods.AllowedLoginMethods.Add(LoginMethod.External);
             s.ExternalProviders.Add(p);
             app?.Invoke(s);
@@ -411,7 +411,7 @@ public class SamlOptionsTests : SamlTestBase
         {
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
             var db = scope.ServiceProvider.GetRequiredService<Persistence.Auth2DbContext>();
-            db.ExternalGroupMappings.Add(new ExternalGroupMapping { ApplicationId = A.Id, ProviderName = "corp-saml", SourceType = MappingSourceType.Group, MatchType = MappingMatchType.Exact, SourceValue = "finance", TargetType = MappingTargetType.Role, TargetId = role });
+            db.ExternalGroupMappings.Add(new ExternalGroupMapping { ProjectId = A.Id, ProviderName = "corp-saml", SourceType = MappingSourceType.Group, MatchType = MappingMatchType.Exact, SourceValue = "finance", TargetType = MappingTargetType.Role, TargetId = role });
             await db.SaveChangesAsync();
         }
         await SignInViaSamlAsync();

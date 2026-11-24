@@ -5,14 +5,14 @@ namespace SystemX.Auth2.Client.Options;
 
 /// <summary>
 /// Main options of the client. Section name <c>Auth2</c> when you use <c>AddAuth2Client(IConfigurationSection)</c>.
-/// <c>ProjectKey</c> is set with <c>ServerWithMultiApplication(projectKey)</c> and only when the server is multi-application.
+/// <c>ProjectKey</c> is set with <c>ServerWithMultiProject(projectKey)</c> and only when the server serves many projects. It is an identifier check, not a secret.
 /// </summary>
 public sealed class Auth2ClientOptions
 {
     /// <summary>Address of the SystemX.Auth2 Server, for example <c>https://auth.example.com</c>.</summary>
     public string ServerUrl { get; set; } = "";
 
-    /// <summary>Name of this application. The handshake checks it against the name on the server.</summary>
+    /// <summary>Name of this application (the client) inside its project. The handshake checks it against the name on the server.</summary>
     public string ApplicationName { get; set; } = "";
 
     /// <summary>OAuth client id of this application.</summary>
@@ -22,8 +22,8 @@ public sealed class Auth2ClientOptions
     public string ClientSecret { get; set; } = "";
 
     /// <summary>
-    /// Project key of this application on a multi-application server. Null for a single-application server.
-    /// Set it with <c>ServerWithMultiApplication(projectKey)</c>.
+    /// Project key of this application on a multi-project server. Null for a single-project server (a key sent there is ignored with a warning).
+    /// Set it with <c>ServerWithMultiProject(projectKey)</c>. It is not a secret and not proof of anything: the server finds the project from the client id.
     /// </summary>
     public string? ProjectKey { get; set; }
 
@@ -31,7 +31,7 @@ public sealed class Auth2ClientOptions
     public StartupFailureBehavior OnServerUnavailable { get; set; } = StartupFailureBehavior.Continue;
 
     /// <summary>What to do when the application is not found or the server rejects the client. Default <see cref="StartupFailureBehavior.Throw"/>.</summary>
-    public StartupFailureBehavior OnApplicationNotFound { get; set; } = StartupFailureBehavior.Throw;
+    public StartupFailureBehavior OnProjectNotFound { get; set; } = StartupFailureBehavior.Throw;
 
     /// <summary>Make the handshake when the application starts. Default true.</summary>
     public bool HandshakeOnStartup { get; set; } = true;

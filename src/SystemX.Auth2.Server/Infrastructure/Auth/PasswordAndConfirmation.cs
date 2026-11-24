@@ -13,12 +13,12 @@ internal sealed class PasswordService(
 {
     public async Task ForgotAsync(string login, string? returnUrl = null, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         var user = await lookup.FindAsync(login, settings, ct);
 
         // Only members get a reset. A person who is not in this application goes through the join flow (with proof).
-        if (user is null || !app.IsEnabled || !user.IsActive || !await lookup.IsMemberAsync(user, app, ct)) return;
+        if (user is null || await flow.CheckGateAsync(ct) is not null || !user.IsActive || !await lookup.IsMemberAsync(user, app, ct)) return;
 
         if (!string.IsNullOrEmpty(user.Email))
             await notifier.SendPasswordResetAsync(user, await users.GeneratePasswordResetTokenAsync(user), returnUrl, ct);
@@ -34,10 +34,10 @@ internal sealed class PasswordService(
 
     public async Task<OperationResult> ResetAsync(string login, string token, string newPassword, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         var user = await lookup.FindAsync(login, settings, ct);
-        if (user is null || !app.IsEnabled || !user.IsActive || !await lookup.IsMemberAsync(user, app, ct))
+        if (user is null || await flow.CheckGateAsync(ct) is not null || !user.IsActive || !await lookup.IsMemberAsync(user, app, ct))
             return OperationResult.Fail(Auth2ErrorCodes.InvalidToken);
 
         var result = await users.ResetPasswordAsync(user, token, newPassword);
@@ -70,7 +70,7 @@ internal sealed class PasswordService(
 
     public async Task<OperationResult> ChangeAsync(AppUser user, string currentPassword, string newPassword, string? keepAuthorizationId, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var result = await users.ChangePasswordAsync(user, currentPassword, newPassword);
         if (!result.Succeeded)
         {
@@ -93,7 +93,7 @@ internal sealed class ConfirmationService(
 {
     public async Task<OperationResult> ConfirmEmailAsync(Guid userId, string token, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var user = await users.FindByIdAsync(userId.ToString());
         if (user is null) return OperationResult.Fail(Auth2ErrorCodes.InvalidToken);
         var result = await users.ConfirmEmailAsync(user, token);
@@ -112,7 +112,7 @@ internal sealed class ConfirmationService(
 
     public async Task<OperationResult> ConfirmPhoneAsync(string login, string code, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         var user = await lookup.FindAsync(login, settings, ct);
         if (user is null || string.IsNullOrEmpty(user.PhoneNumber)) return OperationResult.Fail(Auth2ErrorCodes.InvalidOtp);
@@ -130,9 +130,9 @@ internal sealed class OtpRequestService(UserLookup lookup, IAuthFlowResolver flo
 {
     public async Task<OperationResult> RequestAsync(string login, string purpose, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
-        if (!app.IsEnabled) return OperationResult.Fail(Auth2ErrorCodes.ApplicationDisabled);
+        if (await flow.CheckGateAsync(ct) is not null) return OperationResult.Fail(Auth2ErrorCodes.AccessDenied);
 
         var kind = lookup.KindOf(login, settings);
         AppUser? user;

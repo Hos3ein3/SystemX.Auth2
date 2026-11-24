@@ -1,0 +1,78 @@
+@page "/admin/p/{projectKey}/providers"
+@model SystemX.Auth2.Server.Pages.Admin.Providers.IndexModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Identity Providers - {Model.CurrentProject?.Name}";
+}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">External Identity Providers</h1>
+            <p class="mt-1 text-sm text-gray-500">Configure OAuth, OpenID Connect, SAML 2.0, or LDAP providers for @Model.CurrentProject?.Name.</p>
+        </div>
+        <a2-link-button href="/admin/p/@Model.ProjectKey/providers/create" variant="primary">
+            + Add Provider
+        </a2-link-button>
+    </div>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Provider Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Type</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Display Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Status</th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @if (Model.Providers.Count > 0)
+                {
+                    @foreach (var p in Model.Providers)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-gray-900">
+                                <a href="/admin/p/@Model.ProjectKey/providers/detail?name=@p.Name" class="text-blue-600 hover:underline">
+                                    @p.Name
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-600">@p.Type</td>
+                            <td class="px-6 py-4 text-gray-800">@(p.DisplayName ?? "-")</td>
+                            <td class="px-6 py-4">
+                                @if (p.Enabled)
+                                {
+                                    <a2-badge variant="success">Enabled</a2-badge>
+                                }
+                                else
+                                {
+                                    <a2-badge variant="neutral">Disabled</a2-badge>
+                                }
+                            </td>
+                            <td class="px-6 py-4 text-right space-x-2">
+                                <form method="post" asp-page-handler="Test" asp-route-name="@p.Name" class="inline">
+                                    <button type="submit" class="text-xs text-blue-600 hover:underline font-medium">Test Connection</button>
+                                </form>
+                                <span class="text-gray-300">|</span>
+                                <a href="/admin/p/@Model.ProjectKey/providers/detail?name=@p.Name" class="text-xs text-gray-700 hover:underline">Configure</a>
+                                <span class="text-gray-300">|</span>
+                                <form method="post" asp-page-handler="Delete" asp-route-name="@p.Name" class="inline" onsubmit="return confirm('Delete provider @p.Name?');">
+                                    <button type="submit" class="text-xs text-red-600 hover:underline">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            No external providers configured.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

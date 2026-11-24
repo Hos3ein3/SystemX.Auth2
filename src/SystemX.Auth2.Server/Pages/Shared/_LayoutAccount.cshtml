@@ -1,0 +1,61 @@
+@{
+    var pageModel = Model as SystemX.Auth2.Server.Pages.Auth2PageModel;
+}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[var(--a2-color-background,#f9fafb)]">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <partial name="_Branding" model="Model" />
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full font-[var(--a2-font-family,system-ui)] text-[var(--a2-color-text,#111827)] antialiased">
+    <header class="bg-[var(--a2-color-surface,#ffffff)] border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="text-xl font-bold text-[var(--a2-color-primary,#2563eb)]">@(pageModel?.BrandName ?? "SystemX Auth2")</span>
+                <span class="text-sm text-gray-500">Account Management</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm font-medium text-gray-700">@User.Identity?.Name</span>
+                <a href="/Account/Logout" class="text-sm text-gray-500 hover:text-gray-900">Sign out</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="lg:grid lg:grid-cols-12 lg:gap-x-8">
+            <aside class="py-6 px-2 sm:px-6 lg:py-0 lg:px-0 lg:col-span-3">
+                <nav class="space-y-1">
+                    <a href="/Manage" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">Overview</a>
+                    <a href="/Manage/Profile" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">Profile</a>
+                    <a href="/Manage/ChangeEmail" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">Change Email</a>
+                    <a href="/Manage/ChangePassword" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">Password</a>
+                    <a href="/Manage/TwoFactor/Enable" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">Two-Factor Authentication</a>
+                    <a href="/Manage/Passkeys" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">Passkeys</a>
+                    <a href="/Manage/ExternalLogins" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">External Logins</a>
+                    <a href="/Manage/Sessions" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">Sessions</a>
+                    <a href="/Manage/DeleteAccount" class="group rounded-md px-3 py-2 flex items-center text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50">Delete Account</a>
+                </nav>
+            </aside>
+
+            <main class="space-y-6 lg:col-span-9">
+                @if (TempData["Success"] is string success)
+                {
+                    <a2-alert variant="success">@success</a2-alert>
+                }
+                @if (TempData["Error"] is string error)
+                {
+                    <a2-alert variant="error">@error</a2-alert>
+                }
+                @if (pageModel != null && !string.IsNullOrEmpty(pageModel.ErrorMessage))
+                {
+                    <a2-alert variant="error">@pageModel.ErrorMessage</a2-alert>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

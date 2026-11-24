@@ -19,19 +19,19 @@ public sealed class AcsModel(IClientIdAccessor clientId, IAuthFlowResolver flow,
     public async Task<IActionResult> OnPostAsync(string slug, string name)
     {
         var result = await external.CompleteAsync(HttpContext, slug, name, HttpContext.RequestAborted);
-        await LoadApplicationAsync();
+        await LoadProjectAsync();
         if (result.RedirectTo is not null) return Redirect(result.RedirectTo);
         if (result.TwoFactorToken is not null)
         {
             TempData["TwoFactorToken"] = result.TwoFactorToken;
-            return RedirectToPage("/Account/TwoFactor", new { ReturnUrl = result.ReturnUrl, ClientId = Application?.ClientId });
+            return RedirectToPage("/Account/TwoFactor", new { ReturnUrl = result.ReturnUrl, ClientId = ClientIdForLinks });
         }
         if (result.PendingToken is not null)
         {
             TempData["ExternalPending"] = result.PendingToken;
-            return RedirectToPage("/Account/External/Confirm", new { ReturnUrl = result.ReturnUrl, ClientId = Application?.ClientId });
+            return RedirectToPage("/Account/External/Confirm", new { ReturnUrl = result.ReturnUrl, ClientId = ClientIdForLinks });
         }
-        if (result.ErrorCode == Auth2ErrorCodes.LockedOut) return RedirectToPage("/Account/Lockout", new { ClientId = Application?.ClientId });
+        if (result.ErrorCode == Auth2ErrorCodes.LockedOut) return RedirectToPage("/Account/Lockout", new { ClientId = ClientIdForLinks });
         Fail(result.ErrorCode ?? Auth2ErrorCodes.SamlResponseInvalid);
         return Page();
     }

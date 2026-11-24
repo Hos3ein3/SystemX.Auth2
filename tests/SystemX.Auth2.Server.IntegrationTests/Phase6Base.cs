@@ -15,14 +15,14 @@ public abstract class Phase6Base : IdentityTestBase
     protected const string Redirect = "https://client.test/cb";
 
     /// <summary>Two applications. Both allow the password grant and have the same registered redirect URI.</summary>
-    protected async Task PrepareAppsAsync(bool selfUi = true, Action<ApplicationSettings>? both = null)
+    protected async Task PrepareAppsAsync(bool selfUi = true, Action<TestEdit>? both = null)
     {
         await SetUpAsync();
         foreach (var app in new[] { A, B })
             await UpdateSettingsAsync(app, s =>
             {
-                s.Clients.AllowSelfUiLogin = selfUi;
-                s.Redirects.AllowedRedirectUris.Add(Redirect);
+                s.App.AllowSelfUiLogin = selfUi;
+                s.RedirectUris.Add(Redirect);
                 both?.Invoke(s);
             });
     }
@@ -70,15 +70,15 @@ public abstract class Phase6Base : IdentityTestBase
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
         var ids = await db.Users.Where(u => u.Email == email).Select(u => u.Id).ToListAsync();
-        return (ids.Count, await db.UserApplications.CountAsync(x => ids.Contains(x.UserId)));
+        return (ids.Count, await db.UserProjects.CountAsync(x => ids.Contains(x.UserId)));
     }
 
-    protected async Task<bool> HasRowAsync(string email, Auth2Application app)
+    protected async Task<bool> HasRowAsync(string email, Project app)
     {
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        return await db.UserApplications.AnyAsync(x => x.ApplicationId == app.Id && db.Users.Any(u => u.Id == x.UserId && u.Email == email));
+        return await db.UserProjects.AnyAsync(x => x.ProjectId == app.Id && db.Users.Any(u => u.Id == x.UserId && u.Email == email));
     }
 
     protected async Task<AppUser> UserAsync(string email)

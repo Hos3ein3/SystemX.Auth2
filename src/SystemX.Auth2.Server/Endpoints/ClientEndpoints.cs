@@ -54,7 +54,7 @@ public static class ClientEndpoints
         routes.MapGet(Auth2Routes.UserAccess, async (HttpContext http, Guid id, UserManager<AppUser> users, UserLookup lookup, IAuthFlowResolver flow, IAccessService access) =>
         {
             var user = await users.FindByIdAsync(id.ToString("D"));
-            var app = await flow.GetApplicationAsync(http.RequestAborted);
+            var app = await flow.GetProjectAsync(http.RequestAborted);
             if (user is null || !await lookup.IsMemberAsync(user, app, http.RequestAborted))
                 return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.NotFound);
             return Results.Ok(await access.GetCurrentUserAsync(user, [], http.RequestAborted));

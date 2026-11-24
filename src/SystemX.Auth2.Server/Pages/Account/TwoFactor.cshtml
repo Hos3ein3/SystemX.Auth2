@@ -1,3 +1,38 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.TwoFactorModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Two-Factor Verification";
+    ViewData["Subtitle"] = "Enter the 6-digit code from your authenticator app";
+}
+
+<form method="post" class="space-y-4">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ReturnUrl" />
+    <input type="hidden" asp-for="ClientId" />
+    <input type="hidden" asp-for="TwoFactorToken" />
+
+    <a2-field label="Authenticator Code" hint="Open your authenticator app to view your verification code" for="Input_Code">
+        <a2-input id="Input_Code" name="Input.Code" value="@Model.Input?.Code" placeholder="123456" autocomplete="one-time-code" autofocus="true" />
+    </a2-field>
+
+    @if (Model.ShowRecoveryCode)
+    {
+        <details class="text-sm">
+            <summary class="font-medium text-[var(--a2-color-primary,#2563eb)] cursor-pointer hover:underline">Lost your device? Use a recovery code</summary>
+            <div class="mt-3">
+                <a2-field label="Recovery Code" for="Input_RecoveryCode">
+                    <a2-input id="Input_RecoveryCode" name="Input.RecoveryCode" value="@Model.Input?.RecoveryCode" placeholder="Enter recovery code" />
+                </a2-field>
+            </div>
+        </details>
+    }
+
+    <div>
+        <a2-button type="submit" variant="primary" class="w-full">Verify & Continue</a2-button>
+    </div>
+
+    <div class="mt-4 text-center text-sm">
+        <a href="/Account/Login?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">Cancel and return to sign in</a>
+    </div>
+</form>

@@ -20,7 +20,7 @@ public sealed class SessionsModel(IClientIdAccessor clientId, IAuthFlowResolver 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await LoadSessionAsync()) return Page();
-        Sessions = await Svc<ISessionService>().ListAsync(CurrentUser!, Application!, HttpContext.RequestAborted);
+        Sessions = await Svc<ISessionService>().ListAsync(CurrentUser!, Project!, HttpContext.RequestAborted);
         return Page();
     }
 
@@ -28,7 +28,7 @@ public sealed class SessionsModel(IClientIdAccessor clientId, IAuthFlowResolver 
     public async Task<IActionResult> OnPostRevokeAsync()
     {
         if (!await LoadSessionAsync()) return Page();
-        if (string.IsNullOrEmpty(AuthorizationId) || !await Svc<ISessionService>().RevokeAsync(CurrentUser!, Application!, AuthorizationId, HttpContext.RequestAborted))
+        if (string.IsNullOrEmpty(AuthorizationId) || !await Svc<ISessionService>().RevokeAsync(CurrentUser!, Project!, AuthorizationId, HttpContext.RequestAborted))
         {
             Fail(Auth2ErrorCodes.NotFound, StatusCodes.Status404NotFound);
             return Page();

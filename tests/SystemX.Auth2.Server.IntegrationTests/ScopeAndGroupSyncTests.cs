@@ -18,12 +18,12 @@ public class GroupSyncTests : Phase6Base
     private Task<(HttpStatusCode Status, JsonElement Body)> SyncAsync(string token, GroupSyncRequest request) =>
         CallAsync(new Browser(Factory), Auth2Routes.GroupsSync, request, token);
 
-    private async Task<List<Group>> GroupsAsync(Auth2Application app)
+    private async Task<List<Group>> GroupsAsync(Project app)
     {
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        return await db.Groups.Where(g => g.ApplicationId == app.Id).OrderBy(g => g.Name).ToListAsync();
+        return await db.Groups.Where(g => g.ProjectId == app.Id).OrderBy(g => g.Name).ToListAsync();
     }
 
     [Fact]
@@ -106,10 +106,10 @@ public class ScopeSyncTests : Phase6Base
     private Task<(HttpStatusCode Status, JsonElement Body)> SyncAsync(string token, params ScopeDefinition[] scopes) =>
         CallAsync(new Browser(Factory), Auth2Routes.ScopesSync, new ScopeSyncRequest(scopes), token);
 
-    private async Task<List<string>> AllowedAsync(Auth2Application app)
+    private async Task<List<string>> AllowedAsync(Project app)
     {
         await using var scope = NewScope();
-        return (await scope.ServiceProvider.GetRequiredService<IApplicationSettingsProvider>().GetAsync(app.Id)).Clients.AllowedScopes;
+        return [.. (await scope.ServiceProvider.GetRequiredService<IApplicationService>().ListAsync(app.Id)).First().AllowedScopes];
     }
 
     private async Task<HttpStatusCode> ClientCredentialsAsync(string clientId, string scope) =>

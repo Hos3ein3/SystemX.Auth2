@@ -89,7 +89,7 @@ public class ConsentFlowTests : Phase6Base
 
         await using var scope = ScopeFor("appa");
         var user = (await scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>().FindByNameAsync("sara"))!;
-        var app = await scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync();
+        var app = await scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetProjectAsync();
         var sessions = await scope.ServiceProvider.GetRequiredService<ISessionService>().ListAsync(user, app);
         sessions.Count.ShouldBe(1);
         sessions[0].Scopes.ShouldBe(["openid", "profile", "offline_access"], ignoreOrder: true);
@@ -153,7 +153,7 @@ public class ConsentFlowTests : Phase6Base
         string TokenFor(AppUser user, string[] scopes)
         {
             using var scope = ScopeFor("appa");
-            var app = scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync().GetAwaiter().GetResult();
+            var app = scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetClientAsync().GetAwaiter().GetResult()!;
             return scope.ServiceProvider.GetRequiredService<IConsentService>().CreateGrantToken(user, app, scopes);
         }
         var sara = await UserAsync("sara@example.com");
@@ -267,7 +267,7 @@ public class ManagePagesTests : Phase6Base
         var theirs = await UserTokensAsync("other", PassA);
 
         await using var scope = ScopeFor("appa");
-        var app = await scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetApplicationAsync();
+        var app = await scope.ServiceProvider.GetRequiredService<IAuthFlowResolver>().GetProjectAsync();
         var sessions = scope.ServiceProvider.GetRequiredService<ISessionService>();
         var sara = (await scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>().FindByNameAsync("sara"))!;
         var list = await sessions.ListAsync(sara, app);

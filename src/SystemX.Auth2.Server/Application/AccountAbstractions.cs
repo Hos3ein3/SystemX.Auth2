@@ -124,7 +124,7 @@ public sealed record RegisterOutcome
     /// <summary>The user was created by this call.</summary>
     public bool UserWasCreated { get; init; }
     /// <summary>The user belongs to the application now.</summary>
-    public bool JoinedApplication { get; init; }
+    public bool JoinedProject { get; init; }
     /// <summary>Something must be confirmed first (email, phone, or the proof code for joining).</summary>
     public bool ConfirmationRequired { get; init; }
     /// <summary>The new user (only when <see cref="UserWasCreated"/>).</summary>
@@ -214,30 +214,30 @@ public interface IAccessVersionService
     Task BumpUserAsync(AppUser user, CancellationToken ct = default);
 
     /// <summary>Raises the application's version.</summary>
-    Task BumpApplicationAsync(CancellationToken ct = default);
+    Task BumpProjectAsync(CancellationToken ct = default);
 }
 
 /// <summary>Consent rules and records.</summary>
 public interface IConsentService
 {
     /// <summary>True when the user must be asked. A valid grant token (made by the consent page) satisfies it.</summary>
-    Task<bool> IsConsentNeededAsync(AppUser user, Auth2Application app, ApplicationSettings settings, IReadOnlyCollection<string> scopes, string? grantToken, CancellationToken ct = default);
+    Task<bool> IsConsentNeededAsync(AppUser user, ClientApplicationInfo app, EffectiveSettings settings, IReadOnlyCollection<string> scopes, string? grantToken, CancellationToken ct = default);
 
     /// <summary>Makes a short-lived token that says "this user agreed to these scopes for this application".</summary>
-    string CreateGrantToken(AppUser user, Auth2Application app, IEnumerable<string> scopes);
+    string CreateGrantToken(AppUser user, ClientApplicationInfo app, IEnumerable<string> scopes);
 
     /// <summary>Id of a saved (permanent) authorization that covers the scopes, or null.</summary>
-    Task<string?> FindAuthorizationIdAsync(AppUser user, Auth2Application app, IReadOnlyCollection<string> scopes, CancellationToken ct = default);
+    Task<string?> FindAuthorizationIdAsync(AppUser user, ClientApplicationInfo app, IReadOnlyCollection<string> scopes, CancellationToken ct = default);
 
     /// <summary>Saves a permanent authorization (explicit mode) and returns its id.</summary>
-    Task<string> SaveAuthorizationAsync(AppUser user, Auth2Application app, System.Security.Claims.ClaimsPrincipal principal, IReadOnlyCollection<string> scopes, CancellationToken ct = default);
+    Task<string> SaveAuthorizationAsync(AppUser user, ClientApplicationInfo app, System.Security.Claims.ClaimsPrincipal principal, IReadOnlyCollection<string> scopes, CancellationToken ct = default);
 }
 
 /// <summary>Which consent mode applies.</summary>
 public static class ConsentPolicy
 {
     /// <summary>With <c>RequireConsent</c> off the mode is implicit. With it on, an implicit mode means explicit.</summary>
-    public static ConsentMode Effective(ApplicationSettings s) =>
+    public static ConsentMode Effective(ProjectSettings s) =>
         !s.Sessions.RequireConsent ? ConsentMode.Implicit
         : s.Sessions.ConsentMode == ConsentMode.Implicit ? ConsentMode.Explicit
         : s.Sessions.ConsentMode;

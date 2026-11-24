@@ -1,3 +1,65 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.VerifyOtpModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "One-Time Password Sign In";
+}
+
+<div class="space-y-6">
+    <div class="text-center">
+        <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">
+            Sign in with a Code
+        </h2>
+        <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)]">
+            We'll send a one-time verification code to your email or phone.
+        </p>
+    </div>
+
+    @if (Model.CodeSent)
+    {
+        <form method="post" class="space-y-4">
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+            <input type="hidden" name="Input.Login" value="@Model.Input.Login" />
+
+            <a2-alert variant="info">
+                A verification code was sent to @Model.Input.Login.
+            </a2-alert>
+
+            <a2-field label="One-Time Code" required="true">
+                <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" />
+            </a2-field>
+
+            <a2-button type="submit" variant="primary" class="w-full">
+                Sign In
+            </a2-button>
+        </form>
+
+        <form method="post" asp-page-handler="Send" class="text-center pt-2">
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+            <input type="hidden" name="Input.Login" value="@Model.Input.Login" />
+            <button type="submit" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline focus:outline-none">
+                Resend Code
+            </button>
+        </form>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Send" class="space-y-4">
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+
+            <a2-field label="Email or Phone Number" required="true">
+                <a2-input name="Input.Login" value="@Model.Input.Login" required="true" placeholder="you@example.com or +1234567890" autocomplete="username" />
+            </a2-field>
+
+            <a2-button type="submit" variant="primary" class="w-full">
+                Send Code
+            </a2-button>
+
+            <div class="text-center pt-2">
+                <a href="@Url.Page("Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
+                    Back to Standard Sign In
+                </a>
+            </div>
+        </form>
+    }
+</div>

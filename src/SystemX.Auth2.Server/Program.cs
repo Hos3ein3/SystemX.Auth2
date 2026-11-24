@@ -12,8 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddAuth2Observability();
 builder.Services.AddSystemXAuth2Server(builder.Configuration);
-
-// builder.Services.ServerWithSingleApplication();   // optional. Without it the server is multi-application.
+// builder.Services.ServerWithSingleProject();   // optional. Without it the server is multi-project.
 
 var isCommand = Auth2Commands.IsCommand(args);
 if (!isCommand) builder.Services.AddHostedService<Auth2StartupService>();
@@ -39,7 +38,6 @@ app.UseMiddleware<RateLimitMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => "SystemX.Auth2 Server");
 app.MapHealthChecks(Auth2Routes.HealthLive, new HealthCheckOptions { Predicate = _ => false });   // the process runs
 app.MapHealthChecks(Auth2Routes.HealthReady, new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });   // database (and Redis) answer
 app.MapAuth2Connect();

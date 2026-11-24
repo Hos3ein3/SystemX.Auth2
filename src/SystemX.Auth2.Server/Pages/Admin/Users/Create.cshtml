@@ -1,0 +1,60 @@
+@page "/admin/p/{projectKey}/users/create"
+@model SystemX.Auth2.Server.Pages.Admin.Users.CreateModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"New User - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+        <a href="/admin/p/@Model.ProjectKey/users" class="hover:underline">Users</a>
+        <span>/</span>
+        <span class="text-gray-900 font-medium">Create</span>
+    </div>
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Create New User</h1>
+        <p class="mt-1 text-sm text-gray-500">Add a user to project @Model.CurrentProject?.Name. If the identity exists in the database, its membership is added.</p>
+    </div>
+
+    <a2-card>
+        <form method="post" class="space-y-4">
+            <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
+
+            <a2-field label="Email address" required="true">
+                <a2-input name="Input.Email" type="email" value="@Model.Input.Email" required="true" placeholder="user@example.com" />
+            </a2-field>
+
+            <a2-field label="Username (Optional)">
+                <a2-input name="Input.UserName" value="@Model.Input.UserName" placeholder="john.doe" />
+            </a2-field>
+
+            <div class="grid grid-cols-2 gap-4">
+                <a2-field label="First name">
+                    <a2-input name="Input.FirstName" value="@Model.Input.FirstName" placeholder="John" />
+                </a2-field>
+
+                <a2-field label="Last name">
+                    <a2-input name="Input.LastName" value="@Model.Input.LastName" placeholder="Doe" />
+                </a2-field>
+            </div>
+
+            <a2-field label="Phone number">
+                <a2-input name="Input.PhoneNumber" type="tel" value="@Model.Input.PhoneNumber" placeholder="+1234567890" />
+            </a2-field>
+
+            <a2-field label="Temporary Password" hint="Optional. If omitted, the user can set a password via Forgot Password / Invitation.">
+                <a2-password name="Input.TemporaryPassword" autocomplete="new-password" />
+            </a2-field>
+
+            <div class="pt-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <a2-link-button href="/admin/p/@Model.ProjectKey/users" variant="secondary">
+                    Cancel
+                </a2-link-button>
+                <a2-button type="submit" variant="primary">
+                    Create User
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

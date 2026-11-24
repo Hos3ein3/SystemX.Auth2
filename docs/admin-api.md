@@ -31,7 +31,7 @@ A call works on the application of the token. A **global admin** may work on ano
 X-Auth2-Application: <projectKey>
 ```
 
-A project admin who sends another key gets `403`. Unknown key: `404 application_not_found`. In single-application mode the header is ignored.
+A project admin who sends another key gets `403`. Unknown key: `404 project_not_found`. In single-application mode the header is ignored.
 Objects of other applications look like they do not exist (`404`) to a project admin.
 
 ## Rules for every endpoint

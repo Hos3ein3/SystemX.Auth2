@@ -32,14 +32,14 @@ public abstract class LdapTestBase(LdapFixture ldap) : ExternalLoginTestBase
         return p;
     }
 
-    protected async Task PrepareLdapAsync(Action<LdapProviderSettings>? change = null, Action<ApplicationSettings>? app = null)
+    protected async Task PrepareLdapAsync(Action<LdapProviderSettings>? change = null, Action<TestEdit>? app = null)
     {
         await SetUpAsync();
         var p = Directory(change);
         p.BindPasswordProtected ??= Secrets.Protect(LdapFixture.AdminPassword);
         await UpdateSettingsAsync(A, s =>
         {
-            s.Redirects.AllowedRedirectUris.Add(ClientRedirect);
+            s.RedirectUris.Add(ClientRedirect);
             s.Methods.AllowedLoginMethods.Add(LoginMethod.Ldap);
             s.ExternalProviders.Add(p);
             app?.Invoke(s);
@@ -197,7 +197,7 @@ public class LdapLoginTests(LdapFixture ldap) : LdapTestBase(ldap)
         {
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
             var db = scope.ServiceProvider.GetRequiredService<Persistence.Auth2DbContext>();
-            db.ExternalGroupMappings.Add(new ExternalGroupMapping { ApplicationId = A.Id, ProviderName = "ldap-hq", SourceType = MappingSourceType.Group, MatchType = MappingMatchType.Exact, SourceValue = "staff", TargetType = MappingTargetType.Role, TargetId = role });
+            db.ExternalGroupMappings.Add(new ExternalGroupMapping { ProjectId = A.Id, ProviderName = "ldap-hq", SourceType = MappingSourceType.Group, MatchType = MappingMatchType.Exact, SourceValue = "staff", TargetType = MappingTargetType.Role, TargetId = role });
             await db.SaveChangesAsync();
         }
         // sara is in "finance" only; "finance" is a member of "staff" (nested)

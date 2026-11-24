@@ -21,19 +21,19 @@ public sealed class CallbackModel(IClientIdAccessor clientId, IAuthFlowResolver 
     private async Task<IActionResult> HandleAsync(string slug, string name)
     {
         var result = await external.CompleteAsync(HttpContext, slug, name, HttpContext.RequestAborted);
-        await LoadApplicationAsync();   // the flow already chose the application from the URL
+        await LoadProjectAsync();   // the flow already chose the application from the URL
         if (result.RedirectTo is not null) return Redirect(result.RedirectTo);
         if (result.TwoFactorToken is not null)
         {
             TempData["TwoFactorToken"] = result.TwoFactorToken;
-            return RedirectToPage("/Account/TwoFactor", new { ReturnUrl = result.ReturnUrl, ClientId = Application?.ClientId });
+            return RedirectToPage("/Account/TwoFactor", new { ReturnUrl = result.ReturnUrl, ClientId = ClientIdForLinks });
         }
         if (result.PendingToken is not null)
         {
             TempData["ExternalPending"] = result.PendingToken;
-            return RedirectToPage("/Account/External/Confirm", new { ReturnUrl = result.ReturnUrl, ClientId = Application?.ClientId });
+            return RedirectToPage("/Account/External/Confirm", new { ReturnUrl = result.ReturnUrl, ClientId = ClientIdForLinks });
         }
-        if (result.ErrorCode == Auth2ErrorCodes.LockedOut) return RedirectToPage("/Account/Lockout", new { ReturnUrl, ClientId = Application?.ClientId });
+        if (result.ErrorCode == Auth2ErrorCodes.LockedOut) return RedirectToPage("/Account/Lockout", new { ReturnUrl, ClientId = ClientIdForLinks });
         Fail(result.ErrorCode ?? Auth2ErrorCodes.ExternalClaimsInvalid);
         return Page();
     }

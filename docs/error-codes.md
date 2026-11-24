@@ -20,14 +20,14 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `invalid_credentials` | Wrong user or wrong password. Same code on purpose (no user enumeration). |
 | `locked_out` | The account is locked. |
 | `two_factor_required` | A second factor is needed. |
-| `not_registered_in_application` | The user does not belong to this application. |
-| `application_not_found` | No application for this client. |
-| `application_disabled` | The application is disabled. |
+| `not_registered_in_project` | The user does not belong to this application. |
+| `project_not_found` | No application for this client. |
+| `project_disabled` | The application is disabled. |
 | `project_key_or_name_mismatch` | Handshake: ProjectKey or application name does not match. |
 | `server_mode_mismatch` | Client and server use different modes (single vs multi). |
 | `password_too_short`, `password_too_long`, `password_requires_digit`, `password_requires_lower`, `password_requires_upper`, `password_requires_non_alphanumeric`, `password_requires_unique_chars`, `password_banned` | Password rule failed. The rules come from the application settings. |
 | `invalid_user_name`, `invalid_email`, `email_domain_not_allowed`, `invalid_phone_number` | User data rule failed. |
-| `user_not_in_application` | The person has no membership row in this application. |
+| `user_not_in_project` | The person has no membership row in this application. |
 | `email_not_confirmed`, `phone_not_confirmed` | Confirmation is required. Shown only after the password was right. |
 | `two_factor_setup_required` | The application requires two-factor and the user has not set it up. |
 | `grant_not_allowed` | The grant type is not allowed for this application. |

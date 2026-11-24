@@ -1,0 +1,73 @@
+@page "/admin/p/{projectKey}/providers/detail"
+@model SystemX.Auth2.Server.Pages.Admin.Providers.DetailModel
+@{
+    Layout = "_LayoutAdmin";
+    var p = Model.Provider;
+    ViewData["Title"] = $"Provider: {p?.Name}";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <a href="/admin/p/@Model.ProjectKey/providers" class="hover:underline">Providers</a>
+            <span>/</span>
+            <span class="text-gray-900 font-medium">@p?.Name</span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <form method="post" asp-page-handler="Test">
+                <a2-button type="submit" variant="secondary">Test Connection</a2-button>
+            </form>
+            <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Delete provider @p?.Name?');">
+                <a2-button type="submit" variant="danger">Delete Provider</a2-button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Provider Header -->
+    <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <span class="font-mono text-sm text-gray-500 block mb-1">Key: @p?.Name</span>
+                <h1 class="text-2xl font-bold text-gray-900">@(p?.DisplayName ?? p?.Name)</h1>
+            </div>
+            <div>
+                @if (p?.Enabled == true)
+                {
+                    <a2-badge variant="success">Enabled</a2-badge>
+                }
+                else
+                {
+                    <a2-badge variant="neutral">Disabled</a2-badge>
+                }
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 text-sm">
+            <div>
+                <span class="block text-gray-500 font-medium">Type</span>
+                <span class="font-mono text-gray-900">@p?.Type</span>
+            </div>
+            <div>
+                <span class="block text-gray-500 font-medium">Secret Configured</span>
+                <span class="text-gray-900">@(p?.SecretIsSet.Values.Any(v => v) == true ? "Yes (Protected)" : "No")</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Provider URLs -->
+    <a2-card title="Callback and Redirect URLs">
+        <p class="text-sm text-gray-600 mb-4">Enter these addresses in your identity provider's management console:</p>
+        <dl class="divide-y divide-gray-200 text-sm">
+            @if (p?.Urls != null)
+            {
+                @foreach (var kv in p.Urls)
+                {
+                    <div class="py-2.5 sm:grid sm:grid-cols-3 sm:gap-4">
+                        <dt class="font-medium text-gray-500">@kv.Key</dt>
+                        <dd class="text-gray-900 font-mono text-xs select-all sm:col-span-2">@kv.Value</dd>
+                    </div>
+                }
+            }
+        </dl>
+    </a2-card>
+</div>

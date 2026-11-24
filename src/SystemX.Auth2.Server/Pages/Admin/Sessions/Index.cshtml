@@ -1,0 +1,94 @@
+@page "/admin/p/{projectKey}/sessions"
+@model SystemX.Auth2.Server.Pages.Admin.Sessions.IndexModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Active Sessions - {Model.CurrentProject?.Name}";
+}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">User Sessions</h1>
+            <p class="mt-1 text-sm text-gray-500">Live user sessions and token grants for @Model.CurrentProject?.Name.</p>
+        </div>
+        <form method="post" asp-page-handler="RevokeAll" onsubmit="return confirm('Revoke ALL sessions across this project? All users will be forced to log in again.');">
+            <a2-button type="submit" variant="danger">
+                Revoke All Sessions
+            </a2-button>
+        </form>
+    </div>
+
+    <!-- Filter Form -->
+    <form method="get" class="flex flex-wrap items-center gap-3">
+        <a2-search name="q" value="@Model.Q" placeholder="Search by subject ID or IP..." />
+        <select name="status" onchange="this.form.submit()" class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <option value="">All Statuses</option>
+            <option value="active" selected="@(Model.Status == "active" ? "selected" : null)">Active</option>
+            <option value="revoked" selected="@(Model.Status == "revoked" ? "selected" : null)">Revoked</option>
+            <option value="expired" selected="@(Model.Status == "expired" ? "selected" : null)">Expired</option>
+        </select>
+        <a2-page-size value="@Model.PageSize" />
+        <a2-button type="submit" variant="secondary">Filter</a2-button>
+    </form>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Subject (User)</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">IP Address</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Status</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Created</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Last Seen</th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @if (Model.Sessions.Items.Count > 0)
+                {
+                    @foreach (var s in Model.Sessions.Items)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-mono text-xs text-blue-600">
+                                <a href="/admin/p/@Model.ProjectKey/users/detail?id=@s.Subject" class="hover:underline">
+                                    @(s.Subject ?? "-")
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-700">@(s.IpAddress ?? "-")</td>
+                            <td class="px-6 py-4">
+                                @if (s.Status == "active" || s.Status == "valid")
+                                {
+                                    <a2-badge variant="success">Active</a2-badge>
+                                }
+                                else
+                                {
+                                    <a2-badge variant="neutral">@(s.Status ?? "Inactive")</a2-badge>
+                                }
+                            </td>
+                            <td class="px-6 py-4 text-xs text-gray-500">@(s.CreatedAtUtc?.ToString("g") ?? "-")</td>
+                            <td class="px-6 py-4 text-xs text-gray-500">@(s.LastSeenAtUtc?.ToString("g") ?? "-")</td>
+                            <td class="px-6 py-4 text-right">
+                                @if (s.Status == "active" || s.Status == "valid")
+                                {
+                                    <form method="post" asp-page-handler="Revoke" asp-route-id="@s.Id" class="inline" onsubmit="return confirm('Revoke this session?');">
+                                        <button type="submit" class="text-xs text-red-600 hover:underline font-medium">Revoke</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            No sessions found.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <a2-pager page="@Model.Sessions.Page" pageSize="@Model.Sessions.PageSize" totalCount="@Model.Sessions.TotalCount" totalPages="@Model.Sessions.TotalPages" />
+</div>

@@ -5,29 +5,92 @@ using SystemX.Auth2.Client.CurrentUser;
 
 namespace SystemX.Auth2.Client.Tests;
 
-public class CurrentUserExternalClaimsTests
+public class CurrentClientTests
 {
-    private static ICurrentUser UserWith(params Claim[] claims)
+    private static ICurrentClient ClientWith(params Claim[] claims)
     {
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
+        return new CurrentClientImpl(new HttpContextAccessor { HttpContext = context });
+    }
+
+    private static ICurrentUser UserWith(params Claim[] claims)
+    {
+        var identity = claims.Length > 0 ? new ClaimsIdentity(claims, "test") : new ClaimsIdentity();
+        var context = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         return new CurrentUserImpl(new HttpContextAccessor { HttpContext = context }, Substitute.For<IAuth2AccessProvider>());
     }
 
     [Fact]
     public void ExternalSignIn_ShowsTheProviderAndTheMethods()
     {
-        var user = UserWith(new Claim("sub", Guid.NewGuid().ToString()), new Claim("idp", "corp-saml"), new Claim("amr", "fed"), new Claim("amr", "mfa"), new Claim("amr", "fed"));
-        user.IdentityProvider.ShouldBe("corp-saml");
-        user.AuthenticationMethods.ShouldBe(["fed", "mfa"]);   // each method once
+        var client = ClientWith(new Claim("sub", Guid.NewGuid().ToString()), new Claim("idp", "corp-saml"), new Claim("amr", "fed"), new Claim("amr", "mfa"), new Claim("amr", "fed"));
+        client.Idp.ShouldBe("corp-saml");
+        client.Amr.ShouldBe(["fed", "mfa"]);   // each method once
     }
 
     [Fact]
     public void LocalSignIn_HasNoProvider_AndMachineTokensHaveNoMethods()
     {
-        var local = UserWith(new Claim("sub", Guid.NewGuid().ToString()), new Claim("amr", "pwd"));
-        local.IdentityProvider.ShouldBeNull();
-        local.AuthenticationMethods.ShouldBe(["pwd"]);
-        UserWith(new Claim("sub", "client"), new Claim("machine", "true")).AuthenticationMethods.ShouldBeEmpty();
-        UserWith().IdentityProvider.ShouldBeNull();
+        var local = ClientWith(new Claim("sub", Guid.NewGuid().ToString()), new Claim("amr", "pwd"));
+        local.Idp.ShouldBeNull();
+        local.Amr.ShouldBe(["pwd"]);
+        ClientWith(new Claim("sub", "client"), new Claim("machine", "true")).Amr.ShouldBeEmpty();
+        ClientWith().Idp.ShouldBeNull();
+    }
+
+    [Fact]
+    public void TheClient_ComesFromTheClaims_WithoutACallToTheServer()
+    {
+        var app = Guid.NewGuid();
+        var project = Guid.NewGuid();
+        var c = ClientWith(new Claim("client_id", "papertrade.api"), new Claim("application_id", app.ToString()), new Claim("project_id", project.ToString()),
+            new Claim("projectkey", "papertrade"), new Claim("scope", "openid auth2.me"), new Claim("sid", "s1"));
+        c.IsTokenAuthenticated.ShouldBeTrue();
+        c.ClientId.ShouldBe("papertrade.api");
+        c.ApplicationId.ShouldBe(app);
+        c.ProjectId.ShouldBe(project);
+        c.ProjectKey.ShouldBe("papertrade");
+        c.SessionId.ShouldBe("s1");
+        c.Scopes.ShouldBe(["openid", "auth2.me"]);
+        c.HasScope("auth2.me").ShouldBeTrue();
+        c.HasScope("auth2.admin").ShouldBeFalse();
+        c.IsMachine.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void NoToken_MeansNoClientAndNoUser()
+    {
+        var c = new CurrentClientImpl(new HttpContextAccessor { HttpContext = new DefaultHttpContext() });
+        c.IsTokenAuthenticated.ShouldBeFalse();
+        c.ClientId.ShouldBeNull();
+        c.ApplicationId.ShouldBeNull();
+        c.Scopes.ShouldBeEmpty();
+        UserWith().IsAuthenticated.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void MachineToken_IsATokenAndAMachine_ButNotAUser()
+    {
+        var claims = new[] { new Claim("sub", "papertrade.api"), new Claim("machine", "true"), new Claim("client_id", "papertrade.api"), new Claim("scope", "orders.sync") };
+        var client = ClientWith(claims);
+        client.IsTokenAuthenticated.ShouldBeTrue();
+        client.IsMachine.ShouldBeTrue();
+        client.HasScope("orders.sync").ShouldBeTrue();
+        var user = UserWith(claims);
+        user.IsAuthenticated.ShouldBeFalse();   // a machine is not a person
+        user.UserId.ShouldBeNull();
+        user.UserName.ShouldBeNull();
+    }
+
+    [Fact]
+    public void UserToken_IsAPerson_AndHasNoMachineFlag()
+    {
+        var id = Guid.NewGuid();
+        var claims = new[] { new Claim("sub", id.ToString()), new Claim("preferred_username", "sara"), new Claim("scope", "openid") };
+        ClientWith(claims).IsMachine.ShouldBeFalse();
+        var user = UserWith(claims);
+        user.IsAuthenticated.ShouldBeTrue();
+        user.UserId.ShouldBe(id);
+        user.UserName.ShouldBe("sara");
     }
 }

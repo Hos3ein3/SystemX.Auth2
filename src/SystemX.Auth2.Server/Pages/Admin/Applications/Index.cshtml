@@ -1,0 +1,90 @@
+@page "/admin/p/{projectKey}/applications"
+@model SystemX.Auth2.Server.Pages.Admin.Applications.IndexModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Applications - {Model.CurrentProject?.Name}";
+}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Applications</h1>
+            <p class="mt-1 text-sm text-gray-500">OAuth / OpenID Connect client applications for @Model.CurrentProject?.Name.</p>
+        </div>
+        <a2-link-button href="/admin/p/@Model.ProjectKey/applications/create" variant="primary">
+            + New Application
+        </a2-link-button>
+    </div>
+
+    <!-- Filter Form -->
+    <form method="get" class="flex items-center gap-3">
+        <a2-search name="q" value="@Model.Q" placeholder="Search applications..." />
+        <a2-button type="submit" variant="secondary">Search</a2-button>
+    </form>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Client ID</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Status</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Redirect URIs</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Allowed Scopes</th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @if (Model.Applications.Count > 0)
+                {
+                    @foreach (var app in Model.Applications)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-gray-900">
+                                <a href="/admin/p/@Model.ProjectKey/applications/detail?id=@app.Id" class="text-blue-600 hover:underline">
+                                    @app.Name
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-700">@app.ClientId</td>
+                            <td class="px-6 py-4">
+                                @if (app.IsEnabled)
+                                {
+                                    <a2-badge variant="success">Enabled</a2-badge>
+                                }
+                                else
+                                {
+                                    <a2-badge variant="neutral">Disabled</a2-badge>
+                                }
+                            </td>
+                            <td class="px-6 py-4 text-gray-600 text-xs">
+                                @app.RedirectUris.Count URIs
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="font-mono text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                                    @app.AllowedScopes.Count scopes
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right space-x-2">
+                                <a href="/admin/p/@Model.ProjectKey/applications/setup?id=@app.Id" class="text-gray-600 hover:underline text-xs">Setup</a>
+                                <span class="text-gray-300">|</span>
+                                <a href="/admin/p/@Model.ProjectKey/applications/detail?id=@app.Id" class="text-blue-600 hover:underline text-xs font-semibold">Settings</a>
+                                <span class="text-gray-300">|</span>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@app.Id" class="inline" onsubmit="return confirm('Delete application @app.Name?');">
+                                    <button type="submit" class="text-xs text-red-600 hover:underline">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            No applications registered for this project.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

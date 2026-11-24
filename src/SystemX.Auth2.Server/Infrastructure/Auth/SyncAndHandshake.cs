@@ -18,7 +18,7 @@ internal sealed class PermissionSyncService(Auth2DbContext db, IAuthFlowResolver
 
     public async Task<SyncOutcome> SyncAsync(PermissionSyncRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         if (!settings.Clients.PermissionSyncAllowed) return Fail(Auth2ErrorCodes.SyncNotAllowed);
         var items = request?.Permissions ?? [];
@@ -41,7 +41,7 @@ internal sealed class PermissionSyncService(Auth2DbContext db, IAuthFlowResolver
         }
     }
 
-    private async Task<SyncOutcome> ApplyAsync(Auth2Application app, bool markMissingObsolete, Dictionary<string, PermissionDefinition> wanted, CancellationToken ct)
+    private async Task<SyncOutcome> ApplyAsync(Project app, bool markMissingObsolete, Dictionary<string, PermissionDefinition> wanted, CancellationToken ct)
     {
         var existing = await db.Permissions.ToDictionaryAsync(p => p.Key, StringComparer.Ordinal, ct);
         int added = 0, updated = 0, unchanged = 0;
@@ -51,7 +51,7 @@ internal sealed class PermissionSyncService(Auth2DbContext db, IAuthFlowResolver
         {
             if (!existing.TryGetValue(key, out var p))
             {
-                db.Permissions.Add(new Permission { ApplicationId = app.Id, Key = key, DisplayName = def.DisplayName, Description = def.Description, Group = def.Group, Source = PermissionSource.Sync });
+                db.Permissions.Add(new Permission { ProjectId = app.Id, Key = key, DisplayName = def.DisplayName, Description = def.Description, Group = def.Group, Source = PermissionSource.Sync });
                 added++; addedKeys.Add(key);
                 continue;
             }
@@ -92,7 +92,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
 
     public async Task<SyncOutcome> SyncAsync(RoleSyncRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         if (!settings.Clients.RoleSyncAllowed) return Fail(Auth2ErrorCodes.SyncNotAllowed);
         var items = request?.Roles ?? [];
@@ -116,7 +116,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
         return await AccessSupport.SerializedAsync(db, app.Id, () => ApplyAsync(app, settings.Clients.PermissionSyncAllowed, wanted, ct), ct);
     }
 
-    private async Task<SyncOutcome> ApplyAsync(Auth2Application app, bool permissionSyncAllowed, Dictionary<string, (RoleDefinition Def, List<string> Keys)> wanted, CancellationToken ct)
+    private async Task<SyncOutcome> ApplyAsync(Project app, bool permissionSyncAllowed, Dictionary<string, (RoleDefinition Def, List<string> Keys)> wanted, CancellationToken ct)
     {
         // Permissions named by roles but unknown here are created as sync permissions, only when permission sync is allowed.
         var allKeys = wanted.Values.SelectMany(w => w.Keys).Distinct().ToList();
@@ -128,7 +128,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
         var addedNames = new List<string>();
         foreach (var key in unknown)
         {
-            var p = new Permission { ApplicationId = app.Id, Key = key, Source = PermissionSource.Sync };
+            var p = new Permission { ProjectId = app.Id, Key = key, Source = PermissionSource.Sync };
             db.Permissions.Add(p);
             known[key] = p;
         }
@@ -142,17 +142,17 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
         foreach (var (name, (def, keys)) in wanted)
         {
             var normalized = roles.NormalizeKey(name);
-            var role = await db.Roles.FirstOrDefaultAsync(r => r.ApplicationId == app.Id && r.NormalizedName == normalized, ct);   // own roles only
+            var role = await db.Roles.FirstOrDefaultAsync(r => r.ProjectId == app.Id && r.NormalizedName == normalized, ct);   // own roles only
             var created = false;
             if (role is null)
             {
-                role = new AppRole(name) { ApplicationId = app.Id, Description = def.Description };
+                role = new AppRole(name) { ProjectId = app.Id, Description = def.Description };
                 var result = await roles.CreateAsync(role);
                 if (!result.Succeeded)
                 {
                     // Lost a race with a parallel sync: the role exists now.
                     db.ChangeTracker.Clear();
-                    role = await db.Roles.FirstOrDefaultAsync(r => r.ApplicationId == app.Id && r.NormalizedName == normalized, ct);
+                    role = await db.Roles.FirstOrDefaultAsync(r => r.ProjectId == app.Id && r.NormalizedName == normalized, ct);
                     if (role is null) return Fail(Auth2ErrorCodes.ValidationFailed);
                 }
                 else { created = true; added++; addedNames.Add(name); }
@@ -178,7 +178,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
             if (!created) { if (changed) updated++; else unchanged++; }
         }
 
-        if (linksChanged > 0) await versions.BumpApplicationAsync(ct);   // role permissions changed: users' access may change
+        if (linksChanged > 0) await versions.BumpProjectAsync(ct);   // role permissions changed: users' access may change
         if (added + updated > 0 || unknown.Count > 0)
             await audit.WriteAsync(new AuditEntry("roles.synced", app.Id, TargetType: "application", TargetId: app.Id.ToString(),
                 Data: new Dictionary<string, object?> { ["added"] = added, ["updated"] = updated, ["permissionsCreated"] = unknown.Count }), ct);
@@ -198,13 +198,14 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
     private static SyncOutcome Fail(string code) => new(OperationResult.Fail(code), null);
 }
 
-internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options, IServerUrls urls) : IClientHandshakeService
+internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options, IServerUrls urls, ILogger<ClientHandshakeService> log) : IClientHandshakeService
 {
     public async Task<(OperationResult Result, ClientHandshakeResponse? Response)> CheckAsync(ClientHandshakeRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);   // from the token; the body only gets compared
-        var settings = await flow.GetSettingsAsync(ct);
-        var multi = options.Value.Mode == ServerMode.MultiApplication;
+        var app = await flow.GetProjectAsync(ct);   // from the token (the application knows its project); the body only gets compared
+        var client = await flow.GetClientAsync(ct) ?? throw new ProjectNotFoundException("No application matches this request.");
+        var settings = await flow.GetEffectiveAsync(ct);
+        var multi = options.Value.Mode == ServerMode.MultiProject;
         var hasKey = !string.IsNullOrWhiteSpace(request?.ProjectKey);
 
         static (OperationResult, ClientHandshakeResponse?) Reject(string code)
@@ -213,15 +214,16 @@ internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Au
             return (OperationResult.Fail(code), null);
         }
         if (multi && !hasKey) return Reject(Auth2ErrorCodes.ServerModeMismatch);
-        if (!multi && hasKey) return Reject(Auth2ErrorCodes.ServerModeMismatch);
-        if (multi && !string.Equals(request!.ProjectKey!.Trim(), app.ProjectKey, StringComparison.OrdinalIgnoreCase)) return Reject(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
-        if (!string.Equals(request?.ApplicationName?.Trim(), app.Name, StringComparison.OrdinalIgnoreCase)) return Reject(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
+        if (!multi && hasKey)
+            log.LogWarning("The client {ClientId} sent a ProjectKey, but this server has a single project. The key is ignored. Remove ServerWithMultiProject(...) from the client.", client.ClientId);   // not an error: the key is only an identifier check
+        if (multi && !string.Equals(request!.ProjectKey!.Trim(), app.ProjectKey, StringComparison.OrdinalIgnoreCase)) return Reject(Auth2ErrorCodes.ProjectKeyOrNameMismatch);   // the application does not belong to that project
+        if (!string.Equals(request?.ApplicationName?.Trim(), client.Name, StringComparison.OrdinalIgnoreCase)) return Reject(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
         Operations.Auth2Metrics.Handshakes.Add(1, new KeyValuePair<string, object?>("result", "ok"));
 
         var issuer = urls.Build("", []);
-        TimeSpan? cookie = settings.Sessions.CookieLifetimeMinutes is { } m ? TimeSpan.FromMinutes(m) : null;
-        return (OperationResult.Ok, new ClientHandshakeResponse(app.Id, multi ? app.ProjectKey : null, app.Name, options.Value.Mode,
-            issuer, app.SettingsVersion, cookie, settings.Sessions.SingleActiveSession));
+        TimeSpan? cookie = settings.CookieLifetimeMinutes is { } m ? TimeSpan.FromMinutes(m) : null;
+        return (OperationResult.Ok, new ClientHandshakeResponse(app.Id, client.Id, multi ? app.ProjectKey : null, client.Name, options.Value.Mode,
+            issuer, app.SettingsVersion, cookie, settings.Project.Sessions.SingleActiveSession));
     }
 }
 
@@ -231,7 +233,7 @@ internal sealed class GroupSyncService(Auth2DbContext db, IAuthFlowResolver flow
 
     public async Task<SyncOutcome> SyncAsync(GroupSyncRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         if (!settings.Clients.GroupSyncAllowed) return Fail(Auth2ErrorCodes.SyncNotAllowed);
 
@@ -252,7 +254,7 @@ internal sealed class GroupSyncService(Auth2DbContext db, IAuthFlowResolver flow
         }
     }
 
-    private async Task<SyncOutcome> ApplyAsync(Auth2Application app, Dictionary<string, Contracts.Access.GroupDefinition> wanted, CancellationToken ct)
+    private async Task<SyncOutcome> ApplyAsync(Project app, Dictionary<string, Contracts.Access.GroupDefinition> wanted, CancellationToken ct)
     {
         var existing = await db.Groups.Select(g => g.Name).ToListAsync(ct);
         var have = new HashSet<string>(existing, StringComparer.Ordinal);
@@ -261,7 +263,7 @@ internal sealed class GroupSyncService(Auth2DbContext db, IAuthFlowResolver flow
         {
             if (have.Contains(name)) continue;
             // New groups only. The display name of an existing group is the admin's and is never changed by sync.
-            db.Groups.Add(new Group { ApplicationId = app.Id, Name = name, DisplayName = def.DisplayName });
+            db.Groups.Add(new Group { ProjectId = app.Id, Name = name, DisplayName = def.DisplayName });
             addedKeys.Add(name);
         }
         if (addedKeys.Count > 0)
@@ -285,7 +287,8 @@ internal sealed class ScopeSyncService(IServiceScopeFactory scopeFactory, IAuthF
 
     public async Task<SyncOutcome> SyncAsync(ScopeSyncRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
+        var client = await flow.GetClientAsync(ct) ?? throw new ProjectNotFoundException("No application matches this request.");
         var settings = await flow.GetSettingsAsync(ct);
         if (!settings.Clients.ScopeSyncAllowed) return Fail(Auth2ErrorCodes.SyncNotAllowed);
         var items = request?.Scopes ?? [];
@@ -301,7 +304,7 @@ internal sealed class ScopeSyncService(IServiceScopeFactory scopeFactory, IAuthF
 
         var added = new List<string>();
         // One at a time per application: two syncs must not both read the settings and overwrite each other's additions.
-        await locks.RunExclusiveAsync($"scopes:{app.Id:N}", async token =>
+        await locks.RunExclusiveAsync($"scopes:{client.Id:N}", async token =>
         {
             foreach (var (name, def) in wanted)
             {
@@ -316,20 +319,19 @@ internal sealed class ScopeSyncService(IServiceScopeFactory scopeFactory, IAuthF
                 }
             }
 
-            // A new DI scope: its own DbContext, so no old copy of the settings or of the OpenIddict client is tracked.
+            // A new DI scope: its own DbContext, so no old copy of the OpenIddict client is tracked.
+            // The allowed scopes are a field of the OpenIddict application: the calling application gets the permission for the new scopes.
             await using var inner = scopeFactory.CreateAsyncScope();
-            var current = await inner.ServiceProvider.GetRequiredService<Auth2DbContext>().Applications.AsNoTracking()
-                .Where(a => a.Id == app.Id).Select(a => a.Settings).FirstAsync(token);
-            var missing = wanted.Keys.Where(n => !current.Clients.AllowedScopes.Contains(n, StringComparer.Ordinal)).ToList();
+            var applications = inner.ServiceProvider.GetRequiredService<IApplicationService>();
+            var current = await applications.FindAsync(client.Id, token) ?? throw new ProjectNotFoundException("Application not found.");
+            var missing = wanted.Keys.Where(n => !current.AllowedScopes.Contains(n, StringComparer.Ordinal)).ToList();
             if (missing.Count == 0) return;
-            var copy = SettingsJson.Clone(current);
-            copy.Clients.AllowedScopes.AddRange(missing);
-            await inner.ServiceProvider.GetRequiredService<IApplicationService>().UpdateSettingsAsync(app.Id, copy, token);   // also gives the client permission for the new scopes
+            await applications.UpdateAsync(client.Id, new ApplicationSpec("", AllowedScopes: [.. current.AllowedScopes, .. missing]), token);
             added.AddRange(missing);
         }, ct);
 
         if (added.Count > 0)
-            await audit.WriteAsync(new AuditEntry("scopes.synced", app.Id, TargetType: "application", TargetId: app.Id.ToString(),
+            await audit.WriteAsync(new AuditEntry("scopes.synced", app.Id, ActorClientId: client.ClientId, TargetType: "application", TargetId: client.Id.ToString(),
                 Data: new Dictionary<string, object?> { ["added"] = added.Count }), ct);
         added.Sort(StringComparer.Ordinal);
         Operations.Auth2Metrics.SyncChanges.Add(added.Count, new KeyValuePair<string, object?>("kind", "scopes"));
@@ -338,9 +340,9 @@ internal sealed class ScopeSyncService(IServiceScopeFactory scopeFactory, IAuthF
 
     public async Task<IReadOnlyList<ScopeDto>> ListAsync(CancellationToken ct = default)
     {
-        var settings = await flow.GetSettingsAsync(ct);
+        var client = await flow.GetClientAsync(ct) ?? throw new ProjectNotFoundException("No application matches this request.");
         var result = new List<ScopeDto>();
-        foreach (var name in settings.Clients.AllowedScopes.Where(n => AccessKeys.NormalizeScopeName(n) == n).Order(StringComparer.Ordinal))
+        foreach (var name in client.AllowedScopes.Where(n => AccessKeys.NormalizeScopeName(n) == n).Order(StringComparer.Ordinal))
         {
             var scope = await scopes.FindByNameAsync(name, ct);
             result.Add(new ScopeDto(name, scope is null ? null : await scopes.GetDisplayNameAsync(scope, ct), scope is null ? null : await scopes.GetDescriptionAsync(scope, ct)));

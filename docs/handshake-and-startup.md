@@ -31,7 +31,7 @@ The body is only a **check**. The application is the one of the token. Nothing i
 
 Then, in both modes, `applicationName` must equal the application's name (ignoring case and outer spaces), otherwise `409 project_key_or_name_mismatch`.
 
-Before these rules the normal API checks run: no token or a bad token is `401 invalid_token`; a user token or a missing scope is `403`; an unknown application is `404 application_not_found`; a disabled application is `403 application_disabled`.
+Before these rules the normal API checks run: no token or a bad token is `401 invalid_token`; a user token or a missing scope is `403`; an unknown application is `404 project_not_found`; a disabled application is `403 project_disabled`.
 
 ## The answer
 

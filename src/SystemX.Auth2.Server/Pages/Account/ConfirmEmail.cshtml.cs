@@ -30,19 +30,19 @@ public sealed class ConfirmEmailModel(IClientIdAccessor clientId, IAuthFlowResol
     /// <summary>The link in the email opens this page. A GET changes data here on purpose: the token is the proof and works once.</summary>
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         if (UserId == Guid.Empty || string.IsNullOrEmpty(Token)) { Fail(Auth2ErrorCodes.InvalidToken); return Page(); }
         var result = await Svc<IConfirmationService>().ConfirmEmailAsync(UserId, Token, HttpContext.RequestAborted);
         if (!result.Succeeded) { Fail(result); return Page(); }
         Confirmed = true;
-        ContinueUrl = SafeReturnUrl() ?? Url.Page("Login", new { ReturnUrl, ClientId = Application!.ClientId });
+        ContinueUrl = SafeReturnUrl() ?? Url.Page("Login", new { ReturnUrl, ClientId = ClientIdForLinks });
         return Page();
     }
 
     /// <summary>Send the link again. The page says the same thing for every login.</summary>
     public async Task<IActionResult> OnPostResendAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         if (!ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
         await Svc<IConfirmationService>().ResendEmailAsync(Input.Login, SafeReturnUrl(), HttpContext.RequestAborted);
         ResendSent = true;

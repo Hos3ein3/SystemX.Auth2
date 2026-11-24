@@ -1,0 +1,36 @@
+@model dynamic
+@{
+    var effective = Model?.Effective as EffectiveSettings;
+    var settings = Model?.Settings as ProjectSettings;
+    var project = Model?.Project as Project;
+
+    // Default branding tokens
+    var primary = "#2563eb";
+    var primaryText = "#ffffff";
+    var background = "#f9fafb";
+    var surface = "#ffffff";
+    var text = "#111827";
+    var muted = "#6b7280";
+    var error = "#dc2626";
+    var success = "#16a34a";
+    var radius = "0.375rem";
+    var font = "system-ui, -apple-system, sans-serif";
+
+    var title = settings?.Localization?.BrandName ?? project?.Name ?? "SystemX Auth2";
+}
+
+<style>
+    :root {
+        --a2-color-primary: @primary;
+        --a2-color-primary-text: @primaryText;
+        --a2-color-background: @background;
+        --a2-color-surface: @surface;
+        --a2-color-text: @text;
+        --a2-color-muted: @muted;
+        --a2-color-error: @error;
+        --a2-color-success: @success;
+        --a2-radius: @radius;
+        --a2-font-family: @font;
+    }
+</style>
+<title>@ViewData["Title"] - @title</title>

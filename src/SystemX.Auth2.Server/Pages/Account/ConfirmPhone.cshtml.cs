@@ -27,14 +27,14 @@ public sealed class ConfirmPhoneModel(IClientIdAccessor clientId, IAuthFlowResol
 
     public async Task<IActionResult> OnGetAsync()
     {
-        await LoadApplicationAsync();
+        await LoadProjectAsync();
         return Page();
     }
 
     /// <summary>Send a new code.</summary>
     public async Task<IActionResult> OnPostSendAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         var result = await Svc<IOtpRequestService>().RequestAsync(Input.Login, Auth2OtpPurposes.ConfirmPhone, HttpContext.RequestAborted);
         if (!result.Succeeded) { Fail(result); return Page(); }
         CodeSent = true;
@@ -44,12 +44,12 @@ public sealed class ConfirmPhoneModel(IClientIdAccessor clientId, IAuthFlowResol
     /// <summary>Check the code.</summary>
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         if (!ModelState.IsValid || string.IsNullOrEmpty(Input.Code)) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
         var result = await Svc<IConfirmationService>().ConfirmPhoneAsync(Input.Login, Input.Code, HttpContext.RequestAborted);
         if (!result.Succeeded) { Fail(result); return Page(); }
         Confirmed = true;
-        ContinueUrl = SafeReturnUrl() ?? Url.Page("Login", new { ReturnUrl, ClientId = Application!.ClientId });
+        ContinueUrl = SafeReturnUrl() ?? Url.Page("Login", new { ReturnUrl, ClientId = ClientIdForLinks });
         return Page();
     }
 }

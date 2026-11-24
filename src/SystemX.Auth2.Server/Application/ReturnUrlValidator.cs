@@ -20,9 +20,9 @@ public sealed class ReturnUrlValidator : IReturnUrlValidator
     }
 
     /// <inheritdoc />
-    public string Resolve(string? returnUrl, string? applicationFallback, ApplicationSettings settings, string home = "/")
+    public string Resolve(string? returnUrl, string? applicationFallback, EffectiveSettings settings, string home = "/")
     {
-        var allowed = settings.Redirects.AllowedRedirectUris;
+        var allowed = settings.AllowedRedirectUris;
         if (IsAllowed(returnUrl, allowed)) return returnUrl!;
         if (IsAllowed(applicationFallback, allowed)) return applicationFallback!;
         return home;

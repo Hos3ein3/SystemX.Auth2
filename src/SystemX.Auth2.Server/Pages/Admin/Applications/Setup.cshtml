@@ -1,0 +1,46 @@
+@page "/admin/p/{projectKey}/applications/setup"
+@model SystemX.Auth2.Server.Pages.Admin.Applications.SetupModel
+@{
+    Layout = "_LayoutAdmin";
+    var setup = Model.Setup;
+    ViewData["Title"] = $"Integration Setup: {setup?.ApplicationName}";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <a href="/admin/p/@Model.ProjectKey/applications" class="hover:underline">Applications</a>
+            <span>/</span>
+            <span class="text-gray-900 font-medium">@setup?.ApplicationName Setup</span>
+        </div>
+        <a2-link-button href="/admin/p/@Model.ProjectKey/applications/detail?id=@Model.Id" variant="secondary">
+            &larr; Back to Application
+        </a2-link-button>
+    </div>
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Application Integration Code</h1>
+        <p class="mt-1 text-sm text-gray-500">Copy and paste this configuration into your client application (e.g. appsettings.json or Program.cs).</p>
+    </div>
+
+    <a2-card title="OpenID Connect Configuration">
+        <div class="grid grid-cols-2 gap-4 text-sm mb-6 pb-6 border-b border-gray-100">
+            <div>
+                <span class="block text-gray-500 font-medium">Authority / Issuer</span>
+                <span class="font-mono text-gray-900 select-all">@setup?.ServerUrl</span>
+            </div>
+            <div>
+                <span class="block text-gray-500 font-medium">Client ID</span>
+                <span class="font-mono text-gray-900 select-all">@setup?.ClientId</span>
+            </div>
+        </div>
+
+        <h4 class="text-sm font-semibold text-gray-800 mb-2">C# / ASP.NET Core Setup Snippet</h4>
+        <div class="relative">
+            <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-xs overflow-x-auto select-all leading-relaxed">@setup?.Snippet</pre>
+            <button type="button" onclick="navigator.clipboard.writeText(this.nextElementSibling ? this.nextElementSibling.innerText : this.parentElement.querySelector('pre').innerText); this.innerText='Copied!';" class="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs font-sans">
+                Copy
+            </button>
+        </div>
+    </a2-card>
+</div>

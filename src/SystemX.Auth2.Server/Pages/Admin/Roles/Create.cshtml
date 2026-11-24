@@ -1,0 +1,42 @@
+@page "/admin/p/{projectKey}/roles/create"
+@model SystemX.Auth2.Server.Pages.Admin.Roles.CreateModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"New Role - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-xl mx-auto space-y-6">
+    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+        <a href="/admin/p/@Model.ProjectKey/roles" class="hover:underline">Roles</a>
+        <span>/</span>
+        <span class="text-gray-900 font-medium">Create</span>
+    </div>
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Create New Role</h1>
+        <p class="mt-1 text-sm text-gray-500">Define a new security role in project @Model.CurrentProject?.Name.</p>
+    </div>
+
+    <a2-card>
+        <form method="post" class="space-y-4">
+            <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
+
+            <a2-field label="Role name" required="true" hint="e.g. editor, billing-admin. 2-64 characters.">
+                <a2-input name="Input.Name" value="@Model.Input.Name" required="true" placeholder="editor" />
+            </a2-field>
+
+            <a2-field label="Description">
+                <a2-textarea name="Input.Description" value="@Model.Input.Description" rows="3" placeholder="Role for content editors" />
+            </a2-field>
+
+            <div class="pt-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <a2-link-button href="/admin/p/@Model.ProjectKey/roles" variant="secondary">
+                    Cancel
+                </a2-link-button>
+                <a2-button type="submit" variant="primary">
+                    Create Role
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

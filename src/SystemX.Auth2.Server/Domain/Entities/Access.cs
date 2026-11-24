@@ -14,8 +14,10 @@ public class Permission
 {
     /// <summary>Id.</summary>
     public Guid Id { get; set; } = Guid.CreateVersion7();
-    /// <summary>Application id.</summary>
-    public Guid ApplicationId { get; set; }
+    /// <summary>Project id.</summary>
+    public Guid ProjectId { get; set; }
+    /// <summary>The application that pushed it by sync, or null (created by an admin).</summary>
+    public Guid? ApplicationId { get; set; }
     /// <summary>Lowercase key.</summary>
     public string Key { get; set; } = "";
     /// <summary>Display name.</summary>
@@ -38,7 +40,7 @@ public class UserPermission
     /// <summary>Permission id.</summary>
     public Guid PermissionId { get; set; }
     /// <summary>Application id.</summary>
-    public Guid ApplicationId { get; set; }
+    public Guid ProjectId { get; set; }
     /// <summary>When granted.</summary>
     public DateTimeOffset GrantedAtUtc { get; set; }
     /// <summary>Who granted it.</summary>
@@ -59,8 +61,10 @@ public class Group
 {
     /// <summary>Id.</summary>
     public Guid Id { get; set; } = Guid.CreateVersion7();
-    /// <summary>Application id.</summary>
-    public Guid ApplicationId { get; set; }
+    /// <summary>Project id.</summary>
+    public Guid ProjectId { get; set; }
+    /// <summary>The application that pushed it by sync, or null.</summary>
+    public Guid? ApplicationId { get; set; }
     /// <summary>Name.</summary>
     public string Name { get; set; } = "";
     /// <summary>Display name.</summary>

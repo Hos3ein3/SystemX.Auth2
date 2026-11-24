@@ -21,8 +21,8 @@ internal sealed class LdapAwareLoginService(
     /// <inheritdoc />
     public async Task<LoginResult> PasswordLoginAsync(PasswordLoginRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
-        var providers = registry.ListForApplication(app.Id).Where(p => p.Type == ExternalProviderType.Ldap).OrderBy(p => p.Name, StringComparer.Ordinal).ToList();
+        var app = await flow.GetProjectAsync(ct);
+        var providers = registry.ListForProject(app.Id).Where(p => p.Type == ExternalProviderType.Ldap).OrderBy(p => p.Name, StringComparer.Ordinal).ToList();
         if (providers.Count == 0) return await inner.PasswordLoginAsync(request, ct);
 
         var mode = ((LdapProviderSettings)providers[0].Settings).Mode;
@@ -43,7 +43,7 @@ internal sealed class LdapAwareLoginService(
         }
     }
 
-    private async Task<LoginResult> DirectoryAsync(Auth2Application app, List<RegisteredProvider> providers, PasswordLoginRequest request, CancellationToken ct)
+    private async Task<LoginResult> DirectoryAsync(Project app, List<RegisteredProvider> providers, PasswordLoginRequest request, CancellationToken ct)
     {
         // Rate limit before any call to the directory, per user and IP (policy "ldap").
         var rule = options.Value.RateLimiting.RuleFor("ldap");

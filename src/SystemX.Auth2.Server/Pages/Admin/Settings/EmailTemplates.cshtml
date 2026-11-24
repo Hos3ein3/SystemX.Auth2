@@ -1,0 +1,101 @@
+@page "/admin/p/{projectKey}/email-templates"
+@model SystemX.Auth2.Server.Pages.Admin.Settings.EmailTemplatesModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Email Templates - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Email Templates</h1>
+        <p class="mt-1 text-sm text-gray-500">Customize outgoing verification, password reset, and notification emails for @Model.CurrentProject?.Name.</p>
+    </div>
+
+    <!-- Existing Templates Table -->
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Template</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Culture</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Subject</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Status</th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @if (Model.Templates.Count > 0)
+                {
+                    @foreach (var t in Model.Templates)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-900">@t.Name</td>
+                            <td class="px-6 py-4 text-xs font-mono text-gray-600">@t.Culture</td>
+                            <td class="px-6 py-4 text-gray-800">@t.Subject</td>
+                            <td class="px-6 py-4">
+                                @if (t.IsCustom)
+                                {
+                                    <a2-badge variant="info">Customized</a2-badge>
+                                }
+                                else
+                                {
+                                    <a2-badge variant="neutral">Default</a2-badge>
+                                }
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                @if (t.IsCustom)
+                                {
+                                    <form method="post" asp-page-handler="Reset" asp-route-name="@t.Name" asp-route-culture="@t.Culture" class="inline" onsubmit="return confirm('Reset this template to system default?');">
+                                        <button type="submit" class="text-xs text-amber-600 hover:underline">Reset</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                            System defaults are active for all email templates.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Edit Template Form -->
+    <a2-card title="Customize Template">
+        <form method="post" asp-page-handler="Save" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <a2-field label="Template Name" required="true">
+                    <select name="TemplateName" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="confirm_email">confirm_email (Email Verification Link)</option>
+                        <option value="reset_password">reset_password (Password Reset Link)</option>
+                        <option value="confirm_phone">confirm_phone (SMS Code)</option>
+                        <option value="invitation">invitation (User Invite Link)</option>
+                    </select>
+                </a2-field>
+
+                <a2-field label="Culture Code" required="true">
+                    <a2-input name="Culture" value="@Model.Culture" required="true" placeholder="en" />
+                </a2-field>
+            </div>
+
+            <a2-field label="Email Subject" required="true" hint="Supports placeholders like {{AppName}}, {{UserName}}.">
+                <a2-input name="Subject" value="@Model.Subject" required="true" placeholder="Confirm your account on {{AppName}}" />
+            </a2-field>
+
+            <a2-field label="Email Body (HTML/Text)" required="true" hint="Placeholders: {{Link}}, {{Code}}, {{AppName}}, {{UserName}}.">
+                <a2-textarea name="Body" value="@Model.Body" rows="6" placeholder="Hello {{UserName}}, please click {{Link}} to confirm your email." />
+            </a2-field>
+
+            <div class="pt-4 border-t border-gray-200 flex justify-end">
+                <a2-button type="submit" variant="primary">
+                    Save Email Template
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

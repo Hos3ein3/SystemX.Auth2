@@ -75,11 +75,11 @@ public class BuilderTests
     public void TheOrderOfTheFeatureCalls_DoesNotMatter()
     {
         void A(Microsoft.Extensions.DependencyInjection.IServiceCollection s) => s.AddAuth2Client("https://auth.test", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = "x"; })
-            .ServerWithMultiApplication("blog").EnablePermissions(o => o.SyncPolicy = PermissionSyncPolicy.Push).EnableRoles(o => o.SyncPolicy = RoleSyncPolicy.Push)
+            .ServerWithMultiProject("blog").EnablePermissions(o => o.SyncPolicy = PermissionSyncPolicy.Push).EnableRoles(o => o.SyncPolicy = RoleSyncPolicy.Push)
             .EnableGroups(o => o.SyncPolicy = GroupSyncPolicy.Pull).EnableMachineToMachine(o => o.Scopes = ["a.read"]).EnableResilience().EnableHealthCheck();
         void B(Microsoft.Extensions.DependencyInjection.IServiceCollection s) => s.AddAuth2Client("https://auth.test", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = "x"; })
             .EnableHealthCheck().EnableResilience().EnableMachineToMachine(o => o.Scopes = ["a.read"]).EnableGroups(o => o.SyncPolicy = GroupSyncPolicy.Pull)
-            .EnableRoles(o => o.SyncPolicy = RoleSyncPolicy.Push).EnablePermissions(o => o.SyncPolicy = PermissionSyncPolicy.Push).ServerWithMultiApplication("blog");
+            .EnableRoles(o => o.SyncPolicy = RoleSyncPolicy.Push).EnablePermissions(o => o.SyncPolicy = PermissionSyncPolicy.Push).ServerWithMultiProject("blog");
 
         foreach (var setup in new[] { A, B })
         {
@@ -96,7 +96,7 @@ public class BuilderTests
     }
 
     [Fact]
-    public void WithoutServerWithMultiApplication_NoProjectKeyIsSent()
+    public void WithoutServerWithMultiProject_NoProjectKeyIsSent()
     {
         var services = new ServiceCollection();
         services.AddAuth2Client("https://auth.test", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = "x"; });
@@ -120,9 +120,9 @@ public class BuilderTests
     }
 
     [Fact]
-    public void TheClientHasNoSingleApplicationMethod()
+    public void TheClientHasNoSingleProjectMethod()
     {
         typeof(Microsoft.Extensions.DependencyInjection.Auth2ClientServiceCollectionExtensions).GetMethods()
-            .ShouldNotContain(m => m.Name == "ServerWithSingleApplication");
+            .ShouldNotContain(m => m.Name == "ServerWithSingleProject");
     }
 }

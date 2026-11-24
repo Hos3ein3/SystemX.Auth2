@@ -245,7 +245,7 @@ public class AccessModelTests : Phase6Base
         await SeedAccessAsync();
         await using var scope = ScopeFor("appa");
         var roles = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
-        (await roles.CreateAsync(new AppRole("Owner") { ApplicationId = A.Id, IsSystem = true })).Succeeded.ShouldBeTrue();
+        (await roles.CreateAsync(new AppRole("Owner") { ProjectId = A.Id, IsSystem = true })).Succeeded.ShouldBeTrue();
         (await scope.ServiceProvider.GetRequiredService<IAccessService>().DeleteRoleAsync("Owner")).ErrorCode.ShouldBe(Auth2ErrorCodes.Forbidden);
     }
 }

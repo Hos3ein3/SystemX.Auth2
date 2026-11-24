@@ -76,12 +76,9 @@ public class ReturnUrlValidatorTests
         _v.IsAllowed("https://app.example.com/signin-oidc", []).ShouldBeFalse();
     }
 
-    private static ApplicationSettings Settings()
-    {
-        var s = new ApplicationSettings();
-        s.Redirects.AllowedRedirectUris.Add("https://app.example.com/signin-oidc");
-        return s;
-    }
+    // The allowed redirect URIs are an OpenIddict field of the calling application.
+    private static EffectiveSettings Settings() => new(new ProjectSettings(), new ClientApplicationInfo(
+        Guid.NewGuid(), Guid.NewGuid(), "pk.api", "api", true, ["https://app.example.com/signin-oidc"], [], [], null, new ClientApplicationSettings(), 1, DateTimeOffset.UnixEpoch));
 
     [Fact]
     public void Resolve_ValidReturnUrl_Wins() =>

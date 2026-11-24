@@ -21,7 +21,7 @@ public sealed class ChallengeModel(IClientIdAccessor clientId, IAuthFlowResolver
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!await LoadApplicationAsync()) return Page();
+        if (!await LoadProjectAsync()) return Page();
         var start = await external.StartAsync(HttpContext, Provider, ReturnUrl, Hint, null, HttpContext.RequestAborted);
         if (!start.Succeeded)
         {

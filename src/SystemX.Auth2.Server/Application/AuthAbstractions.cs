@@ -5,7 +5,7 @@ using SystemX.Auth2.Server.Domain.Settings;
 
 namespace SystemX.Auth2.Server.Application;
 
-/// <summary>Input of a password login. The application always comes from <see cref="IApplicationContext"/>.</summary>
+/// <summary>Input of a password login. The application always comes from <see cref="IProjectContext"/>.</summary>
 /// <param name="Login">User name, email or phone number.</param>
 /// <param name="Password">The password. Never logged.</param>
 /// <param name="IpAddress">Caller IP (for the audit log).</param>
@@ -41,7 +41,7 @@ public sealed record LoginResult
     /// <summary>The user, when <see cref="Succeeded"/>.</summary>
     public AppUser? User { get; init; }
     /// <summary>The application the login was for.</summary>
-    public Auth2Application? Application { get; init; }
+    public Project? Application { get; init; }
     /// <summary>Stable error code (<c>Auth2ErrorCodes</c>), when not succeeded.</summary>
     public string? ErrorCode { get; init; }
     /// <summary>Short-lived token for the second step, when <c>ErrorCode</c> is <c>two_factor_required</c>.</summary>
@@ -103,13 +103,13 @@ public interface ISessionService
     /// Revokes all tokens and authorizations of the user in the application. Returns the number of revoked tokens.
     /// An authorization id in <paramref name="keepAuthorizationId"/> is left alone (the session that asked).
     /// </summary>
-    Task<int> RevokeAllAsync(AppUser user, Auth2Application application, string reason, string? keepAuthorizationId = null, CancellationToken ct = default);
+    Task<int> RevokeAllAsync(AppUser user, Project application, string reason, string? keepAuthorizationId = null, CancellationToken ct = default);
 
     /// <summary>Lists the open sessions of the user in the application.</summary>
-    Task<IReadOnlyList<SessionInfo>> ListAsync(AppUser user, Auth2Application application, CancellationToken ct = default);
+    Task<IReadOnlyList<SessionInfo>> ListAsync(AppUser user, Project application, CancellationToken ct = default);
 
     /// <summary>Revokes one session of the user. Returns false when it is not theirs.</summary>
-    Task<bool> RevokeAsync(AppUser user, Auth2Application application, string authorizationId, CancellationToken ct = default);
+    Task<bool> RevokeAsync(AppUser user, Project application, string authorizationId, CancellationToken ct = default);
 }
 
 /// <summary>Checks return URLs. Open redirect protection.</summary>
@@ -121,5 +121,5 @@ public interface IReturnUrlValidator
     bool IsAllowed(string? url, IEnumerable<string> allowedAbsolute);
 
     /// <summary>Returns the first allowed value in the order: return URL, application fallback, <paramref name="home"/>.</summary>
-    string Resolve(string? returnUrl, string? applicationFallback, ApplicationSettings settings, string home = "/");
+    string Resolve(string? returnUrl, string? applicationFallback, EffectiveSettings settings, string home = "/");
 }

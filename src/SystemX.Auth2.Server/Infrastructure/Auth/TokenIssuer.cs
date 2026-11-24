@@ -19,13 +19,14 @@ namespace SystemX.Auth2.Server.Infrastructure.Auth;
 /// Roles in the token are the effective roles: own roles plus roles of the user's groups.
 /// </summary>
 public sealed class TokenIssuer(
-    IAccessService accessService, IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options) : ITokenIssuer
+    IAccessService accessService, IAuthFlowResolver flow) : ITokenIssuer
 {
     /// <inheritdoc />
     public async Task<ClaimsPrincipal> CreateUserPrincipalAsync(AppUser user, IEnumerable<string> scopes, IEnumerable<string> amr, string? sessionId, CancellationToken ct = default, string? identityProvider = null)
     {
-        var app = await flow.GetApplicationAsync(ct);
-        var settings = await flow.GetSettingsAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
+        var settings = await flow.GetEffectiveAsync(ct);
+        var client = settings.Application ?? throw new ProjectNotFoundException("No application matches this request.");
 
         var identity = new ClaimsIdentity("Auth2", Claims.Name, Claims.Role);
         identity.SetClaim(Claims.Subject, user.Id.ToString("D"));
@@ -37,18 +38,20 @@ public sealed class TokenIssuer(
         identity.SetClaim(Claims.FamilyName, user.LastName);
         identity.SetClaim(Claims.Name, FullName(user));
         identity.SetClaim(Auth2Claims.Locale, user.PreferredCulture);
-        identity.SetClaim(Auth2Claims.ApplicationId, app.Id.ToString("D"));
-        if (options.Value.Mode == ServerMode.MultiApplication) identity.SetClaim(Auth2Claims.ProjectKey, app.ProjectKey);
+        identity.SetClaim(Auth2Claims.ProjectId, app.Id.ToString("D"));
+        identity.SetClaim(Auth2Claims.ProjectKey, app.ProjectKey);
+        identity.SetClaim(Auth2Claims.ApplicationId, client.Id.ToString("D"));
+        identity.SetClaim(Auth2Claims.ClientId, client.ClientId);
         identity.SetClaim(Auth2Claims.SessionId, sessionId);
         identity.SetClaim(Auth2Claims.IdentityProvider, identityProvider);
         foreach (var a in amr) identity.AddClaim(new Claim(Claims.AuthenticationMethodReference, a));
 
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(scopes);
-        principal.SetResources(app.ClientId);
-        principal.SetAccessTokenLifetime(TimeSpan.FromMinutes(settings.Sessions.AccessTokenMinutes));
-        principal.SetRefreshTokenLifetime(TimeSpan.FromDays(settings.Sessions.RefreshTokenDays));
-        principal.SetIdentityTokenLifetime(TimeSpan.FromMinutes(settings.Sessions.IdentityTokenMinutes));
+        principal.SetResources(client.ClientId);
+        principal.SetAccessTokenLifetime(TimeSpan.FromMinutes(settings.AccessTokenMinutes));
+        principal.SetRefreshTokenLifetime(TimeSpan.FromDays(settings.RefreshTokenDays));
+        principal.SetIdentityTokenLifetime(TimeSpan.FromMinutes(settings.IdentityTokenMinutes));
 
         await WriteAccessClaimsAsync(principal, user, app, ct);
         ApplyDestinations(principal);
@@ -58,19 +61,22 @@ public sealed class TokenIssuer(
     /// <inheritdoc />
     public async Task<ClaimsPrincipal> CreateMachinePrincipalAsync(IEnumerable<string> scopes, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
-        var settings = await flow.GetSettingsAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
+        var settings = await flow.GetEffectiveAsync(ct);
+        var client = settings.Application ?? throw new ProjectNotFoundException("No application matches this request.");
 
         var identity = new ClaimsIdentity("Auth2", Claims.Name, Claims.Role);
-        identity.SetClaim(Claims.Subject, app.ClientId);
+        identity.SetClaim(Claims.Subject, client.ClientId);
         identity.SetClaim(Auth2Claims.Machine, "true");
-        identity.SetClaim(Auth2Claims.ApplicationId, app.Id.ToString("D"));
-        if (options.Value.Mode == ServerMode.MultiApplication) identity.SetClaim(Auth2Claims.ProjectKey, app.ProjectKey);
+        identity.SetClaim(Auth2Claims.ProjectId, app.Id.ToString("D"));
+        identity.SetClaim(Auth2Claims.ProjectKey, app.ProjectKey);
+        identity.SetClaim(Auth2Claims.ApplicationId, client.Id.ToString("D"));
+        identity.SetClaim(Auth2Claims.ClientId, client.ClientId);
 
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(scopes);
-        principal.SetResources(app.ClientId);
-        principal.SetAccessTokenLifetime(TimeSpan.FromMinutes(settings.Sessions.AccessTokenMinutes));
+        principal.SetResources(client.ClientId);
+        principal.SetAccessTokenLifetime(TimeSpan.FromMinutes(settings.AccessTokenMinutes));
         ApplyDestinations(principal);
         return principal;
     }
@@ -78,7 +84,7 @@ public sealed class TokenIssuer(
     /// <inheritdoc />
     public async Task RefreshUserClaimsAsync(ClaimsPrincipal principal, AppUser user, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         await WriteAccessClaimsAsync(principal, user, app, ct);
         principal.SetClaim(Claims.Email, user.Email);
         principal.SetClaim(Claims.PhoneNumber, user.PhoneNumber);
@@ -86,7 +92,7 @@ public sealed class TokenIssuer(
         ApplyDestinations(principal);
     }
 
-    private async Task WriteAccessClaimsAsync(ClaimsPrincipal principal, AppUser user, Auth2Application app, CancellationToken ct)
+    private async Task WriteAccessClaimsAsync(ClaimsPrincipal principal, AppUser user, Project app, CancellationToken ct)
     {
         var access = await accessService.GetEffectiveAccessAsync(user, ct);
         principal.SetClaims(Claims.Role, [.. access.Roles]);

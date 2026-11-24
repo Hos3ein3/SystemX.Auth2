@@ -107,14 +107,14 @@ public sealed class UserRowCredentialState(Auth2DbContext db, IDataProtectionPro
 /// A person with no row for this application has no credentials here, so a login with a password from another application fails.
 /// A password can only be set when the row exists, or when the user is new (the row is saved with the user in one transaction).
 /// </summary>
-public sealed class UserApplicationCredentialState(
+public sealed class UserProjectCredentialState(
     Auth2DbContext db,
-    IApplicationContext applications,
+    IProjectContext applications,
     IDataProtectionProvider protection,
     ISecretHasher hasher,
     TimeProvider clock) : CredentialStateBase(protection, hasher), ICredentialState
 {
-    private readonly Dictionary<Guid, UserApplication> _pending = [];
+    private readonly Dictionary<Guid, UserProject> _pending = [];
 
     /// <inheritdoc />
     public async Task<string?> GetPasswordHashAsync(AppUser u, CancellationToken ct) => (await RowAsync(u, false, ct))?.PasswordHash;
@@ -156,24 +156,24 @@ public sealed class UserApplicationCredentialState(
     /// <inheritdoc />
     public void BeforeUserCreated(AppUser user)
     {
-        if (_pending.Remove(user.Id, out var row)) db.UserApplications.Add(row);
+        if (_pending.Remove(user.Id, out var row)) db.UserProjects.Add(row);
     }
 
     /// <inheritdoc />
     public async Task ReplaceRecoveryCodesAsync(AppUser u, IEnumerable<string> codes, CancellationToken ct)
     {
         var app = await applications.GetRequiredAsync(ct);
-        var old = await db.RecoveryCodes.Where(c => c.UserId == u.Id && c.ApplicationId == app.Id).ToListAsync(ct);
+        var old = await db.RecoveryCodes.Where(c => c.UserId == u.Id && c.ProjectId == app.Id).ToListAsync(ct);
         db.RecoveryCodes.RemoveRange(old);
         foreach (var code in codes)
-            db.RecoveryCodes.Add(new UserApplicationRecoveryCode { UserId = u.Id, ApplicationId = app.Id, CodeHash = Hasher.Hash(code) });
+            db.RecoveryCodes.Add(new UserProjectRecoveryCode { UserId = u.Id, ProjectId = app.Id, CodeHash = Hasher.Hash(code) });
     }
 
     /// <inheritdoc />
     public async Task<bool> RedeemRecoveryCodeAsync(AppUser u, string code, CancellationToken ct)
     {
         var app = await applications.GetRequiredAsync(ct);
-        var rows = await db.RecoveryCodes.Where(c => c.UserId == u.Id && c.ApplicationId == app.Id && c.UsedAtUtc == null).ToListAsync(ct);
+        var rows = await db.RecoveryCodes.Where(c => c.UserId == u.Id && c.ProjectId == app.Id && c.UsedAtUtc == null).ToListAsync(ct);
         var match = rows.FirstOrDefault(r => Hasher.Verify(code, r.CodeHash));
         if (match is null) return false;
         match.UsedAtUtc = clock.GetUtcNow();
@@ -184,32 +184,32 @@ public sealed class UserApplicationCredentialState(
     public async Task<int> CountRecoveryCodesAsync(AppUser u, CancellationToken ct)
     {
         var app = await applications.GetRequiredAsync(ct);
-        return await db.RecoveryCodes.CountAsync(c => c.UserId == u.Id && c.ApplicationId == app.Id && c.UsedAtUtc == null, ct);
+        return await db.RecoveryCodes.CountAsync(c => c.UserId == u.Id && c.ProjectId == app.Id && c.UsedAtUtc == null, ct);
     }
 
-    private async Task<UserApplication?> RowAsync(AppUser u, bool forWrite, CancellationToken ct)
+    private async Task<UserProject?> RowAsync(AppUser u, bool forWrite, CancellationToken ct)
     {
         if (_pending.TryGetValue(u.Id, out var pending)) return pending;
         var app = await applications.GetRequiredAsync(ct);
-        var row = await db.UserApplications.FindAsync([u.Id, app.Id], ct);
+        var row = await db.UserProjects.FindAsync([u.Id, app.Id], ct);
         if (row is not null || !forWrite) return row;
 
         // A new user (not saved yet) gets its row saved together with the user.
         if (db.Entry(u).State == EntityState.Detached)
         {
-            row = new UserApplication { UserId = u.Id, ApplicationId = app.Id, JoinedAtUtc = clock.GetUtcNow(), Status = UserApplicationStatus.Active };
+            row = new UserProject { UserId = u.Id, ProjectId = app.Id, JoinedAtUtc = clock.GetUtcNow(), Status = UserProjectStatus.Active };
             _pending[u.Id] = row;
             return row;
         }
         // An existing person must join the application on purpose (with proof of ownership, phase 6) before credentials exist.
-        throw new InvalidOperationException($"{Auth2ErrorCodes.UserNotInApplication}: the user has no row for this application.");
+        throw new InvalidOperationException($"{Auth2ErrorCodes.UserNotInProject}: the user has no row for this application.");
     }
 }
 
 /// <summary>Picks the strategy by the effective credential scope.</summary>
-public sealed class CredentialStateProvider(IAuthFlowResolver flow, UserRowCredentialState userRow, UserApplicationCredentialState perApplication) : ICredentialStateProvider
+public sealed class CredentialStateProvider(IAuthFlowResolver flow, UserRowCredentialState userRow, UserProjectCredentialState perProject) : ICredentialStateProvider
 {
     /// <inheritdoc />
     public async Task<ICredentialState> GetAsync(CancellationToken ct = default) =>
-        await flow.GetCredentialScopeAsync(ct) == CredentialScope.PerApplication ? perApplication : userRow;
+        await flow.GetCredentialScopeAsync(ct) == CredentialScope.PerProject ? perProject : userRow;
 }

@@ -1,0 +1,67 @@
+@page "/admin/p/{projectKey}/scopes/detail"
+@model SystemX.Auth2.Server.Pages.Admin.Scopes.DetailModel
+@{
+    Layout = "_LayoutAdmin";
+    var s = Model.Scope;
+    ViewData["Title"] = $"Scope: {s?.Name}";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <a href="/admin/p/@Model.ProjectKey/scopes" class="hover:underline">Scopes</a>
+            <span>/</span>
+            <span class="text-gray-900 font-medium">@s?.Name</span>
+        </div>
+        @if (!s?.IsGlobal == true || Model.IsGlobalAdmin)
+        {
+            <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Delete this scope?');">
+                <a2-button type="submit" variant="danger">Delete Scope</a2-button>
+            </form>
+        }
+    </div>
+
+    <!-- Scope Header -->
+    <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <span class="font-mono text-sm text-gray-500 block mb-1">Scope Name</span>
+                <h1 class="text-2xl font-bold font-mono text-gray-900">@s?.Name</h1>
+            </div>
+            <div>
+                @if (s?.IsGlobal == true)
+                {
+                    <a2-badge variant="info">Global Scope</a2-badge>
+                }
+                else
+                {
+                    <a2-badge variant="success">Project Scope</a2-badge>
+                }
+            </div>
+        </div>
+        <p class="text-sm text-gray-600 mt-2">@(s?.Description ?? "No description provided.")</p>
+    </div>
+
+    <!-- Edit Scope Form -->
+    <a2-card title="Scope Configuration">
+        <form method="post" asp-page-handler="Update" class="space-y-4">
+            <a2-field label="Display name">
+                <a2-input name="Input.DisplayName" value="@Model.Input.DisplayName" />
+            </a2-field>
+
+            <a2-field label="Description">
+                <a2-textarea name="Input.Description" value="@Model.Input.Description" rows="3" />
+            </a2-field>
+
+            <a2-field label="Associated Resources" hint="Space-separated list of resources">
+                <a2-input name="Input.Resources" value="@Model.Input.Resources" />
+            </a2-field>
+
+            <div class="pt-4 border-t border-gray-200">
+                <a2-button type="submit" variant="primary">
+                    Save Changes
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

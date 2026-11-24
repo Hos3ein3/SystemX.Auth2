@@ -17,7 +17,7 @@ public static class Auth2Claims
     public const string FamilyName = "family_name";
     /// <summary>Full name.</summary>
     public const string Name = "name";
-    /// <summary>Role of the application.</summary>
+    /// <summary>Role of the project.</summary>
     public const string Role = "role";
     /// <summary>Scope.</summary>
     public const string Scope = "scope";
@@ -25,9 +25,11 @@ public static class Auth2Claims
     public const string ClientId = "client_id";
     /// <summary>Access version.</summary>
     public const string AccessVersion = "pv";
-    /// <summary>Application id.</summary>
-    public const string ApplicationId = "app";
-    /// <summary>Project key. Omitted in single-application mode.</summary>
+    /// <summary>Application id (the client that asked for the token).</summary>
+    public const string ApplicationId = "application_id";
+    /// <summary>Project id (the tenant).</summary>
+    public const string ProjectId = "project_id";
+    /// <summary>Project key. Omitted in single-project mode.</summary>
     public const string ProjectKey = "projectkey";
     /// <summary>Authentication methods reference.</summary>
     public const string Amr = "amr";

@@ -1,3 +1,66 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.RegisterModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Create an Account";
+    ViewData["Subtitle"] = "Get started with your new account";
+}
+
+@if (!Model.RegistrationEnabled)
+{
+    <a2-alert variant="warning">Registration is currently not available for this project.</a2-alert>
+    <div class="mt-4 text-center">
+        <a2-link-button href="/Account/Login?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" variant="secondary">Back to Sign In</a2-link-button>
+    </div>
+}
+else
+{
+    <form method="post" class="space-y-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReturnUrl" />
+        <input type="hidden" asp-for="ClientId" />
+
+        @if (Model.ShowEmailField)
+        {
+            <a2-field label="Email Address" required="true" for="Input_Email">
+                <a2-input id="Input_Email" name="Input.Email" type="email" value="@Model.Input?.Email" placeholder="you@example.com" autocomplete="email" required="true" />
+            </a2-field>
+        }
+
+        @if (Model.ShowUserNameField)
+        {
+            <a2-field label="Username" for="Input_UserName">
+                <a2-input id="Input_UserName" name="Input.UserName" value="@Model.Input?.UserName" placeholder="username" autocomplete="username" />
+            </a2-field>
+        }
+
+        <div class="grid grid-cols-2 gap-4">
+            <a2-field label="First Name" for="Input_FirstName">
+                <a2-input id="Input_FirstName" name="Input.FirstName" value="@Model.Input?.FirstName" placeholder="First" autocomplete="given-name" />
+            </a2-field>
+            <a2-field label="Last Name" for="Input_LastName">
+                <a2-input id="Input_LastName" name="Input.LastName" value="@Model.Input?.LastName" placeholder="Last" autocomplete="family-name" />
+            </a2-field>
+        </div>
+
+        @if (Model.ShowPhoneField)
+        {
+            <a2-field label="Phone Number" for="Input_PhoneNumber">
+                <a2-input id="Input_PhoneNumber" name="Input.PhoneNumber" type="tel" value="@Model.Input?.PhoneNumber" placeholder="+1234567890" autocomplete="tel" />
+            </a2-field>
+        }
+
+        <a2-field label="Password" required="true" hint="At least 12 characters recommended" for="Input_Password">
+            <a2-password id="Input_Password" name="Input.Password" placeholder="••••••••••••" required="true" autocomplete="new-password" />
+        </a2-field>
+
+        <div class="pt-2">
+            <a2-button type="submit" variant="primary" class="w-full">Create Account</a2-button>
+        </div>
+
+        <div class="mt-6 text-center text-sm">
+            <span class="text-[var(--a2-color-muted,#6b7280)]">Already have an account?</span>
+            <a href="/Account/Login?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline ml-1">Sign in</a>
+        </div>
+    </form>
+}

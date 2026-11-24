@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Infrastructure.OpenIddict;
 using SystemX.Auth2.Server.Persistence;
 
 namespace SystemX.Auth2.Server.Infrastructure.Operations;
@@ -36,7 +37,7 @@ internal sealed class SecurityHeadersMiddleware(RequestDelegate next, IOptions<A
 }
 
 /// <summary>
-/// CORS is off by default. An origin is allowed when it is listed in <c>Clients.AllowedCorsOrigins</c> of an enabled application
+/// CORS is off by default. An origin is allowed when it is listed in <c>AllowedCorsOrigins</c> (application settings) of an enabled application of an enabled project
 /// (exact match, no wildcards). Cookies and credentials are never allowed across origins.
 /// </summary>
 internal sealed class Auth2CorsPolicyProvider(IServiceScopeFactory scopes, IMemoryCache cache) : ICorsPolicyProvider
@@ -50,7 +51,7 @@ internal sealed class Auth2CorsPolicyProvider(IServiceScopeFactory scopes, IMemo
         var allowed = await AllowedOriginsAsync(context.RequestAborted);
         if (!allowed.Contains(origin)) return new CorsPolicyBuilder().Build();   // an empty policy allows nothing
         return new CorsPolicyBuilder().WithOrigins(origin).WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .WithHeaders("Authorization", "Content-Type", "Accept-Language", "If-Match", "X-Auth2-Application").Build();
+            .WithHeaders("Authorization", "Content-Type", "Accept-Language", "If-Match").Build();
     }
 
     private async Task<HashSet<string>> AllowedOriginsAsync(CancellationToken ct)
@@ -58,8 +59,8 @@ internal sealed class Auth2CorsPolicyProvider(IServiceScopeFactory scopes, IMemo
         if (cache.TryGetValue(CacheKey, out HashSet<string>? hit) && hit is not null) return hit;
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-        var settings = await db.Applications.AsNoTracking().Where(a => a.IsEnabled).Select(a => a.Settings).ToListAsync(ct);
-        var set = new HashSet<string>(settings.SelectMany(s => s.Clients.AllowedCorsOrigins).Select(o => o.TrimEnd('/')), StringComparer.OrdinalIgnoreCase);
+        var settings = await (from a in db.Set<Auth2Application>().AsNoTracking() join p in db.Projects.AsNoTracking() on a.ProjectId equals p.Id where a.IsEnabled && p.IsEnabled select a.ClientSettings).ToListAsync(ct);
+        var set = new HashSet<string>(settings.SelectMany(s => s.AllowedCorsOrigins).Select(o => o.TrimEnd('/')), StringComparer.OrdinalIgnoreCase);
         cache.Set(CacheKey, set, TimeSpan.FromSeconds(60));   // short on purpose: a changed list applies within a minute on every instance
         return set;
     }

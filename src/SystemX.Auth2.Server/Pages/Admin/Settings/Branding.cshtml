@@ -1,0 +1,126 @@
+@page "/admin/p/{projectKey}/branding"
+@model SystemX.Auth2.Server.Pages.Admin.Settings.BrandingModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Branding - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Branding & Assets</h1>
+        <p class="mt-1 text-sm text-gray-500">Customize color tokens, logos, and visual assets for @Model.CurrentProject?.Name.</p>
+    </div>
+
+    <!-- Design Tokens / Colors -->
+    <a2-card title="Color Tokens">
+        <form method="post" asp-page-handler="SaveColors" class="space-y-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Primary Color</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="color" name="PrimaryColor" value="@Model.PrimaryColor" class="h-9 w-9 rounded border border-gray-300 p-0.5" />
+                        <span class="font-mono text-xs text-gray-700">@Model.PrimaryColor</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Primary Text</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="color" name="PrimaryTextColor" value="@Model.PrimaryTextColor" class="h-9 w-9 rounded border border-gray-300 p-0.5" />
+                        <span class="font-mono text-xs text-gray-700">@Model.PrimaryTextColor</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Background</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="color" name="BackgroundColor" value="@Model.BackgroundColor" class="h-9 w-9 rounded border border-gray-300 p-0.5" />
+                        <span class="font-mono text-xs text-gray-700">@Model.BackgroundColor</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Border Radius</label>
+                    <input type="text" name="Radius" value="@Model.Radius" class="block w-full rounded border border-gray-300 px-3 py-1.5 text-xs font-mono" />
+                </div>
+            </div>
+
+            <div class="pt-3 flex justify-end">
+                <a2-button type="submit" variant="primary">Save Colors</a2-button>
+            </div>
+        </form>
+    </a2-card>
+
+    <!-- Upload Branding Assets -->
+    <a2-card title="Brand Assets (Logos & Favicons)">
+        <p class="text-sm text-gray-600 mb-4">Supported formats: PNG, JPEG, WebP, SVG. Maximum logo size: 512 KB, Favicon: 64 KB.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Logo Light -->
+            <div class="border rounded-lg p-4 bg-gray-50 flex flex-col justify-between">
+                <div>
+                    <span class="text-sm font-semibold text-gray-800 block mb-1">Logo (Light theme)</span>
+                    <p class="text-xs text-gray-500 mb-3">Shown on light background login screens.</p>
+                    @{
+                        var lightLogo = Model.Assets.FirstOrDefault(a => a.Kind == "logo_light");
+                    }
+                    @if (lightLogo is not null)
+                    {
+                        <div class="bg-white p-2 border rounded mb-3 text-center">
+                            <span class="text-xs text-green-700 font-medium">Uploaded (@(lightLogo.Size / 1024) KB)</span>
+                        </div>
+                    }
+                </div>
+                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2">
+                    <input type="hidden" name="kind" value="logo_light" />
+                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <button type="submit" class="w-full text-xs py-1.5 bg-white border border-gray-300 rounded font-medium text-gray-700 hover:bg-gray-100">Upload</button>
+                </form>
+            </div>
+
+            <!-- Logo Dark -->
+            <div class="border rounded-lg p-4 bg-gray-50 flex flex-col justify-between">
+                <div>
+                    <span class="text-sm font-semibold text-gray-800 block mb-1">Logo (Dark theme)</span>
+                    <p class="text-xs text-gray-500 mb-3">Shown on dark surfaces or inverted layouts.</p>
+                    @{
+                        var darkLogo = Model.Assets.FirstOrDefault(a => a.Kind == "logo_dark");
+                    }
+                    @if (darkLogo is not null)
+                    {
+                        <div class="bg-gray-800 p-2 border rounded mb-3 text-center">
+                            <span class="text-xs text-green-400 font-medium">Uploaded (@(darkLogo.Size / 1024) KB)</span>
+                        </div>
+                    }
+                </div>
+                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2">
+                    <input type="hidden" name="kind" value="logo_dark" />
+                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <button type="submit" class="w-full text-xs py-1.5 bg-white border border-gray-300 rounded font-medium text-gray-700 hover:bg-gray-100">Upload</button>
+                </form>
+            </div>
+
+            <!-- Favicon -->
+            <div class="border rounded-lg p-4 bg-gray-50 flex flex-col justify-between">
+                <div>
+                    <span class="text-sm font-semibold text-gray-800 block mb-1">Favicon</span>
+                    <p class="text-xs text-gray-500 mb-3">Browser tab icon (16x16 or 32x32).</p>
+                    @{
+                        var favicon = Model.Assets.FirstOrDefault(a => a.Kind == "favicon");
+                    }
+                    @if (favicon is not null)
+                    {
+                        <div class="bg-white p-2 border rounded mb-3 text-center">
+                            <span class="text-xs text-green-700 font-medium">Uploaded (@(favicon.Size / 1024) KB)</span>
+                        </div>
+                    }
+                </div>
+                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2">
+                    <input type="hidden" name="kind" value="favicon" />
+                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <button type="submit" class="w-full text-xs py-1.5 bg-white border border-gray-300 rounded font-medium text-gray-700 hover:bg-gray-100">Upload</button>
+                </form>
+            </div>
+        </div>
+    </a2-card>
+</div>

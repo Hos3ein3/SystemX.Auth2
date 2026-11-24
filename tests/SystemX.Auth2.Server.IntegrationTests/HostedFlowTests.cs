@@ -13,14 +13,14 @@ public class HostedFlowTests : IdentityTestBase
     private const string Redirect = "https://client.test/cb";
     private const string Scopes = "openid profile email roles offline_access auth2.me";
 
-    private async Task PrepareAsync(Action<Domain.Settings.ApplicationSettings>? more = null)
+    private async Task PrepareAsync(Action<TestEdit>? more = null)
     {
         await SetUpAsync();
         await CreateUserInAsync("appa");
         await UpdateSettingsAsync(A, s =>
         {
-            s.Redirects.AllowedRedirectUris.Add(Redirect);
-            s.Redirects.AllowedPostLogoutRedirectUris.Add("https://client.test/bye");
+            s.RedirectUris.Add(Redirect);
+            s.PostLogoutRedirectUris.Add("https://client.test/bye");
             more?.Invoke(s);
         });
     }
@@ -175,7 +175,7 @@ public class HostedFlowTests : IdentityTestBase
     {
         await PrepareAsync();
         var user = await CreateUserInAsync("appa", "other", PassA);
-        await UpdateSettingsAsync(B, s => s.Redirects.AllowedRedirectUris.Add(Redirect));
+        await UpdateSettingsAsync(B, s => s.RedirectUris.Add(Redirect));
         await JoinAsync(user, B);
 
         var b = new Browser(Factory);

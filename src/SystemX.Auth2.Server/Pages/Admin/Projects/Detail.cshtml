@@ -1,0 +1,73 @@
+@page "/admin/projects/detail"
+@model SystemX.Auth2.Server.Pages.Admin.Projects.DetailModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Project Settings - {Model.Project?.Name}";
+}
+
+<div class="max-w-4xl mx-auto space-y-8">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <a href="/admin/projects" class="hover:underline">Projects</a>
+            <span>/</span>
+            <span class="text-gray-900 font-medium">@Model.Project?.Name</span>
+        </div>
+        <a2-link-button href="/admin/p/@Model.Project?.ProjectKey" variant="secondary">
+            Open Project Console &rarr;
+        </a2-link-button>
+    </div>
+
+    <a2-card title="Project Details">
+        <form method="post" asp-page-handler="Update" class="space-y-4">
+            <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <a2-field label="Project Key (Immutable)">
+                    <a2-input value="@Model.Project?.ProjectKey" disabled="true" />
+                </a2-field>
+
+                <a2-field label="Project ID (UUID)">
+                    <a2-input value="@Model.Project?.Id.ToString()" disabled="true" />
+                </a2-field>
+            </div>
+
+            <a2-field label="Display Name" required="true">
+                <a2-input name="Input.Name" value="@Model.Input.Name" required="true" />
+            </a2-field>
+
+            <a2-field label="Description">
+                <a2-textarea name="Input.Description" value="@Model.Input.Description" rows="3" />
+            </a2-field>
+
+            <a2-checkbox name="Input.IsEnabled" checked="@Model.Input.IsEnabled" label="Enable this project" description="When disabled, all authentication, tokens, and non-global admin access are blocked." />
+
+            <div class="pt-4 border-t border-gray-200">
+                <a2-button type="submit" variant="primary">
+                    Save Changes
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+
+    @if (Model.Project?.ProjectKey != "_global")
+    {
+        <a2-card title="Danger Zone">
+            <div class="rounded-md bg-red-50 p-4 border border-red-200">
+                <h4 class="text-sm font-bold text-red-800">Delete Project</h4>
+                <p class="mt-1 text-xs text-red-700">
+                    Deleting a project permanently deletes all associated users, credentials, roles, and applications.
+                    To confirm, please type <strong class="font-mono">@Model.Project?.ProjectKey</strong> below:
+                </p>
+
+                <form method="post" asp-page-handler="Delete" class="mt-4 space-y-3">
+                    <a2-field label="Confirm Project Key">
+                        <a2-input name="DeleteInput.ConfirmationKey" placeholder="@Model.Project?.ProjectKey" />
+                    </a2-field>
+                    <a2-button type="submit" variant="danger">
+                        Permanently Delete Project
+                    </a2-button>
+                </form>
+            </div>
+        </a2-card>
+    }
+</div>

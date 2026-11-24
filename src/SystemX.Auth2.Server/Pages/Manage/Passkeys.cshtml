@@ -1,3 +1,70 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.PasskeysModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAccount";
+    ViewData["Title"] = "Passkeys";
+}
+
+<div class="space-y-6 max-w-2xl">
+    <div>
+        <h2 class="text-xl font-bold text-gray-900">Passkeys</h2>
+        <p class="mt-1 text-sm text-gray-500">Sign in securely using biometric recognition (Touch ID, Face ID, Windows Hello) or a security key.</p>
+    </div>
+
+    @if (Model.SuggestBackupPasskey)
+    {
+        <a2-alert variant="warning">
+            We recommend registering a second passkey (such as a hardware key or different device) as a backup in case you lose access to your primary device.
+        </a2-alert>
+    }
+
+    @if (Model.Passkeys.Count > 0)
+    {
+        <a2-card title="Registered Passkeys">
+            <ul class="divide-y divide-gray-200">
+                @foreach (var passkey in Model.Passkeys)
+                {
+                    <li class="py-3 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                            <div>
+                                <span class="text-sm font-semibold text-gray-800">@(string.IsNullOrEmpty(passkey.Name) ? "Passkey" : passkey.Name)</span>
+                                <span class="text-xs text-gray-500 block">Created @passkey.CreatedAtUtc.ToString("d")</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <form method="post" asp-page-handler="Delete">
+                                <input type="hidden" name="Id" value="@passkey.Id" />
+                                <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium">
+                                    Remove
+                                </button>
+                            </form>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </a2-card>
+    }
+    else
+    {
+        <a2-empty-state title="No passkeys registered" message="You haven't set up any passkeys yet.">
+            @if (Model.CanAddMore)
+            {
+                <button type="button" id="btnRegisterPasskey" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[var(--a2-color-primary,#2563eb)] hover:bg-blue-700 focus:outline-none">
+                    Register a Passkey
+                </button>
+            }
+        </a2-empty-state>
+    }
+
+    @if (Model.Passkeys.Count > 0 && Model.CanAddMore)
+    {
+        <div>
+            <button type="button" id="btnRegisterPasskey" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[var(--a2-color-primary,#2563eb)] hover:bg-blue-700 focus:outline-none">
+                Add Another Passkey
+            </button>
+        </div>
+    }
+</div>

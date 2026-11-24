@@ -1,7 +1,7 @@
 # TASK: Apply the Project/Application model, ICurrentClient, and catalog source changes to SystemX.Auth2
 
 You are working on SystemX.Auth2 (ASP.NET Core Identity + OpenIddict + PostgreSQL/Npgsql, Razor Pages + Minimal API server, NuGet client, Contracts project).
-Read first, in this order: the main build specification, then the work packages (Admin CRUD, External Identity v3). This prompt OVERRIDES them wherever they conflict. Where a document still uses the old terms, apply the terms below. Do not stop to ask questions; if something is ambiguous, choose the simplest option consistent with this prompt and record it in docs/decisions.md.
+ Where a document still uses the old terms, apply the terms below. Do not stop to ask questions; if something is ambiguous, choose the simplest option consistent with this prompt and record it in docs/decisions.md.
 
 ## Working method (mandatory, for every part)
 

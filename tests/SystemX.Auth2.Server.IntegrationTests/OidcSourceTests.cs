@@ -22,7 +22,7 @@ public abstract class OidcTestBase : IdentityTestBase
     protected OidcIdentitySource Source => Factory.Services.GetRequiredService<OidcIdentitySource>();
     protected IExternalSecretProtector Secrets => Factory.Services.GetRequiredService<IExternalSecretProtector>();
 
-    protected async Task<RegisteredProvider> AddAsync(Auth2Application app, OidcProviderSettings settings)
+    protected async Task<RegisteredProvider> AddAsync(Project app, OidcProviderSettings settings)
     {
         settings.Enabled = true;
         if (settings.ClientSecretProtected is null && settings.Type != ExternalProviderType.Apple) settings.ClientSecretProtected = Secrets.Protect("client-secret");

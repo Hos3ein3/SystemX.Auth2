@@ -1,3 +1,4 @@
+using SystemX.Auth2.Server.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -82,45 +83,86 @@ public sealed class MaintenanceJobs(IServiceScopeFactory scopes, IDistributedLoc
         return ran;
     }
 
-    private async Task RunJobAsync(string name, CancellationToken ct)
+    /// <summary>Runs a specific job, recording its run history.</summary>
+    public async Task<JobRun> RunJobAsync(string name, CancellationToken ct)
     {
         await using var scope = scopes.CreateAsyncScope();
         var sp = scope.ServiceProvider;
         var now = clock.GetUtcNow();
-        switch (name)
+        var run = new JobRun
         {
-            case "otp-cleanup":
+            JobName = name,
+            InstanceId = Environment.MachineName,
+            StartedAtUtc = now,
+        };
+
+        var affected = 0;
+        try
+        {
+            switch (name)
             {
-                using var _ = sp.GetRequiredService<IGlobalScope>().Begin();
-                var db = sp.GetRequiredService<Auth2DbContext>();
-                var cutoff = now.AddDays(-1);
-                var n = await db.OtpCodes.Where(c => c.ExpiresAtUtc < cutoff || (c.ConsumedAtUtc != null && c.ConsumedAtUtc < cutoff)).ExecuteDeleteAsync(ct);
-                if (n > 0) log.LogInformation("Removed {Count} old one-time codes.", n);
-                await db.ReplayEntries.Where(r => r.ExpiresAtUtc < now).ExecuteDeleteAsync(ct);
-                break;
+                case "otp-cleanup":
+                {
+                    using var _ = sp.GetRequiredService<IGlobalScope>().Begin();
+                    var db = sp.GetRequiredService<Auth2DbContext>();
+                    var cutoff = now.AddDays(-1);
+                    var n = await db.OtpCodes.Where(c => c.ExpiresAtUtc < cutoff || (c.ConsumedAtUtc != null && c.ConsumedAtUtc < cutoff)).ExecuteDeleteAsync(ct);
+                    if (n > 0) log.LogInformation("Removed {Count} old one-time codes.", n);
+                    var r = await db.ReplayEntries.Where(re => re.ExpiresAtUtc < now).ExecuteDeleteAsync(ct);
+                    affected = n + r;
+                    break;
+                }
+                case "audit-retention":
+                {
+                    var days = options.Value.Jobs.AuditRetentionDays;
+                    if (days > 0)
+                    {
+                        using var _ = sp.GetRequiredService<IGlobalScope>().Begin();
+                        var db = sp.GetRequiredService<Auth2DbContext>();
+                        var cutoff = now.AddDays(-days);
+                        var n = await db.AuditEvents.Where(e => e.OccurredAtUtc < cutoff).ExecuteDeleteAsync(ct);
+                        if (n > 0) log.LogInformation("Removed {Count} audit events older than {Days} days.", n, days);
+                        affected = n;
+                    }
+                    break;
+                }
+                case "token-pruning":
+                {
+                    var threshold = now.AddDays(-14);
+                    await sp.GetRequiredService<IOpenIddictTokenManager>().PruneAsync(threshold, ct);
+                    await sp.GetRequiredService<IOpenIddictAuthorizationManager>().PruneAsync(threshold, ct);
+                    break;
+                }
+                case "key-removal":
+                    affected = await sp.GetRequiredService<IKeyRing>().RemoveExpiredAsync(ct);
+                    break;
             }
-            case "audit-retention":
-            {
-                var days = options.Value.Jobs.AuditRetentionDays;
-                if (days <= 0) break;
-                using var _ = sp.GetRequiredService<IGlobalScope>().Begin();
-                var db = sp.GetRequiredService<Auth2DbContext>();
-                var cutoff = now.AddDays(-days);
-                var n = await db.AuditEvents.Where(e => e.OccurredAtUtc < cutoff).ExecuteDeleteAsync(ct);
-                if (n > 0) log.LogInformation("Removed {Count} audit events older than {Days} days.", n, days);
-                break;
-            }
-            case "token-pruning":
-            {
-                var threshold = now.AddDays(-14);
-                await sp.GetRequiredService<IOpenIddictTokenManager>().PruneAsync(threshold, ct);
-                await sp.GetRequiredService<IOpenIddictAuthorizationManager>().PruneAsync(threshold, ct);
-                break;
-            }
-            case "key-removal":
-                await sp.GetRequiredService<IKeyRing>().RemoveExpiredAsync(ct);
-                break;
+            run.Success = true;
+            run.RowsAffected = affected;
+            run.FinishedAtUtc = clock.GetUtcNow();
         }
+        catch (Exception ex)
+        {
+            run.Success = false;
+            run.Error = ex.Message.Length > 900 ? ex.Message[..900] : ex.Message;
+            run.FinishedAtUtc = clock.GetUtcNow();
+            throw;
+        }
+        finally
+        {
+            try
+            {
+                using var _ = sp.GetRequiredService<IGlobalScope>().Begin();
+                var db = sp.GetRequiredService<Auth2DbContext>();
+                db.JobRuns.Add(run);
+                await db.SaveChangesAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "Failed to record job run for {JobName}.", name);
+            }
+        }
+        return run;
     }
 }
 

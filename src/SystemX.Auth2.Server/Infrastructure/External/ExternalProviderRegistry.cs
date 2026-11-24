@@ -15,13 +15,13 @@ public interface IExternalProviderRegistry
     /// <summary>One enabled provider, or null when unknown or disabled.</summary>
     RegisteredProvider? Get(Guid applicationId, string name);
     /// <summary>The enabled providers of an application.</summary>
-    IReadOnlyList<RegisteredProvider> ListForApplication(Guid applicationId);
+    IReadOnlyList<RegisteredProvider> ListForProject(Guid applicationId);
     /// <summary>The provider that handles an email domain, or null.</summary>
     RegisteredProvider? FindByEmailDomain(Guid applicationId, string domain);
     /// <summary>Finds a provider by the project slug of a URL.</summary>
     RegisteredProvider? FindByUrl(string projectSlug, string name);
     /// <summary>Loads one application again now (used after a change on this instance or a Redis message).</summary>
-    Task RefreshApplicationAsync(Guid applicationId, CancellationToken ct = default);
+    Task RefreshProjectAsync(Guid applicationId, CancellationToken ct = default);
     /// <summary>Looks for applications whose settings version changed and loads them. Returns how many were reloaded.</summary>
     Task<int> RefreshChangedAsync(CancellationToken ct = default);
     /// <summary>Raised after the list changed.</summary>
@@ -45,23 +45,23 @@ public sealed class ExternalProviderRegistry(IServiceScopeFactory scopes, IOptio
         _apps.TryGetValue(applicationId, out var a) ? a.Providers.FirstOrDefault(p => p.Name == name) : null;
 
     /// <inheritdoc />
-    public IReadOnlyList<RegisteredProvider> ListForApplication(Guid applicationId) =>
+    public IReadOnlyList<RegisteredProvider> ListForProject(Guid applicationId) =>
         _apps.TryGetValue(applicationId, out var a) ? a.Providers : [];
 
     /// <inheritdoc />
     public RegisteredProvider? FindByEmailDomain(Guid applicationId, string domain) =>
-        ListForApplication(applicationId).FirstOrDefault(p => p.Settings.EmailDomains.Contains(domain, StringComparer.OrdinalIgnoreCase));
+        ListForProject(applicationId).FirstOrDefault(p => p.Settings.EmailDomains.Contains(domain, StringComparer.OrdinalIgnoreCase));
 
     /// <inheritdoc />
     public RegisteredProvider? FindByUrl(string projectSlug, string name) => _byUrl.GetValueOrDefault(projectSlug + "/" + name);
 
     /// <inheritdoc />
-    public async Task RefreshApplicationAsync(Guid applicationId, CancellationToken ct = default)
+    public async Task RefreshProjectAsync(Guid applicationId, CancellationToken ct = default)
     {
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        var app = await db.Applications.AsNoTracking().FirstOrDefaultAsync(a => a.Id == applicationId, ct);
+        var app = await db.Projects.AsNoTracking().FirstOrDefaultAsync(a => a.Id == applicationId, ct);
         Apply(applicationId, app is null ? null : Build(app));
     }
 
@@ -71,13 +71,13 @@ public sealed class ExternalProviderRegistry(IServiceScopeFactory scopes, IOptio
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        var versions = await db.Applications.AsNoTracking().Select(a => new { a.Id, a.SettingsVersion, a.IsEnabled }).ToListAsync(ct);
+        var versions = await db.Projects.AsNoTracking().Select(a => new { a.Id, a.SettingsVersion, a.IsEnabled }).ToListAsync(ct);
         var current = _apps;
         var changed = 0;
         foreach (var v in versions)
         {
             if (current.TryGetValue(v.Id, out var known) && known.Version == v.SettingsVersion && known.Enabled == v.IsEnabled) continue;
-            var app = await db.Applications.AsNoTracking().FirstOrDefaultAsync(a => a.Id == v.Id, ct);
+            var app = await db.Projects.AsNoTracking().FirstOrDefaultAsync(a => a.Id == v.Id, ct);
             Apply(v.Id, app is null ? null : Build(app));
             changed++;
         }
@@ -89,11 +89,11 @@ public sealed class ExternalProviderRegistry(IServiceScopeFactory scopes, IOptio
         return changed;
     }
 
-    private (int Version, string Slug, bool Enabled, IReadOnlyList<RegisteredProvider> Providers) Build(Domain.Entities.Auth2Application app)
+    private (int Version, string Slug, bool Enabled, IReadOnlyList<RegisteredProvider> Providers) Build(Domain.Entities.Project app)
     {
-        var slug = options.Value.Mode == ServerMode.SingleApplication ? ExternalProviderUrls.SingleModeSlug : app.ProjectKey;
+        var slug = options.Value.Mode == ServerMode.SingleProject ? ExternalProviderUrls.SingleModeSlug : app.ProjectKey;
         IReadOnlyList<RegisteredProvider> list = app.IsEnabled
-            ? [.. app.Settings.ExternalProviders.Where(p => p.Enabled).Select(p => new RegisteredProvider(app.Id, slug, p, app.SettingsVersion, app.ClientId))]
+            ? [.. app.Settings.ExternalProviders.Where(p => p.Enabled).Select(p => new RegisteredProvider(app.Id, slug, p, app.SettingsVersion))]
             : [];
         return (app.SettingsVersion, slug, app.IsEnabled, list);
     }
@@ -107,7 +107,7 @@ public sealed class ExternalProviderRegistry(IServiceScopeFactory scopes, IOptio
             _apps = map.ToFrozenDictionary();
             _byUrl = map.Values.SelectMany(v => v.Providers).ToDictionary(p => p.ProjectSlug + "/" + p.Name).ToFrozenDictionary();
         }
-        log.LogInformation("External providers of application {ApplicationId} loaded: {Count}.", applicationId, entry?.Providers.Count ?? 0);
+        log.LogInformation("External providers of application {ProjectId} loaded: {Count}.", applicationId, entry?.Providers.Count ?? 0);
         Changed?.Invoke();
     }
 }
@@ -125,7 +125,7 @@ internal sealed class ExternalProviderRefreshService(
         {
             redis.Multiplexer.GetSubscriber().Subscribe(StackExchange.Redis.RedisChannel.Literal(redis.Key("settings-changed")), (channel, value) =>
             {
-                if (Guid.TryParseExact((string?)value, "N", out var id)) _ = TryAsync(() => registry.RefreshApplicationAsync(id, stoppingToken));
+                if (Guid.TryParseExact((string?)value, "N", out var id)) _ = TryAsync(() => registry.RefreshProjectAsync(id, stoppingToken));
             });
         }
         var every = TimeSpan.FromSeconds(Math.Max(1, options.Value.ExternalProviders.PollSeconds));

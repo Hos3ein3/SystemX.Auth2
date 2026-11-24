@@ -27,7 +27,7 @@ public class ExternalLoginStoreTests : IdentityTestBase
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
         (await db.UserLogins.CountAsync()).ShouldBe(2);
-        (await db.UserLogins.Select(l => l.ApplicationId).Distinct().CountAsync()).ShouldBe(2);
+        (await db.UserLogins.Select(l => l.ProjectId).Distinct().CountAsync()).ShouldBe(2);
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public class ExternalProviderSettingsPersistenceTests : IdentityTestBase
         });
 
         await using var scope2 = NewScope();
-        var settings = await scope2.ServiceProvider.GetRequiredService<IApplicationSettingsProvider>().GetAsync(A.Id);
+        var settings = await scope2.ServiceProvider.GetRequiredService<IProjectSettingsProvider>().GetAsync(A.Id);
         settings.ExternalProviders.Select(p => p.GetType()).ShouldBe([typeof(OidcProviderSettings), typeof(SamlProviderSettings), typeof(LdapProviderSettings)]);
         var oidc = (OidcProviderSettings)settings.ExternalProviders[0];
         oidc.ClientSecretProtected!.ShouldNotContain("very-secret-value");
@@ -165,13 +165,13 @@ public class ExternalMappingTableTests : IdentityTestBase
         {
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            db.ExternalGroupMappings.Add(new ExternalGroupMapping { ApplicationId = A.Id, SourceValue = "staff", TargetId = Guid.NewGuid() });
-            db.ExternalGroupMappings.Add(new ExternalGroupMapping { ApplicationId = B.Id, SourceValue = "other", TargetId = Guid.NewGuid() });
+            db.ExternalGroupMappings.Add(new ExternalGroupMapping { ProjectId = A.Id, SourceValue = "staff", TargetId = Guid.NewGuid() });
+            db.ExternalGroupMappings.Add(new ExternalGroupMapping { ProjectId = B.Id, SourceValue = "other", TargetId = Guid.NewGuid() });
             await db.SaveChangesAsync();
         }
         await using var inA = ScopeFor("appa");
         var dbA = inA.ServiceProvider.GetRequiredService<Auth2DbContext>();
-        await inA.ServiceProvider.GetRequiredService<IApplicationContext>().GetRequiredAsync();
+        await inA.ServiceProvider.GetRequiredService<IProjectContext>().GetRequiredAsync();
         (await dbA.ExternalGroupMappings.Select(m => m.SourceValue).ToListAsync()).ShouldBe(["staff"]);
     }
 }

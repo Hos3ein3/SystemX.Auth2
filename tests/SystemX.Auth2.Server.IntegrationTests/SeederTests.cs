@@ -23,12 +23,15 @@ public class SeederMultiModeTests : ServerTestBase
         var db = sp.GetRequiredService<Auth2DbContext>();
         using var _ = sp.GetRequiredService<IGlobalScope>().Begin();
 
-        var global = await db.Applications.SingleAsync();
+        var global = await db.Projects.SingleAsync();
         global.ProjectKey.ShouldBe("_global");
-        global.OpenIddictApplicationId.ShouldNotBeNull();
+        var globalClient = await sp.GetRequiredService<IApplicationService>().ListAsync(global.Id);
+        globalClient.Count.ShouldBe(1);
+        globalClient[0].Name.ShouldBe("_global");
+        globalClient[0].ClientId.ShouldBe("_global");
 
         var role = await db.Roles.SingleAsync(r => r.Name == Auth2Roles.GlobalAdmin);
-        role.ApplicationId.ShouldBeNull();
+        role.ProjectId.ShouldBeNull();
         role.IsSystem.ShouldBeTrue();
 
         var users = sp.GetRequiredService<UserManager<AppUser>>();
@@ -42,7 +45,7 @@ public class SeederMultiModeTests : ServerTestBase
     }
 
     [Fact]
-    public async Task Seed_MultiMode_MovesCredentialsToUserApplicationsRow()
+    public async Task Seed_MultiMode_MovesCredentialsToUserProjectsRow()
     {
         await MigrateAndSeedAsync();
         await using var scope = NewScope();
@@ -51,7 +54,7 @@ public class SeederMultiModeTests : ServerTestBase
 
         var admin = await db.Users.SingleAsync();
         admin.PasswordHash.ShouldBeNull();
-        var ua = await db.UserApplications.SingleAsync();
+        var ua = await db.UserProjects.SingleAsync();
         ua.UserId.ShouldBe(admin.Id);
         ua.PasswordHash.ShouldNotBeNull();
         scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>()
@@ -67,9 +70,9 @@ public class SeederMultiModeTests : ServerTestBase
             await using var scope = NewScope();
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            return (await db.Applications.CountAsync(), await db.Users.CountAsync(), await db.Roles.CountAsync(),
-                await db.UserApplications.CountAsync(), await db.AuditEvents.CountAsync(),
-                await db.UserApplications.Select(x => x.PasswordHash).SingleAsync());
+            return (await db.Projects.CountAsync(), await db.Users.CountAsync(), await db.Roles.CountAsync(),
+                await db.UserProjects.CountAsync(), await db.AuditEvents.CountAsync(),
+                await db.UserProjects.Select(x => x.PasswordHash).SingleAsync());
         }
         var before = await Snapshot();
         await SeedAgainAsync();
@@ -86,7 +89,7 @@ public class SeederMultiModeTests : ServerTestBase
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
             var admin = await db.Users.SingleAsync();
-            var ua = await db.UserApplications.SingleAsync();
+            var ua = await db.UserProjects.SingleAsync();
             newHash = ua.PasswordHash = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>().HashPassword(admin, "Another!Pass99");
             await db.SaveChangesAsync();
         }
@@ -96,7 +99,7 @@ public class SeederMultiModeTests : ServerTestBase
         await using var scope2 = NewScope();
         var db2 = scope2.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var __ = scope2.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        (await db2.UserApplications.SingleAsync()).PasswordHash.ShouldBe(newHash);
+        (await db2.UserProjects.SingleAsync()).PasswordHash.ShouldBe(newHash);
         (await db2.Users.CountAsync()).ShouldBe(1);
     }
 
@@ -156,27 +159,27 @@ public class SeederSingleModeTests : ServerTestBase
     protected override bool SingleMode => true;
 
     [Fact]
-    public async Task Seed_SingleMode_CreatesFixedApplicationAndNoUserApplications()
+    public async Task Seed_SingleMode_CreatesFixedApplicationAndNoUserProjects()
     {
         await MigrateAndSeedAsync();
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
 
-        (await db.Applications.Select(a => a.ProjectKey).ToListAsync()).OrderBy(x => x).ShouldBe(["_global", "default"]);
-        (await db.Applications.SingleAsync(a => a.ProjectKey == "default")).Name.ShouldBe("Default");
-        (await db.UserApplications.CountAsync()).ShouldBe(0);
+        (await db.Projects.Select(a => a.ProjectKey).ToListAsync()).OrderBy(x => x).ShouldBe(["_global", "default"]);
+        (await db.Projects.SingleAsync(a => a.ProjectKey == "default")).Name.ShouldBe("Default");
+        (await db.UserProjects.CountAsync()).ShouldBe(0);
         (await db.Users.SingleAsync()).PasswordHash.ShouldNotBeNull();
     }
 
     [Fact]
-    public async Task SingleApplicationContext_ResolvesFixedApplication_AndSetsScope()
+    public async Task SingleProjectContext_ResolvesFixedApplication_AndSetsScope()
     {
         await MigrateAndSeedAsync();
         await using var scope = NewScope();
-        var app = await scope.ServiceProvider.GetRequiredService<IApplicationContext>().GetRequiredAsync();
+        var app = await scope.ServiceProvider.GetRequiredService<IProjectContext>().GetRequiredAsync();
         app.ProjectKey.ShouldBe("default");
-        scope.ServiceProvider.GetRequiredService<IApplicationScope>().ApplicationId.ShouldBe(app.Id);
+        scope.ServiceProvider.GetRequiredService<IProjectScope>().ProjectId.ShouldBe(app.Id);
     }
 
     [Fact]
@@ -185,6 +188,6 @@ public class SeederSingleModeTests : ServerTestBase
         await MigrateAndSeedAsync();
         await using var scope = NewScope();
         await Should.ThrowAsync<InvalidOperationException>(() =>
-            scope.ServiceProvider.GetRequiredService<IApplicationService>().CreateAsync("another", "Another", null, null));
+            scope.ServiceProvider.GetRequiredService<IProjectService>().CreateWithApplicationAsync("another", "Another", null, null));
     }
 }

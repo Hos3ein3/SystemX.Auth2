@@ -1,0 +1,120 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: auth2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auth2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth2"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: auth2-pgadmin
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@systemx.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-Admin123$!}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+
+  redis:
+    image: redis:7-alpine
+    container_name: auth2-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: src/SystemX.Auth2.Server/Dockerfile
+    container_name: auth2-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__Auth2: Host=postgres;Port=5432;Database=auth2;Username=postgres;Password=postgres
+      Auth2__Mode: MultiProject
+      Auth2__AutoMigrate: "true"
+      Auth2__AutoSeed: "true"
+      Auth2__Redis__ConnectionString: redis:6379
+      Auth2__Security__ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    ports:
+      - "${SERVER_PORT:-5100}:5000"
+
+  sample-mvc:
+    build:
+      context: .
+      dockerfile: samples/SystemX.Auth2.Samples.Mvc/Dockerfile
+    container_name: auth2-samples-mvc
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5001
+      Auth2__ServerUrl: http://server:5000
+      Auth2__PublicServerUrl: http://localhost:5100
+      Auth2__ApplicationName: MvcSample
+      Auth2__ClientId: mvc-sample
+      Auth2__ClientSecret: mvc-sample-secret
+      Auth2__ProjectKey: sample-project
+      Auth2__OnServerUnavailable: Continue
+      Auth2__OnProjectNotFound: Continue
+    ports:
+      - "${MVC_PORT:-5101}:5001"
+
+  sample-minimalapi:
+    build:
+      context: .
+      dockerfile: samples/SystemX.Auth2.Samples.MinimalApi/Dockerfile
+    container_name: auth2-samples-minimalapi
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5002
+      Auth2__ServerUrl: http://server:5000
+      Auth2__PublicServerUrl: http://localhost:5100
+      Auth2__ApplicationName: MinimalApiSample
+      Auth2__ClientId: minimal-api-sample
+      Auth2__ClientSecret: minimal-api-sample-secret
+      Auth2__ProjectKey: sample-project
+      Auth2__OnServerUnavailable: Continue
+      Auth2__OnProjectNotFound: Continue
+    ports:
+      - "${MINIMAL_API_PORT:-5102}:5002"
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  redis_data:

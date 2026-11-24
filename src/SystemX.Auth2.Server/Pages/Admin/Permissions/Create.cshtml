@@ -1,0 +1,50 @@
+@page "/admin/p/{projectKey}/permissions/create"
+@model SystemX.Auth2.Server.Pages.Admin.Permissions.CreateModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"New Permission - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-xl mx-auto space-y-6">
+    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+        <a href="/admin/p/@Model.ProjectKey/permissions" class="hover:underline">Permissions</a>
+        <span>/</span>
+        <span class="text-gray-900 font-medium">Create</span>
+    </div>
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Create New Permission</h1>
+        <p class="mt-1 text-sm text-gray-500">Add a custom permission key to @Model.CurrentProject?.Name.</p>
+    </div>
+
+    <a2-card>
+        <form method="post" class="space-y-4">
+            <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
+
+            <a2-field label="Permission Key (Immutable)" required="true" hint="e.g. orders.read, invoices.cancel. Lowercase with dots.">
+                <a2-input name="Input.Key" value="@Model.Input.Key" required="true" placeholder="resource.action" />
+            </a2-field>
+
+            <a2-field label="Display Name" hint="Human-readable title.">
+                <a2-input name="Input.DisplayName" value="@Model.Input.DisplayName" placeholder="Read Orders" />
+            </a2-field>
+
+            <a2-field label="Category / Group" hint="Groups permissions together in selection lists (e.g. orders, billing).">
+                <a2-input name="Input.Group" value="@Model.Input.Group" placeholder="orders" />
+            </a2-field>
+
+            <a2-field label="Description">
+                <a2-textarea name="Input.Description" value="@Model.Input.Description" rows="3" placeholder="Allows viewing order details" />
+            </a2-field>
+
+            <div class="pt-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <a2-link-button href="/admin/p/@Model.ProjectKey/permissions" variant="secondary">
+                    Cancel
+                </a2-link-button>
+                <a2-button type="submit" variant="primary">
+                    Create Permission
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

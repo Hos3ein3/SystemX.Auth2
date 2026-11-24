@@ -1,3 +1,93 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.IndexModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAccount";
+    ViewData["Title"] = "Account Overview";
+}
+
+<div class="space-y-6">
+    <div>
+        <h2 class="text-xl font-bold text-gray-900">Account Overview</h2>
+        <p class="mt-1 text-sm text-gray-500">Manage your profile, credentials, and active sessions.</p>
+    </div>
+
+    <a2-card title="Profile Information">
+        <dl class="divide-y divide-gray-200 text-sm">
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Username</dt>
+                <dd class="text-gray-900 sm:col-span-2">@(Model.UserName ?? "Not set")</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Email address</dt>
+                <dd class="flex items-center justify-between sm:col-span-2">
+                    <span class="text-gray-900">@Model.Email</span>
+                    @if (Model.EmailConfirmed)
+                    {
+                        <a2-badge variant="success">Verified</a2-badge>
+                    }
+                    else
+                    {
+                        <span class="inline-flex items-center space-x-2">
+                            <a2-badge variant="warning">Unverified</a2-badge>
+                            <a href="/Account/ConfirmEmail" class="text-xs text-blue-600 hover:underline">Verify</a>
+                        </span>
+                    }
+                </dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Phone number</dt>
+                <dd class="flex items-center justify-between sm:col-span-2">
+                    <span class="text-gray-900">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "Not set" : Model.PhoneNumber)</span>
+                    @if (!string.IsNullOrEmpty(Model.PhoneNumber))
+                    {
+                        @if (Model.PhoneConfirmed)
+                        {
+                            <a2-badge variant="success">Verified</a2-badge>
+                        }
+                        else
+                        {
+                            <span class="inline-flex items-center space-x-2">
+                                <a2-badge variant="warning">Unverified</a2-badge>
+                                <a href="/Account/ConfirmPhone" class="text-xs text-blue-600 hover:underline">Verify</a>
+                            </span>
+                        }
+                    }
+                </dd>
+            </div>
+        </dl>
+    </a2-card>
+
+    <a2-card title="Security Status">
+        <dl class="divide-y divide-gray-200 text-sm">
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Password</dt>
+                <dd class="flex items-center justify-between sm:col-span-2">
+                    <span class="text-gray-900">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span>
+                    <a href="/Manage/ChangePassword" class="text-xs text-blue-600 hover:underline">Change Password</a>
+                </dd>
+            </div>
+            @if (Model.ShowTwoFactor)
+            {
+                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                    <dt class="font-medium text-gray-500">Two-Factor Authentication</dt>
+                    <dd class="flex items-center justify-between sm:col-span-2">
+                        @if (Model.TwoFactorEnabled)
+                        {
+                            <span class="flex items-center space-x-2">
+                                <a2-badge variant="success">Enabled</a2-badge>
+                                <a href="/Manage/TwoFactor/RecoveryCodes" class="text-xs text-gray-600 hover:underline ml-2">Recovery Codes</a>
+                            </span>
+                        }
+                        else
+                        {
+                            <a2-badge variant="neutral">Disabled</a2-badge>
+                        }
+                        <a href="/Manage/TwoFactor/Enable" class="text-xs text-blue-600 hover:underline">
+                            @(Model.TwoFactorEnabled ? "Manage 2FA" : "Set up 2FA")
+                        </a>
+                    </dd>
+                </div>
+            }
+        </dl>
+    </a2-card>
+</div>

@@ -31,16 +31,16 @@ internal sealed class ExternalLoginService(
     /// <inheritdoc />
     public async Task<ExternalLoginOutcome> HandleAsync(ExternalLoginRequest request, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var id = request.Identity;
-        if (!app.IsEnabled) return await RefuseAsync(app, request, Auth2ErrorCodes.ApplicationDisabled, "application_disabled", ct);
+        if (!app.IsEnabled) return await RefuseAsync(app, request, Auth2ErrorCodes.ProjectDisabled, "project_disabled", ct);
         if (string.IsNullOrWhiteSpace(id.Subject)) return await RefuseAsync(app, request, Auth2ErrorCodes.ExternalClaimsInvalid, "subject_missing", ct);
         var current = registry.Get(app.Id, request.Provider.Name);
         if (current is null) return await RefuseAsync(app, request, Auth2ErrorCodes.ExternalProviderDisabled, "provider_disabled", ct);
         return await DecideAsync(app, request with { Provider = current }, emailProven: false, ct);
     }
 
-    private async Task<ExternalLoginOutcome> DecideAsync(Auth2Application app, ExternalLoginRequest request, bool emailProven, CancellationToken ct)
+    private async Task<ExternalLoginOutcome> DecideAsync(Project app, ExternalLoginRequest request, bool emailProven, CancellationToken ct)
     {
         var settings = await flow.GetSettingsAsync(ct);
         var p = request.Provider;
@@ -96,9 +96,9 @@ internal sealed class ExternalLoginService(
     public async Task<bool> SendEmailConfirmationAsync(string pendingToken, string emailAddress, string confirmUrlBase, CancellationToken ct = default)
     {
         if (ReadPending(pendingToken) is null || !IsEmail(emailAddress)) return false;
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var token = Confirm.Protect(JsonSerializer.Serialize(new { p = pendingToken, e = emailAddress.Trim() }), PendingLifetime);
-        var link = urls.Build(confirmUrlBase, [new("ConfirmationToken", token), new("ClientId", app.ClientId)]);
+        var link = urls.Build(confirmUrlBase, [new("ConfirmationToken", token), new("ClientId", (await flow.GetClientAsync(ct))?.ClientId)]);
         var brand = app.Settings.Localization.BrandName ?? app.Name;
         await email.SendAsync(new EmailMessage(emailAddress.Trim(), text["external_confirm_email.subject"].Value,
             text["external_confirm_email.body", brand, link].Value, new Dictionary<string, string> { ["token"] = token, ["link"] = link }), ct);
@@ -128,7 +128,7 @@ internal sealed class ExternalLoginService(
 
     private async Task<ExternalLoginOutcome> CompleteWithEmailAsync(string pendingToken, string emailAddress, CancellationToken ct, bool proven)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var pending = ReadPending(pendingToken);
         if (pending is null || !IsEmail(emailAddress)) return new ExternalLoginOutcome { ErrorCode = Auth2ErrorCodes.InvalidToken };
         var provider = registry.Get(app.Id, pending.Provider);
@@ -152,7 +152,7 @@ internal sealed class ExternalLoginService(
 
     // ------------------------------------------------------------------------------- helpers
 
-    private async Task<AppUser?> CreateUserAsync(Auth2Application app, ExternalLoginRequest request, string? email, bool emailVerified, CancellationToken ct)
+    private async Task<AppUser?> CreateUserAsync(Project app, ExternalLoginRequest request, string? email, bool emailVerified, CancellationToken ct)
     {
         var id = request.Identity;
         var (first, last) = (id.FirstName, id.LastName);
@@ -192,11 +192,11 @@ internal sealed class ExternalLoginService(
         return sb.Length > 32 ? sb.ToString(0, 32) : sb.ToString();
     }
 
-    private async Task EnsureMembershipAsync(AppUser user, Auth2Application app, CancellationToken ct)
+    private async Task EnsureMembershipAsync(AppUser user, Project app, CancellationToken ct)
     {
-        if (options.Value.Mode == ServerMode.SingleApplication) return;
-        if (await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == app.Id, ct)) return;
-        db.UserApplications.Add(new UserApplication { UserId = user.Id, ApplicationId = app.Id, JoinedAtUtc = clock.GetUtcNow(), Status = UserApplicationStatus.Active, LockoutEnabled = true, SecurityStamp = Guid.NewGuid().ToString("N") });
+        if (options.Value.Mode == ServerMode.SingleProject) return;
+        if (await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == app.Id, ct)) return;
+        db.UserProjects.Add(new UserProject { UserId = user.Id, ProjectId = app.Id, JoinedAtUtc = clock.GetUtcNow(), Status = UserProjectStatus.Active, LockoutEnabled = true, SecurityStamp = Guid.NewGuid().ToString("N") });
         await db.SaveChangesAsync(ct);
     }
 
@@ -210,14 +210,14 @@ internal sealed class ExternalLoginService(
         if (changed) await users.UpdateAsync(user);
     }
 
-    private async Task<ExternalLoginOutcome> RefuseAsync(Auth2Application app, ExternalLoginRequest r, string code, string reason, CancellationToken ct)
+    private async Task<ExternalLoginOutcome> RefuseAsync(Project app, ExternalLoginRequest r, string code, string reason, CancellationToken ct)
     {
         await audit.WriteAsync(Entry(r.IsDirectoryLogin ? "ldap.login.failed" : "external.login.failed", app, null, r,
             new() { ["provider"] = r.Provider.Name, ["code"] = code, ["reason"] = reason }), ct);
         return new ExternalLoginOutcome { ErrorCode = code, ReturnUrl = r.ReturnUrl };
     }
 
-    private static AuditEntry Entry(string action, Auth2Application app, AppUser? user, ExternalLoginRequest r, Dictionary<string, object?> data) =>
+    private static AuditEntry Entry(string action, Project app, AppUser? user, ExternalLoginRequest r, Dictionary<string, object?> data) =>
         new(action, app.Id, ActorUserId: user?.Id, TargetType: user is null ? null : "user", TargetId: user?.Id.ToString(), IpAddress: r.IpAddress, UserAgent: r.UserAgent, Data: data);
 }
 
@@ -228,7 +228,7 @@ internal sealed class ExternalMappingService(
     /// <inheritdoc />
     public async Task<int> ApplyAsync(Guid applicationId, string providerName, AppUser user, ExternalIdentity identity, CancellationToken ct = default)
     {
-        var maps = await db.ExternalGroupMappings.Where(m => m.ApplicationId == applicationId && (m.ProviderName == null || m.ProviderName == providerName)).ToListAsync(ct);
+        var maps = await db.ExternalGroupMappings.Where(m => m.ProjectId == applicationId && (m.ProviderName == null || m.ProviderName == providerName)).ToListAsync(ct);
         if (maps.Count == 0) return 0;
 
         var wanted = new HashSet<(MappingTargetType, Guid)>();
@@ -240,9 +240,9 @@ internal sealed class ExternalMappingService(
         }
 
         // names of the targets (only inside this application; system roles and the GlobalAdmin role can never be given)
-        var roles = await db.Roles.Where(r => r.ApplicationId == applicationId && !r.IsSystem && r.Name != Auth2Roles.GlobalAdmin).ToDictionaryAsync(r => r.Id, r => r.Name!, ct);
-        var groupNames = await db.Groups.Where(g => g.ApplicationId == applicationId).ToDictionaryAsync(g => g.Id, g => g.Name, ct);
-        var permissionKeys = await db.Permissions.Where(x => x.ApplicationId == applicationId).ToDictionaryAsync(x => x.Id, x => x.Key, ct);
+        var roles = await db.Roles.Where(r => r.ProjectId == applicationId && !r.IsSystem && r.Name != Auth2Roles.GlobalAdmin).ToDictionaryAsync(r => r.Id, r => r.Name!, ct);
+        var groupNames = await db.Groups.Where(g => g.ProjectId == applicationId).ToDictionaryAsync(g => g.Id, g => g.Name, ct);
+        var permissionKeys = await db.Permissions.Where(x => x.ProjectId == applicationId).ToDictionaryAsync(x => x.Id, x => x.Key, ct);
 
         var currentRoles = (await users.GetRolesAsync(user)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var currentGroups = (await db.UserGroups.Where(x => x.UserId == user.Id).Select(x => x.GroupId).ToListAsync(ct)).ToHashSet();
@@ -307,7 +307,7 @@ internal sealed class ExternalLinkService(UserManager<AppUser> users, Auth2DbCon
     /// <inheritdoc />
     public async Task<OperationResult> LinkAsync(AppUser user, ExternalIdentity identity, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var owner = await users.FindByLoginAsync(identity.Provider, identity.Subject);
         if (owner is not null) return OperationResult.Fail(owner.Id == user.Id ? Auth2ErrorCodes.Conflict : Auth2ErrorCodes.ExternalClaimsInvalid);
         var display = registry.Get(app.Id, identity.Provider)?.Settings.DisplayName ?? identity.Provider;
@@ -321,7 +321,7 @@ internal sealed class ExternalLinkService(UserManager<AppUser> users, Auth2DbCon
     /// <inheritdoc />
     public async Task<OperationResult> UnlinkAsync(AppUser user, string providerName, string providerKey, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         var logins = await users.GetLoginsAsync(user);
         if (!logins.Any(l => l.LoginProvider == providerName && l.ProviderKey == providerKey)) return OperationResult.Fail(Auth2ErrorCodes.NotFound);

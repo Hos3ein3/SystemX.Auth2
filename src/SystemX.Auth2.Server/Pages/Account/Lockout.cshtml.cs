@@ -10,7 +10,7 @@ public sealed class LockoutModel(IClientIdAccessor clientId, IAuthFlowResolver f
     /// <summary>Loads the application (for the brand name and the support email).</summary>
     public async Task<IActionResult> OnGetAsync()
     {
-        await LoadApplicationAsync();
+        await LoadProjectAsync();
         Response.StatusCode = StatusCodes.Status200OK;
         return Page();
     }

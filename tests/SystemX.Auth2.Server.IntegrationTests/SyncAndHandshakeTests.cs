@@ -29,7 +29,7 @@ public class HandshakeTests : Phase6Base
         var (status, body) = await HandshakeAsync(await ClientTokenAsync("appa", Scope), "appa", "App A");
         status.ShouldBe(HttpStatusCode.OK, body.ToString());
         body.Str("projectKey").ShouldBe("appa");
-        body.Str("serverMode").ShouldBe("MultiApplication");
+        body.Str("serverMode").ShouldBe("MultiProject");
         body.Str("applicationName").ShouldBe("App A");
         body.GetProperty("singleActiveSession").GetBoolean().ShouldBeTrue();
         body.Str("cookieLifetime").ShouldBe("01:30:00");
@@ -81,12 +81,12 @@ public class HandshakeTests : Phase6Base
         {
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            await db.Applications.Where(a => a.Id == A.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.IsEnabled, false));
+            await db.Projects.Where(a => a.Id == A.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.IsEnabled, false));
         }
         scopeCacheNote();
         var (status, body) = await HandshakeAsync(token, "appa", "App A");
         status.ShouldBe(HttpStatusCode.Forbidden);
-        body.Str("code").ShouldBe(Auth2ErrorCodes.ApplicationDisabled);
+        body.Str("code").ShouldBe(Auth2ErrorCodes.ProjectDisabled);
 
         static void scopeCacheNote() { }
     }
@@ -103,10 +103,10 @@ public class SingleModeHandshakeTests : IdentityTestBase
         string secret, name;
         await using (var scope = NewScope())
         {
-            secret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateClientSecretAsync("default");
+            secret = await scope.ServiceProvider.GetRequiredService<IApplicationService>().RotateSecretAsync("default");
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            name = (await db.Applications.SingleAsync(a => a.ProjectKey == "default")).Name;
+            name = (await db.Projects.SingleAsync(a => a.ProjectKey == "default")).Name;
         }
         var b = new Browser(Factory);
         var t = await b.PostFormAsync("/connect/token", new Dictionary<string, string>
@@ -118,7 +118,7 @@ public class SingleModeHandshakeTests : IdentityTestBase
         var ok = await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest(null, name, "1.0"), token);
         ok.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = JsonDocument.Parse(await ok.Content.ReadAsStringAsync()).RootElement;
-        body.Str("serverMode").ShouldBe("SingleApplication");
+        body.Str("serverMode").ShouldBe("SingleProject");
         body.TryGetProperty("projectKey", out var key).ShouldBeTrue();
         key.ValueKind.ShouldBe(JsonValueKind.Null);
 
@@ -138,12 +138,12 @@ public class PermissionSyncTests : Phase6Base
     private async Task<(HttpStatusCode Status, JsonElement Body)> SyncPermsAsync(string token, params PermissionDefinition[] items) =>
         await CallAsync(new Browser(Factory), Auth2Routes.PermissionsSync, new PermissionSyncRequest(items), token);
 
-    private async Task<List<Permission>> PermsAsync(Auth2Application app)
+    private async Task<List<Permission>> PermsAsync(Project app)
     {
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        return await db.Permissions.Where(p => p.ApplicationId == app.Id).OrderBy(p => p.Key).ToListAsync();
+        return await db.Permissions.Where(p => p.ProjectId == app.Id).OrderBy(p => p.Key).ToListAsync();
     }
 
     [Fact]
@@ -323,7 +323,7 @@ public class RoleSyncTests : Phase6Base
         await PrepareAppsAsync();
         var token = await ClientTokenAsync("appa", Scope);
         await SyncRolesAsync(token, new RoleDefinition("Editor"));
-        async Task<int> Version() { await using var s = NewScope(); var db = s.ServiceProvider.GetRequiredService<Auth2DbContext>(); using var _ = s.ServiceProvider.GetRequiredService<IGlobalScope>().Begin(); return (await db.Applications.AsNoTracking().SingleAsync(a => a.Id == A.Id)).AccessVersion; }
+        async Task<int> Version() { await using var s = NewScope(); var db = s.ServiceProvider.GetRequiredService<Auth2DbContext>(); using var _ = s.ServiceProvider.GetRequiredService<IGlobalScope>().Begin(); return (await db.Projects.AsNoTracking().SingleAsync(a => a.Id == A.Id)).AccessVersion; }
         var before = await Version();
         await SyncRolesAsync(token, new RoleDefinition("Editor", null, null, ["a.one"]));
         (await Version()).ShouldBeGreaterThan(before);
@@ -415,7 +415,7 @@ public class UserAccessEndpointTests : Phase6Base
     public async Task MachineWithAdminScope_ReadsOneUsersAccess_OnlyInItsApplication()
     {
         await PrepareAppsAsync();
-        foreach (var app in new[] { A, B }) await UpdateSettingsAsync(app, s => s.Clients.AllowedScopes.Add("auth2.admin"));
+        foreach (var app in new[] { A, B }) await UpdateSettingsAsync(app, s => s.AllowedScopes.Add("auth2.admin"));
         var reg = await ClientTokenAsync("appa", "auth2.register");
         var user = (await CallAsync(new Browser(Factory), Auth2Routes.Register, new RegisterRequest("sara", "sara@example.com", null, PassA), reg)).Body;
         var id = user.GetProperty("userId").GetGuid();

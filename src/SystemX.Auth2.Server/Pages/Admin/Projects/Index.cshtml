@@ -1,0 +1,85 @@
+@page "/admin/projects"
+@model SystemX.Auth2.Server.Pages.Admin.Projects.IndexModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = "Global Projects Management";
+}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Projects Directory</h1>
+            <p class="mt-1 text-sm text-gray-500">Manage all tenant projects across the Auth2 system.</p>
+        </div>
+        <a2-link-button href="/admin/projects/create" variant="primary">
+            + New Project
+        </a2-link-button>
+    </div>
+
+    <!-- Filter bar -->
+    <form method="get" class="flex flex-wrap items-center gap-3">
+        <a2-search name="q" value="@Model.Q" placeholder="Search by name or key..." />
+        <a2-page-size value="@Model.PageSize" />
+        <a2-button type="submit" variant="secondary">Filter</a2-button>
+    </form>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">
+                        <a2-sort-header field="name" label="Name" currentSort="@Model.Sort" descending="@Model.Desc" />
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">
+                        <a2-sort-header field="key" label="Key" currentSort="@Model.Sort" descending="@Model.Desc" />
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Status</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">
+                        <a2-sort-header field="createdAt" label="Created" currentSort="@Model.Sort" descending="@Model.Desc" />
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @if (Model.Projects.Items.Count > 0)
+                {
+                    @foreach (var p in Model.Projects.Items)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-medium text-gray-900">
+                                <a href="/admin/p/@p.ProjectKey" class="text-blue-600 hover:underline">@p.Name</a>
+                            </td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-600">@p.ProjectKey</td>
+                            <td class="px-6 py-4">
+                                @if (p.IsEnabled)
+                                {
+                                    <a2-badge variant="success">Enabled</a2-badge>
+                                }
+                                else
+                                {
+                                    <a2-badge variant="danger">Disabled</a2-badge>
+                                }
+                            </td>
+                            <td class="px-6 py-4 text-gray-500">@p.CreatedAtUtc.ToString("g")</td>
+                            <td class="px-6 py-4 text-right space-x-2">
+                                <a href="/admin/p/@p.ProjectKey" class="text-blue-600 hover:underline font-medium">Dashboard</a>
+                                <span class="text-gray-300">|</span>
+                                <a href="/admin/projects/detail?id=@p.Id" class="text-gray-600 hover:underline">Settings</a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            No projects match the search criteria.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <a2-pager page="@Model.Projects.Page" pageSize="@Model.Projects.PageSize" totalCount="@Model.Projects.TotalCount" totalPages="@Model.Projects.TotalPages" />
+</div>

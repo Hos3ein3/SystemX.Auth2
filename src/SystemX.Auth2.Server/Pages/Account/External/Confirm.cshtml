@@ -1,3 +1,52 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.External.ConfirmModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Confirm Account Email";
+}
+
+<div class="space-y-6">
+    <div class="text-center">
+        <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">
+            Confirm Your Email
+        </h2>
+        <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)]">
+            Your identity provider did not supply a verified email. Please provide your email to continue.
+        </p>
+    </div>
+
+    @if (Model.EmailSent)
+    {
+        <div class="text-center space-y-4">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <a2-alert variant="success">
+                A verification email has been sent. Please check your inbox and click the link to finish signing in.
+            </a2-alert>
+        </div>
+    }
+    else
+    {
+        <form method="post" class="space-y-4">
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+            <input type="hidden" name="PendingToken" value="@Model.PendingToken" />
+
+            <a2-field label="Email Address" required="true">
+                <a2-input name="Email" type="email" value="@Model.Email" required="true" placeholder="you@example.com" autocomplete="email" />
+            </a2-field>
+
+            <a2-button type="submit" variant="primary" class="w-full">
+                Send Confirmation Link
+            </a2-button>
+
+            <div class="text-center pt-2">
+                <a href="@Url.Page("/Account/Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
+                    Back to Sign In
+                </a>
+            </div>
+        </form>
+    }
+</div>

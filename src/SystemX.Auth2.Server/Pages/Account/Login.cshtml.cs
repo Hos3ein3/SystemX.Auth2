@@ -1,14 +1,16 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Infrastructure.Auth;
 
 namespace SystemX.Auth2.Server.Pages.Account;
 
 /// <summary>Sign-in page of the hosted UI. All rules are in <see cref="ILoginService"/>.</summary>
-public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flow, IReturnUrlValidator urls, IAuth2Localizer text, ILoginService login)
+public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flow, IReturnUrlValidator urls, IAuth2Localizer text, ILoginService login, UserManager<AppUser> users)
     : Auth2PageModel(clientId, flow, urls, text)
 {
     /// <summary>Form input.</summary>
@@ -22,6 +24,15 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
     public bool ShowPhoneField { get; private set; }
     /// <summary>Show a link to the register page.</summary>
     public bool ShowRegisterLink { get; private set; }
+
+    /// <summary>True when developer login prompt modal should be shown.</summary>
+    public bool ShowDeveloperModal { get; private set; }
+
+    /// <summary>Target redirect url (RedirectAfterLogin).</summary>
+    public string RedirectAfterLoginUrl { get; private set; } = "/";
+
+    /// <summary>Developer dashboard url.</summary>
+    public string DeveloperDashboardUrl { get; private set; } = "/";
 
     /// <summary>The form fields.</summary>
     public sealed class InputModel
@@ -52,16 +63,30 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
 
         if (result.Succeeded)
         {
-            await Auth2Cookie.SignInAsync(HttpContext, result.User!, Application!, Settings, result.Amr, result.SessionId);
-            return Redirect(ResolveRedirect(Settings.Redirects.RedirectAfterLogin));
+            await Auth2Cookie.SignInAsync(HttpContext, result.User!, Project!, Client, Effective, result.Amr, result.SessionId);
+
+            var isDeveloper = await users.IsInRoleAsync(result.User!, Auth2Roles.Developer)
+                           || await users.IsInRoleAsync(result.User!, Auth2Roles.GlobalAdmin);
+
+            var targetRedirect = ResolveRedirect(Settings.Redirects.RedirectAfterLogin);
+
+            if (isDeveloper)
+            {
+                ShowDeveloperModal = true;
+                RedirectAfterLoginUrl = targetRedirect;
+                DeveloperDashboardUrl = "/";
+                return Page();
+            }
+
+            return Redirect(targetRedirect);
         }
         switch (result.ErrorCode)
         {
             case Auth2ErrorCodes.TwoFactorRequired:
                 TempData["TwoFactorToken"] = result.TwoFactorToken;
-                return RedirectToPage("TwoFactor", new { ReturnUrl, ClientId = Application!.ClientId });
+                return RedirectToPage("TwoFactor", new { ReturnUrl, ClientId = ClientIdForLinks });
             case Auth2ErrorCodes.LockedOut:
-                return RedirectToPage("Lockout", new { ReturnUrl, ClientId = Application!.ClientId });
+                return RedirectToPage("Lockout", new { ReturnUrl, ClientId = ClientIdForLinks });
             default:
                 Fail(result.ErrorCode ?? Auth2ErrorCodes.InvalidCredentials, StatusCodes.Status400BadRequest);
                 return Page();
@@ -70,7 +95,7 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
 
     private async Task<bool> PrepareAsync()
     {
-        if (!await LoadApplicationAsync()) return false;
+        if (!await LoadProjectAsync()) return false;
         var methods = Settings.Methods.AllowedLoginMethods;
         ShowUserNameLogin = methods.Contains(LoginMethod.UserNamePassword);
         ShowEmailLogin = methods.Contains(LoginMethod.EmailPassword);

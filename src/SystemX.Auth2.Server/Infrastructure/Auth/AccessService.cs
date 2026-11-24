@@ -76,8 +76,8 @@ internal static class AccessSupport
             return result;
         });
 
-    /// <summary>Global roles are visible in the global project and in single-application mode.</summary>
-    public static bool IncludeGlobalRoles(Auth2Application app, ServerMode mode) => app.IsGlobalProject || mode == ServerMode.SingleApplication;
+    /// <summary>Global roles are visible in the global project and in single-project mode.</summary>
+    public static bool IncludeGlobalRoles(Project app, ServerMode mode) => app.IsGlobalProject || mode == ServerMode.SingleProject;
 }
 
 /// <summary>
@@ -96,18 +96,18 @@ internal sealed class AccessService(
 
     public async Task<int> GetAccessVersionAsync(AppUser user, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         // Read the application's version from the database every time, so another instance's change is seen at once.
-        var appVersion = await db.Applications.AsNoTracking().Where(a => a.Id == app.Id).Select(a => a.AccessVersion).FirstAsync(ct);
-        if (Mode != ServerMode.MultiApplication) return appVersion;
-        var userVersion = await db.UserApplications.AsNoTracking().Where(x => x.UserId == user.Id && x.ApplicationId == app.Id)
+        var appVersion = await db.Projects.AsNoTracking().Where(a => a.Id == app.Id).Select(a => a.AccessVersion).FirstAsync(ct);
+        if (Mode != ServerMode.MultiProject) return appVersion;
+        var userVersion = await db.UserProjects.AsNoTracking().Where(x => x.UserId == user.Id && x.ProjectId == app.Id)
             .Select(x => (int?)x.UserAccessVersion).FirstOrDefaultAsync(ct);
         return appVersion + (userVersion ?? 0);
     }
 
     public async Task<EffectiveAccess> GetEffectiveAccessAsync(AppUser user, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var version = await GetAccessVersionAsync(user, ct);
         var key = $"auth2:access:{app.Id:N}:{user.Id:N}:{version}";
         if (cache.TryGetValue(key, out EffectiveAccess? hit) && hit is not null) return hit;
@@ -117,9 +117,9 @@ internal sealed class AccessService(
         return access;
     }
 
-    private async Task<EffectiveAccess> LoadAsync(AppUser user, Auth2Application app, int version, CancellationToken ct)
+    private async Task<EffectiveAccess> LoadAsync(AppUser user, Project app, int version, CancellationToken ct)
     {
-        if (Mode == ServerMode.MultiApplication && !await db.UserApplications.AsNoTracking().AnyAsync(x => x.UserId == user.Id && x.ApplicationId == app.Id, ct))
+        if (Mode == ServerMode.MultiProject && !await db.UserProjects.AsNoTracking().AnyAsync(x => x.UserId == user.Id && x.ProjectId == app.Id, ct))
             return new EffectiveAccess([], [], [], version, [], []);   // not a member of this application: no access
 
         var includeGlobal = AccessSupport.IncludeGlobalRoles(app, Mode);
@@ -132,7 +132,7 @@ internal sealed class AccessService(
         var directRoleIds = db.UserRoles.AsNoTracking().Where(ur => ur.UserId == user.Id).Select(ur => ur.RoleId);
         var groupRoleIds = db.GroupRoles.AsNoTracking().Where(gr => groupIds.Contains(gr.GroupId)).Select(gr => gr.RoleId);
         var roleRows = await db.Roles.AsNoTracking()
-            .Where(r => (directRoleIds.Contains(r.Id) || groupRoleIds.Contains(r.Id)) && (r.ApplicationId == app.Id || (includeGlobal && r.ApplicationId == null)))
+            .Where(r => (directRoleIds.Contains(r.Id) || groupRoleIds.Contains(r.Id)) && (r.ProjectId == app.Id || (includeGlobal && r.ProjectId == null)))
             .Select(r => new { r.Id, r.Name }).ToListAsync(ct);
         var roleIds = roleRows.Select(r => r.Id).ToList();
 
@@ -168,23 +168,23 @@ internal sealed class AccessService(
 
     public async Task<IReadOnlyList<PermissionDto>> ListPermissionsAsync(CancellationToken ct = default)
     {
-        await flow.GetApplicationAsync(ct);
+        await flow.GetProjectAsync(ct);
         return await db.Permissions.AsNoTracking().OrderBy(p => p.Key)
             .Select(p => new PermissionDto(p.Key, p.DisplayName, p.Description, p.Group, p.IsObsolete)).ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<RoleDto>> ListRolesAsync(CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var includeGlobal = AccessSupport.IncludeGlobalRoles(app, Mode);
-        var rows = await db.Roles.AsNoTracking().Where(r => r.ApplicationId == app.Id || (includeGlobal && r.ApplicationId == null))
+        var rows = await db.Roles.AsNoTracking().Where(r => r.ProjectId == app.Id || (includeGlobal && r.ProjectId == null))
             .OrderBy(r => r.Name).ToListAsync(ct);
         var ids = rows.Select(r => r.Id).ToList();
         var perms = await (from rp in db.RolePermissions.AsNoTracking()
                            join p in db.Permissions.AsNoTracking() on rp.PermissionId equals p.Id
                            where ids.Contains(rp.RoleId)
                            select new { rp.RoleId, p.Key }).ToListAsync(ct);
-        return [.. rows.Select(r => new RoleDto(r.Name!, r.Description, r.ApplicationId is null, r.IsSystem,
+        return [.. rows.Select(r => new RoleDto(r.Name!, r.Description, r.ProjectId is null, r.IsSystem,
             Sorted(perms.Where(p => p.RoleId == r.Id).Select(p => p.Key))))];
     }
 
@@ -192,14 +192,14 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> CreatePermissionAsync(PermissionDefinition definition, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var key = AccessKeys.NormalizePermissionKey(definition.Key);
         if (key is null) return OperationResult.Fail(Auth2ErrorCodes.InvalidPermissionKey);
         if (await db.Permissions.AnyAsync(p => p.Key == key, ct)) return OperationResult.Ok;
 
         db.Permissions.Add(new Permission
         {
-            ApplicationId = app.Id, Key = key, DisplayName = definition.DisplayName, Description = definition.Description,
+            ProjectId = app.Id, Key = key, DisplayName = definition.DisplayName, Description = definition.Description,
             Group = definition.Group, Source = PermissionSource.Manual,
         });
         try { await db.SaveChangesAsync(ct); }
@@ -210,7 +210,7 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> SetPermissionObsoleteAsync(string permissionKey, bool obsolete, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (permission is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         if (permission.IsObsolete == obsolete) return OperationResult.Ok;
@@ -222,19 +222,19 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> DeletePermissionAsync(string permissionKey, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (permission is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         db.Permissions.Remove(permission);   // links are removed by the cascade
         await db.SaveChangesAsync(ct);
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("permission.deleted", app, "permission", permission.Key, ct);
         return OperationResult.Ok;
     }
 
     public async Task<OperationResult> GrantPermissionAsync(AppUser user, string permissionKey, Guid? grantedBy = null, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (permission is null) return OperationResult.Fail(AccessKeys.NormalizePermissionKey(permissionKey) is null ? Auth2ErrorCodes.InvalidPermissionKey : Auth2ErrorCodes.NotFound);
         if (!await IsMemberAsync(user, app, ct)) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
@@ -242,7 +242,7 @@ internal sealed class AccessService(
 
         db.UserPermissions.Add(new UserPermission
         {
-            UserId = user.Id, PermissionId = permission.Id, ApplicationId = app.Id, GrantedAtUtc = clock.GetUtcNow(), GrantedBy = grantedBy,
+            UserId = user.Id, PermissionId = permission.Id, ProjectId = app.Id, GrantedAtUtc = clock.GetUtcNow(), GrantedBy = grantedBy,
         });
         if (!await TrySaveAsync(ct)) return OperationResult.Ok;
         await versions.BumpUserAsync(user, ct);
@@ -252,7 +252,7 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> RevokePermissionAsync(AppUser user, string permissionKey, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (permission is null) return OperationResult.Fail(AccessKeys.NormalizePermissionKey(permissionKey) is null ? Auth2ErrorCodes.InvalidPermissionKey : Auth2ErrorCodes.NotFound);
         var removed = await db.UserPermissions.Where(x => x.UserId == user.Id && x.PermissionId == permission.Id).ExecuteDeleteAsync(ct);
@@ -266,8 +266,8 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> CreateRoleAsync(string name, string? description = null, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
-        var result = await roles.CreateAsync(new AppRole(name.Trim()) { ApplicationId = app.Id, Description = description });
+        var app = await flow.GetProjectAsync(ct);
+        var result = await roles.CreateAsync(new AppRole(name.Trim()) { ProjectId = app.Id, Description = description });
         if (!result.Succeeded) return OperationResult.Fail(result.Errors);
         await Audit("role.created", app, "role", name.Trim(), ct);
         return OperationResult.Ok;
@@ -275,20 +275,20 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> DeleteRoleAsync(string name, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var role = await FindVisibleRoleAsync(name, app);
         if (role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         if (role.IsSystem) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
         var result = await roles.DeleteAsync(role);
         if (!result.Succeeded) return OperationResult.Fail(result.Errors);
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("role.deleted", app, "role", role.Name!, ct);
         return OperationResult.Ok;
     }
 
     public async Task<OperationResult> AssignRoleAsync(AppUser user, string roleName, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var role = await FindVisibleRoleAsync(roleName, app);
         if (role is null || !await IsMemberAsync(user, app, ct)) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         if (await users.IsInRoleAsync(user, role.Name!)) return OperationResult.Ok;
@@ -300,7 +300,7 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> RemoveRoleAsync(AppUser user, string roleName, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var role = await FindVisibleRoleAsync(roleName, app);
         if (role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         if (!await users.IsInRoleAsync(user, role.Name!)) return OperationResult.Ok;
@@ -312,27 +312,27 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> AddRolePermissionAsync(string roleName, string permissionKey, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var role = await FindVisibleRoleAsync(roleName, app);
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (role is null || permission is null) return OperationResult.Fail(AccessKeys.NormalizePermissionKey(permissionKey) is null ? Auth2ErrorCodes.InvalidPermissionKey : Auth2ErrorCodes.NotFound);
         if (await db.RolePermissions.AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct)) return OperationResult.Ok;
         db.RolePermissions.Add(new RolePermission { RoleId = role.Id, PermissionId = permission.Id });
         if (!await TrySaveAsync(ct)) return OperationResult.Ok;
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("role.permission_added", app, "role", role.Name!, ct, ("permission", permission.Key));
         return OperationResult.Ok;
     }
 
     public async Task<OperationResult> RemoveRolePermissionAsync(string roleName, string permissionKey, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var role = await FindVisibleRoleAsync(roleName, app);
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (role is null || permission is null) return OperationResult.Fail(AccessKeys.NormalizePermissionKey(permissionKey) is null ? Auth2ErrorCodes.InvalidPermissionKey : Auth2ErrorCodes.NotFound);
         var removed = await db.RolePermissions.Where(x => x.RoleId == role.Id && x.PermissionId == permission.Id).ExecuteDeleteAsync(ct);
         if (removed == 0) return OperationResult.Ok;
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("role.permission_removed", app, "role", role.Name!, ct, ("permission", permission.Key));
         return OperationResult.Ok;
     }
@@ -345,15 +345,15 @@ internal sealed class AccessService(
         return normalized is null ? null : await db.Permissions.FirstOrDefaultAsync(p => p.Key == normalized, ct);
     }
 
-    private async Task<AppRole?> FindVisibleRoleAsync(string name, Auth2Application app)
+    private async Task<AppRole?> FindVisibleRoleAsync(string name, Project app)
     {
         var role = await roles.FindByNameAsync(name.Trim());
         if (role is null) return null;
-        return role.ApplicationId == app.Id || (role.ApplicationId is null && AccessSupport.IncludeGlobalRoles(app, Mode)) ? role : null;
+        return role.ProjectId == app.Id || (role.ProjectId is null && AccessSupport.IncludeGlobalRoles(app, Mode)) ? role : null;
     }
 
-    private async Task<bool> IsMemberAsync(AppUser user, Auth2Application app, CancellationToken ct) =>
-        Mode != ServerMode.MultiApplication || await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == app.Id, ct);
+    private async Task<bool> IsMemberAsync(AppUser user, Project app, CancellationToken ct) =>
+        Mode != ServerMode.MultiProject || await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == app.Id, ct);
 
     /// <summary>Saves. Returns false when a parallel request already did the same insert (unique violation).</summary>
     private async Task<bool> TrySaveAsync(CancellationToken ct)
@@ -362,7 +362,7 @@ internal sealed class AccessService(
         catch (Exception ex) when (AccessSupport.IsUniqueViolation(ex)) { db.ChangeTracker.Clear(); return false; }
     }
 
-    private Task Audit(string action, Auth2Application app, string targetType, string targetId, CancellationToken ct, (string, object?)? extra = null) =>
+    private Task Audit(string action, Project app, string targetType, string targetId, CancellationToken ct, (string, object?)? extra = null) =>
         audit.WriteAsync(new AuditEntry(action, app.Id, TargetType: targetType, TargetId: targetId,
             Data: extra is { } e ? new Dictionary<string, object?> { [e.Item1] = e.Item2 } : null), ct);
 }
@@ -372,7 +372,7 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
 {
     public async Task<IReadOnlyList<GroupDto>> ListAsync(CancellationToken ct = default)
     {
-        await flow.GetApplicationAsync(ct);
+        await flow.GetProjectAsync(ct);
         var groups = await db.Groups.AsNoTracking().OrderBy(g => g.Name).ToListAsync(ct);
         var ids = groups.Select(g => g.Id).ToList();
         var roleRows = await (from gr in db.GroupRoles.AsNoTracking() join r in db.Roles.AsNoTracking() on gr.RoleId equals r.Id
@@ -386,11 +386,11 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
 
     public async Task<OperationResult> CreateAsync(string name, string? displayName = null, string? description = null, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var normalized = AccessKeys.NormalizeGroupName(name);
         if (normalized is null) return OperationResult.Fail(Auth2ErrorCodes.ValidationFailed);
         if (await db.Groups.AnyAsync(g => g.Name == normalized, ct)) return OperationResult.Fail(Auth2ErrorCodes.Conflict);
-        db.Groups.Add(new Group { ApplicationId = app.Id, Name = normalized, DisplayName = displayName, Description = description });
+        db.Groups.Add(new Group { ProjectId = app.Id, Name = normalized, DisplayName = displayName, Description = description });
         try { await db.SaveChangesAsync(ct); }
         catch (Exception ex) when (AccessSupport.IsUniqueViolation(ex)) { db.ChangeTracker.Clear(); return OperationResult.Fail(Auth2ErrorCodes.Conflict); }
         await Audit("group.created", app, normalized, ct);
@@ -399,22 +399,22 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
 
     public async Task<OperationResult> DeleteAsync(string name, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var group = await FindAsync(name, ct);
         if (group is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         db.Groups.Remove(group);   // links are removed by the cascade
         await db.SaveChangesAsync(ct);
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("group.deleted", app, group.Name, ct);
         return OperationResult.Ok;
     }
 
     public async Task<OperationResult> AddUserAsync(string groupName, AppUser user, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var group = await FindAsync(groupName, ct);
         if (group is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
-        if (options.Value.Mode == ServerMode.MultiApplication && !await db.UserApplications.AnyAsync(x => x.UserId == user.Id && x.ApplicationId == app.Id, ct))
+        if (options.Value.Mode == ServerMode.MultiProject && !await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == app.Id, ct))
             return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         if (await db.UserGroups.AnyAsync(x => x.UserId == user.Id && x.GroupId == group.Id, ct)) return OperationResult.Ok;
         db.UserGroups.Add(new UserGroup { UserId = user.Id, GroupId = group.Id });
@@ -426,7 +426,7 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
 
     public async Task<OperationResult> RemoveUserAsync(string groupName, AppUser user, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var group = await FindAsync(groupName, ct);
         if (group is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         if (await db.UserGroups.Where(x => x.UserId == user.Id && x.GroupId == group.Id).ExecuteDeleteAsync(ct) == 0) return OperationResult.Ok;
@@ -437,52 +437,52 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
 
     public async Task<OperationResult> AddRoleAsync(string groupName, string roleName, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var group = await FindAsync(groupName, ct);
         var role = await FindRoleAsync(roleName, app);
         if (group is null || role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         if (await db.GroupRoles.AnyAsync(x => x.GroupId == group.Id && x.RoleId == role.Id, ct)) return OperationResult.Ok;
         db.GroupRoles.Add(new GroupRole { GroupId = group.Id, RoleId = role.Id });
         if (!await TrySaveAsync(ct)) return OperationResult.Ok;
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("group.role_added", app, group.Name, ct, ("role", role.Name));
         return OperationResult.Ok;
     }
 
     public async Task<OperationResult> RemoveRoleAsync(string groupName, string roleName, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var group = await FindAsync(groupName, ct);
         var role = await FindRoleAsync(roleName, app);
         if (group is null || role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
         if (await db.GroupRoles.Where(x => x.GroupId == group.Id && x.RoleId == role.Id).ExecuteDeleteAsync(ct) == 0) return OperationResult.Ok;
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("group.role_removed", app, group.Name, ct, ("role", role.Name));
         return OperationResult.Ok;
     }
 
     public async Task<OperationResult> AddPermissionAsync(string groupName, string permissionKey, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var group = await FindAsync(groupName, ct);
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (group is null || permission is null) return OperationResult.Fail(AccessKeys.NormalizePermissionKey(permissionKey) is null ? Auth2ErrorCodes.InvalidPermissionKey : Auth2ErrorCodes.NotFound);
         if (await db.GroupPermissions.AnyAsync(x => x.GroupId == group.Id && x.PermissionId == permission.Id, ct)) return OperationResult.Ok;
         db.GroupPermissions.Add(new GroupPermission { GroupId = group.Id, PermissionId = permission.Id });
         if (!await TrySaveAsync(ct)) return OperationResult.Ok;
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("group.permission_added", app, group.Name, ct, ("permission", permission.Key));
         return OperationResult.Ok;
     }
 
     public async Task<OperationResult> RemovePermissionAsync(string groupName, string permissionKey, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var group = await FindAsync(groupName, ct);
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (group is null || permission is null) return OperationResult.Fail(AccessKeys.NormalizePermissionKey(permissionKey) is null ? Auth2ErrorCodes.InvalidPermissionKey : Auth2ErrorCodes.NotFound);
         if (await db.GroupPermissions.Where(x => x.GroupId == group.Id && x.PermissionId == permission.Id).ExecuteDeleteAsync(ct) == 0) return OperationResult.Ok;
-        await versions.BumpApplicationAsync(ct);
+        await versions.BumpProjectAsync(ct);
         await Audit("group.permission_removed", app, group.Name, ct, ("permission", permission.Key));
         return OperationResult.Ok;
     }
@@ -499,11 +499,11 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
         return normalized is null ? null : await db.Permissions.FirstOrDefaultAsync(p => p.Key == normalized, ct);
     }
 
-    private async Task<AppRole?> FindRoleAsync(string name, Auth2Application app)
+    private async Task<AppRole?> FindRoleAsync(string name, Project app)
     {
         var role = await roles.FindByNameAsync(name.Trim());
         if (role is null) return null;
-        return role.ApplicationId == app.Id || (role.ApplicationId is null && AccessSupport.IncludeGlobalRoles(app, options.Value.Mode)) ? role : null;
+        return role.ProjectId == app.Id || (role.ProjectId is null && AccessSupport.IncludeGlobalRoles(app, options.Value.Mode)) ? role : null;
     }
 
     private async Task<bool> TrySaveAsync(CancellationToken ct)
@@ -512,7 +512,7 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
         catch (Exception ex) when (AccessSupport.IsUniqueViolation(ex)) { db.ChangeTracker.Clear(); return false; }
     }
 
-    private Task Audit(string action, Auth2Application app, string group, CancellationToken ct, (string, object?)? extra = null) =>
+    private Task Audit(string action, Project app, string group, CancellationToken ct, (string, object?)? extra = null) =>
         audit.WriteAsync(new AuditEntry(action, app.Id, TargetType: "group", TargetId: group,
             Data: extra is { } e ? new Dictionary<string, object?> { [e.Item1] = e.Item2 } : null), ct);
 }

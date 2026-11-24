@@ -28,7 +28,7 @@ internal sealed class TwoFactorService(
 
         await users.ResetAuthenticatorKeyAsync(user);   // a new key each time until it is turned on
         var key = (await users.GetAuthenticatorKeyAsync(user))!;
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         var issuer = Uri.EscapeDataString(settings.Localization.BrandName ?? app.Name);
         var label = Uri.EscapeDataString(user.Email ?? user.UserName ?? user.Id.ToString("N"));
         var uri = $"otpauth://totp/{issuer}:{label}?secret={key}&issuer={issuer}&digits=6";
@@ -38,7 +38,7 @@ internal sealed class TwoFactorService(
     public async Task<(OperationResult, IReadOnlyList<string>)> EnableAsync(AppUser user, string code, CancellationToken ct = default)
     {
         var settings = await flow.GetSettingsAsync(ct);
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         if (!settings.TwoFactor.AllowTotp) return (OperationResult.Fail(Auth2ErrorCodes.TwoFactorNotAllowed), []);
         if (await users.GetTwoFactorEnabledAsync(user) || await users.GetAuthenticatorKeyAsync(user) is null) return (OperationResult.Fail(Auth2ErrorCodes.Conflict), []);
         if (await users.IsLockedOutAsync(user)) return (OperationResult.Fail(Auth2ErrorCodes.LockedOut), []);
@@ -61,7 +61,7 @@ internal sealed class TwoFactorService(
     public async Task<OperationResult> DisableAsync(AppUser user, string password, CancellationToken ct = default)
     {
         var settings = await flow.GetSettingsAsync(ct);
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         if (settings.TwoFactor.Mode == TwoFactorMode.Required) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
         if (!await users.GetTwoFactorEnabledAsync(user)) return OperationResult.Fail(Auth2ErrorCodes.TwoFactorNotEnabled);
         if (await users.IsLockedOutAsync(user)) return OperationResult.Fail(Auth2ErrorCodes.LockedOut);
@@ -86,7 +86,7 @@ internal sealed class TwoFactorService(
     public async Task<(OperationResult, IReadOnlyList<string>)> RegenerateRecoveryCodesAsync(AppUser user, string code, CancellationToken ct = default)
     {
         var settings = await flow.GetSettingsAsync(ct);
-        var app = await flow.GetApplicationAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
         if (!settings.TwoFactor.AllowRecoveryCodes) return (OperationResult.Fail(Auth2ErrorCodes.Forbidden), []);
         if (!await users.GetTwoFactorEnabledAsync(user)) return (OperationResult.Fail(Auth2ErrorCodes.TwoFactorNotEnabled), []);
         if (await users.IsLockedOutAsync(user)) return (OperationResult.Fail(Auth2ErrorCodes.LockedOut), []);
@@ -107,20 +107,20 @@ internal sealed class AccessVersionService(Auth2DbContext db, IAuthFlowResolver 
 {
     public async Task BumpUserAsync(AppUser user, CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
-        if (options.Value.Mode == ServerMode.SingleApplication)
+        var app = await flow.GetProjectAsync(ct);
+        if (options.Value.Mode == ServerMode.SingleProject)
         {
-            await BumpApplicationAsync(ct);   // no user_applications rows in single mode
+            await BumpProjectAsync(ct);   // no user_applications rows in single mode
             return;
         }
-        await db.UserApplications.Where(x => x.UserId == user.Id && x.ApplicationId == app.Id)
+        await db.UserProjects.Where(x => x.UserId == user.Id && x.ProjectId == app.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.UserAccessVersion, x => x.UserAccessVersion + 1), ct);
     }
 
-    public async Task BumpApplicationAsync(CancellationToken ct = default)
+    public async Task BumpProjectAsync(CancellationToken ct = default)
     {
-        var app = await flow.GetApplicationAsync(ct);
-        await db.Applications.Where(a => a.Id == app.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.AccessVersion, a => a.AccessVersion + 1), ct);
+        var app = await flow.GetProjectAsync(ct);
+        await db.Projects.Where(a => a.Id == app.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.AccessVersion, a => a.AccessVersion + 1), ct);
     }
 }
 
@@ -129,34 +129,33 @@ internal sealed class ConsentService(IOpenIddictAuthorizationManager authorizati
     private static readonly TimeSpan GrantLifetime = TimeSpan.FromMinutes(10);
     private ITimeLimitedDataProtector Protector => protection.CreateProtector("SystemX.Auth2.ConsentGrant").ToTimeLimitedDataProtector();
 
-    public async Task<bool> IsConsentNeededAsync(AppUser user, Auth2Application app, ApplicationSettings settings, IReadOnlyCollection<string> scopes, string? grantToken, CancellationToken ct = default)
+    public async Task<bool> IsConsentNeededAsync(AppUser user, ClientApplicationInfo app, EffectiveSettings settings, IReadOnlyCollection<string> scopes, string? grantToken, CancellationToken ct = default)
     {
-        var mode = ConsentPolicy.Effective(settings);
+        var mode = settings.ConsentMode;
         if (mode == ConsentMode.Implicit) return false;
         if (IsGrantValid(grantToken, user, app, scopes)) return false;
         return mode == ConsentMode.Systematic || await FindAuthorizationIdAsync(user, app, scopes, ct) is null;
     }
 
-    public string CreateGrantToken(AppUser user, Auth2Application app, IEnumerable<string> scopes) =>
+    public string CreateGrantToken(AppUser user, ClientApplicationInfo app, IEnumerable<string> scopes) =>
         Protector.Protect($"{user.Id:N}|{app.Id:N}|{Hash(scopes)}", GrantLifetime);
 
-    public async Task<string?> FindAuthorizationIdAsync(AppUser user, Auth2Application app, IReadOnlyCollection<string> scopes, CancellationToken ct = default)
+    public async Task<string?> FindAuthorizationIdAsync(AppUser user, ClientApplicationInfo app, IReadOnlyCollection<string> scopes, CancellationToken ct = default)
     {
-        if (app.OpenIddictApplicationId is not { } client) return null;
-        await foreach (var a in authorizations.FindAsync(user.Id.ToString("D"), client.ToString("D"), OpenIddictConstants.Statuses.Valid,
+        await foreach (var a in authorizations.FindAsync(user.Id.ToString("D"), app.Id.ToString("D"), OpenIddictConstants.Statuses.Valid,
             OpenIddictConstants.AuthorizationTypes.Permanent, [.. scopes], ct))
             return await authorizations.GetIdAsync(a, ct);
         return null;
     }
 
-    public async Task<string> SaveAuthorizationAsync(AppUser user, Auth2Application app, ClaimsPrincipal principal, IReadOnlyCollection<string> scopes, CancellationToken ct = default)
+    public async Task<string> SaveAuthorizationAsync(AppUser user, ClientApplicationInfo app, ClaimsPrincipal principal, IReadOnlyCollection<string> scopes, CancellationToken ct = default)
     {
-        var created = await authorizations.CreateAsync(principal, user.Id.ToString("D"), app.OpenIddictApplicationId!.Value.ToString("D"),
+        var created = await authorizations.CreateAsync(principal, user.Id.ToString("D"), app.Id.ToString("D"),
             OpenIddictConstants.AuthorizationTypes.Permanent, [.. scopes], ct);
         return (await authorizations.GetIdAsync(created, ct))!;
     }
 
-    private bool IsGrantValid(string? token, AppUser user, Auth2Application app, IEnumerable<string> scopes)
+    private bool IsGrantValid(string? token, AppUser user, ClientApplicationInfo app, IEnumerable<string> scopes)
     {
         if (string.IsNullOrEmpty(token)) return false;
         try { return Protector.Unprotect(token) == $"{user.Id:N}|{app.Id:N}|{Hash(scopes)}"; }

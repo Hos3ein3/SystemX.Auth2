@@ -1,0 +1,70 @@
+@page "/admin/p/{projectKey}/providers/create"
+@model SystemX.Auth2.Server.Pages.Admin.Providers.CreateModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"New Identity Provider - {Model.CurrentProject?.Name}";
+}
+
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+        <a href="/admin/p/@Model.ProjectKey/providers" class="hover:underline">Providers</a>
+        <span>/</span>
+        <span class="text-gray-900 font-medium">Add</span>
+    </div>
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Add External Identity Provider</h1>
+        <p class="mt-1 text-sm text-gray-500">Configure single sign-on (SSO) with an external identity provider in @Model.CurrentProject?.Name.</p>
+    </div>
+
+    <a2-card>
+        <form method="post" class="space-y-4">
+            <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
+
+            <a2-field label="Provider name" required="true" hint="Unique key (e.g. google, okta, azure-ad).">
+                <a2-input name="Input.Name" value="@Model.Input.Name" required="true" placeholder="google" />
+            </a2-field>
+
+            <a2-field label="Provider Type" required="true">
+                <select name="Input.Type" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="Oidc">OpenID Connect (OIDC)</option>
+                    <option value="Saml">SAML 2.0</option>
+                    <option value="Social">Social</option>
+                    <option value="Ldap">LDAP / Active Directory</option>
+                </select>
+            </a2-field>
+
+            <a2-field label="Display Name" hint="Shown on the login button.">
+                <a2-input name="Input.DisplayName" value="@Model.Input.DisplayName" placeholder="Google" />
+            </a2-field>
+
+            <a2-field label="Authority / Issuer URL" hint="The base URL of the OpenID provider.">
+                <a2-input name="Input.AuthorityUrl" value="@Model.Input.AuthorityUrl" placeholder="https://accounts.google.com" />
+            </a2-field>
+
+            <div class="grid grid-cols-2 gap-4">
+                <a2-field label="Client ID">
+                    <a2-input name="Input.ClientId" value="@Model.Input.ClientId" />
+                </a2-field>
+                <a2-field label="Client Secret">
+                    <a2-password name="Input.ClientSecret" autocomplete="new-password" />
+                </a2-field>
+            </div>
+
+            <a2-field label="Requested Scopes">
+                <a2-input name="Input.Scopes" value="@Model.Input.Scopes" placeholder="openid profile email" />
+            </a2-field>
+
+            <a2-checkbox name="Input.Enabled" checked="@Model.Input.Enabled" label="Enable this provider" description="When enabled, users will see the sign-in option." />
+
+            <div class="pt-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <a2-link-button href="/admin/p/@Model.ProjectKey/providers" variant="secondary">
+                    Cancel
+                </a2-link-button>
+                <a2-button type="submit" variant="primary">
+                    Save Provider
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

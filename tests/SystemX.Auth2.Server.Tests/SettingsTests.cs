@@ -6,17 +6,17 @@ using SystemX.Auth2.Server.Persistence;
 
 namespace SystemX.Auth2.Server.Tests;
 
-public class ApplicationSettingsValidatorTests
+public class ProjectSettingsValidatorTests
 {
-    private static IReadOnlyList<SettingsError> Check(Action<ApplicationSettings> change)
+    private static IReadOnlyList<SettingsError> Check(Action<ProjectSettings> change)
     {
-        var s = new ApplicationSettings();
+        var s = new ProjectSettings();
         change(s);
-        return ApplicationSettingsValidator.Validate(s);
+        return ProjectSettingsValidator.Validate(s);
     }
 
     [Fact]
-    public void Validate_Defaults_HaveNoErrors() => ApplicationSettingsValidator.Validate(new ApplicationSettings()).ShouldBeEmpty();
+    public void Validate_Defaults_HaveNoErrors() => ProjectSettingsValidator.Validate(new ProjectSettings()).ShouldBeEmpty();
 
     [Fact]
     public void Validate_MaxFailedAttemptsBelowOne_IsRejected() =>
@@ -30,22 +30,29 @@ public class ApplicationSettingsValidatorTests
     public void Validate_PasswordMaxBelowMin_IsRejected() =>
         Check(s => s.Password.MaxLength = 8).ShouldContain(e => e.Path == "Password.MaxLength");
 
+    private static List<SettingsError> CheckUris(params string[] uris)
+    {
+        var errors = new List<SettingsError>();
+        ProjectSettingsValidator.CheckUris("RedirectUris", uris, (p, m) => errors.Add(new SettingsError(p, m)));
+        return errors;
+    }
+
     [Theory]
     [InlineData("https://*.example.com/cb")]
     [InlineData("https://example.com/*")]
     public void Validate_WildcardRedirectUri_IsRejected(string uri) =>
-        Check(s => s.Redirects.AllowedRedirectUris.Add(uri)).ShouldContain(e => e.Path == "Redirects.AllowedRedirectUris");
+        CheckUris(uri).ShouldContain(e => e.Path == "RedirectUris");
 
     [Theory]
     [InlineData("javascript:alert(1)")]
     [InlineData("/relative")]
     [InlineData("https://example.com/cb#frag")]
     public void Validate_BadRedirectUri_IsRejected(string uri) =>
-        Check(s => s.Redirects.AllowedPostLogoutRedirectUris.Add(uri)).ShouldNotBeEmpty();
+        CheckUris(uri).ShouldNotBeEmpty();
 
     [Fact]
     public void Validate_ExactHttpsRedirectUri_IsAccepted() =>
-        Check(s => s.Redirects.AllowedRedirectUris.Add("https://app.example.com/signin-oidc")).ShouldBeEmpty();
+        CheckUris("https://app.example.com/signin-oidc").ShouldBeEmpty();
 
     [Fact]
     public void Validate_InvalidRegex_IsRejected() =>
@@ -71,8 +78,12 @@ public class ApplicationSettingsValidatorTests
         Check(s => s.Localization.DefaultCulture = "fa").ShouldContain(e => e.Path == "Localization.DefaultCulture");
 
     [Fact]
-    public void Validate_CorsOriginWithWildcard_IsRejected() =>
-        Check(s => s.Clients.AllowedCorsOrigins.Add("https://*.example.com")).ShouldNotBeEmpty();
+    public void Validate_CorsOriginWithWildcard_IsRejected()
+    {
+        var errors = new List<SettingsError>();
+        ClientApplicationSettingsValidator.Validate(new ClientApplicationSettings { AllowedCorsOrigins = ["https://*.example.com"] }, (p, m) => errors.Add(new SettingsError(p, m)));
+        errors.ShouldNotBeEmpty();
+    }
 
     [Fact]
     public void Validate_RedirectAfterLoginProtocolRelative_IsRejected() =>
@@ -141,13 +152,13 @@ public class ApplicationSettingsValidatorTests
     [Fact]
     public void ValidateOrThrow_BadSettings_ThrowsWithErrors()
     {
-        var s = new ApplicationSettings();
+        var s = new ProjectSettings();
         s.Lockout.MaxFailedAttempts = 0;
-        Should.Throw<SettingsValidationException>(() => ApplicationSettingsValidator.ValidateOrThrow(s)).Errors.ShouldNotBeEmpty();
+        Should.Throw<SettingsValidationException>(() => ProjectSettingsValidator.ValidateOrThrow(s)).Errors.ShouldNotBeEmpty();
     }
 }
 
-public class ApplicationSettingsModelTests
+public class ProjectSettingsModelTests
 {
     private static IEnumerable<PropertyInfo> LeafProperties(Type type)
     {
@@ -160,7 +171,7 @@ public class ApplicationSettingsModelTests
                 foreach (var kind in new[] { typeof(ExternalProviderSettings), typeof(OidcProviderSettings), typeof(SamlProviderSettings), typeof(LdapProviderSettings) })
                     foreach (var inner in kind.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)) yield return inner;
             }
-            else if (t.Namespace == typeof(ApplicationSettings).Namespace && t.IsClass && !t.IsGenericType)
+            else if (t.Namespace == typeof(ProjectSettings).Namespace && t.IsClass && !t.IsGenericType)
                 foreach (var inner in LeafProperties(t)) yield return inner;
             else yield return p;
         }
@@ -169,7 +180,7 @@ public class ApplicationSettingsModelTests
     [Fact]
     public void EveryLeafSetting_HasEditabilityAttribute()
     {
-        var missing = LeafProperties(typeof(ApplicationSettings))
+        var missing = LeafProperties(typeof(ProjectSettings))
             .Where(p => p.GetCustomAttribute<SettingEditabilityAttribute>() is null)
             .Select(p => $"{p.DeclaringType!.Name}.{p.Name}").ToList();
         missing.ShouldBeEmpty();
@@ -178,7 +189,7 @@ public class ApplicationSettingsModelTests
     [Fact]
     public void Json_RoundTrip_PreservesValuesAndUsesStringEnums()
     {
-        var s = new ApplicationSettings();
+        var s = new ProjectSettings();
         s.Password.MinLength = 14;
         s.Methods.AllowedLoginMethods = [LoginMethod.PhoneOtp];
         s.ExternalProviders.Add(new OidcProviderSettings { Name = "g", Type = ExternalProviderType.Google, ClientId = "id", ClientSecretProtected = "enc", HostedDomain = "corp.com" });
@@ -202,7 +213,7 @@ public class ApplicationSettingsModelTests
     [Fact]
     public void Json_EmptyOrNull_GivesDefaults()
     {
-        SettingsJson.Deserialize(null).SchemaVersion.ShouldBe(ApplicationSettings.CurrentSchemaVersion);
+        SettingsJson.Deserialize(null).SchemaVersion.ShouldBe(ProjectSettings.CurrentSchemaVersion);
         SettingsJson.Deserialize("").Password.MinLength.ShouldBe(10);
     }
 
@@ -215,10 +226,10 @@ public class ApplicationSettingsModelTests
     {
         foreach (var path in new[] { "Lockout", "Password", "TwoFactor", "Sessions" })
         {
-            var section = typeof(ApplicationSettings).GetProperty(path)!.PropertyType;
+            var section = typeof(ProjectSettings).GetProperty(path)!.PropertyType;
             LeafProperties(section).ShouldAllBe(p => p.GetCustomAttribute<SettingEditabilityAttribute>()!.Editor == SettingEditor.GlobalOnly);
         }
-        typeof(ClientSettings).GetProperty(nameof(ClientSettings.AllowSelfUiLogin))!
+        typeof(ClientApplicationSettings).GetProperty(nameof(ClientApplicationSettings.AllowSelfUiLogin))!
             .GetCustomAttribute<SettingEditabilityAttribute>()!.Editor.ShouldBe(SettingEditor.GlobalOnly);
     }
 }
@@ -233,13 +244,13 @@ public class ProjectKeyRulesTests
     [InlineData("has space", false)]
     [InlineData("", false)]
     public void IsValidForNewApplication_Cases(string key, bool expected) =>
-        ProjectKeyRules.IsValidForNewApplication(key).ShouldBe(expected);
+        ProjectKeyRules.IsValidForNewProject(key).ShouldBe(expected);
 
     [Fact]
     public void IsValidForNewApplication_GlobalKey_IsReserved()
     {
         ProjectKeyRules.IsValidShape("_global").ShouldBeTrue();
-        ProjectKeyRules.IsValidForNewApplication("_global").ShouldBeFalse();
+        ProjectKeyRules.IsValidForNewProject("_global").ShouldBeFalse();
     }
 
     [Fact]

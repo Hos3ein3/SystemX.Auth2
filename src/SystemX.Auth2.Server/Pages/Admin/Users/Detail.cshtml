@@ -1,0 +1,153 @@
+@page "/admin/p/{projectKey}/users/detail"
+@model SystemX.Auth2.Server.Pages.Admin.Users.DetailModel
+@{
+    Layout = "_LayoutAdmin";
+    var u = Model.UserView?.User;
+    ViewData["Title"] = $"User Details - {u?.Email ?? u?.UserName ?? "User"}";
+}
+
+<div class="space-y-6 max-w-5xl">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <a href="/admin/p/@Model.ProjectKey/users" class="hover:underline">Users</a>
+            <span>/</span>
+            <span class="text-gray-900 font-medium">@(u?.Email ?? u?.UserName)</span>
+        </div>
+        <div class="flex items-center space-x-2">
+            @if (u?.IsLockedOut == true)
+            {
+                <form method="post" asp-page-handler="Unlock">
+                    <a2-button type="submit" variant="secondary">Unlock User</a2-button>
+                </form>
+            }
+            else
+            {
+                <form method="post" asp-page-handler="Lock">
+                    <a2-button type="submit" variant="secondary">Lock User</a2-button>
+                </form>
+            }
+            <form method="post" asp-page-handler="RemoveFromProject">
+                <a2-button type="submit" variant="danger" onclick="return confirm('Remove user from this project?')">Remove from Project</a2-button>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Header Card -->
+    <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center space-x-3 mb-1">
+                <h1 class="text-2xl font-bold text-gray-900">@(string.IsNullOrWhiteSpace($"{u?.FirstName} {u?.LastName}") ? u?.Email : $"{u?.FirstName} {u?.LastName}")</h1>
+                @if (u?.IsLockedOut == true)
+                {
+                    <a2-badge variant="danger">Locked Out</a2-badge>
+                }
+                else if (u?.IsActive == false)
+                {
+                    <a2-badge variant="neutral">Disabled</a2-badge>
+                }
+                else
+                {
+                    <a2-badge variant="success">Active</a2-badge>
+                }
+            </div>
+            <p class="text-sm text-gray-500 font-mono">ID: @u?.Id</p>
+        </div>
+        <div class="flex flex-wrap gap-4 text-xs text-gray-500">
+            <div>
+                <span class="block font-semibold text-gray-700">Created</span>
+                <span>@u?.CreatedAtUtc.ToString("g")</span>
+            </div>
+            <div>
+                <span class="block font-semibold text-gray-700">Last Login</span>
+                <span>@(u?.LastLoginUtc?.ToString("g") ?? "Never")</span>
+            </div>
+            <div>
+                <span class="block font-semibold text-gray-700">2FA Status</span>
+                <span>@(u?.TwoFactorEnabled == true ? "Enabled" : "Disabled")</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Edit Profile Form -->
+        <div class="lg:col-span-2 space-y-6">
+            <a2-card title="Profile & Account">
+                <form method="post" asp-page-handler="UpdateProfile" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <a2-field label="First name">
+                            <a2-input name="Input.FirstName" value="@Model.Input.FirstName" />
+                        </a2-field>
+                        <a2-field label="Last name">
+                            <a2-input name="Input.LastName" value="@Model.Input.LastName" />
+                        </a2-field>
+                    </div>
+
+                    <a2-field label="Display name">
+                        <a2-input name="Input.DisplayName" value="@Model.Input.DisplayName" />
+                    </a2-field>
+
+                    <a2-checkbox name="Input.IsActive" checked="@Model.Input.IsActive" label="Account is active" description="Unchecking this disables the account across the application." />
+
+                    <div class="pt-2">
+                        <a2-button type="submit" variant="primary">
+                            Save Profile
+                        </a2-button>
+                    </div>
+                </form>
+            </a2-card>
+
+            <!-- Active Sessions -->
+            <a2-card title="Active Sessions">
+                @if (Model.Sessions.Count > 0)
+                {
+                    <ul class="divide-y divide-gray-200">
+                        @foreach (var s in Model.Sessions)
+                        {
+                            <li class="py-3 flex items-center justify-between">
+                                <div>
+                                    <span class="text-sm font-semibold text-gray-800">Session @s.Id[..Math.Min(8, s.Id.Length)]...</span>
+                                    <span class="text-xs text-gray-500 block">Created: @(s.CreatedAtUtc?.ToString("g") ?? "Unknown")</span>
+                                </div>
+                                <form method="post" asp-page-handler="RevokeSession" asp-route-sessionId="@s.Id">
+                                    <a2-button type="submit" variant="danger">Revoke</a2-button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-sm text-gray-500 py-3">No active sessions for this user.</p>
+                }
+            </a2-card>
+        </div>
+
+        <!-- Sidebar Actions & Security -->
+        <div class="space-y-6">
+            <a2-card title="Security Controls">
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-800">Two-Factor Authentication</h4>
+                        <p class="text-xs text-gray-500 mb-2">Reset TOTP keys and recovery codes if the user loses their authenticator.</p>
+                        @if (u?.TwoFactorEnabled == true)
+                        {
+                            <form method="post" asp-page-handler="Reset2Fa">
+                                <a2-button type="submit" variant="secondary" onclick="return confirm('Reset 2FA for this user?')">Reset 2FA</a2-button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="text-xs text-gray-400">2FA is not enabled.</span>
+                        }
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-100">
+                        <h4 class="text-sm font-semibold text-gray-800">Audit History</h4>
+                        <p class="text-xs text-gray-500 mb-2">View all security and administrative events for this user.</p>
+                        <a href="/admin/p/@Model.ProjectKey/audit?q=@u?.Email" class="text-xs text-blue-600 hover:underline">View User Audit Events &rarr;</a>
+                    </div>
+                </div>
+            </a2-card>
+        </div>
+    </div>
+</div>

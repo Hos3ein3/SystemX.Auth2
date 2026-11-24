@@ -9,12 +9,16 @@ public static class Auth2ErrorCodes
     public const string LockedOut = "locked_out";
     /// <summary>A second factor is needed.</summary>
     public const string TwoFactorRequired = "two_factor_required";
-    /// <summary>The user does not belong to this application.</summary>
-    public const string NotRegisteredInApplication = "not_registered_in_application";
-    /// <summary>The application does not exist.</summary>
-    public const string ApplicationNotFound = "application_not_found";
-    /// <summary>The application is disabled.</summary>
+    /// <summary>The user does not belong to this project.</summary>
+    public const string NotRegisteredInProject = "not_registered_in_project";
+    /// <summary>The project does not exist.</summary>
+    public const string ProjectNotFound = "project_not_found";
+    /// <summary>The project is disabled. Only the audit log shows this; callers see <see cref="AccessDenied"/>.</summary>
+    public const string ProjectDisabled = "project_disabled";
+    /// <summary>The application (client) is disabled. Only the audit log shows this; callers see <see cref="AccessDenied"/>.</summary>
     public const string ApplicationDisabled = "application_disabled";
+    /// <summary>The generic public answer when a project or an application is disabled. The real reason is only in the audit log.</summary>
+    public const string AccessDenied = "access_denied";
     /// <summary>ProjectKey or application name does not match.</summary>
     public const string ProjectKeyOrNameMismatch = "project_key_or_name_mismatch";
     /// <summary>Client and server use different modes.</summary>
@@ -44,7 +48,7 @@ public static class Auth2ErrorCodes
     /// <summary>Phone number is not valid.</summary>
     public const string InvalidPhoneNumber = "invalid_phone_number";
     /// <summary>The user does not belong to this application (no row yet).</summary>
-    public const string UserNotInApplication = "user_not_in_application";
+    public const string UserNotInProject = "user_not_in_project";
     /// <summary>Email must be confirmed before login.</summary>
     public const string EmailNotConfirmed = "email_not_confirmed";
     /// <summary>Phone number must be confirmed before login.</summary>

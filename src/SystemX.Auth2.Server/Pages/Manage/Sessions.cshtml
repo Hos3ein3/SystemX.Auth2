@@ -1,3 +1,49 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.SessionsModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAccount";
+    ViewData["Title"] = "Active Sessions";
+}
+
+<div class="space-y-6 max-w-3xl">
+    <div>
+        <h2 class="text-xl font-bold text-gray-900">Active Sessions</h2>
+        <p class="mt-1 text-sm text-gray-500">View and revoke active sign-in sessions and access grants for your account.</p>
+    </div>
+
+    @if (Model.Sessions.Count > 0)
+    {
+        <a2-card title="Active Authorizations">
+            <ul class="divide-y divide-gray-200">
+                @foreach (var session in Model.Sessions)
+                {
+                    <li class="py-4 flex items-center justify-between">
+                        <div>
+                            <span class="text-sm font-semibold text-gray-800">Session @session.Id</span>
+                            <span class="text-xs text-gray-500 block">Created: @(session.CreatedAtUtc?.ToString("g") ?? "Unknown")</span>
+                            @if (session.Scopes.Count > 0)
+                            {
+                                <div class="mt-1 flex flex-wrap gap-1">
+                                    @foreach (var scope in session.Scopes)
+                                    {
+                                        <a2-badge variant="neutral">@scope</a2-badge>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <form method="post" asp-page-handler="Revoke">
+                            <input type="hidden" name="AuthorizationId" value="@session.Id" />
+                            <a2-button type="submit" variant="danger">
+                                Revoke
+                            </a2-button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        </a2-card>
+    }
+    else
+    {
+        <a2-empty-state title="No active external sessions" message="You have no other active application sessions." />
+    }
+</div>

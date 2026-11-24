@@ -1,0 +1,139 @@
+@page "/admin/p/{projectKey}/users"
+@model SystemX.Auth2.Server.Pages.Admin.Users.IndexModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Users - {Model.CurrentProject?.Name}";
+}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Users</h1>
+            <p class="mt-1 text-sm text-gray-500">Manage user identities and memberships in @Model.CurrentProject?.Name.</p>
+        </div>
+        <a2-link-button href="/admin/p/@Model.ProjectKey/users/create" variant="primary">
+            + New User
+        </a2-link-button>
+    </div>
+
+    <!-- Filter and Search Bar -->
+    <form method="get" class="flex flex-wrap items-center gap-3">
+        <a2-search name="q" value="@Model.Q" placeholder="Search email, username, name..." />
+        
+        <select name="lockedOut" onchange="this.form.submit()" class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <option value="">All Statuses</option>
+            <option value="false" selected="@(Model.LockedOut == false ? "selected" : null)">Active</option>
+            <option value="true" selected="@(Model.LockedOut == true ? "selected" : null)">Locked Out</option>
+        </select>
+
+        <a2-page-size value="@Model.PageSize" />
+        <a2-button type="submit" variant="secondary">Filter</a2-button>
+    </form>
+
+    <form method="post" id="usersTableForm">
+        <!-- Bulk Actions Bar -->
+        <div class="bg-gray-50 p-2.5 rounded-t-lg border border-b-0 border-gray-200 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <span class="text-xs text-gray-500 font-medium">Bulk Actions:</span>
+                <button type="submit" asp-page-handler="BulkAction" name="bulkAction" value="lock" class="text-xs px-2.5 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 font-medium text-gray-700">Lock</button>
+                <button type="submit" asp-page-handler="BulkAction" name="bulkAction" value="unlock" class="text-xs px-2.5 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 font-medium text-gray-700">Unlock</button>
+                <button type="submit" asp-page-handler="BulkAction" name="bulkAction" value="revoke_sessions" class="text-xs px-2.5 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 font-medium text-amber-700">Revoke Sessions</button>
+            </div>
+            <span class="text-xs text-gray-500">Showing @Model.Users.Items.Count items</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-b-lg border border-gray-200 bg-white shadow-sm">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="w-10 px-4 py-3 text-left">
+                            <input type="checkbox" onclick="document.querySelectorAll('.user-select-cb').forEach(c => c.checked = this.checked)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                        </th>
+                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">
+                            <a2-sort-header field="email" label="Email" currentSort="@Model.Sort" descending="@Model.Desc" />
+                        </th>
+                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">
+                            <a2-sort-header field="username" label="Username" currentSort="@Model.Sort" descending="@Model.Desc" />
+                        </th>
+                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
+                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
+                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">2FA</th>
+                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">
+                            <a2-sort-header field="createdAt" label="Created" currentSort="@Model.Sort" descending="@Model.Desc" />
+                        </th>
+                        <th scope="col" class="px-4 py-3 text-right font-semibold text-gray-700">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @if (Model.Users.Items.Count > 0)
+                    {
+                        @foreach (var u in Model.Users.Items)
+                        {
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <input type="checkbox" name="selectedIds" value="@u.Id" class="user-select-cb rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                </td>
+                                <td class="px-4 py-3 font-medium text-gray-900">
+                                    <a href="/admin/p/@Model.ProjectKey/users/detail?id=@u.Id" class="text-blue-600 hover:underline">
+                                        @(u.Email ?? "(No email)")
+                                    </a>
+                                </td>
+                                <td class="px-4 py-3 text-gray-600 font-mono text-xs">@(u.UserName ?? "-")</td>
+                                <td class="px-4 py-3 text-gray-700">@($"{u.FirstName} {u.LastName}".Trim())</td>
+                                <td class="px-4 py-3">
+                                    @if (u.IsLockedOut)
+                                    {
+                                        <a2-badge variant="danger">Locked</a2-badge>
+                                    }
+                                    else if (!u.IsActive)
+                                    {
+                                        <a2-badge variant="neutral">Disabled</a2-badge>
+                                    }
+                                    else
+                                    {
+                                        <a2-badge variant="success">Active</a2-badge>
+                                    }
+                                </td>
+                                <td class="px-4 py-3">
+                                    @if (u.TwoFactorEnabled)
+                                    {
+                                        <a2-badge variant="success">Enabled</a2-badge>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-xs text-gray-400">Off</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 text-gray-500 text-xs">@u.CreatedAtUtc.ToString("d")</td>
+                                <td class="px-4 py-3 text-right space-x-2">
+                                    <a href="/admin/p/@Model.ProjectKey/users/detail?id=@u.Id" class="text-blue-600 hover:underline text-xs font-semibold">View</a>
+                                    <span class="text-gray-300">|</span>
+                                    @if (u.IsLockedOut)
+                                    {
+                                        <button type="submit" asp-page-handler="Unlock" asp-route-id="@u.Id" class="text-xs text-green-600 hover:underline">Unlock</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" asp-page-handler="Lock" asp-route-id="@u.Id" class="text-xs text-amber-600 hover:underline">Lock</button>
+                                    }
+                                    <span class="text-gray-300">|</span>
+                                    <button type="submit" asp-page-handler="Remove" asp-route-id="@u.Id" onclick="return confirm('Remove user from project?')" class="text-xs text-red-600 hover:underline">Remove</button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                No users found in this project.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    <a2-pager page="@Model.Users.Page" pageSize="@Model.Users.PageSize" totalCount="@Model.Users.TotalCount" totalPages="@Model.Users.TotalPages" />
+</div>

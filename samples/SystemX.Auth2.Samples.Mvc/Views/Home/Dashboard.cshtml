@@ -1,0 +1,75 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    string? userName = ViewBag.UserName as string;
+    string? fullName = ViewBag.FullName as string;
+    var roles = ViewBag.Roles as IReadOnlyList<string> ?? [];
+    bool canReadOrders = ViewBag.CanReadOrders ?? false;
+    bool canWriteOrders = ViewBag.CanWriteOrders ?? false;
+    bool isAdmin = ViewBag.IsAdmin ?? false;
+}
+
+<div class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-1">Welcome to your Dashboard, @(fullName ?? userName)!</h1>
+        <p class="text-gray-600 text-sm">This page is protected with <code class="font-mono bg-blue-50 text-blue-700 px-1 rounded">[Authorize]</code>.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="font-bold text-gray-800 mb-2">My Roles</h3>
+            @if (roles.Count > 0)
+            {
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var r in roles)
+                    {
+                        <span class="bg-purple-100 text-purple-800 font-semibold text-xs px-2.5 py-1 rounded-md">@r</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-sm text-gray-400">No roles assigned.</p>
+            }
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="font-bold text-gray-800 mb-2">Orders Access</h3>
+            <div class="space-y-2 text-sm">
+                <div class="flex items-center justify-between">
+                    <span>orders.read:</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold @(canReadOrders ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")">
+                        @(canReadOrders ? "Allowed" : "Missing")
+                    </span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>orders.write:</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold @(canWriteOrders ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")">
+                        @(canWriteOrders ? "Allowed" : "Missing")
+                    </span>
+                </div>
+            </div>
+            @if (canReadOrders)
+            {
+                <a asp-action="Orders" class="mt-4 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                    Open Orders &rarr;
+                </a>
+            }
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="font-bold text-gray-800 mb-2">Admin Status</h3>
+            <p class="text-sm text-gray-600 mb-3">
+                Role check: <code class="font-mono text-xs">Admin</code>
+            </p>
+            <span class="inline-block px-3 py-1 rounded-md text-xs font-bold @(isAdmin ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-600")">
+                @(isAdmin ? "Admin Role Granted" : "Not an Admin")
+            </span>
+            @if (isAdmin)
+            {
+                <a asp-action="AdminPanel" class="mt-4 block text-sm font-semibold text-purple-600 hover:text-purple-800">
+                    Open Admin Panel &rarr;
+                </a>
+            }
+        </div>
+    </div>
+</div>

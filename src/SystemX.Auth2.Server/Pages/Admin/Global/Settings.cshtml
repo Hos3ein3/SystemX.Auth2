@@ -1,0 +1,63 @@
+@page "/admin/settings"
+@model SystemX.Auth2.Server.Pages.Admin.Global.SettingsModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = "Global Server Settings";
+    var opt = Model.ServerOptions;
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Global System Settings</h1>
+        <p class="mt-1 text-sm text-gray-500">Read-only overview of host-level server configuration and environment parameters.</p>
+    </div>
+
+    <a2-card title="Server Runtime & Deployment">
+        <dl class="divide-y divide-gray-200 text-sm">
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Operating Mode</dt>
+                <dd class="text-gray-900 font-semibold sm:col-span-2">@opt.Mode</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Default Credential Scope</dt>
+                <dd class="text-gray-900 sm:col-span-2">@opt.CredentialScope</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Configured Issuer URI</dt>
+                <dd class="text-gray-900 font-mono sm:col-span-2">@(opt.Issuer ?? "(Dynamic from Host)")</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Redis Distributed Cache</dt>
+                <dd class="text-gray-900 sm:col-span-2">
+                    @if (opt.Redis.Enabled)
+                    {
+                        <a2-badge variant="success">Enabled (Prefix: @opt.Redis.KeyPrefix)</a2-badge>
+                    }
+                    else
+                    {
+                        <a2-badge variant="neutral">Disabled (In-Memory)</a2-badge>
+                    }
+                </dd>
+            </div>
+        </dl>
+    </a2-card>
+
+    <a2-card title="Maintenance & Cleanup Policies">
+        <dl class="divide-y divide-gray-200 text-sm">
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Background Jobs Interval</dt>
+                <dd class="text-gray-900 sm:col-span-2">@opt.Jobs.IntervalMinutes minutes</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Default Audit Log Retention</dt>
+                <dd class="text-gray-900 sm:col-span-2">@opt.Jobs.AuditRetentionDays days</dd>
+            </div>
+            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-500">Rate Limiting Status</dt>
+                <dd class="text-gray-900 sm:col-span-2">
+                    @(opt.RateLimiting.Enabled ? "Active" : "Disabled")
+                </dd>
+            </div>
+        </dl>
+    </a2-card>
+</div>

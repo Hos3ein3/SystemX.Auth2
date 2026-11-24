@@ -10,7 +10,7 @@ public sealed class AccessDeniedModel(IClientIdAccessor clientId, IAuthFlowResol
     /// <summary>Loads the application.</summary>
     public async Task<IActionResult> OnGetAsync()
     {
-        await LoadApplicationAsync();
+        await LoadProjectAsync();
         Response.StatusCode = StatusCodes.Status403Forbidden;
         return Page();
     }

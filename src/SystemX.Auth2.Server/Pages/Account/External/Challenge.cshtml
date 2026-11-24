@@ -1,3 +1,38 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.External.ChallengeModel
-@* UI: to be done *@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Connecting to Identity Provider";
+}
+
+<div class="text-center space-y-4">
+    @if (!string.IsNullOrEmpty(Model.PostAction) && Model.PostFields != null)
+    {
+        <div class="space-y-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="text-sm text-gray-600">Connecting to provider...</p>
+            <form id="autoPostForm" method="post" action="@Model.PostAction">
+                @foreach (var field in Model.PostFields)
+                {
+                    <input type="hidden" name="@field.Key" value="@field.Value" />
+                }
+                <noscript>
+                    <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded text-sm">Click here to continue</button>
+                </noscript>
+            </form>
+            <script>
+                document.getElementById('autoPostForm').submit();
+            </script>
+        </div>
+    }
+    else
+    {
+        <div class="space-y-4">
+            <h2 class="text-lg font-bold text-gray-900">Sign In with Provider</h2>
+            <p class="text-sm text-gray-600">An error occurred while preparing external sign-in.</p>
+            <a2-link-button href="@Url.Page("/Account/Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" variant="primary">
+                Return to Sign In
+            </a2-link-button>
+        </div>
+    }
+</div>

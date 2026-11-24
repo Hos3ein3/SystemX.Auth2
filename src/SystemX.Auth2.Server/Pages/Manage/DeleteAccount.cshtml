@@ -1,0 +1,37 @@
+@page
+@model SystemX.Auth2.Server.Pages.Manage.DeleteAccountModel
+@{
+    Layout = "_LayoutAccount";
+    ViewData["Title"] = "Leave Project";
+}
+
+<div class="space-y-6 max-w-xl">
+    <div>
+        <h2 class="text-xl font-bold text-red-600">Leave Project</h2>
+        <p class="mt-1 text-sm text-gray-500">Remove your membership from this project.</p>
+    </div>
+
+    <a2-card>
+        <div class="text-sm text-gray-700 space-y-3 mb-6">
+            <p>
+                Removing your account membership will revoke your access to all applications in this project.
+                Your direct permissions and role assignments in this project will be deleted.
+            </p>
+            <p class="text-red-600 font-semibold">
+                This action cannot be undone.
+            </p>
+        </div>
+
+        <form method="post" class="space-y-4">
+            <a2-field label="Confirm your password" required="true">
+                <a2-password name="Input.Password" required="true" autocomplete="current-password" />
+            </a2-field>
+
+            <div class="pt-2">
+                <a2-button type="submit" variant="danger">
+                    Confirm and Leave Project
+                </a2-button>
+            </div>
+        </form>
+    </a2-card>
+</div>

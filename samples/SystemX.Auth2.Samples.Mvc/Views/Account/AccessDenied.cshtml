@@ -1,0 +1,21 @@
+@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="max-w-md mx-auto text-center py-12">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-4 text-2xl font-bold">
+        🚫
+    </div>
+    <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Access Denied</h1>
+    <p class="text-gray-600 mb-6">
+        You do not have the required permissions or roles to access this resource.
+    </p>
+    <div class="space-x-4">
+        <a asp-controller="Home" asp-action="Index" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-md shadow-sm transition">
+            Go to Home
+        </a>
+        <a asp-controller="Account" asp-action="Profile" class="inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium px-4 py-2 rounded-md transition">
+            View My Profile
+        </a>
+    </div>
+</div>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - SystemX.Auth2 MVC Sample</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
+    <header class="bg-indigo-600 text-white shadow-md">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-8">
+                <a asp-controller="Home" asp-action="Index" class="font-bold text-xl tracking-tight hover:text-indigo-100 flex items-center gap-2">
+                    <span class="bg-white text-indigo-600 rounded px-2 py-0.5 text-sm font-extrabold">Auth2</span>
+                    <span>MVC Sample</span>
+                </a>
+                <div class="hidden md:flex space-x-4">
+                    <a asp-controller="Home" asp-action="Index" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Home</a>
+                    <a asp-controller="Home" asp-action="Dashboard" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Dashboard</a>
+                    <a asp-controller="Home" asp-action="Orders" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Orders</a>
+                    <a asp-controller="Home" asp-action="AdminPanel" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Admin</a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a asp-controller="Account" asp-action="Profile" class="text-sm font-medium hover:underline flex items-center gap-1">
+                        <span>👤</span> @(User.Identity.Name ?? "My Profile")
+                    </a>
+                    <a asp-controller="Account" asp-action="Logout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium transition">Logout</a>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login" class="bg-white text-indigo-600 hover:bg-gray-100 px-4 py-1.5 rounded-md text-sm font-semibold shadow-sm transition">Sign In</a>
+                }
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        @RenderBody()
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 py-4 text-center text-sm text-gray-500">
+        <p>SystemX.Auth2 &bull; ASP.NET Core MVC &amp; Web API Client Sample</p>
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
