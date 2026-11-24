@@ -133,3 +133,5 @@ With the hosted UI or the Self UI the user is in a cookie, not a token. `ICurren
 - [Getting started](getting-started.md)
 - [Contracts reference](contracts-reference.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Server settings](server-settings.md)

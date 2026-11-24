@@ -134,6 +134,7 @@ Limits: the client checks the token's signature, issuer, audience and lifetime. 
 - [Getting started](getting-started.md)
 - [Contracts reference](contracts-reference.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 
 ## The same constants everywhere
 

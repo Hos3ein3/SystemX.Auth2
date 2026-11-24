@@ -80,3 +80,5 @@ Scopes set with `.EnableMachineToMachine(o => o.Scopes = [...])` are used when y
 - [Handshake and startup](handshake-and-startup.md)
 - [Getting started](getting-started.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Server settings](server-settings.md)

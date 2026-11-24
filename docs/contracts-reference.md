@@ -37,6 +37,7 @@ if (!result.IsSuccess && result.Error!.Code == Auth2ErrorCodes.InvalidCredential
 - [Getting started](getting-started.md)
 - [Server reference](server-reference.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 
 ## Types (generated)
 

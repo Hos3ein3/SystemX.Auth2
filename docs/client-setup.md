@@ -179,6 +179,8 @@ Calls that **change something** (register, login, password calls, refresh) are *
 - [Contracts reference](contracts-reference.md)
 - [Client package README](../src/SystemX.Auth2.Client/README.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Server settings](server-settings.md)
 
 ## Sign-in for browser apps (UI modes)
 

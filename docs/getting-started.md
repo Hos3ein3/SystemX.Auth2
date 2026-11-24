@@ -81,3 +81,5 @@ See [troubleshooting.md](troubleshooting.md). The usual first ones: PostgreSQL i
 - [Troubleshooting external sign-in](external-identity/troubleshooting.md)
 - [Repository README](../README.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Server settings](server-settings.md)

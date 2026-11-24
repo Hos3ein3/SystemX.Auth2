@@ -98,3 +98,5 @@ Sync (see [permission-sync.md](permission-sync.md)) starts only after a successf
 - [Getting started](getting-started.md)
 - [Contracts reference](contracts-reference.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Server settings](server-settings.md)

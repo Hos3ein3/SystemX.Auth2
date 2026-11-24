@@ -179,6 +179,8 @@ Services return `Result`. Building blocks (token provider, handler, start-up) th
 - [Getting started](getting-started.md)
 - [Server reference](server-reference.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Server settings](server-settings.md)
 
 ## API tables (generated)
 

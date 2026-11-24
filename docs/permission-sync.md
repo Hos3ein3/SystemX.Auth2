@@ -160,3 +160,6 @@ The Client package does this for you: `EnablePermissions(...)`, `EnableRoles(...
 - [Client package reference](client-reference.md)
 - [Server setup](server-setup.md)
 - [Documentation index](index.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Machine to machine (client credentials)](machine-to-machine.md)
+- [Getting started](getting-started.md)

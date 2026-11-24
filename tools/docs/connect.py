@@ -35,11 +35,12 @@ FAMILIES = [
     ['seeding.md', 'database-tables.md', 'authorization.md'],
     ['handshake-and-startup.md', 'client-setup.md', 'concepts.md', 'server-setup.md', 'permission-sync.md'],
     # client
-    ['client-setup.md', 'client-reference.md', 'client-authorization.md', 'client-current-user.md', 'machine-to-machine.md', 'handshake-and-startup.md', 'getting-started.md', 'contracts-reference.md'],
-    ['client-reference.md', 'client-authorization.md', 'client-current-user.md', 'machine-to-machine.md', 'contracts-reference.md'],
+    ['client-setup.md', 'client-builder.md', 'client-reference.md', 'client-authorization.md', 'client-current-user.md', 'machine-to-machine.md', 'handshake-and-startup.md', 'getting-started.md', 'contracts-reference.md'],
+    ['client-reference.md', 'client-builder.md', 'client-authorization.md', 'client-current-user.md', 'machine-to-machine.md', 'contracts-reference.md'],
     ['machine-to-machine.md', 'authentication-flows.md', 'client-reference.md'],
     ['client-authorization.md', 'client-current-user.md', 'client-reference.md'],
     ['contracts-reference.md', 'client-reference.md', 'server-reference.md', 'api-reference.md'],
+    ['client-builder.md', 'client-setup.md', 'client-reference.md', 'handshake-and-startup.md', 'permission-sync.md', 'client-current-user.md', 'machine-to-machine.md', 'getting-started.md', 'server-settings.md'],
     # project
     ['roadmap.md', 'feature-status.md', 'comparison-and-limits.md', 'decisions.md', 'gateway.md'],
     ['decisions.md', 'architecture.md', 'contributing-workflow.md', 'key-ring.md', 'email-and-sms.md', 'database-tables.md', 'external-identity.md'],

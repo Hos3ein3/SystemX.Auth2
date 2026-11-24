@@ -49,6 +49,7 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 | Page | Topic |
 |---|---|
 | [client-setup.md](client-setup.md) | Add the package, options, UI modes, handshake |
+| [client-builder.md](client-builder.md) | `Auth2ClientServiceCollectionExtensions` in depth: `AddAuth2Client`, every `Enable...` and `Use...` method, every option, `UseAuth2` |
 | [client-authorization.md](client-authorization.md) | Attributes, Minimal API extensions, API authentication |
 | [client-current-user.md](client-current-user.md) | `ICurrentUser`, `ICurrentClient`, the cache and the stores |
 | [client-reference.md](client-reference.md) | Every public type, member and overload of the Client package |
