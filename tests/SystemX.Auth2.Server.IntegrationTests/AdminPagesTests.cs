@@ -75,6 +75,18 @@ public class AdminPagesTests : Phase6Base
     }
 
     [Fact]
+    public async Task TheHomePage_SendsAPlainUserToTheirOwnProject_InsteadOfFailing()
+    {
+        await PrepareAppsAsync();
+        await CreateUserInAsync("appa");
+        var b = new Browser(Factory);
+        (await b.PostPageAsync("/Account/Login?ClientId=appa", new Dictionary<string, string> { ["Input.Login"] = "sara", ["Input.Password"] = PassA })).StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var home = await b.GetAsync("/");   // no client id and no project in the request: only the session cookie says who this is
+        home.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        home.Headers.Location!.ToString().ShouldBe("/admin/p/appa");
+    }
+
+    [Fact]
     public async Task RolesPage_ListsARoleThatAClientSynced()
     {
         var admin = await GlobalAdminAsync();

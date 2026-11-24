@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +43,7 @@ public sealed class DeveloperMetrics
 /// Root Developer Dashboard for SystemX.Auth2 Server.
 /// Shows project activity, fail audits, system logs, health metrics, and visual status bars.
 /// </summary>
-public sealed class IndexModel(Auth2DbContext db, IAdminJobService jobService, TimeProvider clock) : PageModel
+public sealed class IndexModel(Auth2DbContext db, IAdminJobService jobService, TimeProvider clock, IGlobalScope globalScope) : PageModel
 {
     public DeveloperMetrics Metrics { get; private set; } = new();
     public List<ProjectOverviewItem> Projects { get; private set; } = [];
@@ -69,15 +70,19 @@ public sealed class IndexModel(Auth2DbContext db, IAdminJobService jobService, T
                      || User.IsInRole(Auth2Roles.Developer)
                      || User.HasClaim("scope", "auth2.admin.global");
 
+        // The roles are already claims of the session (SessionRoleClaims reads them for the project of the cookie). A second lookup here would
+        // need a selected project, and this page has none.
         if (!IsGlobalAdmin)
         {
-            var userProjectKey = User.FindFirst("project_key")?.Value;
+            var userProjectKey = User.FindFirst(Auth2Claims.ProjectKey)?.Value;
             if (!string.IsNullOrEmpty(userProjectKey))
             {
                 return Redirect($"/admin/p/{userProjectKey}");
             }
             return Redirect("/Manage/Profile");
         }
+
+        using var _ = globalScope.Begin();
 
         // Metrics calculations
         var since24h = clock.GetUtcNow().AddHours(-24);

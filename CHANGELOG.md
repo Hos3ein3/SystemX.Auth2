@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 
 ## [Unreleased]
 
+### Fixed
+- **Client: a session that ended on the server no longer throws.** After a sign-out on the Auth2 server the application still had its own cookie, and the next `ICurrentUser.GetRolesAsync()` (or permissions) failed with an unhandled `Auth2Exception` (`invalid_token`). `UseAuth2()` now adds a small middleware: it removes the cookie and sends a browser to sign in again; an API call gets 401. Other errors are still thrown.
+- **Server home page (`/`) threw `ProjectNotFoundException`** for a signed-in user who is not a global admin. It looked up roles with `UserManager` while no project was selected; the roles are already claims of the session, so the lookup is gone. The redirect to the user's own project also read the wrong claim name (`project_key` instead of `projectkey`).
+
 ### Added
 - **Setting `Registration.SendConfirmationEmail`** (default on; an application can override it). When off, registration does not send the confirmation email; it is still sent when `Email.RequireConfirmedEmail` is on, and the resend route works either way.
 - **EmailFactory and SmsFactory.** The default `IEmailSender` / `ISmsSender` ask `IEmailFactory` / `ISmsFactory`, which pick the provider per request: the application's, else the project's, else the server default (`Auth2:Messaging`), else logging. New providers: `smtp` (MailKit) and `google` (Gmail, app password). Add your own with `IEmailTransport` / `ISmsTransport`. Settings are `GlobalOnly` and live in `ProjectSettings.Messaging` and `ClientApplicationSettings.Messaging`; the password is encrypted and never returned. Admin routes: `GET|PUT /projects/{id}/messaging`, `GET|PUT|DELETE /projects/{id}/applications/{appId}/messaging`. See [docs/email-and-sms.md](docs/email-and-sms.md).

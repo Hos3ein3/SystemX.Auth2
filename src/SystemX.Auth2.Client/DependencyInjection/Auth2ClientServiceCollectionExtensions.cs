@@ -190,6 +190,7 @@ public static class Auth2ClientApplicationBuilderExtensions
     {
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseMiddleware<SystemX.Auth2.Client.Authentication.Auth2SessionEndedMiddleware>();   // a session ended on the server is not an error of the application
         app.UseAuth2Routes();   // /auth2/login and /auth2/logout when a UI mode is on (minimal hosting)
         return app;
     }
