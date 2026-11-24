@@ -47,7 +47,7 @@ builder.Services.AddSystemXAuth2Server(builder.Configuration, o =>
     // optional code options; configuration section "Auth2" is also read
 });
 
-// builder.Services.ServerWithSingleApplication();   // optional. Without it the server is multi-application.
+// builder.Services.ServerWithSingleProject();   // optional. Without it the server is multi-project.
 ```
 
 ## Configuration reference
@@ -55,13 +55,13 @@ builder.Services.AddSystemXAuth2Server(builder.Configuration, o =>
 | Key | Default | Meaning |
 |---|---|---|
 | `ConnectionStrings:Auth2` | none (required) | PostgreSQL connection string |
-| `Auth2:Mode` | `MultiApplication` | Use `ServerWithSingleApplication()` for single mode |
-| `Auth2:CredentialScope` | `PerApplication` | `PerApplication` or `Shared`. Single mode forces `Shared` |
-| `Auth2:AllowCredentialScopeOverride` | `false` | Let an application override the credential scope |
+| `Auth2:Mode` | `MultiProject` | Use `ServerWithSingleProject()` for single mode |
+| `Auth2:CredentialScope` | `PerProject` | `PerProject` or `Shared`. Single mode forces `Shared` |
+| `Auth2:AllowCredentialScopeOverride` | `false` | Let a project override the credential scope |
 | `Auth2:Issuer` | none | Public URL of the server (needed in Production) |
 | `Auth2:AutoSeed` | `false` | Seed at startup outside Development |
 | `Auth2:AutoMigrate` | `false` | Migrate at startup in Production |
-| `Auth2:SingleApplication:Name` | `Default` | Name of the one application in single mode |
+| `Auth2:SingleProject:Name` | `Default` | Name of the one project in single mode (its application is named `default`) |
 | `Auth2:Development:LogMessageBodies` | `false` | Development only: log full emails and SMS (secrets!) |
 | `Auth2:Keys:SigningCertificates` | none | List of `{ "Path": "sign.pfx", "Password": "..." }`. The first signs; all validate |
 | `Auth2:Keys:EncryptionCertificates` | none | Same, for encrypting code and refresh tokens |
@@ -87,13 +87,13 @@ In `Development` and `Testing` the server makes temporary keys. In every other e
 
 Keep the passwords in environment variables or a secret store (`Auth2__Keys__SigningCertificates__0__Password`). The session cookie is `Secure` outside Development and Testing.
 
-## Single-application mode
+## Single-project mode
 
-Call `builder.Services.ServerWithSingleApplication();` after `AddSystemXAuth2Server`.
-It switches the server to single mode and registers `SingleApplicationContext`. See [concepts.md](concepts.md).
+Call `builder.Services.ServerWithSingleProject();` after `AddSystemXAuth2Server`.
+It switches the server to single mode and registers `SingleProjectContext`. See [concepts.md](concepts.md).
 
 `convert-to-single` and `convert-to-multi` commands arrive in a later phase.
-They copy credentials between the user row and `user_applications`. Going to single can lose data, because a person with different passwords in several applications can keep only one.
+They copy credentials between the user row and `user_projects`. Going to single can lose data, because a person with different passwords in several projects can keep only one.
 
 ## What `AddSystemXAuth2Server` registers (so far)
 
@@ -102,7 +102,7 @@ They copy credentials between the user row and `user_applications`. Going to sin
 - OpenIddict server and validation: `/connect/authorize`, `/connect/token`, `/connect/endsession`, `/connect/userinfo`, `/connect/revoke`, `/connect/introspect`, discovery and keys. See [authentication-flows.md](authentication-flows.md).
 - `ILoginService`, `ITokenIssuer`, `ISessionService`, `IReturnUrlValidator`, and the hosted-UI cookie `.SystemX.Auth2.Session`.
 - Razor Pages: `Account/Login`, `Account/TwoFactor`, `Account/Logout`, `Account/Lockout`, `Account/AccessDenied`, `Error`. The `.cshtml` files are empty on purpose.
-- `IApplicationContext`, `IAuthFlowResolver`, credential state strategies, localization (`IAuth2Localizer`).
+- `IProjectContext`, `IAuthFlowResolver`, credential state strategies, localization (`IAuth2Localizer`).
 
 Add `app.UseAuth2Localization();` to the pipeline for request cultures. See [localization.md](localization.md).
 
@@ -139,8 +139,9 @@ The server executable has commands. Run them with `dotnet run --project src/Syst
 |---|---|
 | `migrate` | Applies migrations, then seeds |
 | `seed` | Seeds only (see [seeding.md](seeding.md)) |
-| `create-application <projectKey> <name>` | Creates an application and its OpenIddict client. Prints the client secret **once** |
-| `rotate-client-secret <projectKey>` | Makes a new client secret and prints it once. The old one stops working |
+| `create-project <projectKey> <name>` | Creates a project (no application yet) |
+| `create-application <projectKey> <name> [clientId]` | Creates an application in that project (an OpenIddict application). The client id is `{projectkey}.{name}` unless given. Prints the client secret **once** |
+| `rotate-client-secret <clientId>` | Makes a new client secret and prints it once. The old one stops working |
 | `create-admin`, `rotate-keys`, `convert-to-single`, `convert-to-multi` | Planned (later phases) |
 
 Exit codes: `0` success, `1` the command failed, `2` wrong usage.
@@ -160,10 +161,10 @@ A PostgreSQL advisory lock makes sure that only one instance runs migration and 
 
 Tables and columns use `snake_case`. Identity tables have short names:
 `users`, `roles`, `user_roles`, `user_claims`, `role_claims`, `user_logins`, `user_tokens`.
-OpenIddict tables are `openiddict_applications`, `openiddict_authorizations`, `openiddict_scopes`, `openiddict_tokens`.
+The table `applications` **is** the OpenIddict application table (with the extra columns `project_id`, `is_enabled`, `name`, `settings_json`, timestamps). The other OpenIddict tables are `openiddict_authorizations`, `openiddict_scopes`, `openiddict_tokens`. Every major OpenIddict upgrade needs an EF migration review.
 Dates are `timestamptz`. Keys are UUID version 7.
 
-Roles are unique by `(application_id, normalized_name)` with `NULLS NOT DISTINCT`. This means `writer` in two applications is fine, but two global roles with the same name are not.
+Roles are unique by `(project_id, normalized_name)` with `NULLS NOT DISTINCT`. This means `writer` in two projects is fine, but two global roles with the same name are not.
 
 ## Create a migration (for contributors)
 
@@ -174,8 +175,8 @@ dotnet ef migrations add <Name> -p src/SystemX.Auth2.Server -s src/SystemX.Auth2
 ## Common problems
 
 - *`Connection string 'Auth2' is missing`:* set `ConnectionStrings:Auth2`.
-- *`The single application 'Default' does not exist`:* run the `seed` command.
-- *Role or user lookups return nothing in your own code:* tenant tables need a selected application. Call `IApplicationContext.GetRequiredAsync()` first, or use `IGlobalScope.Begin()` for developer work.
+- *`The single project 'Default' does not exist`:* run the `seed` command.
+- *Role or user lookups return nothing in your own code:* tenant tables need a selected project. Call `IProjectContext.GetRequiredAsync()` first, or use `IGlobalScope.Begin()` for developer work.
 
 ## Related pages
 

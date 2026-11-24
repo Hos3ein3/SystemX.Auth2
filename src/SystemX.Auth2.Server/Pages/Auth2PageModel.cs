@@ -36,7 +36,7 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     public bool ProjectFound => Project is not null;
 
     /// <summary>The client id to put into redirects to the next page (so the next page finds the same application).</summary>
-    public string? ClientIdForLinks => Client?.ClientId ?? ClientId;
+    protected string? ClientIdForLinks => Client?.ClientId ?? ClientId;
 
     /// <summary>Localized error message for the UI, or null.</summary>
     public string? ErrorMessage { get; protected set; }
@@ -79,7 +79,7 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     protected T Svc<T>() where T : notnull => HttpContext.RequestServices.GetRequiredService<T>();
 
     /// <summary><see cref="ReturnUrl"/> if it is safe, otherwise null. Use it for links in emails.</summary>
-    public string? SafeReturnUrl() => urls.IsAllowed(ReturnUrl, Effective.AllowedRedirectUris) ? ReturnUrl : null;
+    protected string? SafeReturnUrl() => urls.IsAllowed(ReturnUrl, Effective.AllowedRedirectUris) ? ReturnUrl : null;
 
     /// <summary>Messages of every broken rule (for example the password rules), localized.</summary>
     public IReadOnlyList<string> ErrorMessages { get; protected set; } = [];

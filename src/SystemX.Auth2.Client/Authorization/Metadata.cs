@@ -84,23 +84,35 @@ public sealed class Auth2AuthorizeAttribute : AuthorizeAttribute;
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 public sealed class Auth2AnonymousAttribute : Attribute, IAllowAnonymous;
 
-/// <summary>The user needs a permission (one of the keys, or all of them with <see cref="RequireAll"/>).</summary>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+/// <summary>
+/// On a class or method: the user needs a permission (one of the keys, or all of them with <see cref="RequireAll"/>).
+/// On a <c>const string</c> field (with <c>AddFromClass</c>) or an enum member (with <c>AddFromEnum</c>): no keys, only the data of the permission
+/// (<see cref="DisplayName"/>, <see cref="Description"/>); the value of the field is the key.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
 public sealed class Auth2PermissionAttribute : AuthorizeAttribute, IAuth2PermissionMetadata
 {
     private readonly bool _all;
 
-    /// <summary>Needs any of the permissions.</summary>
+    /// <summary>Needs any of the permissions. With no key (on a field) it only carries the data of the permission.</summary>
     public Auth2PermissionAttribute(params string[] permissions) : this(false, permissions) { }
 
     /// <summary>Needs any (or all) of the permissions.</summary>
     public Auth2PermissionAttribute(bool requireAll, params string[] permissions)
     {
-        ArgumentOutOfRangeException.ThrowIfZero(permissions.Length);
         Permissions = [.. permissions];
         _all = requireAll;
-        Policy = PolicyNames.Make("perm", requireAll ? "all" : "any", permissions);
+        if (permissions.Length > 0) Policy = PolicyNames.Make("perm", requireAll ? "all" : "any", permissions);
     }
+
+    /// <summary>Display name of the permission (on a field or enum member).</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>Description of the permission (on a field or enum member).</summary>
+    public string? Description { get; set; }
+
+    /// <summary>Group label for screens. Without it the category (the class or enum name) is used.</summary>
+    public string? Group { get; set; }
 
     /// <inheritdoc />
     public IReadOnlyList<string> Permissions { get; }
@@ -109,23 +121,34 @@ public sealed class Auth2PermissionAttribute : AuthorizeAttribute, IAuth2Permiss
     public bool RequireAll => _all;
 }
 
-/// <summary>The user needs a role (one of the names, or all with <c>requireAll</c>).</summary>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+/// <summary>
+/// On a class or method: the user needs a role (one of the names, or all with <c>requireAll</c>).
+/// On a <c>const string</c> field or an enum member: no names, only the data of the role (<see cref="DisplayName"/>, <see cref="Description"/>, <see cref="Permissions"/>).
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
 public sealed class Auth2RoleAttribute : AuthorizeAttribute, IAuth2RoleMetadata
 {
     private readonly bool _all;
 
-    /// <summary>Needs any of the roles.</summary>
+    /// <summary>Needs any of the roles. With no name (on a field) it only carries the data of the role.</summary>
     public Auth2RoleAttribute(params string[] roles) : this(false, roles) { }
 
     /// <summary>Needs any (or all) of the roles.</summary>
     public Auth2RoleAttribute(bool requireAll, params string[] roles)
     {
-        ArgumentOutOfRangeException.ThrowIfZero(roles.Length);
         RoleNames = [.. roles];
         _all = requireAll;
-        Policy = PolicyNames.Make("role", requireAll ? "all" : "any", roles);
+        if (roles.Length > 0) Policy = PolicyNames.Make("role", requireAll ? "all" : "any", roles);
     }
+
+    /// <summary>Display name of the role (on a field or enum member).</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>Description of the role (on a field or enum member).</summary>
+    public string? Description { get; set; }
+
+    /// <summary>Permission keys the role carries (on a field). Not possible with string or enum sources.</summary>
+    public string[]? Permissions { get; set; }
 
     /// <summary>The role names.</summary>
     public IReadOnlyList<string> RoleNames { get; }
@@ -136,33 +159,46 @@ public sealed class Auth2RoleAttribute : AuthorizeAttribute, IAuth2RoleMetadata
     public bool RequireAll => _all;
 }
 
-/// <summary>The token needs one of these scopes.</summary>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+/// <summary>
+/// On a class or method: the token needs one of these scopes.
+/// On a <c>const string</c> field or an enum member: no names, only the data of the scope (<see cref="DisplayName"/>, <see cref="Description"/>).
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
 public sealed class Auth2ScopeAttribute : AuthorizeAttribute, IAuth2ScopeMetadata
 {
-    /// <summary>Needs any of the scopes.</summary>
+    /// <summary>Needs any of the scopes. With no name (on a field) it only carries the data of the scope.</summary>
     public Auth2ScopeAttribute(params string[] scopes)
     {
-        ArgumentOutOfRangeException.ThrowIfZero(scopes.Length);
         Scopes = [.. scopes];
-        Policy = PolicyNames.Make("scope", "any", scopes);
+        if (scopes.Length > 0) Policy = PolicyNames.Make("scope", "any", scopes);
     }
+
+    /// <summary>Display name of the scope (on a field or enum member).</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>Description of the scope (on a field or enum member).</summary>
+    public string? Description { get; set; }
 
     /// <inheritdoc />
     public IReadOnlyList<string> Scopes { get; }
 }
 
-/// <summary>The user must be in one of these groups.</summary>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+/// <summary>
+/// On a class or method: the user must be in one of these groups.
+/// On a <c>const string</c> field or an enum member: no names, only the data of the group (<see cref="DisplayName"/>).
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
 public sealed class Auth2GroupAttribute : AuthorizeAttribute, IAuth2GroupMetadata
 {
-    /// <summary>Needs any of the groups.</summary>
+    /// <summary>Needs any of the groups. With no name (on a field) it only carries the data of the group.</summary>
     public Auth2GroupAttribute(params string[] groups)
     {
-        ArgumentOutOfRangeException.ThrowIfZero(groups.Length);
         Groups = [.. groups];
-        Policy = PolicyNames.Make("group", "any", groups);
+        if (groups.Length > 0) Policy = PolicyNames.Make("group", "any", groups);
     }
+
+    /// <summary>Display name of the group (on a field or enum member).</summary>
+    public string? DisplayName { get; set; }
 
     /// <inheritdoc />
     public IReadOnlyList<string> Groups { get; }

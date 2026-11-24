@@ -43,6 +43,7 @@ internal sealed class PermissionSyncService(Auth2DbContext db, IAuthFlowResolver
 
     private async Task<SyncOutcome> ApplyAsync(Project app, bool markMissingObsolete, Dictionary<string, PermissionDefinition> wanted, CancellationToken ct)
     {
+        var sourceApplicationId = (await flow.GetClientAsync(ct))?.Id;   // the client that pushes it (kept on the item)
         var existing = await db.Permissions.ToDictionaryAsync(p => p.Key, StringComparer.Ordinal, ct);
         int added = 0, updated = 0, unchanged = 0;
         var addedKeys = new List<string>();
@@ -51,7 +52,7 @@ internal sealed class PermissionSyncService(Auth2DbContext db, IAuthFlowResolver
         {
             if (!existing.TryGetValue(key, out var p))
             {
-                db.Permissions.Add(new Permission { ProjectId = app.Id, Key = key, DisplayName = def.DisplayName, Description = def.Description, Group = def.Group, Source = PermissionSource.Sync });
+                db.Permissions.Add(new Permission { ProjectId = app.Id, ApplicationId = sourceApplicationId, Key = key, DisplayName = def.DisplayName, Description = def.Description, Group = def.Group, Source = PermissionSource.Sync });
                 added++; addedKeys.Add(key);
                 continue;
             }
@@ -118,6 +119,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
 
     private async Task<SyncOutcome> ApplyAsync(Project app, bool permissionSyncAllowed, Dictionary<string, (RoleDefinition Def, List<string> Keys)> wanted, CancellationToken ct)
     {
+        var sourceApplicationId = (await flow.GetClientAsync(ct))?.Id;   // the client that pushes it (kept on the item)
         // Permissions named by roles but unknown here are created as sync permissions, only when permission sync is allowed.
         var allKeys = wanted.Values.SelectMany(w => w.Keys).Distinct().ToList();
         var known = await db.Permissions.Where(p => allKeys.Contains(p.Key)).ToDictionaryAsync(p => p.Key, StringComparer.Ordinal, ct);
@@ -128,7 +130,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
         var addedNames = new List<string>();
         foreach (var key in unknown)
         {
-            var p = new Permission { ProjectId = app.Id, Key = key, Source = PermissionSource.Sync };
+            var p = new Permission { ProjectId = app.Id, ApplicationId = sourceApplicationId, Key = key, Source = PermissionSource.Sync };
             db.Permissions.Add(p);
             known[key] = p;
         }
@@ -146,7 +148,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
             var created = false;
             if (role is null)
             {
-                role = new AppRole(name) { ProjectId = app.Id, Description = def.Description };
+                role = new AppRole(name) { ProjectId = app.Id, ApplicationId = sourceApplicationId, Description = def.Description };
                 var result = await roles.CreateAsync(role);
                 if (!result.Succeeded)
                 {
@@ -256,6 +258,7 @@ internal sealed class GroupSyncService(Auth2DbContext db, IAuthFlowResolver flow
 
     private async Task<SyncOutcome> ApplyAsync(Project app, Dictionary<string, Contracts.Access.GroupDefinition> wanted, CancellationToken ct)
     {
+        var sourceApplicationId = (await flow.GetClientAsync(ct))?.Id;   // the client that pushes it (kept on the item)
         var existing = await db.Groups.Select(g => g.Name).ToListAsync(ct);
         var have = new HashSet<string>(existing, StringComparer.Ordinal);
         var addedKeys = new List<string>();
@@ -263,7 +266,7 @@ internal sealed class GroupSyncService(Auth2DbContext db, IAuthFlowResolver flow
         {
             if (have.Contains(name)) continue;
             // New groups only. The display name of an existing group is the admin's and is never changed by sync.
-            db.Groups.Add(new Group { ProjectId = app.Id, Name = name, DisplayName = def.DisplayName });
+            db.Groups.Add(new Group { ProjectId = app.Id, ApplicationId = sourceApplicationId, Name = name, DisplayName = def.DisplayName });
             addedKeys.Add(name);
         }
         if (addedKeys.Count > 0)

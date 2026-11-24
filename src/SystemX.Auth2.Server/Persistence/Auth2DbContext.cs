@@ -162,7 +162,7 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IProjectSc
             e.Property(a => a.ProjectKey).HasMaxLength(64).IsRequired();
             e.Property(a => a.Name).HasMaxLength(200).IsRequired();
             e.HasIndex(a => a.ProjectKey).IsUnique();
-            e.Property(a => a.Version).IsRowVersion();
+            e.Property(a => a.Version).HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();   // PostgreSQL system column
             e.Property(a => a.Settings).HasColumnName("settings_json").HasColumnType("jsonb")
                 .HasConversion(SettingsConverter<Domain.Settings.ProjectSettings>(), SettingsComparer<Domain.Settings.ProjectSettings>());
         });

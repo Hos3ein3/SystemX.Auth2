@@ -6,14 +6,14 @@ Users sign in with a Google account. Google tells the Server the user's email an
 
 1. Open the Google Cloud console, create or choose a project.
 2. Go to **APIs & Services > OAuth consent screen** and set it up (user type *External* for the public, *Internal* for one Google Workspace).
-3. Go to **Credentials > Create credentials > OAuth client ID**, type **Web application**.
+3. Go to **Credentials > Create credentials > OAuth client ID**, type **Web project**.
 4. Add the redirect URL below under **Authorized redirect URIs**.
 5. Copy the **client id** and **client secret** into the settings below.
 6. To allow only one company, set `HostedDomain` to the Workspace domain (for example `corp.com`). The Server also checks the `hd` claim of the token, so a user cannot skip it.
 
 ### The URL to register
 
-Enter this as the redirect (callback) URL at the provider. Replace `{slug}` with the project key of your application (or `default` in single-application mode) and `{name}` with the provider name you choose:
+Enter this as the redirect (callback) URL at the provider. Replace `{slug}` with the project key of your application (or `default` in single-project mode) and `{name}` with the provider name you choose:
 
 ```
 https://auth.example.com/callback/login/{slug}/{name}

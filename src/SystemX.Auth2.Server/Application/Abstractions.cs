@@ -57,7 +57,17 @@ public interface IProjectSelection
     string? ProjectKey { get; set; }
 }
 
-/// <summary>Reads cached settings of an application.</summary>
+/// <summary>
+/// The project key that names the session cookie (<c>.SystemX.Auth2.Session.{projectkey}</c>). It is set very early in the request
+/// (before authentication runs) from the client id or from the only session cookie the browser sent.
+/// </summary>
+public interface IProjectCookieKey
+{
+    /// <summary>The project key for the session cookie of this request, or null when it is not known.</summary>
+    string? CookieProjectKey { get; set; }
+}
+
+/// <summary>Reads cached settings of a project.</summary>
 public interface IProjectSettingsProvider
 {
     /// <summary>Gets the settings. Cached per application and settings version.</summary>

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using SystemX.Auth2.Contracts.Auth;
@@ -37,10 +38,16 @@ public sealed record ExternalFlowResult
 /// </summary>
 public sealed class ExternalFlow(
     IExternalProviderRegistry registry, IEnumerable<IExternalIdentitySource> sources, IExternalLoginService external, IExternalLinkService links,
-    IAuthFlowResolver flow, IReturnUrlValidator urls, IProjectSelection selection, Microsoft.Extensions.Options.IOptions<Auth2ServerOptions> options, IAuditService audit)
+    IAuthFlowResolver flow, IReturnUrlValidator urls, IProjectSelection selection, IClientIdAccessor clientIds, Microsoft.AspNetCore.DataProtection.IDataProtectionProvider protection,
+    Microsoft.Extensions.Options.IOptions<Auth2ServerOptions> options, IAuditService audit)
 {
     /// <summary>Name of the state cookie.</summary>
     public const string StateCookie = ".SystemX.Auth2.ExternalState";
+
+    /// <summary>Name of the cookie that remembers which application started the sign-in (sealed). Its redirect URIs are the ones that count when the provider answers.</summary>
+    public const string ClientCookie = ".SystemX.Auth2.ExternalClient";
+
+    private Microsoft.AspNetCore.DataProtection.IDataProtector ClientProtector => protection.CreateProtector("SystemX.Auth2.ExternalClient");
 
     private string Issuer(HttpContext http) =>
         !string.IsNullOrWhiteSpace(options.Value.Issuer) ? options.Value.Issuer.TrimEnd('/') : $"{http.Request.Scheme}://{http.Request.Host}{http.Request.PathBase}";
@@ -87,6 +94,12 @@ public sealed class ExternalFlow(
                 SameSite = http.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,   // Apple answers with a cross-site POST
                 IsEssential = true,
             });
+            if ((await flow.GetClientAsync(ct)) is { } client)
+                http.Response.Cookies.Append(ClientCookie, ClientProtector.Protect(client.ClientId), new CookieOptions
+                {
+                    HttpOnly = true, Secure = http.Request.IsHttps, MaxAge = challenge.StateLifetime, Path = "/",
+                    SameSite = http.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax, IsEssential = true,
+                });
             return new ExternalStartResult(challenge.RedirectUri.ToString(), challenge.PostFields, null);
         }
         catch (ExternalLoginException ex)
@@ -103,6 +116,17 @@ public sealed class ExternalFlow(
         if (provider is null) return new ExternalFlowResult { ErrorCode = Auth2ErrorCodes.ExternalProviderDisabled };
         selection.ProjectKey = provider.ProjectSlug == ExternalProviderUrls.SingleModeSlug ? null : provider.ProjectSlug;   // the URL decides the project; nothing else is trusted
         var app = await flow.GetProjectAsync(ct);
+        // The application that started the sign-in (sealed cookie). It is used only when it belongs to this project.
+        if (http.Request.Cookies[ClientCookie] is { Length: > 0 } sealedClient)
+        {
+            try
+            {
+                clientIds.ClientId = ClientProtector.Unprotect(sealedClient);
+                if ((await flow.GetClientAsync(ct)) is { } started && started.ProjectId != app.Id) clientIds.ClientId = null;
+            }
+            catch (System.Security.Cryptography.CryptographicException) { clientIds.ClientId = null; }
+            http.Response.Cookies.Delete(ClientCookie, new CookieOptions { Path = "/", Secure = http.Request.IsHttps, SameSite = http.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax });
+        }
         var settings = await flow.GetSettingsAsync(ct);
 
         var state = http.Request.Cookies[StateCookie];

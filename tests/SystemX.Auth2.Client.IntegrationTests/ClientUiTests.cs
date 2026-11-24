@@ -193,7 +193,7 @@ public class SyncIntegrationTests : ClientAppTestBase
         await UpdateSettingsAsync(s => s.App.AllowSelfUiLogin = true);
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
-        builder.Services.AddAuth2Client("http://localhost", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; })
+        builder.Services.AddAuth2Client("http://localhost", o => { o.ApplicationName = "default"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; })
             .ServerWithMultiProject("blog")
             .EnablePermissions(o => { o.SyncPolicy = PermissionSyncPolicy.Push; o.ScanningPolicy = ScanningPolicy.AssemblyScan; });
         foreach (var name in new[] { Auth2ClientDefaults.HttpClientName, Auth2ClientDefaults.ResilientHttpClientName })

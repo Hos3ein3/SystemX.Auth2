@@ -51,7 +51,7 @@ public sealed record SetObsoleteRequest(bool IsObsolete);
 
 /// <summary>One audit event. No secrets are ever stored in it.</summary>
 public sealed record AuditEventDto(Guid Id, DateTimeOffset OccurredAtUtc, Guid? ProjectId, Guid? ActorUserId, string? ActorClientId,
-    string Action, string? TargetType, string? TargetId, string? IpAddress, string? UserAgent, string? DataJson);
+    string Action, string? TargetType, string? TargetId, string? IpAddress, string? UserAgent, string? DataJson, Guid? ApplicationId = null);
 
 /// <summary>One open session (an OpenIddict authorization) of a user.</summary>
 public sealed record SessionDto(string Id, DateTimeOffset? CreatedAtUtc, IReadOnlyList<string> Scopes);

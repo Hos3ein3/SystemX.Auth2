@@ -569,7 +569,7 @@ internal sealed class AuditReader(Auth2DbContext db, IAuthFlowResolver flow, IGl
             var total = await q.CountAsync(ct);
             var items = await q.Skip(query.Skip).Take(query.SafePageSize).ToListAsync(ct);
             return new PagedResult<AuditEventDto>([.. items.Select(e => new AuditEventDto(e.Id, e.OccurredAtUtc, e.ProjectId, e.ActorUserId, e.ActorClientId,
-                e.Action, e.TargetType, e.TargetId, e.IpAddress, e.UserAgent, e.DataJson))], query.SafePage, query.SafePageSize, total);
+                e.Action, e.TargetType, e.TargetId, e.IpAddress, e.UserAgent, e.DataJson, e.ApplicationId))], query.SafePage, query.SafePageSize, total);
         }
         finally { all?.Dispose(); }
     }

@@ -28,10 +28,10 @@ public class DataModelTests : ServerTestBase
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         (await db.Database.GetPendingMigrationsAsync()).ShouldBeEmpty();
         var tables = await db.Database.SqlQuery<string>($"SELECT table_name AS \"Value\" FROM information_schema.tables WHERE table_schema = 'public'").ToListAsync();
-        foreach (var t in new[] { "applications", "user_applications", "user_application_recovery_codes", "permissions", "user_permissions",
+        foreach (var t in new[] { "projects", "applications", "user_projects", "user_project_recovery_codes", "permissions", "user_permissions",
             "role_permissions", "groups", "user_groups", "group_roles", "group_permissions", "audit_events", "otp_codes",
             "data_protection_keys", "users", "roles", "user_roles", "user_claims", "role_claims", "user_logins", "user_tokens",
-            "openiddict_applications", "openiddict_authorizations", "openiddict_scopes", "openiddict_tokens" })
+            "openiddict_authorizations", "openiddict_scopes", "openiddict_tokens" })
             tables.ShouldContain(t);
     }
 
@@ -262,12 +262,16 @@ public class DataModelTests : ServerTestBase
     {
         (await Auth2Commands.RunAsync(["migrate"], Factory.Services)).ShouldBe(0);
         (await Auth2Commands.RunAsync(["seed"], Factory.Services)).ShouldBe(0);
-        (await Auth2Commands.RunAsync(["create-application", "papertrade", "PaperTrade"], Factory.Services)).ShouldBe(0);
+        (await Auth2Commands.RunAsync(["create-project", "papertrade", "PaperTrade"], Factory.Services)).ShouldBe(0);
+        (await Auth2Commands.RunAsync(["create-project", "papertrade"], Factory.Services)).ShouldBe(2);
+        (await Auth2Commands.RunAsync(["create-application", "papertrade", "papertrade-api"], Factory.Services)).ShouldBe(0);
         (await Auth2Commands.RunAsync(["create-application", "papertrade"], Factory.Services)).ShouldBe(2);
-        (await Auth2Commands.RunAsync(["create-application", "_global", "X"], Factory.Services)).ShouldBe(1);
+        (await Auth2Commands.RunAsync(["create-application", "nope", "x"], Factory.Services)).ShouldBe(1);   // no such project
 
         await using var scope = NewScope();
-        (await scope.ServiceProvider.GetRequiredService<IProjectService>().FindByProjectKeyAsync("papertrade")).ShouldNotBeNull();
+        var project = (await scope.ServiceProvider.GetRequiredService<IProjectService>().FindByProjectKeyAsync("papertrade"))!;
+        var apps = await scope.ServiceProvider.GetRequiredService<IApplicationService>().ListAsync(project.Id);
+        apps.Single().ClientId.ShouldBe("papertrade.papertrade-api");   // {projectkey}.{name}
     }
 
     [Fact]

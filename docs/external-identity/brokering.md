@@ -1,11 +1,11 @@
 # Brokering: your app trusts only the Server
 
-**Brokering** means your application does not talk to Google, Okta, Entra ID or any other upstream provider. The application only trusts this Server. The Server talks to the upstream provider and gives your app **Server tokens**.
+**Brokering** means your application does not talk to Google, Okta, Entra ID or any other upstream provider. The project only trusts this Server. The Server talks to the upstream provider and gives your app **Server tokens**.
 
 ## How to use (for operators)
 
-1. Add the upstream provider to the application (see the setup guide of its type).
-2. Add `External` to `Methods.AllowedLoginMethods` of the application.
+1. Add the upstream provider to the project (see the setup guide of its type).
+2. Add `External` to `Methods.AllowedLoginMethods` of the project.
 3. Your app keeps using the normal code flow with PKCE against the Server. Nothing changes in the app.
 
 What your app sees:
@@ -17,11 +17,11 @@ What your app sees:
 
 ### Home-realm discovery
 
-Put the email domains of a company in `EmailDomains` of its provider (for example `contoso.com`). When the login page sends the user's email as `hint`, the Server suggests that provider. A domain can belong to one provider per application.
+Put the email domains of a company in `EmailDomains` of its provider (for example `contoso.com`). When the login page sends the user's email as `hint`, the Server suggests that provider. A domain can belong to one provider per project.
 
 ### Several providers
 
-An application can have up to 20 providers. Two providers may point to the same upstream system only if their names are different; every provider has its own callback URL.
+An project can have up to 20 providers. Two providers may point to the same upstream system only if their names are different; every provider has its own callback URL.
 
 ### Logout
 

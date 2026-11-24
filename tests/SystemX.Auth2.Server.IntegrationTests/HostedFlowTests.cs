@@ -81,7 +81,9 @@ public class HostedFlowTests : IdentityTestBase
 
         var claims = HttpExtensions.JwtPayload(token.Body.Str("access_token"));
         claims.Str("preferred_username").ShouldBe("sara");
-        claims.Str("app").ShouldBe(A.Id.ToString("D"));
+        claims.Str("project_id").ShouldBe(A.Id.ToString("D"));
+        claims.Str("client_id").ShouldBe("appa");
+        claims.TryGetProperty("application_id", out _).ShouldBeTrue();
         claims.Str("projectkey").ShouldBe("appa");
         claims.Values("amr").ShouldBe(["pwd"]);
         claims.Values("aud").ShouldContain("appa");

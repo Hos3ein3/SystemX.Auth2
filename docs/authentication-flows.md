@@ -40,19 +40,19 @@ The authorize, token, end-session and user-info endpoints run in **passthrough**
 
 The order of the checks:
 
-1. The application is enabled.
+1. The project is enabled, then the application is enabled (one shared check, `AccessGate`). A refusal is always the generic `access_denied`; the audit log has the real reason (`project_disabled` or `application_disabled`).
 2. The login method is allowed (user name, email or phone). The method is guessed from the login text (`@` means email; a phone-number pattern means phone).
-3. The user exists, is active, and belongs to the application (multi mode).
+3. The user exists, is active, and belongs to the **project** (multi mode). A member can use every application of the project.
 4. The account is not locked.
 5. The password is right.
-6. Email or phone is confirmed, if the application requires it.
-7. Two-factor, if it is on for this user in this application.
+6. Email or phone is confirmed, if the project requires it.
+7. Two-factor, if it is on for this user in this project.
 8. Single active session.
 
 Consent is checked by the authorize endpoint (see "Consent" below).
 
-**No user enumeration.** Unknown user, wrong password, inactive user and "not registered in this application" all return `invalid_credentials`. For an unknown user the server still spends the time of a password check. The real reason is written to the audit log (`login.failed`, field `code`).
-The errors that are allowed to differ are the ones that do not tell if an account exists: `project_disabled`, `login_method_not_allowed`, `locked_out` (the account is real, and was locked by many failures), and the confirmation and two-factor-setup errors (shown only after the password was right).
+**No user enumeration.** Unknown user, wrong password, inactive user and "not registered in this project" all return `invalid_credentials`. For an unknown user the server still spends the time of a password check. The real reason is written to the audit log (`login.failed`, field `code`).
+The errors that are allowed to differ are the ones that do not tell if an account exists: `access_denied` (project or application disabled), `login_method_not_allowed`, `locked_out` (the account is real, and was locked by many failures), and the confirmation and two-factor-setup errors (shown only after the password was right).
 
 Every login writes an audit event (`login.success`, `login.failed`, `login.locked_out`). Events never contain passwords, codes or login names.
 
@@ -74,9 +74,9 @@ grant_type=authorization_code&code=...&redirect_uri=https://app.example.com/sign
 &code_verifier=...&client_id=papertrade&client_secret=...
 ```
 
-**Exact redirect URIs.** The redirect URIs and post-logout URIs of an application are the lists `Redirects.AllowedRedirectUris` and `AllowedPostLogoutRedirectUris` in its settings. They are matched exactly. No wildcards. When you change the settings, the OpenIddict client is updated in the same transaction.
+**Exact redirect URIs.** The redirect URIs and post-logout URIs are fields of the **application** (the OpenIddict application). They are matched exactly. No wildcards. Page redirects (`ReturnUrl`) are checked against the same list of the calling application.
 
-**The session cookie belongs to one application.** The cookie `.SystemX.Auth2.Session` has a claim `app`. If a user signed in for application A and then comes to authorize for application B, they must sign in again for B, because the credentials may be different there.
+**The session cookie belongs to one project.** Its name has the project key: `.SystemX.Auth2.Session.{projectkey}`. A login in project A is never even sent to project B on the same domain, because the credentials may be different there. The applications of one project share the cookie (single sign-on inside the project). A middleware chooses the project of the cookie before authentication runs: from the client id of the request, or from the only session cookie the browser sent. The cookie also carries the claim `project_id`, which is checked again.
 
 `prompt=login` forces a new login. `prompt=none` returns `login_required` to your app when there is no session.
 
@@ -88,13 +88,13 @@ grant_type=client_credentials&client_id=papertrade-api&client_secret=...&scope=a
 ```
 
 The token has `sub` = the client id, and the claim `machine=true`. It has no user, no `sid` and no `amr`.
-The scopes must be in `Clients.AllowedScopes` of the application. The scopes `auth2.admin` and `auth2.admin.global` are not allowed by default.
+The scopes must be in the allowed scopes of the application (the OpenIddict permissions `scp:...`). The scopes `auth2.admin` and `auth2.admin.global` are not allowed by default.
 
 ## Optional: the password grant
 
 > **Risky. Off by default.** The OAuth 2.1 draft removes the password grant. With it, **your client app handles the user's password**, and every app you give this right becomes a place where passwords can leak. Use the hosted UI when you can.
 
-It is on only when the application setting `Clients.AllowSelfUiLogin` is `true`. Then:
+It is on only when the application setting `AllowSelfUiLogin` is `true`. Then:
 
 - The OpenIddict client gets the permission for `password` and for the two-factor grant. Without the setting the server answers `unauthorized_client`.
 - The client is always **confidential**: it must send its secret. (Every client of this server has a secret.)
@@ -170,21 +170,21 @@ These flows have JSON endpoints (for your backend) and pages (for the hosted UI)
 - A new person is created together with the membership row in one transaction. The password follows the [credential scope](credential-scope.md).
 - A confirmation email (link) and, for a phone number, a confirmation code (SMS) are sent. They are sent even when the application does not force confirmation.
 - It is **idempotent**: calling it again for the same person creates nothing and **never changes the password**. Many parallel calls create one person.
-- The answer says `userWasCreated`, `joinedApplication` and `confirmationRequired`. These are for your **trusted backend**. Do not show them to the end user. That would tell a stranger whether an account exists. The hosted `Account/Register` page gives every visitor the same answer.
+- The answer says `userWasCreated`, `joinedProject` and `confirmationRequired`. These are for your **trusted backend**. Do not show them to the end user. That would tell a stranger whether an account exists. The hosted `Account/Register` page gives every visitor the same answer.
 - `Registration.RegistrationEnabled=false` closes registration (`registration_disabled`).
 
-### Joining a second application (proof of ownership)
+### Joining a second project (proof of ownership)
 
-One person is one account on the whole server. When that person registers in another application, the server does **not** add them and does **not** take the password from the request. Otherwise a stranger could register an existing email in a new application, set their own password, and take over that application's login for the real owner (*account pre-hijacking*).
+One person is one account on the whole server. When that person registers in another project, the server does **not** add them and does **not** take the password from the request. Otherwise a stranger could register an existing email in a new project, set their own password, and take over that application's login for the real owner (*account pre-hijacking*).
 
 What happens instead:
 
-1. The register call finds the existing person. The answer is `joinedApplication=false`, `confirmationRequired=true`.
+1. The register call finds the existing person. The answer is `joinedProject=false`, `confirmationRequired=true`.
 2. The server sends a one-time **proof code** to the person's **confirmed** email (or, if none, confirmed phone). An unconfirmed address proves nothing, so nothing is sent (audit event `join.no_proof_channel`).
-3. The person sends the code and a **new password for this application**: `POST /api/auth2/join/complete` (or the page `Account/JoinApplication`).
+3. The person sends the code and a **new password for this project**: `POST /api/auth2/join/complete` (or the page `Account/JoinProject`).
 4. The server checks the password rules first (so a weak password does not use up the code), checks the code, then creates the membership row and sets the password in one transaction.
 
-With shared credentials, no new password is asked: only the membership is added. `Registration.JoinMode` must be `AutoJoin`. In single-application mode there is nothing to join.
+With shared credentials, no new password is asked: only the membership is added. `Registration.JoinMode` must be `AutoJoin`. In single-project mode there is nothing to join.
 
 ### One-time codes (OTP)
 
@@ -278,11 +278,13 @@ Access tokens are **signed JWTs** (not encrypted), so APIs can validate them wit
 |---|---|
 | `sub` | User id (or client id for machine tokens) |
 | `preferred_username`, `email`, `phone_number`, `given_name`, `family_name`, `name`, `locale` | Profile data |
-| `role` | Roles **of this application** only |
+| `role` | Roles **of this project** only |
 | `scope`, `aud` | Granted scopes; the audience is the client id of the application |
-| `app` | Application id |
-| `projectkey` | Project key. **Omitted in single-application mode** |
-| `pv` | Access version: application version plus the user's version in the application. Both only grow |
+| `project_id` | Project id (the tenant) |
+| `projectkey` | Project key |
+| `client_id` | OAuth client id of the application |
+| `application_id` | Id of the application (client) |
+| `pv` | Access version: project version plus the user's version in the project. Both only grow |
 | `amr` | `pwd`, `otp`, `fed` (external sign-in), `mfa` (the provider reports several factors) |
 | `idp` | Name of the external provider the user signed in with. Only for external sign-ins |
 | `sid` | Session id (user tokens only) |
@@ -302,20 +304,20 @@ Key rotation steps are written in `security.md` (phase 10).
 
 ## Client secrets
 
-Every application has an OpenIddict client with a **secret**. OpenIddict stores only a hash. The secret is shown **once**:
+Every application is an OpenIddict client with a **secret**. OpenIddict stores only a hash. The secret is shown **once**:
 
-- `create-application <projectKey> <name>` prints it to the console.
-- `rotate-client-secret <projectKey>` makes a new one and invalidates the old one.
-- The seeded `_global` and single-application clients get a secret that nobody sees. Run `rotate-client-secret` for them when you need one.
+- `create-application <projectKey> <name>` prints it to the console (and the admin API shows it once, with a copy-paste client setup).
+- `rotate-client-secret <clientId>` makes a new one and invalidates the old one.
+- The seeded `_global` and single-project clients get a secret that nobody sees. Run `rotate-client-secret` for them when you need one.
 
 ## Common problems
 
-- *`unauthorized_client` on the password grant:* `Clients.AllowSelfUiLogin` is false for the application.
+- *`unauthorized_client` on the password grant:* `AllowSelfUiLogin` is false for the application.
 - *`invalid_client`:* wrong client id or secret. A secret from application A never works for B.
 - *Redirect loop between authorize and login:* the cookie is not sent. Check `SameSite`, `Secure` and that you use HTTPS (outside Development the cookie is `Secure`).
 - *`invalid_request` on authorize:* a PKCE parameter is missing, the method is not `S256`, or the `redirect_uri` is not in the registered list.
-- *The login page shows 404:* the application is unknown. In multi-application mode the page needs `client_id` (directly, or inside `ReturnUrl`).
-- *`invalid_scope` or `invalid_request` for a scope:* add it to `Clients.AllowedScopes` of the application. Custom scopes must also exist in OpenIddict.
+- *The login page shows 404:* the application is unknown. In multi-project mode the page needs `client_id` (directly, or inside `ReturnUrl`).
+- *`invalid_scope` or `invalid_request` for a scope:* add it to the allowed scopes of the application. Custom scopes must also exist in OpenIddict.
 - *Tokens stop working after a restart (Development):* temporary keys. Set certificates.
 
 ## Related pages

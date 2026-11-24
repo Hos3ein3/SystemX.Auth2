@@ -34,7 +34,7 @@ Three things you give the identity provider (from the Server), and three you giv
 }
 ```
 
-Also add `External` to `Methods.AllowedLoginMethods` of the application. See [external-identity.md](../external-identity.md) for every field.
+Also add `External` to `Methods.AllowedLoginMethods` of the project. See [external-identity.md](../external-identity.md) for every field.
 
 ## Common problems
 

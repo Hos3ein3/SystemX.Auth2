@@ -37,9 +37,14 @@ internal sealed class ProjectStatusServerHandler(IProjectStatusCache status) : I
 
     public async ValueTask HandleAsync(OpenIddictServerEvents.ProcessAuthenticationContext context)
     {
-        if (context.IsRejected || context.Principal is null) return;
-        if (await ProjectStatusCheck.IsBlockedAsync(context.Principal, status, context.CancellationToken))
+        if (context.IsRejected) return;
+        // Whatever token the request brought (code, refresh token, access token, ...): one of them is set.
+        foreach (var principal in new[] { context.AuthorizationCodePrincipal, context.RefreshTokenPrincipal, context.AccessTokenPrincipal, context.GenericTokenPrincipal })
+        {
+            if (principal is null || !await ProjectStatusCheck.IsBlockedAsync(principal, status, context.CancellationToken)) continue;
             context.Reject(Errors.InvalidToken, "The token is not valid anymore.");
+            return;
+        }
     }
 }
 
@@ -55,8 +60,8 @@ internal sealed class ProjectStatusValidationHandler(IProjectStatusCache status)
 
     public async ValueTask HandleAsync(OpenIddictValidationEvents.ProcessAuthenticationContext context)
     {
-        if (context.IsRejected || context.Principal is null) return;
-        if (await ProjectStatusCheck.IsBlockedAsync(context.Principal, status, context.CancellationToken))
+        if (context.IsRejected || context.AccessTokenPrincipal is null) return;
+        if (await ProjectStatusCheck.IsBlockedAsync(context.AccessTokenPrincipal, status, context.CancellationToken))
             context.Reject(Errors.InvalidToken, "The token is not valid anymore.");
     }
 }

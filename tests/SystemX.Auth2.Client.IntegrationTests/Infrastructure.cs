@@ -51,14 +51,14 @@ public class ServerFactory(string connectionString, bool single) : WebApplicatio
 
 /// <summary>
 /// A running Server with one application and a client built from the real Client package that talks to it.
-/// Multi mode: application "Blog" with project key <c>blog</c>. Single mode: the one application "Default".
+/// Multi mode: project "Blog" with project key <c>blog</c> and its application "default". Single mode: the one application "default".
 /// </summary>
 public abstract class ClientTestBase : IAsyncLifetime
 {
     protected virtual bool Single => false;
     protected ServerFactory Server { get; private set; } = null!;
     protected string ClientId => Single ? "default" : "blog";
-    protected string ApplicationName => Single ? "Default" : "Blog";
+    protected string ApplicationName => "default";   // the first application of a project made by CreateWithApplicationAsync is named "default"
     protected string ClientSecret { get; private set; } = "";
     protected Guid ProjectId { get; private set; }
 

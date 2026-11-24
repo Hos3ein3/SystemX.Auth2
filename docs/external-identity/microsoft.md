@@ -8,12 +8,12 @@ Users sign in with a work, school or personal Microsoft account (Microsoft Entra
 2. Choose who can sign in: *this directory only* (one tenant), *any directory* (`organizations`), or *any directory and personal accounts* (`common`).
 3. Add a **Web** redirect URI (below).
 4. Under **Certificates & secrets**, create a **client secret** and copy its **value** (not the id).
-5. Copy the **Application (client) ID**. For one tenant, copy the **Directory (tenant) ID** too and set `tenantId` to it.
+5. Copy the **Project (client) ID**. For one tenant, copy the **Directory (tenant) ID** too and set `tenantId` to it.
 6. To allow only some tenants when you use `organizations` or `common`, list their ids in `allowedTenants`. The Server checks the `tid` claim and that the token issuer belongs to that tenant.
 
 ### The URL to register
 
-Enter this as the redirect (callback) URL at the provider. Replace `{slug}` with the project key of your application (or `default` in single-application mode) and `{name}` with the provider name you choose:
+Enter this as the redirect (callback) URL at the provider. Replace `{slug}` with the project key of your application (or `default` in single-project mode) and `{name}` with the provider name you choose:
 
 ```
 https://auth.example.com/callback/login/{slug}/{name}

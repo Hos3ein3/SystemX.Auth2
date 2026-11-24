@@ -42,7 +42,7 @@ public class TokenEndpointTests : IdentityTestBase
         var claims = HttpExtensions.JwtPayload(body.Str("access_token"));
         claims.Str("machine").ShouldBe("true");
         claims.Str("sub").ShouldBe("appa");
-        claims.Str("app").ShouldBe(A.Id.ToString("D"));
+        claims.Str("project_id").ShouldBe(A.Id.ToString("D"));
         claims.Values("scope").SelectMany(x => x.Split(' ')).ShouldBe(["auth2.client.handshake", "auth2.permissions.sync"], ignoreOrder: true);
         claims.TryGetProperty("sid", out _).ShouldBeFalse();
         claims.TryGetProperty("amr", out _).ShouldBeFalse();
@@ -78,7 +78,7 @@ public class TokenEndpointTests : IdentityTestBase
         await DisableAsync("appa");
         var (status, body) = await TokenAsync(new Browser(Factory), new Dictionary<string, string> { ["grant_type"] = "client_credentials" });
         status.ShouldBe(HttpStatusCode.BadRequest);
-        body.Str("error_code").ShouldBe(Auth2ErrorCodes.ProjectDisabled);
+        body.Str("error_code").ShouldBe(Auth2ErrorCodes.AccessDenied);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class TokenEndpointTests : IdentityTestBase
         await PrepareAsync(selfUi: false);
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-        var stored = await db.Database.SqlQuery<string>($"SELECT client_secret AS \"Value\" FROM openiddict_applications WHERE client_id = 'appa'").SingleAsync();
+        var stored = await db.Database.SqlQuery<string>($"SELECT client_secret AS \"Value\" FROM applications WHERE client_id = 'appa'").SingleAsync();
         stored.ShouldNotBeNullOrEmpty();
         stored.ShouldNotContain(ASecret);
     }
@@ -113,8 +113,8 @@ public class TokenEndpointTests : IdentityTestBase
         await PrepareAsync(selfUi: false);
         var (_, body) = await TokenAsync(new Browser(Factory), new Dictionary<string, string> { ["grant_type"] = "client_credentials", ["scope"] = "auth2.client.handshake" });
         var claims = HttpExtensions.JwtPayload(body.Str("access_token"));
-        claims.Str("app").ShouldBe(A.Id.ToString("D"));
-        claims.Str("app").ShouldNotBe(B.Id.ToString("D"));
+        claims.Str("project_id").ShouldBe(A.Id.ToString("D"));
+        claims.Str("project_id").ShouldNotBe(B.Id.ToString("D"));
         claims.Values("aud").ShouldBe(["appa"]);
         // appa's secret does not open appb
         (await TokenAsync(new Browser(Factory), new Dictionary<string, string> { ["grant_type"] = "client_credentials" }, clientId: "appb", secret: ASecret)).Status.ShouldBe(HttpStatusCode.Unauthorized);
@@ -201,7 +201,7 @@ public class TokenEndpointTests : IdentityTestBase
         await PrepareAsync();
         await DisableAsync("appa");
         var (_, body) = await PasswordGrantAsync(new Browser(Factory), "sara", PassA);
-        body.Str("error_code").ShouldBe(Auth2ErrorCodes.ProjectDisabled);
+        body.Str("error_code").ShouldBe(Auth2ErrorCodes.AccessDenied);
     }
 
     [Fact]

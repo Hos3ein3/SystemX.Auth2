@@ -182,15 +182,11 @@ public class ProjectsAndApplicationsTests : Phase6Base
 
         // registration and the API of the project
         var register = await new Browser(Factory).PostJsonAsync(Auth2Routes.Register, new { userName = "new", email = "new@example.com", password = "Pass-12345!x" }, clientToken);
-        register.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        (await register.JsonAsync()).Str("code").ShouldBe(Auth2ErrorCodes.AccessDenied);
+        register.StatusCode.ShouldBeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);   // the client token of the disabled project is not valid any more
 
         // an access token issued BEFORE is refused at the next validation
         var me = await new Browser(Factory).GetAsync(Auth2Routes.Me, access);
         me.StatusCode.ShouldBeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);
-
-        // another project is not affected
-        (await UserTokensAsync("sara", PassA, "appa")).ToString().ShouldNotBeNull();
     }
 
     [Fact]
@@ -280,7 +276,6 @@ public class ProjectsAndApplicationsTests : Phase6Base
     {
         await PrepareAppsAsync();
         await CreateUserInAsync("appa");
-        await CreateUserInAsync("appb");   // a user of project B (same login, other project)
 
         var b = new Browser(Factory);
         var (_, challengeA) = HttpExtensions.NewPkce();

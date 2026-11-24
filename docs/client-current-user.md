@@ -1,37 +1,78 @@
-# Current user
+# Current user and current client
 
 ## What this is
 
-`ICurrentUser` tells your code who is calling and what they may do. Name, email, scopes and "is it a program?" come from the token. Roles, permissions and groups are **async**, because they may need a call to the server.
+Two services tell your code who is calling. Both read the same `ClaimsPrincipal` of the request. Use the right one:
+
+- **`ICurrentClient`**: the calling **application** (the client that got the token). Everything is synchronous and comes from the token (no call to the server): client id, project, scopes, "is it a program?", session id, sign-in method.
+- **`ICurrentUser`**: the **person**. `IsAuthenticated` is false for a machine token. Name and email come from the token. Roles, permissions and groups are **async**, because they may need a call to the server (`/api/auth2/me`); the answer is cached.
+
+A scope is what a **client** may do. A permission is what a **user** may do. An endpoint can require both.
 
 ## When to use it
 
-In endpoints and services: "show the user's name", "does this user have `orders.write`?", "which groups is this user in?".
+In endpoints and services: "show the user's name", "does this user have `orders.write`?", "does this token have the scope `reports.read`?", "was this an external sign-in?".
 
 ```csharp
-app.MapGet("/me", async (ICurrentUser user) => new
+app.MapGet("/me", async (ICurrentUser user, ICurrentClient client) => new
 {
     user.UserName,
     user.Email,
     Roles = await user.GetRolesAsync(),
     CanWrite = await user.HasPermissionAsync("orders.write"),
+    client.ClientId,
+    client.ProjectKey,
+    MayReadReports = client.HasScope("reports.read"),
 }).WithAuth2();
 ```
 
-## The interface
+## The interfaces
+
+`ICurrentClient`:
+
+| Member | Meaning |
+|---|---|
+| `IsTokenAuthenticated` | The request has a valid token (user token or machine token) |
+| `ClientId`, `ApplicationId` | The application that got the token (`client_id`, `application_id`) |
+| `ProjectId`, `ProjectKey` | The project of that application (`project_id`, `projectkey`) |
+| `Scopes`, `HasScope(scope)` | The scopes of the token (exact match) |
+| `IsMachine` | The token belongs to a program (client credentials) |
+| `SessionId` | The session id (`sid`) of a user token |
+| `Idp` | The external provider the user signed in with (claim `idp`, for example `google` or `corp-saml`), or null after a local sign-in |
+| `Amr` | The sign-in methods (claim `amr`): `pwd`, `otp`, `fed` (an external provider), `swk` or `hwk` (a passkey) and `mfa` (several factors) |
+
+`ICurrentUser`:
 
 | Member | Source |
 |---|---|
-| `IsAuthenticated`, `UserId`, `UserName`, `Email`, `PhoneNumber`, `FirstName`, `LastName`, `FullName`, `Scopes`, `IsMachine`, `IdentityProvider`, `AuthenticationMethods` | The token (no call) |
+| `IsAuthenticated` (false for a machine token), `UserId`, `UserName`, `Email`, `PhoneNumber`, `FirstName`, `LastName`, `FullName` | The token (no call) |
 | `GetRolesAsync`, `GetPermissionsAsync`, `GetGroupsAsync`, `HasPermissionAsync`, `HasRoleAsync` | Access data (cache, else the server) |
 
-`IdentityProvider` is the name of the external provider the user signed in with (claim `idp`, for example `google` or `corp-saml`), or null after a local sign-in. `AuthenticationMethods` is the list of `amr` values: `pwd`, `otp`, `fed` (an external provider), `swk` or `hwk` (a passkey) and `mfa` (several factors). Use them for example to ask for a stronger sign-in before a sensitive action:
+Use `Amr` for example to ask for a stronger sign-in before a sensitive action:
 
 ```csharp
-if (!user.AuthenticationMethods.Contains("mfa")) return Results.Forbid();
+if (!client.Amr.Contains("mfa")) return Results.Forbid();
 ```
 
-A **machine token** (client credentials) has no person: `IsMachine` is true, `UserId` is null, the lists are empty, and the server is never asked. Nothing throws.
+A **machine token** (client credentials) has no person: `ICurrentClient.IsMachine` is true, `ICurrentUser.IsAuthenticated` is false, `UserId` is null, the lists are empty, and the server is never asked. Nothing throws.
+
+## Requiring a scope and a permission
+
+`.WithScope(...)` and `.WithMachineOnly()` check the client. `.WithPermission(...)` and `.WithRole(...)` check the user. They can be combined; all of them must pass:
+
+| Token | `.WithScope("reports.read")` | `.WithPermission("orders.read")` | Both |
+|---|---|---|---|
+| Machine token with the scope | passes | fails (no person) | fails |
+| User token with the scope, user has no permission | passes | fails | fails |
+| User token without the scope, user has the permission | fails | passes | fails |
+| User token with the scope, user has the permission | passes | passes | passes |
+
+See [client-authorization.md](client-authorization.md).
+
+## How to implement / extend
+
+- `CurrentClientImpl` and `CurrentUserImpl` are scoped services that read `HttpContext.User`. A new claim goes into `ICurrentClient` (about the client or the token) or `ICurrentUser` (about the person), with a unit test that builds a `ClaimsPrincipal`.
+- Cookie sessions (hosted UI, Self UI) copy the needed claims into the cookie, so both services work the same way.
 
 ## Where access data comes from
 

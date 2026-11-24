@@ -1,52 +1,83 @@
-# Server settings (ApplicationSettings)
+# Server settings
 
 ## What this is
 
-Every application has a set of settings. The server stores them as JSON in one `jsonb` column (`applications.settings_json`).
+Settings live on **two levels**.
+
+- **Project settings** (`ProjectSettings`): stored as JSON in one `jsonb` column (`projects.settings_json`). Login methods, password rules, lockout, two-factor, sessions, external providers, `JoinMode`, token defaults, localization.
+- **Application settings**: the OpenIddict fields of the application (redirect URIs, post-logout redirect URIs, allowed scopes, consent type, client type) **plus** `applications.settings_json` (`ClientApplicationSettings`) for what OpenIddict has no field for. A null value there means "use the project value".
+
 Every setting has a safe default. A **global admin** (the developer) can edit all settings.
 A **project admin** can edit only the settings marked `ProjectAdminEditable`.
-
-The code that checks the settings is `ApplicationSettingsValidator`. It rejects unsafe values before they are saved.
+The code that checks the settings is `ProjectSettingsValidator` and `ClientApplicationSettingsValidator`. They reject unsafe values before anything is saved.
 
 ## When to use it
 
-Use this page when you configure an application, or when you build the admin screens.
+Use this page when you configure a project or an application, or when you build the admin screens.
 
-## Step by step
+## How to use
 
-1. Read the current settings: `IApplicationSettingsProvider.GetAsync(applicationId)` (cached).
+### The effective value
+
+The value that counts for a request is the **project default, overridden by the application value where the application sets one**.
+One class does this: `EffectiveSettings(projectSettings, application)`. Page models, token issuing, the login cookie and the handshake all use it.
+
+| Setting | Project (`ProjectSettings`) | Application (`ClientApplicationSettings`) | Effective |
+|---|---|---|---|
+| UI mode | `Clients.DefaultUiMode` | `UiMode` | application, else project |
+| Cookie lifetime | `Sessions.CookieLifetimeMinutes` | `CookieLifetimeMinutes` | application, else project, else session cookie |
+| Access token lifetime | `Sessions.AccessTokenMinutes` | `AccessTokenMinutes` | application, else project |
+| Refresh token lifetime | `Sessions.RefreshTokenDays` | `RefreshTokenDays` | application, else project |
+| Identity token lifetime | `Sessions.IdentityTokenMinutes` | `IdentityTokenMinutes` | application, else project |
+| Consent | `Sessions.RequireConsent`, `ConsentMode` | `ConsentMode` (also written to the OpenIddict consent type) | application, else project |
+| External providers shown | all providers of the project | `ExternalProviders` (a **subset** of the project's providers, never more) | the subset, or all |
+| Password grant (Self UI) | none | `AllowSelfUiLogin` | application only (off by default) |
+| CORS origins | none | `AllowedCorsOrigins` | application only (CORS is off when empty) |
+| Redirect URIs, scopes | none | OpenIddict fields | application only |
+
+### Step by step
+
+1. Read the project settings: `IProjectSettingsProvider.GetAsync(projectId)` (cached).
 2. Change the object.
-3. Save it with `IApplicationService.UpdateSettingsAsync(applicationId, settings)`.
-   The service validates the settings, raises `SettingsVersion` by one, clears the cache and writes an audit event.
-4. If the settings are not valid, you get a `SettingsValidationException` with a list of `Path` and `Message`.
+3. Save it with `IProjectService.UpdateSettingsAsync(projectId, settings)`.
+   The service validates the settings, raises `SettingsVersion` by one, writes the consent type into every application of the project, clears the cache and writes an audit event.
+4. Application values are changed with `IApplicationService.UpdateAsync(applicationId, new ApplicationSpec(...))`. It goes through the OpenIddict application manager.
+5. If the settings are not valid, you get a `SettingsValidationException` with a list of `Path` and `Message`.
 
-## Example
+### Example
 
 ```csharp
-var settings = await settingsProvider.GetAsync(app.Id);
+var settings = await settingsProvider.GetAsync(project.Id);
 settings.Password.MinLength = 12;
-settings.Redirects.AllowedRedirectUris.Add("https://app.example.com/signin-oidc");
-await applicationService.UpdateSettingsAsync(app.Id, settings);
+await projectService.UpdateSettingsAsync(project.Id, settings);
+
+await applicationService.UpdateAsync(application.Id, new ApplicationSpec("",
+    RedirectUris: ["https://app.example.com/signin-oidc"],
+    Settings: new ClientApplicationSettings { AccessTokenMinutes = 5, AllowSelfUiLogin = false }));
 ```
 
-## What changing a setting does to the OpenIddict client
+### What changing a setting does to the OpenIddict application
 
-`UpdateSettingsAsync` also updates the OpenIddict client of the application, in the same transaction:
-
-| Setting | Effect on the client |
+| Setting | Effect on the application |
 |---|---|
-| `Redirects.AllowedRedirectUris`, `AllowedPostLogoutRedirectUris` | Registered redirect URIs (exact match) |
-| `Clients.AllowedScopes` | Scope permissions. A scope not in the list is refused |
-| `Clients.AllowSelfUiLogin` | Adds or removes the password grant and the two-factor grant |
-| `Sessions.ConsentMode` | Consent type of the client |
-| `Sessions.AccessTokenMinutes`, `RefreshTokenDays`, `IdentityTokenMinutes` | Used when the next token is issued |
+| Redirect URIs, post-logout redirect URIs | Registered redirect URIs (exact match, no wildcards) |
+| Allowed scopes | Scope permissions. A scope not in the list is refused |
+| `AllowSelfUiLogin` (application) | Adds or removes the password grant and the two-factor grants |
+| Consent mode (project or application) | Consent type of the application |
+| Token lifetimes | Used when the next token is issued |
 
-The client secret is never changed by a settings update.
+The client secret is never changed by a settings update. Rotate it on purpose (`secret/rotate`).
+
+## How to implement / extend
+
+- A new **project** setting: add the property (with `[SettingEditability(...)]`, a test checks that every field has it) to `ProjectSettings`, validate it in `ProjectSettingsValidator`, and document it here.
+- A new **application** setting: add a nullable property to `ClientApplicationSettings`, expose the effective value in `EffectiveSettings` (override first, then the project value), validate it in `ClientApplicationSettingsValidator`. Add a test for the precedence.
+- Do not store in `SettingsJson` what OpenIddict already has a field for.
 
 ## How some settings work together
 
 - **Consent.** `Sessions.RequireConsent=false` means no consent page, whatever `ConsentMode` says. With `RequireConsent=true`, `Implicit` is treated as `Explicit` (ask once). `Systematic` asks every time. See [authentication-flows.md](authentication-flows.md#consent).
-- **Joining.** `Registration.JoinMode=AutoJoin` lets a person who already has an account join with proof of ownership. `InviteOnly` and `Closed` refuse. (Admins will be able to add people in the admin API, phase 9.) `RegistrationEnabled=false` closes registration of new people.
+- **Joining.** `Registration.JoinMode=AutoJoin` lets a person who already has an account join with proof of ownership. `InviteOnly` and `Closed` refuse. (Admins add people with the admin API.) `RegistrationEnabled=false` closes registration of new people.
 - **OTP.** `TwoFactor.OtpLength`, `OtpLifetimeSeconds`, `OtpMaxAttempts` and `OtpResendSeconds` rule **every** one-time code: login, phone confirmation, join and password reset by SMS.
 - **Lockout.** Wrong passwords, wrong OTP codes, wrong TOTP codes and a wrong current password all count as failed attempts.
 - **Confirmation.** `Email.RequireConfirmedEmail` and `Phone.RequireConfirmedPhone` block the login only after the password (or code) was right.
@@ -57,7 +88,7 @@ The validator rejects:
 
 - `Lockout.MaxFailedAttempts` below 1, or `Lockout.LockoutMinutes` below 1.
 - `Password.MinLength` below 6, `Password.MaxLength` below `MinLength`.
-- A redirect URI with a wildcard (`*`), a fragment (`#`), or a scheme other than `http` or `https`.
+- A redirect URI of an application with a wildcard (`*`), a fragment (`#`), or a scheme other than `http` or `https`.
 - A regular expression that does not compile, or a `Phone.RegexTimeoutMs` outside 1–1000. A regex always runs with a timeout. This protects the server from ReDoS (a regex that runs for a very long time).
 - `RedirectAfter*` values that are not a local path (one `/`) or an absolute `http(s)` URL. `//evil.com` is rejected.
 - A CORS origin with a wildcard.
@@ -180,39 +211,34 @@ Sessions and tokens.
 | `IdentityTokenMinutes` | `int` | `10` | GlobalOnly | Identity token lifetime in minutes. |
 | `CookieLifetimeMinutes` | `int?` | `null` | GlobalOnly | Cookie lifetime in minutes. Null means the client default. |
 | `CookieSliding` | `bool` | `true` | GlobalOnly | Sliding cookie expiry. |
-| `SingleActiveSession` | `bool` | `null` | GlobalOnly | On sign-in, revoke other sessions of this application. |
+| `SingleActiveSession` | `bool` | `null` | GlobalOnly | On sign-in, revoke other sessions of this project (all its applications). |
 | `RequireConsent` | `bool` | `null` | GlobalOnly | Show a consent screen. |
 | `ConsentMode` | `ConsentMode` | `Implicit` | GlobalOnly | How consent works. |
 
 ### Redirects
 
-Redirect rules. Fallbacks only; a valid return URL wins.
+Redirect fallbacks. A valid return URL wins. The allowed redirect URIs are fields of each **application** (OpenIddict), not of the project.
 
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
 | `RedirectAfterLogin` | `string?` | `null` | ProjectAdminEditable | Where to go after login. |
 | `RedirectAfterRegister` | `string?` | `null` | ProjectAdminEditable | Where to go after register. |
 | `RedirectAfterLogout` | `string?` | `null` | ProjectAdminEditable | Where to go after logout. |
-| `AllowedRedirectUris` | `List<string>` | `empty list` | GlobalOnly | Allowed redirect URIs. Exact match, no wildcards. |
-| `AllowedPostLogoutRedirectUris` | `List<string>` | `empty list` | GlobalOnly | Allowed post-logout redirect URIs. Exact match, no wildcards. |
 
 ### Clients
 
-Client behaviour.
+Client behaviour: project defaults for all applications. Scopes, redirect URIs, Self UI and CORS are application values (see above).
 
 | Field | Type | Default | Editor | Meaning |
 |---|---|---|---|---|
 | `AllowedClientTypes` | `List<ClientType>` | `Api, Mvc, RazorPages, Blazor, Machine` | GlobalOnly | Allowed client types. |
-| `AllowedScopes` | `List<string>` | `"openid", "profile", "email", "phone", "roles", "offline_access", "auth2.me", "auth2.client.handshake", "auth2.register", "auth2.login", "auth2.permissions.sync", "auth2.roles.sync", "auth2.groups.read"` | GlobalOnly | Scopes clients may request. Never put `auth2.admin` or `auth2.admin.global` here for a normal client. |
 | `PermissionSyncAllowed` | `bool` | `true` | GlobalOnly | Permission sync is allowed. |
 | `RoleSyncAllowed` | `bool` | `true` | GlobalOnly | Role sync is allowed. |
 | `AllowRemovePermissionsFromSync` | `bool` | `null` | GlobalOnly | Sync marks permissions that are missing from the list as obsolete (never deletes). |
 | `DefaultUiMode` | `UiMode` | `Hosted` | GlobalOnly | Default UI mode. |
 | `ScopeSyncAllowed` | `bool` | `true` | GlobalOnly | A client may register its own custom scopes and allow them for itself (never `auth2.*` or the standard scopes). |
 | `GroupSyncAllowed` | `bool` | `false` | GlobalOnly | A client may add missing groups (push). Admins keep all other control. |
-| `AllowProjectAdminRotateSecret` | `bool` | `false` | GlobalOnly | A project admin may rotate the client secret of the own application. |
-| `AllowSelfUiLogin` | `bool` | `null` | GlobalOnly | Enables the password grant for this application. |
-| `AllowedCorsOrigins` | `List<string>` | `empty list` | GlobalOnly | Allowed CORS origins. CORS is off when empty. |
+| `AllowProjectAdminRotateSecret` | `bool` | `false` | GlobalOnly | A project admin may rotate the client secret of the applications of the own project. |
 
 ### Localization
 
@@ -243,17 +269,35 @@ All fields of every type are explained in [external-identity.md](external-identi
 | `PasskeyNameMaxLength` | `int` | `50` | GlobalOnly | Longest passkey name (1 to 200). |
 | `RequirePasskeyBackupMethod` | `bool` | `true` | GlobalOnly | A user may not remove the last way to sign in. |
 
+### Application settings (`ClientApplicationSettings`)
+
+Stored in `applications.settings_json`. A null value means "use the project value".
+
+| Field | Type | Default | Editor | Meaning |
+|---|---|---|---|---|
+| `UiMode` | `UiMode?` | `null` | GlobalOnly | Hosted, Self or None. Null: `Clients.DefaultUiMode` of the project. |
+| `CookieLifetimeMinutes` | `int?` | `null` | GlobalOnly | Cookie lifetime in minutes. |
+| `AccessTokenMinutes` | `int?` | `null` | GlobalOnly | Access token lifetime (1 to 1440). |
+| `RefreshTokenDays` | `int?` | `null` | GlobalOnly | Refresh token lifetime (1 to 365). |
+| `IdentityTokenMinutes` | `int?` | `null` | GlobalOnly | Identity token lifetime (1 to 1440). |
+| `AllowedCorsOrigins` | `List<string>` | `empty list` | GlobalOnly | Allowed CORS origins of this client. Exact origins, no wildcards. CORS is off when empty. |
+| `AllowSelfUiLogin` | `bool` | `false` | GlobalOnly | Enables the password grant and the two-factor grants for this client (Self UI). |
+| `ExternalProviders` | `List<string>?` | `null` | ProjectAdminEditable | Names of the project's providers this client shows. Null: all. It only chooses; it never adds a provider. |
+| `ConsentMode` | `ConsentMode?` | `null` | GlobalOnly | Consent mode. Null: the project value. |
+
+The OpenIddict fields (redirect URIs, post-logout redirect URIs, allowed scopes) are edited with the application routes ([admin-api.md](admin-api.md)).
+
 ## Risks
 
 - Lowering `Password.MinLength` or turning off lockout makes accounts easier to attack.
-- `Clients.AllowSelfUiLogin` turns on the password grant for the application. The client app then handles passwords. Prefer the hosted UI. See [authentication-flows.md](authentication-flows.md).
+- `AllowSelfUiLogin` (an application setting) turns on the password grant for that application. The client app then handles passwords. Prefer the hosted UI. See [authentication-flows.md](authentication-flows.md).
 - `Clients.AllowRemovePermissionsFromSync` lets a client mark synced permissions obsolete by leaving them out of a sync (nothing is deleted). Keep it off unless one client owns the whole catalog.
 - `Email.RequireConfirmedEmail` is off by default so a fresh install works with the development email sender. Turn it on in production.
 
 ## Common problems
 
 - *`SettingsValidationException` when saving:* read the `Path` of each error and fix that field.
-- *A setting change has no effect:* the settings are cached. `UpdateSettingsAsync` clears the cache on this instance. Other instances are cleared in phase 10 (Redis pub/sub); until then the cache lives at most 10 minutes.
+- *A setting change has no effect:* the settings are cached. `UpdateSettingsAsync` clears the cache on this instance. With Redis the other instances are cleared at once (pub/sub); without Redis their cache lives at most 10 minutes.
 
 ## Related pages
 

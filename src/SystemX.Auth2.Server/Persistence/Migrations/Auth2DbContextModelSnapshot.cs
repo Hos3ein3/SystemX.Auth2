@@ -939,7 +939,7 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
-                        .HasColumnName("version");
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_projects");

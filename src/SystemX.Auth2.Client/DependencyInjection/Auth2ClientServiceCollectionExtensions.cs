@@ -77,6 +77,7 @@ public static class Auth2ClientServiceCollectionExtensions
         services.TryAddSingleton<IRoleScanner, RoleScanner>();
         services.TryAddSingleton<IScopeScanner, ScopeScanner>();
         services.TryAddSingleton<IGroupScanner, GroupScanner>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<Microsoft.Extensions.Hosting.IHostedService, Auth2CatalogStartupService>());   // checks all catalog sources when the host starts
         services.TryAddSingleton<Auth2Catalog>();
         services.TryAddSingleton<IAuth2Catalog>(sp => sp.GetRequiredService<Auth2Catalog>());
         if (!services.Any(d => d.ServiceType == typeof(Auth2SyncHostedService)))

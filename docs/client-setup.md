@@ -12,7 +12,7 @@ Your application (an API, an MVC app, a Blazor app, a worker) wants to use a Sys
 
 ## Step by step
 
-1. Create the application on the server and keep the **client secret** (shown once). See [server-setup.md](server-setup.md).
+1. Create the project (once) and an **application** in it on the server, and keep the **client secret** (shown once). The admin page "Client setup" of the application (or `GET /projects/{projectId}/applications/{applicationId}/setup`) gives a copy-paste snippet. See [server-setup.md](server-setup.md) and [concepts.md](concepts.md).
 2. Add the package: `dotnet add package SystemX.Auth2.Client`.
 3. Put the secret in a secret store (`dotnet user-secrets`, an environment variable, Key Vault). **Never in the source code.**
 4. Register the client in `Program.cs` (examples below).
@@ -20,27 +20,29 @@ Your application (an API, an MVC app, a Blazor app, a worker) wants to use a Sys
 
 ## Which server mode do you have?
 
-The server is either **multi-application** (many projects, each with a `ProjectKey`) or **single-application** (one project, no key).
+The server is either **multi-project** (many projects, each with a `ProjectKey`) or **single-project** (one project, no key).
 
-- Multi-application server → call `.ServerWithMultiApplication("your-project-key")`.
-- Single-application server → **do not** call it.
+- Multi-project server → call `.ServerWithMultiProject("your-project-key")`. Without a key the client stops at start with a clear message.
+- Single-project server → **do not** call it. A key sent to a single-project server is ignored and logged as a warning.
+
+The client always sets `ApplicationName` (the name of **this application** inside its project), `ClientId` and `ClientSecret`. The project key is only an identifier: it is not a secret and not proof of anything; the server finds the project from the client id.
 
 You do not have to guess right: the handshake asks the server and tells you if you chose wrong (see below).
-`ServerWithSingleApplication()` exists only on the **server**. The client has no such method.
+`ServerWithSingleProject()` exists only on the **server**. The client has no such method.
 
-### Example: multi-application server
+### Example: multi-project server
 
 ```csharp
 builder.Services
     .AddAuth2Client("https://auth.example.com", o =>
     {
-        o.ApplicationName = "PaperTrade.Api";          // the name of the application on the server
+        o.ApplicationName = "papertrade-api";          // the name of this application inside its project
         o.ClientId = "papertrade-api";
         o.ClientSecret = builder.Configuration["Auth2:Secret"]!;
         o.OnServerUnavailable = StartupFailureBehavior.Continue;
         o.OnApplicationNotFound = StartupFailureBehavior.Throw;
     })
-    .ServerWithMultiApplication("papertrade")          // the project key
+    .ServerWithMultiProject("papertrade")          // the project key
     .EnableResilience()
     .EnableHealthCheck();
 
@@ -48,13 +50,13 @@ var app = builder.Build();
 app.UseAuth2();                                         // UseAuthentication + UseAuthorization
 ```
 
-### Example: single-application server
+### Example: single-project server
 
 ```csharp
 builder.Services
     .AddAuth2Client("https://auth.example.com", o =>
     {
-        o.ApplicationName = "Default";
+        o.ApplicationName = "default";
         o.ClientId = "default";
         o.ClientSecret = builder.Configuration["Auth2:Secret"]!;
     })
@@ -65,11 +67,11 @@ builder.Services
 ### From configuration
 
 ```csharp
-builder.Services.AddAuth2Client(builder.Configuration.GetSection("Auth2")).ServerWithMultiApplication("papertrade");
+builder.Services.AddAuth2Client(builder.Configuration.GetSection("Auth2")).ServerWithMultiProject("papertrade");
 ```
 
 ```json
-{ "Auth2": { "ServerUrl": "https://auth.example.com", "ApplicationName": "PaperTrade.Api", "ClientId": "papertrade-api" } }
+{ "Auth2": { "ServerUrl": "https://auth.example.com", "ApplicationName": "papertrade-api", "ClientId": "papertrade-api" } }
 ```
 
 (`ClientSecret` comes from the environment variable `Auth2__ClientSecret`.)
@@ -81,9 +83,9 @@ The builder methods can be called **in any order**.
 | Option | Default | Meaning |
 |---|---|---|
 | `ServerUrl` | (required) | Address of the server |
-| `ApplicationName` | (required) | Must equal the application name on the server |
+| `ApplicationName` | (required) | Must equal the name of the application (the client) on the server |
 | `ClientId`, `ClientSecret` | (required) | OAuth client of this application |
-| `ProjectKey` | none | Set by `ServerWithMultiApplication`. Lowercase letters, digits, `-`, `_`; 3–64 characters; not `_global` |
+| `ProjectKey` | none | Set by `ServerWithMultiProject`. Lowercase letters, digits, `-`, `_`; 3–64 characters; not `_global` |
 | `HandshakeOnStartup` | `true` | Make the handshake when the application starts |
 | `HandshakeTimeout` | 5 s | Time limit of one attempt |
 | `OnServerUnavailable` | `Continue` | `Throw` stops the application when the server cannot be reached |
@@ -107,8 +109,8 @@ At start-up the client asks the server "am I who I say I am?" (`POST /api/auth2/
 
 Messages you may see:
 
-- "The server is single-application. Remove ServerWithMultiApplication."
-- "The server is multi-application. Call ServerWithMultiApplication(projectKey)."
+- "The server is single-project. Remove ServerWithMultiProject."
+- "The server is multi-project. Call ServerWithMultiProject(projectKey)."
 - "ProjectKey or ApplicationName does not match the application of this client id on the server."
 - "The server refused the client credentials. Check ClientId and ClientSecret ..."
 
@@ -154,10 +156,10 @@ Calls that **change something** (register, login, password calls, refresh) are *
 |---|---|
 | Start-up error "Auth2: ClientSecret is required" | The secret is not set. Check the user secret or environment variable |
 | `Rejected` "The server refused the client credentials" | Wrong `ClientId` or `ClientSecret`, or the secret was rotated |
-| `Rejected` single / multi message | Add or remove `ServerWithMultiApplication` |
+| `Rejected` single / multi message | Add or remove `ServerWithMultiProject` |
 | `Rejected` `project_key_or_name_mismatch` | `ApplicationName` or the project key differs from the server. Compare them in the admin API |
 | `ServerUnavailable` at start | Wrong `ServerUrl`, a firewall, or the server is down. With `Continue` the client keeps trying |
-| `insufficient_scope` / `invalid_scope` | The client is not allowed that scope. Add it to `Clients.AllowedScopes` of the application |
+| `insufficient_scope` / `invalid_scope` | The client is not allowed that scope. Add it to the allowed scopes of the application |
 | Register / login return `server_unavailable` | Not retried on purpose. Show the user an error and let them try again |
 
 ## Related pages
@@ -175,7 +177,7 @@ The client supports three ways to sign users in. Choose one.
 |---|---|---|---|
 | (none) | `UiMode.None` | nobody | APIs: 401 / 403 only |
 | `.UseHostedUi()` | `Hosted` | **the Auth2 Server** | MVC, Razor Pages, Blazor. Recommended: your app never sees a password |
-| `.UseSelfUi()` | `Self` | **your application** | When you need your own forms. Your app handles passwords; the server must allow it (`Clients.AllowSelfUiLogin`) |
+| `.UseSelfUi()` | `Self` | **your application** | When you need your own forms. Your app handles passwords; the server must allow it (`AllowSelfUiLogin` on the application) |
 
 Both modes make a sign-in **cookie** in your application (`UseCookieAuthentication` is added for you).
 
@@ -183,7 +185,7 @@ Both modes make a sign-in **cookie** in your application (`UseCookieAuthenticati
 
 ```csharp
 builder.Services.AddAuth2Client("https://auth.example.com", o => { /* name, client id, secret */ })
-    .ServerWithMultiApplication("papertrade")
+    .ServerWithMultiProject("papertrade")
     .UseHostedUi()                                   // authorization code + PKCE
     .UseCookieAuthentication(o => o.AccessMode = AccessLoadMode.OnSignIn);
 

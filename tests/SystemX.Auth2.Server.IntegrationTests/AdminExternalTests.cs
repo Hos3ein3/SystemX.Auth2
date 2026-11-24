@@ -36,11 +36,12 @@ public abstract class AdminExternalBase : AdminBase
         ["kind"] = "oidc", ["name"] = name, ["type"] = "Google", ["enabled"] = enabled, ["clientId"] = "id-1", ["clientSecret"] = secret, ["displayName"] = "Google",
     };
 
-    protected string P(Guid id, string tail = "") => $"/applications/{id}/external-providers{tail}";
+    protected string P(Guid id, string tail = "") => $"/projects/{id}/external-providers{tail}";
 
     protected async Task<(HttpStatusCode Status, JsonElement Body, string Text)> CallAsync(HttpMethod m, string path, string? token, object? body = null, params (string, string)[] headers)
     {
-        var r = await new Browser(Factory).SendJsonAsync(m, Admin + path, body, token, headers);
+        var (route, rest) = Route(path, token, headers);
+        var r = await new Browser(Factory).SendJsonAsync(m, Admin + route, body, token, rest);
         var text = await r.Content.ReadAsStringAsync();
         return (r.StatusCode, text.Length == 0 ? default : JsonDocument.Parse(text).RootElement.Clone(), text);
     }
@@ -84,7 +85,7 @@ public class AdminExternalProviderTests : AdminExternalBase
         await using (var scope = NewScope())
         {
             using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-            var raw = await scope.ServiceProvider.GetRequiredService<Auth2DbContext>().Database.SqlQuery<string>($"select settings_json::text as \"Value\" from applications where id = {A.Id}").SingleAsync();
+            var raw = await scope.ServiceProvider.GetRequiredService<Auth2DbContext>().Database.SqlQuery<string>($"select settings_json::text as \"Value\" from projects where id = {A.Id}").SingleAsync();
             raw.ShouldNotContain("super-secret-value");
         }
         var providers = await (await new Browser(Factory).GetAsync("/connect/external/providers?client_id=appa")).JsonAsync();

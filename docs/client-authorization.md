@@ -16,7 +16,7 @@ You have an API (Minimal API, MVC controllers, Razor Pages) and you want rules s
 ```csharp
 builder.Services
     .AddAuth2Client("https://auth.example.com", o => { /* name, client id, secret */ })
-    .ServerWithMultiApplication("papertrade")
+    .ServerWithMultiProject("papertrade")
     .UseApiAuthentication(o => o.Audience = "papertrade-api")   // Audience defaults to ClientId
     .EnableCurrentUser(o => o.CacheTtl = TimeSpan.FromMinutes(10));
 
@@ -51,20 +51,20 @@ public IActionResult Index() => View();
 | `.WithPermission("a","b")` | `[Auth2Permission("a","b")]` | **Any** of the permissions (`WithAllPermissions` = all) |
 | `.WithOnlyRolePermission()` | `[Auth2OnlyRolePermission]` | The permissions above must come from a **role** (or the role of a group), not a direct grant |
 | `.WithOnlyUserPermission()` | `[Auth2OnlyUserPermission]` | The permissions above must be **direct grants** |
-| `.WithScope("s")` | `[Auth2Scope("s")]` | Any of the scopes in the token |
+| `.WithScope("s")` | `[Auth2Scope("s")]` | Any of the scopes in the token (`ICurrentClient`) |
 | `.WithGroup("g")` | `[Auth2Group("g")]` | The user is in any of the groups |
-| `.WithMachineOnly()` / `.WithUserOnly()` | `[Auth2MachineOnly]` / `[Auth2UserOnly]` | A client-credentials token / a user token |
+| `.WithMachineOnly()` / `.WithUserOnly()` | `[Auth2MachineOnly]` / `[Auth2UserOnly]` | A client-credentials token / a user token (`ICurrentClient.IsMachine`) |
 | `.WithAuth2Policy("name")` | (use `[Authorize(Policy="name")]`) | One of your own policies |
 | `.WithAuth2Audit("action")` | `[Auth2Audit("action")]` | Raises an audit event (see below) |
 
-**Chaining means AND**: `.WithRole("Editor").WithPermission("orders.write")` needs both. It also works on route groups: `app.MapGroup("/admin").WithRole("Admin")`.
+**Chaining means AND**: `.WithRole("Editor").WithPermission("orders.write")` needs both. Scopes belong to the **client** and permissions to the **user**, so `.WithScope("reports.read").WithPermission("orders.read")` needs a user token that has the scope and whose user has the permission (a machine token fails the permission, a user token without the scope fails the scope). It also works on route groups: `app.MapGroup("/admin").WithRole("Admin")`.
 A permission group inside the same call is OR (`WithPermission("a","b")`).
 
 Where each check reads its data:
 
 | Check | Reads | Cost |
 |---|---|---|
-| Role, scope, machine / user | The claims of the token | none |
+| Role, scope, machine / user | The claims of the token (`ICurrentClient` for scope and machine / user) | none |
 | Permission, group | The access data from the server (`/api/auth2/me`), cached | one call per cache time |
 
 ## Answers
@@ -121,3 +121,25 @@ Limits: the client checks the token's signature, issuer, audience and lifetime. 
 - [client-current-user.md](client-current-user.md)
 - [client-setup.md](client-setup.md)
 - [authorization.md](authorization.md) (how the server calculates access)
+
+## The same constants everywhere
+
+Put your keys into constants once and use them in the attribute, the endpoint extension and the catalog:
+
+```csharp
+public static class OrderPermissions
+{
+    public const string Read = "orders.read";
+    [Auth2Permission(DisplayName = "Write orders", Description = "Create and change orders")]
+    public const string Write = "orders.write";
+}
+
+[Auth2Permission(OrderPermissions.Read)]                 // the policy name is made from the key; [Authorize(Policy = "auth2:perm:any:orders.read")] is the same
+public IActionResult Index() => View();
+
+app.MapPost("/orders", Create).WithPermission(OrderPermissions.Write);
+
+builder.Services.AddAuth2Client(...).EnablePermissions(o => o.AddFromClass(typeof(OrderPermissions)));
+```
+
+See [permission-sync.md](permission-sync.md) for all catalog sources.

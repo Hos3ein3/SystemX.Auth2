@@ -142,7 +142,7 @@ public class ExternalProviderSettingsPersistenceTests : IdentityTestBase
 
         var db = scope2.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope2.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        var raw = await db.Database.SqlQuery<string>($"select settings_json::text as \"Value\" from applications where id = {A.Id}").SingleAsync();
+        var raw = await db.Database.SqlQuery<string>($"select settings_json::text as \"Value\" from projects where id = {A.Id}").SingleAsync();
         raw.ShouldNotContain("very-secret-value");
     }
 

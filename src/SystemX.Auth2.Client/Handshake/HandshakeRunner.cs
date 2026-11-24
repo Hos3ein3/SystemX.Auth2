@@ -20,11 +20,11 @@ public sealed record HandshakeOutcome(HandshakeStatus Status, ClientHandshakeRes
 /// <summary>Makes one handshake attempt and turns every possible answer into a <see cref="HandshakeStatus"/>.</summary>
 public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, IOptions<Auth2ClientOptions> options)
 {
-    /// <summary>Message when the client has a project key but the server is single-application.</summary>
-    public const string SingleServerMessage = "The server is single-application. Remove ServerWithMultiProject.";
+    /// <summary>Warning when the client has a project key but the server has a single project. The key is ignored.</summary>
+    public const string SingleServerMessage = "The server has a single project. The ProjectKey is ignored. Remove ServerWithMultiProject.";
 
-    /// <summary>Message when the client has no project key but the server is multi-application.</summary>
-    public const string MultiServerMessage = "The server is multi-application. Call ServerWithMultiProject(projectKey).";
+    /// <summary>Message when the client has no project key but the server serves many projects.</summary>
+    public const string MultiServerMessage = "The server serves many projects. Call ServerWithMultiProject(projectKey) with the key of the project of this application.";
 
     /// <summary>Makes one attempt. Never throws (except when <paramref name="ct"/> is cancelled).</summary>
     public async Task<HandshakeOutcome> RunAsync(CancellationToken ct = default)
@@ -71,7 +71,8 @@ public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenP
 
             // The server says which mode it has. The client never guesses.
             var hasKey = !string.IsNullOrWhiteSpace(o.ProjectKey);
-            if (hasKey && body.ServerMode == ServerMode.SingleProject) return new HandshakeOutcome(HandshakeStatus.Rejected, null, Auth2ErrorCodes.ServerModeMismatch, SingleServerMessage);
+            // A key sent to a single-project server is not an error: the server ignores it, and the client only warns.
+            if (hasKey && body.ServerMode == ServerMode.SingleProject) return new HandshakeOutcome(HandshakeStatus.Ok, body, null, SingleServerMessage);
             if (!hasKey && body.ServerMode == ServerMode.MultiProject) return new HandshakeOutcome(HandshakeStatus.Rejected, null, Auth2ErrorCodes.ServerModeMismatch, MultiServerMessage);
             return new HandshakeOutcome(HandshakeStatus.Ok, body, null, null);
         }

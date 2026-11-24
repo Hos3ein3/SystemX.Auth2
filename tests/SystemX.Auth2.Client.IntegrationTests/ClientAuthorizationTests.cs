@@ -55,7 +55,7 @@ public abstract class ClientAppTestBase : ClientTestBase
             .ConfigureServices(s =>
             {
                 s.AddRouting();
-                var builder = s.AddAuth2Client("http://localhost", o => { o.ApplicationName = "Blog"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; o.HandshakeOnStartup = handshake; })
+                var builder = s.AddAuth2Client("http://localhost", o => { o.ApplicationName = "default"; o.ClientId = "blog"; o.ClientSecret = ClientSecret; o.HandshakeOnStartup = handshake; })
                     .ServerWithMultiProject("blog")
                     .UseApiAuthentication(o => { o.BackchannelHandler = Server.Server.CreateHandler(); o.KeyRefreshInterval = TimeSpan.FromSeconds(1); api?.Invoke(o); });
                 configure?.Invoke(builder);

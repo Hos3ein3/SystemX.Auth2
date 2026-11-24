@@ -121,7 +121,7 @@ public class RateLimitTests : Phase6Base
         var token = await ClientTokenAsync("appa", "auth2.client.handshake auth2.login");
         var b = new Browser(Factory);
         var statuses = new List<HttpStatusCode>();
-        for (var i = 0; i < 3; i++) statuses.Add((await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest("appa", "App A", "1"), token)).StatusCode);
+        for (var i = 0; i < 3; i++) statuses.Add((await b.PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest("appa", "default", "1"), token)).StatusCode);
         statuses.ShouldBe([HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.TooManyRequests]);
 
         var otp = new List<HttpStatusCode>();

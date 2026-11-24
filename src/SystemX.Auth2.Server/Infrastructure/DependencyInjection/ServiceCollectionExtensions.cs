@@ -49,6 +49,7 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IGlobalScope>(sp => sp.GetRequiredService<ProjectScope>());
         services.AddScoped<IClientIdAccessor>(sp => sp.GetRequiredService<ProjectScope>());
         services.AddScoped<IProjectSelection>(sp => sp.GetRequiredService<ProjectScope>());
+        services.AddScoped<IProjectCookieKey>(sp => sp.GetRequiredService<ProjectScope>());
         services.TryAddScoped<IProjectContext, ModeProjectContext>();
         services.AddScoped<IProjectSettingsProvider, ProjectSettingsProvider>();
         services.AddExternalIdentityCore();

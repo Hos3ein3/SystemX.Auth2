@@ -2,7 +2,7 @@
 
 ## What this is
 
-How the Server decides **what a user may do** in one application. There are four building blocks:
+How the Server decides **what a user may do** in one project. There are four building blocks:
 
 | Block | Meaning | Example |
 |---|---|---|
@@ -11,7 +11,7 @@ How the Server decides **what a user may do** in one application. There are four
 | Group | A set of users. A group can have roles and permissions | `finance` |
 | Direct grant | A permission given to one user | sara → `orders.read` |
 
-All of them belong to **one application**. The role `Editor` in the blog application and the role `Editor` in the book application are two different roles with their own permissions.
+All of them belong to **one project**. The role `Editor` in the blog project and the role `Editor` in the book project are two different roles with their own permissions.
 
 ## When to use it
 
@@ -24,7 +24,7 @@ All of them belong to **one application**. The role `Editor` in the blog applica
 
 **Effective roles** = the user's own roles **+** the roles of the user's groups.
 
-Only data of the current application counts. In multi-application mode a person who is not a member of the application has **no** access there. Global roles (roles with no application) count only in the `_global` project and in single-application mode.
+Only data of the current project counts. In multi-project mode a person who is not a member of the project has **no** access there. Global roles (roles with no project) count only in the `_global` project and in single-project mode.
 
 A permission marked **obsolete** is still effective. Obsolete only tells admins "no code uses this key any more".
 
@@ -39,21 +39,21 @@ A permission marked **obsolete** is still effective. Obsolete only tells admins 
 
 Every change that can alter access raises a counter. The version you see is:
 
-`accessVersion = application version + user version in that application`
+`accessVersion = project version + user version in that project`
 
 Both numbers only grow, so a version number belongs to exactly one state.
 
 | Change | Raises |
 |---|---|
 | Grant or revoke a direct permission; assign or remove a role; add or remove a user from a group | the **user** version |
-| Add or remove a permission of a role or group; add or remove a role of a group; delete a role, group or permission | the **application** version |
+| Add or remove a permission of a role or group; add or remove a role of a group; delete a role, group or permission | the **project** version |
 | Password reset or change, two-factor change (from phase 6) | the **user** version |
 
 A change that does nothing (granting what is already granted) does **not** raise the version.
 
-Effective access is cached in memory by `(application, user, accessVersion)`. The version is read from the database on every call (one small query), so a change made on another server instance is seen at once. Old cache entries are never read again and expire after 10 minutes.
+Effective access is cached in memory by `(project, user, accessVersion)`. The version is read from the database on every call (one small query), so a change made on another server instance is seen at once. Old cache entries are never read again and expire after 10 minutes.
 
-In single-application mode there are no per-user version rows, so every change raises the application version.
+In single-project mode there are no per-user version rows, so every change raises the project version.
 
 ## The token
 
@@ -86,7 +86,7 @@ Because the answer is calculated now, a role change shows up in `/me` at once, e
 ## Example (C#, server side)
 
 ```csharp
-// Inside a scope where the current application is known (a request with a token, or a scoped job).
+// Inside a scope where the current project is known (a request with a token, or a scoped job).
 await access.CreatePermissionAsync(new PermissionDefinition("orders.read"));
 await access.CreateRoleAsync("Editor");
 await access.AddRolePermissionAsync("Editor", "orders.read");
@@ -109,11 +109,11 @@ Every real change writes an audit event: `permission.created`, `permission.obsol
 
 | Problem | Cause and fix |
 |---|---|
-| `not_found` when granting | The permission, role or group does not exist in **this** application, or the user is not a member of it |
+| `not_found` when granting | The permission, role or group does not exist in **this** project, or the user is not a member of it |
 | A new permission does not show in `/me` | You created it but did not grant it. Creating a permission changes nobody's access |
-| `/me` shows old data | It does not. Check you call the right application: the application is the audience of the token |
+| `/me` shows old data | It does not. Check you call the right application: the application (its client id) is the audience of the token, and it knows its project |
 | `forbidden` on `DeleteRoleAsync` | The role is a system role (`IsSystem`) |
-| `conflict` creating a group | A group with that name exists in this application |
+| `conflict` creating a group | A group with that name exists in this project |
 
 ## Related pages
 

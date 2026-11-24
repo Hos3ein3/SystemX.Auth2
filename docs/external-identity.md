@@ -13,7 +13,7 @@ Ways for users to sign in or register that are **not** a local password:
 | **LDAP / Active Directory** | The user types a directory user name and password. The Server checks them in the directory |
 | **Passkeys** | A passkey (WebAuthn) in the user's phone, laptop or security key. Used as a primary way to sign in |
 
-Providers are set **per application** and stored in the database. A new provider needs no code change and no restart.
+Providers are set **per project** and stored in the database. A new provider needs no code change and no restart.
 
 ## When to use it
 
@@ -24,13 +24,13 @@ Providers are set **per application** and stored in the database. A new provider
 
 ## How it works (overview)
 
-1. A developer (global admin) or a project admin adds a provider to an application with the admin API.
+1. A developer (global admin) or a project admin adds a provider to an project with the admin API.
 2. The login page of the Server (built later by the UI team) asks `GET /connect/external/providers` and shows one button per enabled provider.
 3. The user clicks a button. The Server starts the sign-in at the provider (a redirect) or, for LDAP, takes the user name and password.
-4. The provider answers. The Server checks the answer, finds or creates the local user, applies mappings, and signs the user in with the **same pipeline as a password login** (lockout, application membership, two-factor rule, consent, single active session).
+4. The provider answers. The Server checks the answer, finds or creates the local user, applies mappings, and signs the user in with the **same pipeline as a password login** (lockout, project membership, two-factor rule, consent, single active session).
 5. Your app receives normal Server tokens (code flow). They carry two extra claims: `idp` (which provider) and `amr` (how the user signed in).
 
-One person is one `AppUser`. The same Google account in two applications is one user with two `user_applications` rows and two login rows.
+One person is one `AppUser`. The same Google account in two projects is one user with two `user_projects` rows and two login rows.
 
 ## Limits
 
@@ -41,7 +41,7 @@ One person is one `AppUser`. The same Google account in two applications is one 
 
 ## Settings reference
 
-Providers live in `ExternalProviders` of the application settings. All fields are **GlobalOnly**. Names are lowercase letters, digits and `-` (1 to 40 characters), unique in the application, at most 20 providers per application.
+Providers live in `ExternalProviders` of the project settings. All fields are **GlobalOnly**. Names are lowercase letters, digits and `-` (1 to 40 characters), unique in the project, at most 20 providers per project.
 
 ### Common fields (all kinds)
 
@@ -59,7 +59,7 @@ Providers live in `ExternalProviders` of the application settings. All fields ar
 | `GroupMappingMode` | `None` | `None` or `Sync` |
 | `ProfileSyncMode` | `ImportOnce` | `ImportOnce` or `UpdateOnLogin` |
 | `AutoRedirect` | false | Go straight to this provider when it is the only way to sign in |
-| `EmailDomains` | empty | Domains that are sent to this provider. A domain belongs to one provider per application |
+| `EmailDomains` | empty | Domains that are sent to this provider. A domain belongs to one provider per project |
 
 ### OIDC kinds (`kind: "oidc"`)
 
@@ -102,7 +102,7 @@ An invalid list is refused with the list of paths that are wrong.
 
 ## URLs to register at the provider
 
-Every provider of every application has its own URLs. They contain the **project slug** (the project key in multi-application mode, `default` in single mode) and the provider name,
+Every provider of every project has its own URLs. They contain the **project slug** (the project key in multi-project mode, `default` in single mode) and the provider name,
 so a response meant for one provider can never be accepted by another (this blocks "mix-up" attacks). Replace `https://auth.example.com` with your issuer.
 
 | Kind | URL | Enter it as |
@@ -119,9 +119,9 @@ The admin API shows the full URLs of every provider (step 9). The registration n
 
 You do **not** restart the Server when you add, change or remove a provider.
 
-1. The admin API saves the settings and raises `SettingsVersion` of the application.
-2. The instance that saved the change reloads that application at once.
-3. With **Redis**, it also sends a message and every other instance reloads the application within a moment.
+1. The admin API saves the settings and raises `SettingsVersion` of the project.
+2. The instance that saved the change reloads that project at once.
+3. With **Redis**, it also sends a message and every other instance reloads the project within a moment.
 4. Without Redis (or if a message is lost), every instance asks the database for changed `SettingsVersion` values every `Auth2:ExternalProviders:PollSeconds` seconds (default 30) and reloads what changed.
 
 A user who is in the middle of a sign-in during a change may need to start again. If a reload fails (for example the database is down), the old list stays in use and a warning is logged.
@@ -131,9 +131,9 @@ Secrets are decrypted only when a provider is used, never at load time, and are 
 
 | Table | What it holds |
 |---|---|
-| `user_logins` | The link between a user and an external identity. Key: `(application_id, login_provider, provider_key)`. `login_provider` is the provider **name**, `provider_key` is the stable id at the provider (OIDC `sub`, SAML NameID, LDAP `entryUUID`/`objectGUID`), never a user name or DN. One person using Google in two applications has two rows |
-| `user_passkeys` | Passkeys. Key: `(application_id, credential_id)`. The public key and counters are in a jsonb column. A passkey of one application is never found in another |
-| `external_group_mappings` | Rules that turn a group, claim or attribute into a role, group or permission **of the same application**. Exact or prefix match only, no regex |
+| `user_logins` | The link between a user and an external identity. Key: `(application_id, login_provider, provider_key)`. `login_provider` is the provider **name**, `provider_key` is the stable id at the provider (OIDC `sub`, SAML NameID, LDAP `entryUUID`/`objectGUID`), never a user name or DN. One person using Google in two projects has two rows |
+| `user_passkeys` | Passkeys. Key: `(application_id, credential_id)`. The public key and counters are in a jsonb column. A passkey of one project is never found in another |
+| `external_group_mappings` | Rules that turn a group, claim or attribute into a role, group or permission **of the same project**. Exact or prefix match only, no regex |
 | `replay_entries` | One-time values (SAML ids, login nonces) shared by all instances, removed after they expire |
 
 Secrets (client secrets, Apple key, SAML SP key, bind password) are encrypted with Data Protection (purpose `SystemX.Auth2.ExternalProviderSecrets.v1`). The keys are stored in the database, so every instance can read them.
@@ -145,7 +145,7 @@ Secrets (client secrets, Apple key, SAML SP key, bind password) are encrypted wi
 ## How the OpenID Connect engine works
 
 1. **Challenge**: the Server makes a random `state`, `nonce` and PKCE verifier, builds the authorization URL, and seals them (encrypted with Data Protection, valid 10 minutes) into a value that the endpoint keeps in a short-lived cookie.
-2. **Callback**: the Server opens the sealed value and checks: not expired, same provider (a response for another provider or another application fails), `state` equal (constant time), no `error`, and the `state` was **not used before** (stored in `replay_entries`, shared by all instances).
+2. **Callback**: the Server opens the sealed value and checks: not expired, same provider (a response for another provider or another project fails), `state` equal (constant time), no `error`, and the `state` was **not used before** (stored in `replay_entries`, shared by all instances).
 3. **Token request**: the code is exchanged with the PKCE verifier. The client secret (or the Apple signed token) is decrypted only now.
 4. **Checks of the ID token**: signature with the provider keys (found by discovery), audience, lifetime (2 minutes skew), `nonce`, and the issuer rule of the type. Then the type's rules (Google `hd`, Microsoft `tid`, GitHub organizations).
 5. The result is an `ExternalIdentity` (subject, email, verified flag, names, groups). The next step (the login service) decides what to do with it.
@@ -168,9 +168,9 @@ Example: add "GitLab".
 
 See [authentication-flows.md](authentication-flows.md#external-sign-in-social-oidc-saml-ldap-passkeys) for the decision table. In short:
 
-- A user is found by the link `(provider name, provider key)` in the application. Without a link, the **verified email** decides: a proven email links to the existing user, an unproven email never does (`external_email_exists_not_verified`).
+- A user is found by the link `(provider name, provider key)` in the project. Without a link, the **verified email** decides: a proven email links to the existing user, an unproven email never does (`external_email_exists_not_verified`).
 - Which emails count as proven: Google, Microsoft and Apple (when the token says `email_verified`) by default; every other type only when a global admin turns on `TrustProviderEmailVerification` for the provider.
-- Joining an application through a proven email counts as proof of ownership: the membership row is added.
+- Joining an project through a proven email counts as proof of ownership: the membership row is added.
 - Users can link more providers in `Manage/ExternalLogins` and remove them, except the last way to sign in (a password, another link, a passkey, or a confirmed email or phone with an allowed OTP method).
 - Settings that must be on for external sign-in to work: the provider `Enabled`, and `External` in `Methods.AllowedLoginMethods`.
 - Brokering: [external-identity/brokering.md](external-identity/brokering.md). Mapping: [external-identity/group-mapping.md](external-identity/group-mapping.md). Pages for the UI: [ui-handover.md](ui-handover.md).
@@ -197,7 +197,7 @@ Guides: [OpenLDAP](external-identity/ldap-openldap.md), [Active Directory](exter
 
 ## Using it from an application (Client package)
 
-- **Hosted UI, cookie and Blazor**: no change. The user picks the provider on the login page of the Server. The token has `idp` and `amr`; use `ICurrentUser.IdentityProvider` and `ICurrentUser.AuthenticationMethods` ([client-current-user.md](client-current-user.md)).
+- **Hosted UI, cookie and Blazor**: no change. The user picks the provider on the login page of the Server. The token has `idp` and `amr`; use `ICurrentClient.Idp` and `ICurrentClient.Amr` ([client-current-user.md](client-current-user.md)).
 - **Self UI**: social login, OIDC, SAML and passkeys cannot work in your own form (they need a redirect or the Server's domain). Directory (LDAP) passwords work through the token endpoint when `AllowSelfUiLogin` is on. `IAuth2ApiClientService.GetExternalProvidersAsync()` (route `GET /api/auth2/external-providers`, machine token) lists the providers so that your page can show the choices and send the user to the hosted login ([client-setup.md](client-setup.md#self-ui)).
 - **API-only clients**: nothing to do.
 
@@ -209,10 +209,10 @@ Guides: [OpenLDAP](external-identity/ldap-openldap.md), [Active Directory](exter
 - **Settings classes**: `Domain/Settings/ExternalProviders.cs`. A new kind needs a `[JsonDerivedType]` and a validator branch in `Application/ExternalProviderSettingsValidator.cs`.
 - **Descriptors**: `Infrastructure/External/ExternalProviderDescriptors.cs`. One descriptor per type lists its fields, default scopes, setup guide and the URLs the admin must enter at the provider. Add a class and register it in `ExternalIdentityRegistration`.
 - **Secrets**: use `IExternalSecretProtector` (`Protect`, `Unprotect`, `Redact`). Never log or return a `*Protected` field; always call `Redact` before showing a provider.
-- **Stores**: `Auth2UserStore` overrides the login and passkey methods so every call needs a current application; the query filters of `user_logins` and `user_passkeys` do the isolation. Do not use `DbSet<AppUserLogin>` without the filter (`IGlobalScope.Begin()` turns it off).
+- **Stores**: `Auth2UserStore` overrides the login and passkey methods so every call needs a current project; the query filters of `user_logins` and `user_passkeys` do the isolation. Do not use `DbSet<AppUserLogin>` without the filter (`IGlobalScope.Begin()` turns it off).
 - **JSON**: providers are stored in jsonb, which does not keep key order. `SettingsJson` sets `AllowOutOfOrderMetadataProperties` so the `kind` field can be anywhere.
 - **Registry**: `IExternalProviderRegistry` (`Infrastructure/External/ExternalProviderRegistry.cs`) answers from memory: `Get`, `ListForApplication`, `FindByEmailDomain`, `FindByUrl`. Use it in endpoints; never read provider settings from the database per request. `ExternalProviderUrls` builds all names and paths in one place. `ExternalProviderRefreshService` loads at start, listens to Redis and polls.
-- **Tests**: `ExternalRegistryTests.cs` (two applications, reload, two instances with and without Redis) and `ExternalIdentityDataTests.cs` (stores, passkeys, mappings, secrets, descriptors) and `SettingsTests.cs` (validator, JSON round trip).
+- **Tests**: `ExternalRegistryTests.cs` (two projects, reload, two instances with and without Redis) and `ExternalIdentityDataTests.cs` (stores, passkeys, mappings, secrets, descriptors) and `SettingsTests.cs` (validator, JSON round trip).
 
 ## Related pages
 

@@ -108,7 +108,8 @@ public class LoginServiceTests : IdentityTestBase
             (await db.Projects.SingleAsync(a => a.ProjectKey == "appa")).IsEnabled = false;
             await db.SaveChangesAsync();
         }
-        (await LoginAsync("appa", "sara", PassA)).ErrorCode.ShouldBe(Auth2ErrorCodes.ProjectDisabled);
+        (await LoginAsync("appa", "sara", PassA)).ErrorCode.ShouldBe(Auth2ErrorCodes.AccessDenied);   // the public answer is generic; the audit log has the reason
+        (await AuditAsync("login.failed")).Last().DataJson!.ShouldContain("project_disabled");
     }
 
     [Fact]
@@ -325,8 +326,11 @@ public class SingleModeLoginTests : IdentityTestBase
         });
         r.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
         var claims = HttpExtensions.JwtPayload((await r.JsonAsync()).Str("access_token"));
-        claims.TryGetProperty("projectkey", out _).ShouldBeFalse();
-        claims.TryGetProperty("app", out _).ShouldBeTrue();
+        claims.Str("projectkey").ShouldBe("default");
+        claims.TryGetProperty("project_id", out _).ShouldBeTrue();
+        claims.Str("client_id").ShouldBe("default");
+        claims.TryGetProperty("application_id", out _).ShouldBeTrue();
+        claims.TryGetProperty("app", out _).ShouldBeFalse();   // the old claim is gone
         claims.Str("machine").ShouldBe("true");
     }
 }

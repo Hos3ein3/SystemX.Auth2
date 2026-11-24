@@ -87,7 +87,7 @@ internal sealed class ProjectCookieManager : Microsoft.AspNetCore.Authentication
     private readonly Microsoft.AspNetCore.Authentication.Cookies.ChunkingCookieManager _inner = new();
 
     private static string Suffix(HttpContext context) =>
-        context.RequestServices.GetService<IProjectScope>()?.CurrentProjectKey is { Length: > 0 } key ? "." + key : "";
+        (context.RequestServices.GetService<IProjectCookieKey>()?.CookieProjectKey ?? context.RequestServices.GetService<IProjectScope>()?.CurrentProjectKey) is { Length: > 0 } key ? "." + key : "";
 
     public string? GetRequestCookie(HttpContext context, string key) => _inner.GetRequestCookie(context, key + Suffix(context));
 

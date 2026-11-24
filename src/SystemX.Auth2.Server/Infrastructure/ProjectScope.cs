@@ -3,7 +3,7 @@ using SystemX.Auth2.Server.Application;
 namespace SystemX.Auth2.Server.Infrastructure;
 
 /// <summary>Scoped holder of the current application and the global-scope switch. Registered as scoped.</summary>
-public sealed class ProjectScope : IProjectScope, IGlobalScope, IClientIdAccessor, IProjectSelection
+public sealed class ProjectScope : IProjectScope, IGlobalScope, IClientIdAccessor, IProjectSelection, IProjectCookieKey
 {
     private int _globalDepth;
 
@@ -26,6 +26,9 @@ public sealed class ProjectScope : IProjectScope, IGlobalScope, IClientIdAccesso
     public string? CurrentProjectKey { get; private set; }
 
     /// <inheritdoc />
+    public string? CookieProjectKey { get; set; }
+
+    /// <inheritdoc />
     public void Set(Guid applicationId) => ProjectId = applicationId;
 
     /// <inheritdoc />
@@ -33,6 +36,7 @@ public sealed class ProjectScope : IProjectScope, IGlobalScope, IClientIdAccesso
     {
         ProjectId = applicationId;
         CurrentProjectKey = projectKey;
+        if (projectKey is not null) CookieProjectKey = projectKey;
     }
 
     /// <inheritdoc />

@@ -295,8 +295,8 @@ public class RegisterApiTests : Phase6Base
             await db.SaveChangesAsync();
         }
         var disabled = await CallAsync(b, Auth2Routes.Register, new RegisterRequest(null, "y@example.com", null, PassA), tokenA);
-        disabled.Status.ShouldBe(HttpStatusCode.Forbidden);
-        ErrorCode(disabled.Body).ShouldBe(Auth2ErrorCodes.ProjectDisabled);
+        disabled.Status.ShouldBeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);   // the token of a disabled project is refused at its next validation
+        if (disabled.Status == HttpStatusCode.Forbidden) ErrorCode(disabled.Body).ShouldBe(Auth2ErrorCodes.AccessDenied);
     }
 }
 

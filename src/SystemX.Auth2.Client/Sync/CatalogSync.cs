@@ -207,3 +207,22 @@ public sealed class Auth2SyncHostedService(IHostApplicationLifetime lifetime, Au
         return started.Task.WaitAsync(ct);
     }
 }
+
+/// <summary>
+/// Checks every catalog when the host starts: the providers and factories are called with the service provider, then all sources are merged.
+/// A wrong key, a provider that throws or two sources that disagree stop the start with a message that names the source.
+/// It runs before the first sync (the sync waits for <c>ApplicationStarted</c>).
+/// </summary>
+internal sealed class Auth2CatalogStartupService(IServiceProvider services, IOptions<Auth2PermissionOptions> permissions, IOptions<Auth2RoleOptions> roles,
+    IOptions<Auth2GroupOptions> groups, IOptions<Auth2ScopeOptions> scopes) : IHostedService
+{
+    public async Task StartAsync(CancellationToken ct)
+    {
+        if (permissions.Value.SyncPolicy != PermissionSyncPolicy.None) await permissions.Value.ResolveAsync(services, ct);
+        if (roles.Value.SyncPolicy != RoleSyncPolicy.None) await roles.Value.ResolveAsync(services, ct);
+        if (groups.Value.SyncPolicy != GroupSyncPolicy.None) await groups.Value.ResolveAsync(services, ct);
+        if (scopes.Value.SyncPolicy != ScopeSyncPolicy.None) await scopes.Value.ResolveAsync(services, ct);
+    }
+
+    public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
+}

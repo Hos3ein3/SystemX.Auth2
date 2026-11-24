@@ -20,7 +20,7 @@ When something does not work and you do not know where to look.
 | Redirect loop after login | The redirect URI is not registered, or the cookie is not kept | Add the exact URI in `Redirects.AllowedRedirectUris`; check cookie domain and `SameSite` |
 | Cookie not set behind a proxy | The Server thinks the request is `http` | `UseForwardedHeaders` and `KnownProxies` ([deployment-and-scaling.md](deployment-and-scaling.md)) |
 | Tokens refused after a restart or on a second instance | Different signing keys | Keys live in the database (`key_ring`); instances must share one database; see `rotate-keys` |
-| Handshake errors at start | Wrong client id or secret, application disabled, **server mode mismatch** | Read the message: `ServerWithMultiApplication` is for a multi-application Server only ([handshake-and-startup.md](handshake-and-startup.md)) |
+| Handshake errors at start | Wrong client id or secret, application disabled, **server mode mismatch** | Read the message: `ServerWithMultiProject` is for a multi-project Server only ([handshake-and-startup.md](handshake-and-startup.md)) |
 | 429 `rate_limited` | A rate limit policy was hit | Wait; change `Auth2:RateLimiting` if needed; with several instances use Redis |
 | One-time code does not arrive | The default email and SMS senders only log | Register your own `IEmailSender` and `ISmsSender` |
 | Redis is down | Redis is optional | Counters fall back per instance; check `/health/ready`; see [deployment-and-scaling.md](deployment-and-scaling.md) |

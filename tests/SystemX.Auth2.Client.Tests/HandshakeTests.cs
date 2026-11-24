@@ -47,11 +47,12 @@ public class HandshakeRunnerTests
         (await Start(() => FakeServer.Json(HttpStatusCode.OK, OkSingle), projectKey: null).Runner.RunAsync()).Status.ShouldBe(HandshakeStatus.Ok);
 
     [Fact]
-    public async Task ProjectKey_AgainstASingleServer_IsRejected_WithTheRightMessage()
+    public async Task ProjectKey_AgainstASingleServer_IsIgnored_WithAWarningMessage()
     {
-        var outcome = await Start(() => FakeServer.Json(HttpStatusCode.OK, OkSingle)).Runner.RunAsync();   // client has a key
-        outcome.Status.ShouldBe(HandshakeStatus.Rejected);
-        outcome.Message.ShouldBe("The server is single-application. Remove ServerWithMultiProject.");
+        var outcome = await Start(() => FakeServer.Json(HttpStatusCode.OK, OkSingle)).Runner.RunAsync();   // client has a key: the server ignores it
+        outcome.Status.ShouldBe(HandshakeStatus.Ok);
+        outcome.Message.ShouldBe(HandshakeRunner.SingleServerMessage);
+        outcome.Message!.ShouldContain("ignored");
     }
 
     [Fact]
@@ -59,7 +60,8 @@ public class HandshakeRunnerTests
     {
         var outcome = await Start(() => FakeServer.Json(HttpStatusCode.OK, Ok), projectKey: null).Runner.RunAsync();
         outcome.Status.ShouldBe(HandshakeStatus.Rejected);
-        outcome.Message.ShouldBe("The server is multi-application. Call ServerWithMultiProject(projectKey).");
+        outcome.Message.ShouldBe(HandshakeRunner.MultiServerMessage);
+        outcome.Message!.ShouldContain("ServerWithMultiProject(projectKey)");
     }
 
     [Fact]
