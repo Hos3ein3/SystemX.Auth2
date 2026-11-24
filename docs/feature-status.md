@@ -9,7 +9,7 @@ What works today. "Done" means: code, tests, docs and a CHANGELOG entry exist.
 | Client package (auth, authorization, sync, UI modes) | Done | Phases 11 to 13, scope and group sync |
 | External identity: data model, settings, descriptors, secrets | Done | Work package step 2 |
 | External identity: provider registry and reload | Done | Step 3 |
-| Social login and generic OIDC (engine, PKCE, SSRF guard, setup guides) | Done | Step 4. Endpoints that call the engine come in step 5 |
+| Social login and generic OIDC (OpenIddict.Client + WebIntegration, run-time registrations, SSRF guard, setup guides) | Done | Step 4, rebuilt on OpenIddict.Client after the spike ([ADR-096](decisions.md)) |
 | Login service, mapping, brokering, unlink rules, pages | Done | Step 5 |
 | SAML 2.0 service provider (ACS, metadata, SLO, rotation) | Done | Step 6 |
 | LDAP and Active Directory | Done | Step 7 |

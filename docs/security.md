@@ -105,7 +105,7 @@ What the Server does so that a wrong or hostile provider cannot take over an acc
 | Mix-up between providers or projects | Callback URLs are unique per project and provider; a state made for another provider or project is refused |
 | Forged SAML | XXE-safe XML, size limit, exactly one assertion, no duplicate ids, pinned certificates, issuer, destination, audience, `InResponseTo`, time window, single-use assertion ids, IdP-initiated off by default, `RelayState` never trusted for redirects |
 | LDAP injection and downgrade | Filters are escaped (RFC 4515); TLS required with chain and name check; no anonymous bind, no empty passwords; the unique id (not the DN) is the link key; same answer for unknown user and wrong password |
-| SSRF through provider addresses | Every call to a provider uses a client that refuses private, loopback, link-local and metadata addresses, no redirects, https only |
+| SSRF through provider addresses | Every call to a provider uses a client that refuses private, loopback, link-local and metadata addresses, no redirects, https only. The Server's own client checks at connect time; the clients of OpenIddict.Client (a library limit: only `HttpClientHandler`) check every resolved address just before the request |
 | Secret leaks | Client secrets, Apple keys, SAML private keys and bind passwords are encrypted (Data Protection), never returned by the API, never logged or audited |
 | Privilege escalation by group mapping | Mappings only add things of the same project; `GlobalAdmin` and system roles can never be mapped; only mapped targets are removed |
 | Passkey theft or reuse | Per-project store, single-use challenges, signature counter, origin and domain checks, user verification rule, AAGUID block list, limits |

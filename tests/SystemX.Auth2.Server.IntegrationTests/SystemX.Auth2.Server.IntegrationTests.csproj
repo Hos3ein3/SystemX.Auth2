@@ -14,6 +14,9 @@
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="OpenIddict.Client.AspNetCore" />
+    <PackageReference Include="OpenIddict.Client.SystemNetHttp" />
+    <PackageReference Include="OpenIddict.Client.WebIntegration" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\SystemX.Auth2.Server\SystemX.Auth2.Server.csproj" />

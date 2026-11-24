@@ -62,6 +62,17 @@ public static class OpenIddictSetup
                 // A token of a disabled project or application stops working (see ProjectStatusHandlers).
                 o.AddEventHandler(ProjectStatusServerHandler.Descriptor);
             })
+            .AddClient(o =>
+            {
+                // The client side of OpenIddict is used only to sign users in with an upstream provider (social, OpenID Connect). The registrations are not
+                // written here: ExternalClientRegistrations builds them from the provider list and rebuilds them when it changes.
+                o.AllowAuthorizationCodeFlow();
+                o.DisableTokenStorage();   // the Server's token table is for the tokens it issues, not for upstream tokens
+                o.SetRedirectionEndpointUris("/callback/login/_unused");   // OpenIddict cannot build its options without one endpoint, even with no provider yet
+                o.UseAspNetCore().EnableRedirectionEndpointPassthrough();   // the callback endpoint of Auth2 reads the answer itself
+                o.UseSystemNetHttp();
+                o.UseWebProviders();
+            })
             .AddValidation(o =>
             {
                 o.UseLocalServer();
@@ -87,6 +98,11 @@ public static class OpenIddictSetup
                     o.EncryptionCredentials.Add(new EncryptingCredentials(new X509SecurityKey(Load(c)), SecurityAlgorithms.RsaOAEP, SecurityAlgorithms.Aes256CbcHmacSha512));
             }
             // Otherwise the keys come from the key ring (database), see KeyRingOptionsConfigurator.
+        });
+
+        services.AddOptions<global::OpenIddict.Client.AspNetCore.OpenIddictClientAspNetCoreOptions>().Configure<IHostEnvironment>((o, env) =>
+        {
+            if (IsDevelopmentLike(env)) o.DisableTransportSecurityRequirement = true;
         });
 
         services.AddOptions<OpenIddictServerAspNetCoreOptions>().Configure<IHostEnvironment>((o, env) =>

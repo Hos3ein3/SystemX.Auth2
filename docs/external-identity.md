@@ -71,7 +71,7 @@ Providers live in `ExternalProviders` of the project settings. All fields are **
 | Microsoft | `TenantId` (`common`, `organizations`, `consumers` or a GUID), `AllowedTenants` |
 | GitHub | `RequireVerifiedPrimaryEmail` (default true), `AllowedOrganizations` |
 | Apple | `TeamId`, `KeyId`, `PrivateKeyProtected` (no client secret: a short-lived signed token is made from the key) |
-| Facebook | `ApiVersion` (for example `v19.0`) |
+| Facebook | `ApiVersion` (for example `v19.0`; applied to the endpoints of the library) |
 | GenericOidc | `Authority` (https), `NameClaim`, `EmailClaim`, `GroupsClaim`, `AllowedIssuers` |
 
 ### SAML (`kind: "saml"`)
@@ -144,13 +144,14 @@ Secrets (client secrets, Apple key, SAML SP key, bind password) are encrypted wi
 
 ## How the OpenID Connect engine works
 
-1. **Challenge**: the Server makes a random `state`, `nonce` and PKCE verifier, builds the authorization URL, and seals them (encrypted with Data Protection, valid 10 minutes) into a value that the endpoint keeps in a short-lived cookie.
-2. **Callback**: the Server opens the sealed value and checks: not expired, same provider (a response for another provider or another project fails), `state` equal (constant time), no `error`, and the `state` was **not used before** (stored in `replay_entries`, shared by all instances).
-3. **Token request**: the code is exchanged with the PKCE verifier. The client secret (or the Apple signed token) is decrypted only now.
-4. **Checks of the ID token**: signature with the provider keys (found by discovery), audience, lifetime (2 minutes skew), `nonce`, and the issuer rule of the type. Then the type's rules (Google `hd`, Microsoft `tid`, GitHub organizations).
-5. The result is an `ExternalIdentity` (subject, email, verified flag, names, groups). The next step (the login service) decides what to do with it.
+The engine is **OpenIddict.Client** (`OpenIddict.Client.AspNetCore`, `.SystemNetHttp` and `.WebIntegration`). Google, Microsoft, GitHub, Apple and Facebook are WebIntegration providers; every other OpenID Connect provider is a generic registration (discovery from the `Authority`). Why this library and what was learned: [ADR-096](decisions.md).
 
-All calls to a provider use one HTTP client that refuses private network addresses and redirects (SSRF guard). Failures give `external_claims_invalid` to the user and a short **reason** (for example `nonce_mismatch`) to the audit log. Tokens, codes and claims are never logged.
+1. **Registrations are built from the provider list.** `ExternalClientRegistrations` turns every enabled OIDC provider of every project into one OpenIddict registration (name `ext-{projectId}-{name}`, redirect URI `/callback/login/{slug}/{name}`). It does this again when the provider list changes (admin change on this instance, settings version poll, Redis message), so **no restart is needed**. A provider that cannot be built (for example a secret that cannot be decrypted) is skipped and logged, and never stops the others.
+2. **Challenge**: `OpenIddictIdentitySource` starts the OpenIddict challenge. OpenIddict builds the authorization URL with PKCE, `state` and `nonce` and puts its correlation cookie into the **sealed state** (Data Protection, valid 10 minutes) that the endpoint keeps in a short-lived cookie.
+3. **Callback**: the Server opens the sealed value and checks: not expired, same provider (an answer for another provider or project fails), no `error`, and the `state` was **not used before** (`replay_entries`, shared by all instances). Then OpenIddict checks the state token, exchanges the code with the PKCE verifier (the client secret, or the Apple signed token, is decrypted only now) and validates the identity token (signature, issuer, audience, `nonce`). Auth2 adds the lifetime check and the rules of the type (Google `hd`, Microsoft `tid`, GitHub verified primary email and organizations, allowed issuers).
+4. The result is an `ExternalIdentity` (subject, email, verified flag, names, groups). The next step (the login service) decides what to do with it. Upstream tokens are **not** stored (`DisableTokenStorage`) unless the provider has `StoreProviderTokens`.
+
+All HTTP clients of OpenIddict.Client pass `SsrfGuardHandler`: https only, no user info, and every address the name resolves to must be public. Failures give `external_claims_invalid` to the user and a short **reason** (for example `nonce_mismatch`) to the audit log; the OpenIddict error id (for example `ID2128`) goes to the application log. Tokens, codes and claims are never logged.
 
 ## How to add a new OIDC provider type (worked example)
 
@@ -158,10 +159,10 @@ Example: add "GitLab".
 
 1. Add `GitLab` to `ExternalProviderType` (Contracts) and a count in the Contracts enum test.
 2. Add a descriptor class in `ExternalProviderDescriptors.cs` (derive from `OidcDescriptor`; set `DisplayName`, `DefaultScopes`, `EmailVerifiedByDefault`, fields) and register it in `ExternalIdentityRegistration`.
-3. In `OidcEndpointResolver.ResolveAsync` add the authority (`https://gitlab.com`) to the `switch`. If the provider is plain OAuth 2.0 (no ID token), return fixed endpoints like GitHub and add a `FromGitLabAsync` method in `OidcIdentitySource`.
-4. Add the type's extra rules (for example allowed groups) in `FromIdTokenAsync`, and fields in `OidcProviderSettings` with `[SettingEditability(GlobalOnly)]`.
+3. In `ExternalClientRegistrations.Build` add the type: if the WebIntegration package has it, call its `AddGitLab(...)` in the `switch` (the builder runs in a small container, see ADR-096); if not, treat it as a generic registration with a fixed `Issuer`. If the provider is plain OAuth 2.0 without an ID token (like GitHub), add a `FromGitLabAsync` method in `OpenIddictIdentitySource`.
+4. Add the type's extra rules (for example allowed groups) in `OpenIddictIdentitySource.FromClaims`, and fields in `OidcProviderSettings` with `[SettingEditability(GlobalOnly)]`.
 5. Add validation in `ExternalProviderSettingsValidator.Oidc`.
-6. Add the fake endpoints to `FakeOidcProvider` if needed and a test class like `GoogleOidcTests`.
+6. Add the fake endpoints to `FakeOidcProvider` if needed (the library may use hard-coded addresses, for example for keys) and a test class like `GoogleOidcTests`.
 7. Write the setup guide in `docs/external-identity/gitlab.md` and add it to the list above.
 
 ## Signing in, linking and unlinking
@@ -204,6 +205,7 @@ Guides: [OpenLDAP](external-identity/ldap-openldap.md), [Active Directory](exter
 ## How to implement or extend
 
 - **LDAP source**: `LdapDirectory`, `LdapText`, `LdapAwareLoginService` (see [ldap-openldap.md](external-identity/ldap-openldap.md#how-to-implement-or-extend)).
+- **OIDC and social source**: `OpenIddictIdentitySource` (private HTTP context, rules of each type), `ExternalClientRegistrations` (registrations and change token), `ExternalClientHttpFilter` and `SsrfGuardHandler` (HTTP guard). The OpenIddict client is set up in `OpenIddictSetup` (`AddClient`). The OpenIddict middleware must not handle `/callback/login/...` (see `Program.cs` and ADR-096). Tests: `OidcSourceTests.cs`, `ExternalClientIntegrationTests.cs`, `OpenIddictClientSpikeTests.cs`.
 - **SAML source**: `SamlIdentitySource` (challenge, ACS checks, SLO), `SamlProviderMaterial` (IdP metadata and certificates), `SamlMetadataBuilder` (SP metadata). Pages: `Pages/Saml/{Acs,Metadata,Slo}`. To read one more attribute, extend `BuildIdentity`. The library is ITfoxtec.Identity.Saml2 (see ADR-086).
 - **Sign-in decisions**: `IExternalLoginService` (`ExternalLoginService`) is the only place with the decision table. Sources (OIDC, SAML, LDAP) only produce an `ExternalIdentity`. `ExternalFlow` is the browser side (state cookie, redirects). Pages: `Pages/Account/External/*`, `Pages/Manage/ExternalLogins`. Routes: `Endpoints/ExternalEndpoints.cs`.
 - **Settings classes**: `Domain/Settings/ExternalProviders.cs`. A new kind needs a `[JsonDerivedType]` and a validator branch in `Application/ExternalProviderSettingsValidator.cs`.

@@ -16,10 +16,13 @@ public abstract class OidcTestBase : IdentityTestBase
     protected readonly FakeOidcProvider Fake = new();
     protected const string Issuer = "https://auth.test";
 
-    protected override void Customize(IServiceCollection services) =>
-        services.AddHttpClient(ExternalHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => Fake);
+    protected override void Customize(IServiceCollection services)
+    {
+        services.AddHttpClient(ExternalHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => Fake);   // the extra GitHub calls of the Server
+        FakeHttpShortcut.Install(services, Fake);                                                       // everything OpenIddict.Client sends
+    }
 
-    protected OidcIdentitySource Source => Factory.Services.GetRequiredService<OidcIdentitySource>();
+    protected OpenIddictIdentitySource Source => Factory.Services.GetRequiredService<OpenIddictIdentitySource>();
     protected IExternalSecretProtector Secrets => Factory.Services.GetRequiredService<IExternalSecretProtector>();
 
     protected async Task<RegisteredProvider> AddAsync(Project app, OidcProviderSettings settings)
@@ -36,6 +39,9 @@ public abstract class OidcTestBase : IdentityTestBase
         var challenge = await Source.ChallengeAsync(new ExternalChallengeContext(p, Issuer, returnUrl, null), default);
         var code = Fake.Authorize(challenge.RedirectUri, user);
         var parameters = new Dictionary<string, string> { ["code"] = code, ["state"] = Fake.Parse(challenge.RedirectUri).State };
+        // Google and GitHub answer with the RFC 9207 "iss" parameter, and OpenIddict requires it for the providers that are known to send it.
+        if (p.Type == ExternalProviderType.Google) parameters["iss"] = "https://accounts.google.com";
+        if (p.Type == ExternalProviderType.GitHub) parameters["iss"] = "https://github.com/login/oauth";
         change?.Invoke(parameters);
         return await Source.AuthenticateCallbackAsync(new ExternalCallbackContext(p, Issuer, parameters, challenge.ProtectedState), default);
     }
@@ -44,7 +50,7 @@ public abstract class OidcTestBase : IdentityTestBase
     {
         var ex = await Should.ThrowAsync<ExternalLoginException>(action);
         ex.ErrorCode.ShouldBe(Auth2ErrorCodes.ExternalClaimsInvalid);
-        ex.Reason.ShouldBe(reason);
+        ex.Reason.ShouldBe(reason, "OpenIddict said: " + ex.Data["openiddict"] + " claims: " + ex.Data["claimTypes"]);
         return ex;
     }
 }
@@ -67,7 +73,7 @@ public class OidcFlowTests : OidcTestBase
         r.Scope.ShouldBe("openid email profile");
         r.State.Length.ShouldBeGreaterThan(30);
         r.Nonce!.Length.ShouldBeGreaterThan(30);
-        c.RedirectUri.Query.ShouldContain("login_hint=sara%40corp.test");
+        c.RedirectUri.Query.ShouldContain("login_hint=sara@corp.test");
         c.ProtectedState.ShouldNotContain(r.State);   // the state is encrypted, not readable
     }
 
@@ -231,21 +237,14 @@ public class GenericOidcTests : OidcTestBase
     public async Task MultiTenantIssuers_NeedAllowedIssuers()
     {
         await SetUpAsync();
-        var s = new OidcProviderSettings { Name = "corp", Type = ExternalProviderType.GenericOidc, ClientId = "c", Authority = "https://idp.corp.test" };
-        var p = await AddAsync(A, s);
-        var u = new FakeUser();
-        // The token says another issuer than the discovery document: refused.
-        var challenge = await Source.ChallengeAsync(new ExternalChallengeContext(p, Issuer, "/", null), default);
-        Fake.IssuerOverride = "https://idp.corp.test";   // discovery is cached; tokens now carry the same issuer
-        (await SignInAsync(p, u)).Identity.Issuer.ShouldBe("https://idp.corp.test");
-        var tokenIssuer = new FakeOidcProvider();
-        Fake.IssuerOverride = "https://tenant-7.corp.test";
-        await ShouldFailAsync(() => SignInAsync(p, u), "issuer_invalid");
-        // allow it
-        var s2 = new OidcProviderSettings { Name = "corp2", Type = ExternalProviderType.GenericOidc, ClientId = "c", Authority = "https://idp.corp.test", AllowedIssuers = ["https://tenant-7.corp.test"] };
-        var p2 = await AddAsync(A, s2);
-        (await SignInAsync(p2, u)).Identity.Issuer.ShouldBe("https://tenant-7.corp.test");
-        _ = challenge;
+        // The discovery document names the authority; the identity token names the tenant of the user (a multi-tenant provider).
+        var plain = await AddAsync(A, new OidcProviderSettings { Name = "corp", Type = ExternalProviderType.GenericOidc, ClientId = "c", Authority = "https://idp.corp.test" });
+        Fake.TokenIssuerOverride = "https://tenant-7.corp.test";
+        await ShouldFailAsync(() => SignInAsync(plain, new FakeUser()), "issuer_invalid");
+        var allowed = await AddAsync(A, new OidcProviderSettings { Name = "corp2", Type = ExternalProviderType.GenericOidc, ClientId = "c", Authority = "https://idp.corp.test", AllowedIssuers = ["https://tenant-7.corp.test"] });
+        (await SignInAsync(allowed, new FakeUser())).Identity.Issuer.ShouldBe("https://tenant-7.corp.test");
+        Fake.TokenIssuerOverride = "https://tenant-8.corp.test";
+        await ShouldFailAsync(() => SignInAsync(allowed, new FakeUser()), "issuer_invalid");   // only the listed tenants
     }
 
     [Fact]
@@ -326,6 +325,7 @@ public class MicrosoftOidcTests : OidcTestBase
         await SetUpAsync();
         var p = await AddAsync(A, Ms("organizations", TenantA));
         (await SignInAsync(p, new FakeUser { Tid = TenantA })).Identity.Subject.ShouldBe("user-1");
+        // "organizations" accepts any work tenant at the library; our AllowedTenants list is what refuses the other one.
         await ShouldFailAsync(() => SignInAsync(p, new FakeUser { Tid = TenantB }), "tenant_not_allowed");
     }
 
@@ -334,7 +334,8 @@ public class MicrosoftOidcTests : OidcTestBase
     {
         await SetUpAsync();
         var p = await AddAsync(A, Ms(TenantA));
-        await ShouldFailAsync(() => SignInAsync(p, new FakeUser { Tid = TenantB }), "tenant_not_allowed");
+        // OpenIddict checks the issuer of the token against the tenant of the registration first, so a token of another tenant fails there.
+        await ShouldFailAsync(() => SignInAsync(p, new FakeUser { Tid = TenantB }), "issuer_invalid");
     }
 
     [Fact]

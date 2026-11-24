@@ -27,7 +27,9 @@ public abstract class AdminExternalBase : AdminBase
 
     protected override void Customize(IServiceCollection services)
     {
-        services.AddHttpClient(ExternalHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => new CompositeHandler(Oidc, SamlIdp));
+        var composite = new CompositeHandler(Oidc, SamlIdp);
+        services.AddHttpClient(ExternalHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => composite);
+        FakeHttpShortcut.Install(services, composite);   // the HTTP clients of OpenIddict.Client
         services.Configure<Auth2ServerOptions>(o => { o.Issuer = "https://auth.test"; o.Passkeys.ServerDomain = "auth.test"; });
     }
 
