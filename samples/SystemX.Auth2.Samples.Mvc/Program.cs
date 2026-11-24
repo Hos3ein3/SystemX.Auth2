@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using SystemX.Auth2.Client.Authentication;
 using SystemX.Auth2.Client.Options;
 using SystemX.Auth2.Contracts.Enums;
@@ -13,7 +12,7 @@ var auth2Section = builder.Configuration.GetSection("Auth2");
 builder.Services
     .AddAuth2Client(auth2Section)
     .ServerWithMultiProject(builder.Configuration["Auth2:ProjectKey"] ?? "sample-project")
-    .UseHostedUi()
+    .UseSelfUi()   // this app shows its own login page (Views/Account/Login); use .UseHostedUi() instead to sign in on the Auth2 server pages
     .UseCookieAuthentication(o =>
     {
         o.AccessMode = AccessLoadMode.OnSignIn;
@@ -65,56 +64,6 @@ builder.Services
     })
     .EnableResilience()
     .EnableHealthCheck();
-
-// Configure OpenID Connect public endpoints for browser redirects (e.g. Docker host port 5100 vs container port 5000)
-builder.Services.Configure<OpenIdConnectOptions>(Auth2AuthSchemes.Oidc, options =>
-{
-    var publicServerUrl = builder.Configuration["Auth2:PublicServerUrl"];
-    if (!string.IsNullOrEmpty(publicServerUrl))
-    {
-        var publicUri = new Uri(publicServerUrl);
-        options.Events.OnRedirectToIdentityProvider = context =>
-        {
-            if (!string.IsNullOrEmpty(context.ProtocolMessage.IssuerAddress))
-            {
-                var uri = new Uri(context.ProtocolMessage.IssuerAddress);
-                var replaced = new UriBuilder(uri)
-                {
-                    Scheme = publicUri.Scheme,
-                    Host = publicUri.Host,
-                    Port = publicUri.Port
-                };
-                context.ProtocolMessage.IssuerAddress = replaced.ToString();
-            }
-            return Task.CompletedTask;
-        };
-
-        options.Events.OnRedirectToIdentityProviderForSignOut = context =>
-        {
-            if (!string.IsNullOrEmpty(context.ProtocolMessage.IssuerAddress))
-            {
-                var uri = new Uri(context.ProtocolMessage.IssuerAddress);
-                var replaced = new UriBuilder(uri)
-                {
-                    Scheme = publicUri.Scheme,
-                    Host = publicUri.Host,
-                    Port = publicUri.Port
-                };
-                context.ProtocolMessage.IssuerAddress = replaced.ToString();
-            }
-            return Task.CompletedTask;
-        };
-
-        var serverUrl = builder.Configuration["Auth2:ServerUrl"] ?? "http://server:5000";
-        options.TokenValidationParameters.ValidIssuers =
-        [
-            serverUrl.TrimEnd('/') + "/",
-            serverUrl.TrimEnd('/'),
-            publicServerUrl.TrimEnd('/') + "/",
-            publicServerUrl.TrimEnd('/')
-        ];
-    }
-});
 
 var app = builder.Build();
 

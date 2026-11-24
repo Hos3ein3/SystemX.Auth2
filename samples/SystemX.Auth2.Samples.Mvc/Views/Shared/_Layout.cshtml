@@ -27,7 +27,7 @@
                     <a asp-controller="Account" asp-action="Profile" class="text-sm font-medium hover:underline flex items-center gap-1">
                         <span>👤</span> @(User.Identity.Name ?? "My Profile")
                     </a>
-                    <a asp-controller="Account" asp-action="Logout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium transition">Logout</a>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="inline"><button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium transition">Logout</button></form>
                 }
                 else
                 {

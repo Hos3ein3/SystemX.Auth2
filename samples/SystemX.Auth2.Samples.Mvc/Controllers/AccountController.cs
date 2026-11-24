@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SystemX.Auth2.Client.Authentication;
 using SystemX.Auth2.Client.CurrentUser;
+using SystemX.Auth2.Contracts.Auth;
 using SystemX.Auth2.Samples.Mvc.Models;
 
 namespace SystemX.Auth2.Samples.Mvc.Controllers;
@@ -16,24 +16,38 @@ public class AccountController(ICurrentUser currentUser, ICurrentClient currentC
     [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
     {
-        if (User.Identity?.IsAuthenticated == true)
-        {
-            return LocalRedirect(SafeReturnUrl(returnUrl));
-        }
-
-        var redirectUri = SafeReturnUrl(returnUrl);
-        return Challenge(new AuthenticationProperties { RedirectUri = redirectUri }, [Auth2AuthSchemes.Oidc]);
+        if (User.Identity?.IsAuthenticated == true) return LocalRedirect(SafeReturnUrl(returnUrl));
+        return View(new LoginViewModel { ReturnUrl = returnUrl });
     }
 
-    [HttpGet]
+    /// <summary>Self UI: this app collects the password and sends it to the Auth2 server; the package signs the cookie in.</summary>
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Login(LoginViewModel model, [FromServices] IAuth2WebService web, CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return View(model);
+        var result = await web.LoginAsync(HttpContext, new LoginRequest(model.Login, model.Password), model.RememberMe, ct);
+        if (!result.IsSuccess)
+        {
+            ModelState.AddModelError("", result.Error!.Code is "invalid_credentials" ? "The user name or password is wrong." : $"Sign-in failed ({result.Error.Code}).");
+            return View(model);
+        }
+        if (result.Value!.TwoFactorRequired)
+        {
+            ModelState.AddModelError("", "This account needs a two-factor code. The sample does not show that step; use the hosted UI (.UseHostedUi()) for it.");
+            return View(model);
+        }
+        return LocalRedirect(SafeReturnUrl(model.ReturnUrl));
+    }
+
     [HttpPost]
     [Authorize]
-    public IActionResult Logout(string? returnUrl = null)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout([FromServices] IAuth2WebService web, string? returnUrl = null, CancellationToken ct = default)
     {
-        var redirectUri = SafeReturnUrl(returnUrl);
-        return SignOut(
-            new AuthenticationProperties { RedirectUri = redirectUri },
-            [Auth2AuthSchemes.Cookie, Auth2AuthSchemes.Oidc]);
+        await web.LogoutAsync(HttpContext, ct);
+        return LocalRedirect(SafeReturnUrl(returnUrl));
     }
 
     private string SafeReturnUrl(string? returnUrl) =>
