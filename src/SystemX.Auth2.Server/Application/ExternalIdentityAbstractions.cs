@@ -1,5 +1,4 @@
 using SystemX.Auth2.Contracts.Enums;
-using SystemX.Auth2.Server.Infrastructure.External;
 
 namespace SystemX.Auth2.Server.Application;
 
@@ -43,13 +42,21 @@ public sealed class ExternalLoginException(string errorCode, string reason, Exce
 public sealed record ExternalChallengeContext(RegisteredProvider Provider, string Issuer, string ReturnUrl, string? LoginHint, string? LinkUserId = null);
 
 /// <summary>Where to send the browser, and the protected state the endpoint must keep in a short-lived cookie until the callback.</summary>
-public sealed record ExternalChallenge(Uri RedirectUri, string ProtectedState, TimeSpan StateLifetime);
+public sealed record ExternalChallenge(Uri RedirectUri, string ProtectedState, TimeSpan StateLifetime)
+{
+    /// <summary>When the provider needs a browser form post (SAML POST binding), the data for the form. <see cref="RedirectUri"/> is then the form action.</summary>
+    public IReadOnlyDictionary<string, string>? PostFields { get; init; }
+}
 
 /// <summary>Input of a callback. <c>Parameters</c> are the query (GET) or form (POST) values.</summary>
 public sealed record ExternalCallbackContext(RegisteredProvider Provider, string Issuer, IReadOnlyDictionary<string, string> Parameters, string? ProtectedState);
 
 /// <summary>Result of a callback: the identity and the return URL that was chosen at the start.</summary>
-public sealed record ExternalCallbackResult(ExternalIdentity Identity, string ReturnUrl, string? LinkUserId = null);
+public sealed record ExternalCallbackResult(ExternalIdentity Identity, string ReturnUrl, string? LinkUserId = null)
+{
+    /// <summary>The provider started this sign-in (SAML IdP-initiated). The return URL is then never taken from the provider.</summary>
+    public bool IdpInitiated { get; init; }
+}
 
 /// <summary>A source of external identities.</summary>
 public interface IExternalIdentitySource

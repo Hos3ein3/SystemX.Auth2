@@ -9,6 +9,13 @@ using SystemX.Auth2.Server.Infrastructure.Auth;
 
 namespace SystemX.Auth2.Server.Infrastructure.External;
 
+/// <summary>Result of starting a sign-in: a redirect, or a form the browser must post (SAML POST binding), or an error.</summary>
+public sealed record ExternalStartResult(string? RedirectTo, IReadOnlyDictionary<string, string>? PostFields, string? ErrorCode)
+{
+    /// <summary>True when the start worked.</summary>
+    public bool Succeeded => ErrorCode is null;
+}
+
 /// <summary>What the callback page must do after <see cref="ExternalFlow.CompleteAsync"/>.</summary>
 public sealed record ExternalFlowResult
 {
@@ -59,14 +66,14 @@ public sealed class ExternalFlow(
     }
 
     /// <summary>Starts a sign-in (or a link when <paramref name="linkUserId"/> is set). Returns the provider address, or an error code.</summary>
-    public async Task<(string? RedirectTo, string? ErrorCode)> StartAsync(HttpContext http, string providerName, string? returnUrl, string? hint, string? linkUserId, CancellationToken ct)
+    public async Task<ExternalStartResult> StartAsync(HttpContext http, string providerName, string? returnUrl, string? hint, string? linkUserId, CancellationToken ct)
     {
         var app = await flow.GetApplicationAsync(ct);
         var settings = await flow.GetSettingsAsync(ct);
         var provider = app.IsEnabled ? registry.Get(app.Id, providerName ?? "") : null;
-        if (provider is null || provider.Type == ExternalProviderType.Ldap) return (null, Auth2ErrorCodes.ExternalProviderDisabled);
+        if (provider is null || provider.Type == ExternalProviderType.Ldap) return new ExternalStartResult(null, null, Auth2ErrorCodes.ExternalProviderDisabled);
         var source = sources.OfType<IRedirectIdentitySource>().FirstOrDefault(x => x.Handles(provider.Type));
-        if (source is null) return (null, Auth2ErrorCodes.ExternalProviderDisabled);
+        if (source is null) return new ExternalStartResult(null, null, Auth2ErrorCodes.ExternalProviderDisabled);
 
         var safeReturn = urls.IsAllowed(returnUrl, settings.Redirects.AllowedRedirectUris) ? returnUrl! : "";
         try
@@ -78,12 +85,12 @@ public sealed class ExternalFlow(
                 SameSite = http.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,   // Apple answers with a cross-site POST
                 IsEssential = true,
             });
-            return (challenge.RedirectUri.ToString(), null);
+            return new ExternalStartResult(challenge.RedirectUri.ToString(), challenge.PostFields, null);
         }
         catch (ExternalLoginException ex)
         {
             await audit.WriteAsync(new AuditEntry("external.login.failed", app.Id, Data: new Dictionary<string, object?> { ["provider"] = providerName, ["code"] = ex.ErrorCode, ["reason"] = ex.Reason }), ct);
-            return (null, ex.ErrorCode);
+            return new ExternalStartResult(null, null, ex.ErrorCode);
         }
     }
 
@@ -107,7 +114,7 @@ public sealed class ExternalFlow(
         try { callback = await source.AuthenticateCallbackAsync(new ExternalCallbackContext(provider, Issuer(http), parameters, state), ct); }
         catch (ExternalLoginException ex)
         {
-            await audit.WriteAsync(new AuditEntry(ex.Reason.StartsWith("saml", StringComparison.Ordinal) ? "saml.assertion.rejected" : "external.login.failed", app.Id,
+            await audit.WriteAsync(new AuditEntry(provider.Type == ExternalProviderType.Saml ? "saml.assertion.rejected" : "external.login.failed", app.Id,
                 IpAddress: http.Connection.RemoteIpAddress?.ToString(), Data: new Dictionary<string, object?> { ["provider"] = provider.Name, ["code"] = ex.ErrorCode, ["reason"] = ex.Reason }), ct);
             return new ExternalFlowResult { ErrorCode = ex.ErrorCode };
         }
@@ -125,6 +132,8 @@ public sealed class ExternalFlow(
             return linked.Succeeded ? new ExternalFlowResult { RedirectTo = "/Manage/ExternalLogins" } : new ExternalFlowResult { ErrorCode = linked.ErrorCode };
         }
 
+        if (callback.IdpInitiated)
+            await audit.WriteAsync(new AuditEntry("saml.idp_initiated", app.Id, IpAddress: http.Connection.RemoteIpAddress?.ToString(), Data: new Dictionary<string, object?> { ["provider"] = provider.Name }), ct);
         var outcome = await external.HandleAsync(new ExternalLoginRequest(provider, callback.Identity, callback.ReturnUrl,
             http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString()), ct);
         return await FinishAsync(http, app, settings, outcome, ct);

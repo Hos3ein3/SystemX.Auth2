@@ -41,8 +41,10 @@ public static class ExternalEndpoints
             accessor.ClientId ??= form["client_id"].ToString() is { Length: > 0 } c ? c : null;
             try
             {
-                var (redirect, error) = await flow.StartAsync(http, form["provider"].ToString(), form["returnUrl"], form["hint"], null, http.RequestAborted);
-                return redirect is null ? ApiResults.Error(http, StatusCodes.Status400BadRequest, error!) : Results.Redirect(redirect);
+                var start = await flow.StartAsync(http, form["provider"].ToString(), form["returnUrl"], form["hint"], null, http.RequestAborted);
+                if (!start.Succeeded) return ApiResults.Error(http, StatusCodes.Status400BadRequest, start.ErrorCode!);
+                // SAML with the POST binding: the UI must post this form to the provider.
+                return start.PostFields is not null ? Results.Ok(new { postAction = start.RedirectTo, postFields = start.PostFields }) : Results.Redirect(start.RedirectTo!);
             }
             catch (ApplicationNotFoundException)
             {

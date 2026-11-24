@@ -175,8 +175,24 @@ See [authentication-flows.md](authentication-flows.md#external-sign-in-social-oi
 - Settings that must be on for external sign-in to work: the provider `Enabled`, and `External` in `Methods.AllowedLoginMethods`.
 - Brokering: [external-identity/brokering.md](external-identity/brokering.md). Mapping: [external-identity/group-mapping.md](external-identity/group-mapping.md). Pages for the UI: [ui-handover.md](ui-handover.md).
 
+## How the SAML flow is validated
+
+1. **Challenge**: the Server builds an AuthnRequest (new id, destination, ACS URL, optional `ForceAuthn`, name id policy, signature when `SignAuthnRequests`) and sends it with HTTP-Redirect (or gives the UI a form for HTTP-POST). The request id, provider and return URL are sealed in a state cookie (10 minutes).
+2. **ACS** (`POST /saml/{slug}/{name}/acs`) checks, in this order, and each check has a test:
+   1. size limit; the XML is read with **no DTD and no external entities** (XXE and "billion laughs" are refused);
+   2. the response has **exactly one assertion** (plain or encrypted) and **no duplicate ids** (this blocks signature wrapping), encryption and response signature when the settings require them;
+   3. the answer belongs to a request we made: state cookie, `InResponseTo` equal to the request id, the request id is **single use**; or, only when `AllowIdpInitiated` is on, the response must be signed as a whole;
+   4. the library checks the signature with the **pinned** certificates and audience; then the Server checks issuer, destination, recipient, `Status`, the assertion has the signature that the settings demand, the assertion id equals the one in the XML;
+   5. time window (`NotBefore`, `NotOnOrAfter`, confirmation time) with `ClockSkewSeconds`;
+   6. the assertion id is **single use** (shared `replay_entries`) until it can no longer be valid.
+3. Only the claims of the validated token are used. The `RelayState` is never used as a redirect target.
+4. **Single logout** (optional, `AllowSingleLogout`): the identity provider sends a signed LogoutRequest to `/saml/{slug}/{name}/slo`. The user is signed out of the Server and the identity provider gets a LogoutResponse. Logout started in the Server stays local; the Server does not call the identity provider.
+
+Setup guides: [generic](external-identity/saml-generic.md), [Entra ID](external-identity/saml-entra-id.md), [Okta](external-identity/saml-okta.md), [ADFS](external-identity/saml-adfs.md), [Keycloak](external-identity/saml-keycloak.md), [certificate rotation](external-identity/saml-certificate-rotation.md).
+
 ## How to implement or extend
 
+- **SAML source**: `SamlIdentitySource` (challenge, ACS checks, SLO), `SamlProviderMaterial` (IdP metadata and certificates), `SamlMetadataBuilder` (SP metadata). Pages: `Pages/Saml/{Acs,Metadata,Slo}`. To read one more attribute, extend `BuildIdentity`. The library is ITfoxtec.Identity.Saml2 (see ADR-086).
 - **Sign-in decisions**: `IExternalLoginService` (`ExternalLoginService`) is the only place with the decision table. Sources (OIDC, SAML, LDAP) only produce an `ExternalIdentity`. `ExternalFlow` is the browser side (state cookie, redirects). Pages: `Pages/Account/External/*`, `Pages/Manage/ExternalLogins`. Routes: `Endpoints/ExternalEndpoints.cs`.
 - **Settings classes**: `Domain/Settings/ExternalProviders.cs`. A new kind needs a `[JsonDerivedType]` and a validator branch in `Application/ExternalProviderSettingsValidator.cs`.
 - **Descriptors**: `Infrastructure/External/ExternalProviderDescriptors.cs`. One descriptor per type lists its fields, default scopes, setup guide and the URLs the admin must enter at the provider. Add a class and register it in `ExternalIdentityRegistration`.

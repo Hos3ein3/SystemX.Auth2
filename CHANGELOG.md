@@ -5,6 +5,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 ## [Unreleased]
 
 ### Added
+- External identity step 6: SAML 2.0 service provider (`SamlIdentitySource`): AuthnRequest (Redirect or POST binding, optional signing), ACS with XXE-safe parsing, size limit, signature-wrapping defences, pinned certificates, issuer, destination, audience, `InResponseTo`, time window, single-use request and assertion ids,
+  IdP-initiated login (off by default), encrypted assertions, SP metadata, IdP metadata import with cache and last-good fallback, SP certificate generation, optional IdP-initiated single logout. Pages `Saml/{Acs,Metadata,Slo}`.
+  Docs: five setup guides, certificate rotation, how the flow is validated.
 - External identity step 5: `IExternalLoginService` (decision table: link, link by verified email, register, email confirmation step), claim and group mapping (`IExternalMappingService`: add, remove only mapped, never GlobalAdmin or system roles, same application only),
   `IExternalLinkService` (list, link, unlink with `cannot_remove_last_login_method`), `ILoginService.ExternalLoginAsync` (same pipeline as password login), `idp` and `amr` token claims, home-realm discovery,
   `GET /connect/external/providers`, `POST /connect/external/challenge`, pages `Account/External/{Challenge,Callback,Confirm}` and `Manage/ExternalLogins`, rate limit policies `external`, `ldap`, `saml-acs`, `passkey`.

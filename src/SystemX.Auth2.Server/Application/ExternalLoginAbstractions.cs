@@ -1,5 +1,4 @@
 using SystemX.Auth2.Server.Domain.Entities;
-using SystemX.Auth2.Server.Infrastructure.External;
 
 namespace SystemX.Auth2.Server.Application;
 

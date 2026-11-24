@@ -13,17 +13,27 @@ public sealed class ChallengeModel(IClientIdAccessor clientId, IAuthFlowResolver
     [BindProperty] public string Provider { get; set; } = "";
     [BindProperty] public string? Hint { get; set; }
 
+    /// <summary>For providers that need a form post (SAML POST binding): the address and fields. The UI renders an auto-submitting form.</summary>
+    public string? PostAction { get; private set; }
+    public IReadOnlyDictionary<string, string>? PostFields { get; private set; }
+
     public IActionResult OnGet() => RedirectToPage("/Account/Login", new { ReturnUrl, ClientId });
 
     public async Task<IActionResult> OnPostAsync()
     {
         if (!await LoadApplicationAsync()) return Page();
-        var (redirect, error) = await external.StartAsync(HttpContext, Provider, ReturnUrl, Hint, null, HttpContext.RequestAborted);
-        if (redirect is null)
+        var start = await external.StartAsync(HttpContext, Provider, ReturnUrl, Hint, null, HttpContext.RequestAborted);
+        if (!start.Succeeded)
         {
-            Fail(error ?? Auth2ErrorCodes.ExternalProviderDisabled);
+            Fail(start.ErrorCode ?? Auth2ErrorCodes.ExternalProviderDisabled);
             return Page();
         }
-        return Redirect(redirect);
+        if (start.PostFields is not null)
+        {
+            PostAction = start.RedirectTo;
+            PostFields = start.PostFields;
+            return Page();
+        }
+        return Redirect(start.RedirectTo!);
     }
 }

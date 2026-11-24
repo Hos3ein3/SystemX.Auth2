@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SystemX.Auth2.Contracts.Enums;
+using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Settings;
 using SystemX.Auth2.Server.Infrastructure.External;
 
