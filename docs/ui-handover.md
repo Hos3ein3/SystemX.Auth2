@@ -1,7 +1,7 @@
 # UI handover
 
-The Server has **no HTML**. Every page is a Razor Page whose `.cshtml` only has `@page`, `@model` and a comment `@* UI: to be done *@`. The page models do all the work.
-The UI team writes the HTML, CSS and JavaScript later. This page lists what a UI must know for the external sign-in pages. Other pages are described in [authentication-flows.md](authentication-flows.md).
+Every page of the Server is a Razor Page. The page model holds the logic and the public properties; the `.cshtml` is the HTML (Tailwind CSS, strict content security policy, no inline script or style).
+**Not drawn yet:** the sign-in page (`/Account/Login`) has no provider buttons and no passkey button, and `/Account/JoinProject` is still a placeholder. The external sign-in pages (`/Account/External/*`), `/Manage/ExternalLogins` and `/Manage/Passkeys` have views. This page lists what a UI needs to build the missing parts, or what your own page must call. Other pages are described in [authentication-flows.md](authentication-flows.md).
 
 ## How a page works
 

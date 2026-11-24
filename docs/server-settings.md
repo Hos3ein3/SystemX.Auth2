@@ -186,6 +186,24 @@ Registration rules.
 | `JoinMode` | `JoinMode` | `AutoJoin` | ProjectAdminEditable | Join mode. |
 | `LoginRequiredAfterRegister` | `bool` | `true` | ProjectAdminEditable | User must sign in again after registering. |
 | `SendConfirmationEmail` | `bool` | `true` | ProjectAdminEditable | Send the confirmation email right after registration. An application can override it (same name, `null` = project value). Always sent when `Email.RequireConfirmedEmail` is on. The user can ask for it again (resend) either way. |
+| `SendConfirmationSMS` | `bool` | `true` | ProjectAdminEditable | The same for the confirmation code sent by SMS. Always sent when `Phone.RequireConfirmedPhone` is on. |
+| `AssignedRoles` | `List<string>` | empty | GlobalOnly | Role names every new member gets. The roles must exist in the project. `GlobalAdmin`, `Developer` and `ProjectAdmin` are refused. |
+| `AssignedGroups` | `List<string>` | empty | GlobalOnly | Group names every new member gets (lowercase keys, like permission keys). The groups must exist. |
+| `AssignedPermissions` | `List<string>` | empty | GlobalOnly | Permission keys every new member gets directly. The permissions must exist. |
+
+Each list has at most 50 entries, no duplicates (not case sensitive). Scopes are not in this list: a scope belongs to an **application** (what a client may ask for), not to a person, so it is set on the application (`allowedScopes`).
+
+**Example.** Everybody who registers in `papertrade` becomes an `Editor`, joins the group `customers` and may read orders:
+
+```json
+"registration": {
+  "assignedRoles": ["Editor"],
+  "assignedGroups": ["customers"],
+  "assignedPermissions": ["orders.read"]
+}
+```
+
+Create the role, the group and the permission first (admin API: [admin-api.md](admin-api.md), or sync them from your application: [permission-sync.md](permission-sync.md)). The setting is `GlobalOnly` because it decides what rights a stranger gets: only the developer changes it. Test: `RegistrationDefaultsTests`.
 
 ### Lockout
 

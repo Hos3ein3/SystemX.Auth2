@@ -201,7 +201,7 @@ public sealed class UserProjectCredentialState(
             _pending[u.Id] = row;
             return row;
         }
-        // An existing person must join the application on purpose (with proof of ownership, phase 6) before credentials exist.
+        // An existing person must join the application on purpose (with proof of ownership) before credentials exist.
         throw new InvalidOperationException($"{Auth2ErrorCodes.UserNotInProject}: the user has no row for this application.");
     }
 }

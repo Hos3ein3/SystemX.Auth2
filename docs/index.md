@@ -2,7 +2,7 @@
 
 ## What this is
 
-The map of all documentation pages. Pages marked *(planned)* are written in a later phase.
+The map of all documentation pages.
 
 ## Pages
 
@@ -12,16 +12,16 @@ The map of all documentation pages. Pages marked *(planned)* are written in a la
 | [contributing-workflow.md](contributing-workflow.md) | How we work: code, tests, docs | Written |
 | [testing.md](testing.md) | How to run tests | Written |
 | [decisions.md](decisions.md) | Design decisions (ADR list) | Written |
-| [api-reference.md](api-reference.md) | Public endpoints | Account endpoints written (grows) |
+| [api-reference.md](api-reference.md) | Public endpoints | Written |
 | [error-codes.md](error-codes.md) | Stable error codes | Written |
 | [roadmap.md](roadmap.md) | Future work and open notes | Written |
-| [concepts.md](concepts.md) | Main ideas | Written (grows) |
-| [server-setup.md](server-setup.md) | Run and configure the server | Written (grows) |
+| [concepts.md](concepts.md) | Main ideas | Written |
+| [server-setup.md](server-setup.md) | Run and configure the server | Written |
 | [seeding.md](seeding.md) | First admin and the seeder | Written |
 | [server-settings.md](server-settings.md) | Every application setting | Written |
 | [credential-scope.md](credential-scope.md) | Where passwords and 2FA live | Written |
 | [localization.md](localization.md) | resx texts, culture order, add a language | Written |
-| [authentication-flows.md](authentication-flows.md) | Login, tokens, grants, register, join, OTP, reset, 2FA, consent | Written (grows) |
+| [authentication-flows.md](authentication-flows.md) | Login, tokens, grants, register, join, OTP, reset, 2FA, consent | Written |
 | [authorization.md](authorization.md) | Permissions, roles, groups, effective access, `/me` | Written |
 | [permission-sync.md](permission-sync.md) | Push and pull of permissions and roles | Written |
 | [handshake-and-startup.md](handshake-and-startup.md) | Startup check and server mode | Written |
@@ -30,17 +30,22 @@ The map of all documentation pages. Pages marked *(planned)* are written in a la
 | [security.md](security.md) | Threat model, rate limits, keys, checklist | Written |
 | [deployment-and-scaling.md](deployment-and-scaling.md) | Several instances, Redis, probes | Written |
 | [observability.md](observability.md) | Logs, traces, metrics, health | Written |
-| [client-setup.md](client-setup.md) | Add the Client package, handshake, options | Written (grows) |
+| [client-setup.md](client-setup.md) | Add the Client package, handshake, options | Written |
 | [machine-to-machine.md](machine-to-machine.md) | Client credentials tokens | Written |
 | [client-authorization.md](client-authorization.md) | Attributes, Minimal API extensions, API authentication | Written |
 | [client-current-user.md](client-current-user.md) | `ICurrentUser`, cache, stores | Written |
 | [external-identity.md](external-identity.md) | Social login, OIDC, SAML, LDAP, passkeys, brokering | Written |
-| [external-identity/](external-identity/google.md) | Setup guides per provider, group mapping, brokering, passkeys, troubleshooting | Written |
-| [ui-handover.md](ui-handover.md) | Pages and JSON contracts for the UI | Written (grows) |
+| [external-identity/social-webintegration.md](external-identity/social-webintegration.md) | Enable and use social login (OpenIddict.Client.WebIntegration) | Written |
+| [external-identity/saml.md](external-identity/saml.md) | Enable and use SAML 2.0 | Written |
+| [external-identity/ldap.md](external-identity/ldap.md) | Enable and use LDAP and Active Directory | Written |
+| [external-identity/passkeys.md](external-identity/passkeys.md) | Enable and use passkeys | Written |
+| [external-identity/](external-identity/google.md) | Setup guides per provider, group mapping, brokering, troubleshooting | Written |
+| [ui-handover.md](ui-handover.md) | Pages and JSON contracts for the UI | Written |
 | [feature-status.md](feature-status.md) | What works today | Written |
 | [comparison-and-limits.md](comparison-and-limits.md) | What is and is not supported | Written |
 | [troubleshooting.md](troubleshooting.md) | Symptom, cause, fix | Written |
-| getting-started.md, gateway.md | | *(planned)* |
+| [getting-started.md](getting-started.md) | Run the Server and the sample applications | Written |
+| [gateway.md](gateway.md) | The gateway project | Written (not built) |
 
 ## Related pages
 

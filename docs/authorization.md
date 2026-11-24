@@ -47,7 +47,7 @@ Both numbers only grow, so a version number belongs to exactly one state.
 |---|---|
 | Grant or revoke a direct permission; assign or remove a role; add or remove a user from a group | the **user** version |
 | Add or remove a permission of a role or group; add or remove a role of a group; delete a role, group or permission | the **project** version |
-| Password reset or change, two-factor change (from phase 6) | the **user** version |
+| Password reset or change, two-factor change | the **user** version |
 
 A change that does nothing (granting what is already granted) does **not** raise the version.
 

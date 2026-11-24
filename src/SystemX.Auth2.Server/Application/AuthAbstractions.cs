@@ -59,7 +59,7 @@ public sealed record LoginResult
 
 /// <summary>
 /// The one place that decides if a login is valid. Order: application enabled, user belongs to the application (multi mode),
-/// login method allowed, lockout, password, two-factor, single active session. Consent is checked by the authorize endpoint (phase 6).
+/// login method allowed, lockout, password, two-factor, single active session. Consent is checked by the authorize endpoint.
 /// Wrong user, wrong password and "not registered here" all return <c>invalid_credentials</c>.
 /// </summary>
 public interface ILoginService

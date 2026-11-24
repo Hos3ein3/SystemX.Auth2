@@ -14,7 +14,7 @@ namespace SystemX.Auth2.Server.Infrastructure.Auth;
 
 internal sealed class RegisterService(
     UserManager<AppUser> users, Auth2DbContext db, IAuthFlowResolver flow, UserLookup lookup, IUserNotifier notifier,
-    IOtpService otp, IJoinService join, IAuditService audit, TimeProvider clock) : IRegisterService
+    IOtpService otp, IJoinService join, IAuditService audit, IRegistrationDefaults defaults, TimeProvider clock) : IRegisterService
 {
     public async Task<RegisterOutcome> RegisterAsync(RegisterRequest request, string? returnUrl = null, CancellationToken ct = default)
     {
@@ -81,6 +81,7 @@ internal sealed class RegisterService(
             if (issued.Code is not null) await notifier.SendOtpAsync(user, Auth2OtpPurposes.ConfirmPhone, issued.Code, NotificationChannel.Sms, ct);
         }
 
+        await defaults.ApplyAsync(user, ct);
         await audit.WriteAsync(new AuditEntry("register.created", app.Id, ActorUserId: user.Id, TargetType: "user", TargetId: user.Id.ToString()), ct);
         return new RegisterOutcome
         {
@@ -129,7 +130,7 @@ internal sealed class RegisterService(
 
 internal sealed class JoinService(
     UserManager<AppUser> users, Auth2DbContext db, IAuthFlowResolver flow, UserLookup lookup, IOtpService otp, IUserNotifier notifier,
-    IAuditService audit, IOptions<Auth2ServerOptions> options, TimeProvider clock) : IJoinService
+    IAuditService audit, IRegistrationDefaults defaults, IOptions<Auth2ServerOptions> options, TimeProvider clock) : IJoinService
 {
     public async Task RequestAsync(string login, CancellationToken ct = default)
     {
@@ -209,6 +210,7 @@ internal sealed class JoinService(
         }
         await tx.CommitAsync(ct);
 
+        await defaults.ApplyAsync(user, ct);
         await audit.WriteAsync(new AuditEntry("application.joined", app.Id, ActorUserId: user.Id, TargetType: "user", TargetId: user.Id.ToString()), ct);
         return OperationResult.Ok;
     }

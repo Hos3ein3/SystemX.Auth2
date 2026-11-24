@@ -24,8 +24,8 @@ Providers are set **per project** and stored in the database. A new provider nee
 
 ## How it works (overview)
 
-1. A developer (global admin) or a project admin adds a provider to an project with the admin API.
-2. The login page of the Server (built later by the UI team) asks `GET /connect/external/providers` and shows one button per enabled provider.
+1. A developer (global admin) or a project admin adds a provider to a project with the admin API.
+2. A sign-in page asks `GET /connect/external/providers` and shows one button per enabled provider. The Server's own sign-in page does not draw the buttons yet, so your page does it (see [ui-handover.md](ui-handover.md#external-sign-in-pages)).
 3. The user clicks a button. The Server starts the sign-in at the provider (a redirect) or, for LDAP, takes the user name and password.
 4. The provider answers. The Server checks the answer, finds or creates the local user, applies mappings, and signs the user in with the **same pipeline as a password login** (lockout, project membership, two-factor rule, consent, single active session).
 5. Your app receives normal Server tokens (code flow). They carry two extra claims: `idp` (which provider) and `amr` (how the user signed in).
@@ -113,7 +113,7 @@ so a response meant for one provider can never be accepted by another (this bloc
 | SAML | `https://auth.example.com/saml/{slug}/{name}/slo` | Single logout URL (only if you turn SLO on) |
 | LDAP | none | Allow the Server to reach the host and port |
 
-The admin API shows the full URLs of every provider (step 9). The registration name of a provider inside the Server is `ext-{applicationId}-{name}` (unique in the whole server).
+The admin API shows the full URLs of every provider (`urls` in the answer of `GET .../external-providers`). The registration name of a provider inside the Server is `ext-{projectId}-{name}` (unique in the whole server).
 
 ## Changing providers at runtime
 
@@ -139,6 +139,8 @@ Secrets are decrypted only when a provider is used, never at load time, and are 
 Secrets (client secrets, Apple key, SAML SP key, bind password) are encrypted with Data Protection (purpose `SystemX.Auth2.ExternalProviderSecrets.v1`). The keys are stored in the database, so every instance can read them.
 
 ## Setup guides
+
+- How to enable and use: [social login (OpenIddict.Client.WebIntegration)](external-identity/social-webintegration.md), [SAML](external-identity/saml.md), [LDAP and Active Directory](external-identity/ldap.md), [passkeys](external-identity/passkeys.md)
 
 - [Google](external-identity/google.md), [Microsoft](external-identity/microsoft.md), [GitHub](external-identity/github.md), [Apple](external-identity/apple.md), [Facebook](external-identity/facebook.md), [Generic OpenID Connect](external-identity/generic-oidc.md)
 
@@ -171,7 +173,7 @@ See [authentication-flows.md](authentication-flows.md#external-sign-in-social-oi
 
 - A user is found by the link `(provider name, provider key)` in the project. Without a link, the **verified email** decides: a proven email links to the existing user, an unproven email never does (`external_email_exists_not_verified`).
 - Which emails count as proven: Google, Microsoft and Apple (when the token says `email_verified`) by default; every other type only when a global admin turns on `TrustProviderEmailVerification` for the provider.
-- Joining an project through a proven email counts as proof of ownership: the membership row is added.
+- Joining a project through a proven email counts as proof of ownership: the membership row is added.
 - Users can link more providers in `Manage/ExternalLogins` and remove them, except the last way to sign in (a password, another link, a passkey, or a confirmed email or phone with an allowed OTP method).
 - Settings that must be on for external sign-in to work: the provider `Enabled`, and `External` in `Methods.AllowedLoginMethods`.
 - Brokering: [external-identity/brokering.md](external-identity/brokering.md). Mapping: [external-identity/group-mapping.md](external-identity/group-mapping.md). Pages for the UI: [ui-handover.md](ui-handover.md).

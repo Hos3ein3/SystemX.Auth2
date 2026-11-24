@@ -54,7 +54,7 @@ public class Auth2RoleManager(
     IdentityErrorDescriber errors, ILogger<RoleManager<AppRole>> logger)
     : RoleManager<AppRole>(store, roleValidators, keyNormalizer, errors, logger);
 
-/// <summary>Sign-in manager. Thin. Login rules live in <c>ILoginService</c> (phase 5).</summary>
+/// <summary>Sign-in manager. Thin. Login rules live in <c>ILoginService</c>.</summary>
 public class Auth2SignInManager(
     UserManager<AppUser> userManager, IHttpContextAccessor contextAccessor, IUserClaimsPrincipalFactory<AppUser> claimsFactory,
     IOptions<IdentityOptions> optionsAccessor, ILogger<SignInManager<AppUser>> logger, IAuthenticationSchemeProvider schemes,

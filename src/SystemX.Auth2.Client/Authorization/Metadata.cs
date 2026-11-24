@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace SystemX.Auth2.Client.Authorization;
 
-/// <summary>Endpoint metadata: the endpoint needs these permissions. Scanners read it (phase 13) to find the permissions of your application.</summary>
+/// <summary>Endpoint metadata: the endpoint needs these permissions. Scanners read it to find the permissions of your application.</summary>
 public interface IAuth2PermissionMetadata
 {
     /// <summary>Permission keys.</summary>

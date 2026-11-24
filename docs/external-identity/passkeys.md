@@ -51,7 +51,16 @@ All fields are for developers (global admin) only. `Passkey` must be in `Allowed
 
 ### Recovery
 
-A passkey is lost when the device is lost. Advise users to (1) register a passkey on **two** devices, or use one that syncs (iCloud Keychain, Google Password Manager, a password manager: the Server marks these `isBackedUp`), and (2) keep another way to sign in (a password or an external login). The management page suggests adding another passkey when none of the user's passkeys is backed up. An admin can remove a lost passkey (admin API, step 9).
+A passkey is lost when the device is lost. Advise users to (1) register a passkey on **two** devices, or use one that syncs (iCloud Keychain, Google Password Manager, a password manager: the Server marks these `isBackedUp`), and (2) keep another way to sign in (a password or an external login). The management page suggests adding another passkey when none of the user's passkeys is backed up. An admin can remove a lost passkey with the admin API (see [admin-api.md](../admin-api.md#external-identity-routes)).
+
+## How to use passkeys (for users and applications)
+
+1. **Add a passkey.** A signed-in user opens `/Manage/Passkeys` on the Server, picks a name and confirms with the device (fingerprint, face, PIN or security key). The page script asks `POST /account/passkey/creation-options` for the options, calls `navigator.credentials.create`, and sends the result to `POST /account/passkey/register`; the Server stores the public key for **this project**.
+2. **Sign in with it.** On the sign-in page the user chooses the passkey button. The script asks `POST /account/passkey/request-options` for a challenge, calls `navigator.credentials.get`, and sends the answer to `POST /account/passkey/signin`. The Server checks it and signs the user in with the same pipeline as a password (membership, lockout, consent). A passkey unlocked by the user already counts as several factors, so the local second factor is skipped for it.
+3. **Manage them.** `/Manage/Passkeys` lists the passkeys (name, created, last used, `isBackedUp`), renames and deletes them. An admin removes a lost one with `DELETE /api/auth2/admin/projects/{projectId}/users/{userId}/passkeys/{passkeyId}`.
+4. **Your application** changes nothing: tokens from a passkey sign-in carry `amr` (use `ICurrentClient.Amr`, see [client-current-user.md](../client-current-user.md)). Applications with the **Self UI** cannot offer passkeys, because the browser binds a passkey to the Server's domain: send those users to the hosted sign-in. The Mvc sample (`.UseHostedUi()`) signs in on the Server, so it gets passkey sign-in once the project allows it. The Server's sign-in page does not draw the passkey button yet (see [ui-handover.md](../ui-handover.md)); until it does, call the routes above from your own script.
+
+The exact JSON of every passkey route is in [ui-handover.md](../ui-handover.md#passkey-routes-json-for-the-ui-script). Tests: `PasskeyFlowTests` with `SoftwareAuthenticator` (it makes the same JSON a browser makes).
 
 ## How the JSON contract works (for the UI)
 

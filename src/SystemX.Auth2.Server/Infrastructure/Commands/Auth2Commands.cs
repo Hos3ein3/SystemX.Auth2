@@ -7,7 +7,7 @@ namespace SystemX.Auth2.Server.Infrastructure.Commands;
 /// <summary>Command line commands of the Server executable: <c>migrate</c>, <c>seed</c>, <c>create-project</c>, <c>create-application</c>, <c>rotate-client-secret</c>, <c>rotate-keys</c>, <c>create-admin</c>.</summary>
 public static class Auth2Commands
 {
-    private static readonly string[] Known = ["migrate", "seed", "create-application", "rotate-client-secret", "rotate-keys", "create-admin"];
+    private static readonly string[] Known = ["migrate", "seed", "create-project", "create-application", "rotate-client-secret", "rotate-keys", "create-admin"];
 
     /// <summary>True when the first argument is a command.</summary>
     public static bool IsCommand(string[] args) => args.Length > 0 && Known.Contains(args[0], StringComparer.Ordinal);

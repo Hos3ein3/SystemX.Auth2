@@ -3,7 +3,7 @@
 ## What this is
 
 The check a client application makes when it starts: "am I talking to the right server, and is it set up the way I expect?".
-This page describes the **Server** side. The Client's startup service comes in phase 11.
+This page describes the **Server** side. The Client's startup service is described in [client-setup.md](client-setup.md).
 
 ## When to use it
 

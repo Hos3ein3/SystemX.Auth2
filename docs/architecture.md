@@ -15,7 +15,7 @@ src/SystemX.Auth2.Contracts   DTOs, enums, constants (no ASP.NET, no EF)
 src/SystemX.Auth2.Server      ASP.NET Core app (Razor Pages + Minimal API)
 src/SystemX.Auth2.Client      NuGet package for your apps
 src/SystemX.Auth2.Gateway     Empty project (planned)
-samples/                      One Minimal API sample
+samples/                      Two samples: Mvc (hosted sign-in) and MinimalApi (JWT bearer)
 tests/                        Unit and integration tests
 docs/                         These pages
 ```

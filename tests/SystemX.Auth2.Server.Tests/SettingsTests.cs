@@ -30,6 +30,23 @@ public class ProjectSettingsValidatorTests
     public void Validate_PasswordMaxBelowMin_IsRejected() =>
         Check(s => s.Password.MaxLength = 8).ShouldContain(e => e.Path == "Password.MaxLength");
 
+    [Theory]
+    [InlineData("GlobalAdmin")]
+    [InlineData("developer")]      // not case sensitive
+    [InlineData("ProjectAdmin")]
+    public void Validate_AssignedRoles_RefuseTheBuiltInAdminRoles(string role) =>
+        Check(s => s.Registration.AssignedRoles = [role]).ShouldContain(e => e.Path == "Registration.AssignedRoles");
+
+    [Fact]
+    public void Validate_AssignedLists_AcceptGoodNames_AndRejectBadOnes()
+    {
+        Check(s => { s.Registration.AssignedRoles = ["Editor", "Sales Team"]; s.Registration.AssignedGroups = ["finance", "team-1"]; s.Registration.AssignedPermissions = ["orders.read"]; }).ShouldBeEmpty();
+        Check(s => s.Registration.AssignedGroups = ["Finance"]).ShouldContain(e => e.Path == "Registration.AssignedGroups");   // groups are lowercase keys
+        Check(s => s.Registration.AssignedPermissions = ["bad key"]).ShouldContain(e => e.Path == "Registration.AssignedPermissions");
+        Check(s => s.Registration.AssignedRoles = ["Editor", "editor"]).ShouldContain(e => e.Path == "Registration.AssignedRoles");   // the same twice
+        Check(s => s.Registration.AssignedPermissions = [.. Enumerable.Range(0, 51).Select(i => $"p{i}")]).ShouldContain(e => e.Path == "Registration.AssignedPermissions");
+    }
+
     private static List<SettingsError> CheckUris(params string[] uris)
     {
         var errors = new List<SettingsError>();

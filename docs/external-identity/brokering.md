@@ -29,4 +29,4 @@ Logout is local: the Server session and its tokens end. The upstream session is 
 
 ## How to implement or extend
 
-The path is: source (`OidcIdentitySource`) -> `ExternalFlow` (cookie and redirects) -> `IExternalLoginService` (decision table) -> `ILoginService.ExternalLoginAsync` (the one login pipeline) -> `ITokenIssuer` (`idp` and `amr` claims). To add claims to tokens, change `TokenIssuer.CreateUserPrincipalAsync` and `ApplyDestinations`.
+The path is: source (`OpenIddictIdentitySource`, `SamlIdentitySource` or the LDAP directory) -> `ExternalFlow` (cookie and redirects) -> `IExternalLoginService` (decision table) -> `ILoginService.ExternalLoginAsync` (the one login pipeline) -> `ITokenIssuer` (`idp` and `amr` claims). To add claims to tokens, change `TokenIssuer.CreateUserPrincipalAsync` and `ApplyDestinations`.

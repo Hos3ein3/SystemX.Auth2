@@ -54,7 +54,7 @@ The user types a user name and password into the login page of the Server. The S
 - Sign-in attempts are rate limited per user and IP **before** the directory is asked (policy `ldap`, default 10 per minute).
 - Passwords, bind passwords and the user name are never logged or written to the audit log. Audit events: `external.register`, `external.login.success`, `ldap.login.failed` (reason codes only).
 - With `groupMappingMode: Sync` the groups are mapped at every login ([group-mapping.md](group-mapping.md)). There is no background sync: data is updated at login.
-- The admin "test" routes (step 9) can check the connection and show what a lookup returns for one user, without any password.
+- The admin "test" routes (`POST .../test` and `POST .../ldap/test-user`, see [admin-api.md](../admin-api.md#external-identity-routes)) can check the connection and show what a lookup returns for one user, without any password.
 
 ## Common problems
 

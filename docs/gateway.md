@@ -1,13 +1,26 @@
 # Gateway
 
-**Status: not implemented in v1.** The project `SystemX.Auth2.Gateway` exists but is empty.
+## What this is
 
-## How to use
+`src/SystemX.Auth2.Gateway` is an **empty project** (`GatewayAssemblyMarker.cs` only). It is **not implemented in v1**.
 
-There is nothing to run. If you need a reverse proxy in front of your APIs, use a normal one (YARP, nginx, Envoy)
-and validate the access token in each API with the client package ([client setup](client-setup.md)).
+## When to use it
 
-## How to implement / extend
+You do not need it. The Server already works behind any load balancer ([deployment-and-scaling.md](deployment-and-scaling.md)), and your applications validate tokens themselves with `.UseApiAuthentication()` ([client-authorization.md](client-authorization.md)).
 
-A gateway would validate tokens once and forward the user claims to the APIs. It is on the [roadmap](roadmap.md).
-Until then, do not build on the empty project.
+## What is planned
+
+A YARP-based helper for gateway projects that:
+
+1. routes `/connect/*` and the sign-in pages to many Server replicas, with health checks and forwarded headers;
+2. validates the JWT once;
+3. applies route metadata rules (`Auth2:Permission`, `Role`, `Anonymous`);
+4. forwards the original token;
+5. strips untrusted identity headers.
+
+Until it exists, use your own reverse proxy and turn on `Auth2:Security:UseForwardedHeaders` ([security.md](security.md)).
+
+## Related pages
+
+- [roadmap.md](roadmap.md)
+- [deployment-and-scaling.md](deployment-and-scaling.md)

@@ -6,7 +6,7 @@ The JSON endpoints of the Server for client applications. Route strings are in `
 
 ## When to use it
 
-When you call the server from your own backend (or you write a client). The `SystemX.Auth2.Client` package (phase 11) wraps these calls.
+When you call the server from your own backend (or you write a client). The `SystemX.Auth2.Client` package wraps these calls.
 
 ## Rules for every endpoint
 
@@ -31,7 +31,7 @@ When you call the server from your own backend (or you write a client). The `Sys
 | 403 | The project or the application is disabled (`access_denied`; the audit log has the real reason) |
 | 409 | `conflict` (for example two-factor is already on), `server_mode_mismatch`, `project_key_or_name_mismatch` |
 | 423 | `locked_out` |
-| 429 | `rate_limited` (rate limiting arrives in phase 10) |
+| 429 | `rate_limited` ([security.md](security.md)) |
 
 See [error-codes.md](error-codes.md).
 
@@ -125,8 +125,9 @@ Details and JSON examples: [ui-handover.md](ui-handover.md). The admin routes fo
 
 All routes under `/api/auth2/admin` need the token of a signed-in admin with scope `auth2.admin`. See [admin-api.md](admin-api.md).
 
-## Not built yet
+## Health
 
-| Endpoint | Phase |
+| Endpoint | Meaning |
 |---|---|
-| `GET /health/live`, `/health/ready` | 10 |
+| `GET /health/live` | The process is up |
+| `GET /health/ready` | The process can serve (database reachable). See [observability.md](observability.md) and [deployment-and-scaling.md](deployment-and-scaling.md) |

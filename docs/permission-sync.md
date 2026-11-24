@@ -3,7 +3,7 @@
 ## What this is
 
 How a client application tells the Server which permissions and roles it uses, and how it reads the catalogs back.
-The Server side is described here. The Client package (phases 11–13) calls these routes for you.
+The Server side is described here. The Client package calls these routes for you.
 
 | Route | Token | Scope | Does |
 |---|---|---|---|

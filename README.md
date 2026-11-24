@@ -18,9 +18,9 @@ Early development. See [docs/feature-status.md](docs/feature-status.md) and [CHA
 
 | Part | Status |
 |---|---|
-| Contracts | Done (phase 2) |
-| Server | Data model, identity, login and tokens, accounts (register, join, OTP, reset, 2FA, consent), access model (permissions, roles, groups, `/me`), sync and handshake, admin API, security and operations done (phases 3–10). External identity: social login, generic OIDC, brokering, SAML 2.0 service provider, LDAP / Active Directory, passkeys, admin API for providers |
-| Client | Core, authorization, API / cookie / hosted UI / Self UI / Blazor, scanners and sync, external sign-in info (phases 11–13 and external identity) |
+| Contracts | Done |
+| Server | Data model, identity, login and tokens, accounts (register, join, OTP, reset, 2FA, consent), access model (permissions, roles, groups, `/me`), sync and handshake, admin API, security and operations. External identity: social login, generic OIDC, brokering, SAML 2.0 service provider, LDAP / Active Directory, passkeys, admin API for providers |
+| Client | Core, authorization, API / cookie / hosted UI / Self UI / Blazor, scanners and sync, external sign-in info |
 | Gateway | Empty project, not implemented in v1 |
 
 ## Quick start

@@ -40,7 +40,7 @@ builder.Services
         o.ClientId = "papertrade-api";
         o.ClientSecret = builder.Configuration["Auth2:Secret"]!;
         o.OnServerUnavailable = StartupFailureBehavior.Continue;
-        o.OnApplicationNotFound = StartupFailureBehavior.Throw;
+        o.OnProjectNotFound = StartupFailureBehavior.Throw;
     })
     .ServerWithMultiProject("papertrade")          // the project key
     .EnableResilience()
@@ -89,7 +89,7 @@ The builder methods can be called **in any order**.
 | `HandshakeOnStartup` | `true` | Make the handshake when the application starts |
 | `HandshakeTimeout` | 5 s | Time limit of one attempt |
 | `OnServerUnavailable` | `Continue` | `Throw` stops the application when the server cannot be reached |
-| `OnApplicationNotFound` | `Throw` | What to do when the server does not know the application, or rejects the client |
+| `OnProjectNotFound` | `Throw` | What to do when the server does not know the application, or rejects the client |
 | `HandshakeMaxRetries` | 6 | Background retries (only with `Continue`) |
 | `HandshakeInitialDelay` / `HandshakeMaxDelay` | 2 s / 60 s | Wait before the first retry; it doubles up to the maximum |
 | `RequestTimeout` | 30 s | Time limit of one call to the server |
@@ -104,8 +104,8 @@ At start-up the client asks the server "am I who I say I am?" (`POST /api/auth2/
 |---|---|---|
 | `Ok` | The server accepted the client | Logged. `Auth2ClientState.Status` is `Ok` |
 | `ServerUnavailable` | No answer, timeout, 5xx, 429 | `Throw`: the application does not start. `Continue`: a warning, the application starts, and it retries in the background (2 s, 4 s, 8 s ... up to 60 s, 6 tries) |
-| `NotFound` | The server does not know the application (404) | Follows `OnApplicationNotFound`. Never retried |
-| `Rejected` | Wrong secret (401/403), wrong name or key, or wrong server mode (409) | Follows `OnApplicationNotFound`. Never retried |
+| `NotFound` | The server does not know the application (404) | Follows `OnProjectNotFound`. Never retried |
+| `Rejected` | Wrong secret (401/403), wrong name or key, or wrong server mode (409) | Follows `OnProjectNotFound`. Never retried |
 
 Messages you may see:
 

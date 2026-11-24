@@ -26,6 +26,16 @@ public interface ISmsSender
     Task SendAsync(SmsMessage message, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Gives a new member of the project the roles, groups and permissions of <c>Registration.AssignedRoles</c>, <c>AssignedGroups</c> and <c>AssignedPermissions</c>.
+/// A name that does not exist is skipped and audited; it never fails the registration.
+/// </summary>
+public interface IRegistrationDefaults
+{
+    /// <summary>Assigns the defaults of the current project to <paramref name="user"/>. Safe to call twice.</summary>
+    Task ApplyAsync(AppUser user, CancellationToken ct = default);
+}
+
 /// <summary>Builds absolute links to the server pages (for emails).</summary>
 public interface IServerUrls
 {
@@ -79,7 +89,7 @@ public enum OtpVerifyResult
 
 /// <summary>
 /// One-time codes. Codes are hashed, short-lived, limited in attempts, can be requested again only after a delay,
-/// and work once. The database table is used when Redis is off (phase 10).
+/// and work once. The database table is used when Redis is off.
 /// </summary>
 public interface IOtpService
 {

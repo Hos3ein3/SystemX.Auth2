@@ -20,7 +20,7 @@ namespace SystemX.Auth2.Server.Infrastructure.External;
 internal sealed class ExternalLoginService(
     UserManager<AppUser> users, Auth2DbContext db, IAuthFlowResolver flow, ILoginService login, IExternalMappingService mapping,
     IExternalProviderDescriptors descriptors, IExternalProviderRegistry registry, IAuditService audit, IDataProtectionProvider protection,
-    IOptions<Auth2ServerOptions> options, IEmailSender email, IServerUrls urls, IStringLocalizer<Emails> text, TimeProvider clock) : IExternalLoginService
+    IOptions<Auth2ServerOptions> options, IEmailSender email, IServerUrls urls, IStringLocalizer<Emails> text, IRegistrationDefaults defaults, TimeProvider clock) : IExternalLoginService
 {
     private static readonly TimeSpan PendingLifetime = TimeSpan.FromMinutes(30);
     private ITimeLimitedDataProtector Pending => protection.CreateProtector("SystemX.Auth2.ExternalPending.v1").ToTimeLimitedDataProtector();
@@ -168,7 +168,7 @@ internal sealed class ExternalLoginService(
             {
                 await EnsureMembershipAsync(user, app, ct);
                 var add = await users.AddLoginAsync(user, new UserLoginInfo(request.Provider.Name, id.Subject, request.Provider.Settings.DisplayName ?? request.Provider.Name));
-                if (add.Succeeded) return user;
+                if (add.Succeeded) { await defaults.ApplyAsync(user, ct); return user; }
                 await users.DeleteAsync(user);
                 return null;
             }

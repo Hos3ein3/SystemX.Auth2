@@ -5,7 +5,7 @@ A **mapping** turns something that the external source says (a group, a claim or
 ## How to use (for operators)
 
 1. Set `GroupMappingMode` to `Sync` on the provider.
-2. Create mappings (admin API, step 9). A mapping has:
+2. Create mappings (admin API, [external identity routes](../admin-api.md#external-identity-routes)). A mapping has:
 
 | Field | Meaning |
 |---|---|

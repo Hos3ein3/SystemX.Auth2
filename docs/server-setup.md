@@ -3,7 +3,7 @@
 ## What this is
 
 How to start the SystemX.Auth2 Server: configuration, database, seeding and commands.
-This page covers phase 3. Later phases add more options (Redis, keys, logging).
+Redis, keys and logging have their own pages: [deployment-and-scaling.md](deployment-and-scaling.md), [security.md](security.md), [observability.md](observability.md).
 
 ## When to use it
 
@@ -92,39 +92,32 @@ Keep the passwords in environment variables or a secret store (`Auth2__Keys__Sig
 Call `builder.Services.ServerWithSingleProject();` after `AddSystemXAuth2Server`.
 It switches the server to single mode and registers `SingleProjectContext`. See [concepts.md](concepts.md).
 
-`convert-to-single` and `convert-to-multi` commands arrive in a later phase.
+The commands `convert-to-single` and `convert-to-multi` do not exist yet ([roadmap.md](roadmap.md)).
 They copy credentials between the user row and `user_projects`. Going to single can lose data, because a person with different passwords in several projects can keep only one.
 
-## What `AddSystemXAuth2Server` registers (so far)
+## What `AddSystemXAuth2Server` registers
 
 - `Auth2DbContext` (PostgreSQL), Data Protection keys in the database.
 - ASP.NET Core Identity core with our own `Auth2UserStore`, `Auth2RoleStore`, `Auth2UserManager`, `Auth2RoleManager`, `Auth2SignInManager`, validators and `Auth2IdentityErrorDescriber`.
 - OpenIddict server and validation: `/connect/authorize`, `/connect/token`, `/connect/endsession`, `/connect/userinfo`, `/connect/revoke`, `/connect/introspect`, discovery and keys. See [authentication-flows.md](authentication-flows.md).
 - `ILoginService`, `ITokenIssuer`, `ISessionService`, `IReturnUrlValidator`, and the hosted-UI cookie `.SystemX.Auth2.Session`.
-- Razor Pages: `Account/Login`, `Account/TwoFactor`, `Account/Logout`, `Account/Lockout`, `Account/AccessDenied`, `Error`. The `.cshtml` files are empty on purpose.
+- Razor Pages: the account pages (`Account/*`), the profile pages (`Manage/*`), the admin console (`Admin/*`), the SAML pages (`Saml/*`) and `Error`. See [ui-handover.md](ui-handover.md).
 - `IProjectContext`, `IAuthFlowResolver`, credential state strategies, localization (`IAuth2Localizer`).
 
 Add `app.UseAuth2Localization();` to the pipeline for request cultures. See [localization.md](localization.md).
 
 ## Sending email and SMS
 
-The server sends confirmation links, reset links and one-time codes through two interfaces:
+The server sends confirmation links, reset links and one-time codes through two interfaces, `IEmailSender` and `ISmsSender`. By default they ask a **factory** that chooses the provider for the current project and application: the application's own setting, else the project's, else `Auth2:Messaging`, else `logging`. Providers that ship: `logging` (writes one log line with a masked recipient and sends nothing), `smtp` and `google` (Gmail) for email.
 
-```csharp
-public interface IEmailSender { Task SendAsync(EmailMessage message, CancellationToken ct = default); }
-public interface ISmsSender   { Task SendAsync(SmsMessage message, CancellationToken ct = default); }
-```
+The development default (`logging`) never logs the body, a link, a token or a code. For local work you can see the full messages: set `Auth2:Development:LogMessageBodies=true`. It works **only in the `Development` environment**, and it writes links and codes to the log, so never use it elsewhere.
 
-The built-in implementations (`LoggingEmailSender`, `LoggingSmsSender`) **send nothing**. They write one log line with a **masked** recipient (`s***@example.com`, `+31*******78`) and, for email, the subject. They never log the body, a link, a token or a code.
-
-For local work you can see the full messages: set `Auth2:Development:LogMessageBodies=true`. It works **only in the `Development` environment**, and it writes links and codes to the log, so never use it elsewhere.
-
-In production, register your own senders **after** `AddSystemXAuth2Server`:
+To send real email, configure a provider ([email-and-sms.md](email-and-sms.md)) or register your own after `AddSystemXAuth2Server`:
 
 ```csharp
 builder.Services.AddSystemXAuth2Server(builder.Configuration);
-builder.Services.AddScoped<IEmailSender, MySmtpEmailSender>();
-builder.Services.AddScoped<ISmsSender, MySmsGatewaySender>();
+builder.Services.AddScoped<IEmailTransport, MyTransport>();     // one more provider, selected by name
+builder.Services.AddScoped<IEmailSender, MySmtpEmailSender>();  // or replace the whole mechanism
 ```
 
 `EmailMessage.Data` / `SmsMessage.Data` hold the raw token or code (for tests and custom templates). Do not log them.
@@ -142,7 +135,9 @@ The server executable has commands. Run them with `dotnet run --project src/Syst
 | `create-project <projectKey> <name>` | Creates a project (no application yet) |
 | `create-application <projectKey> <name> [clientId]` | Creates an application in that project (an OpenIddict application). The client id is `{projectkey}.{name}` unless given. Prints the client secret **once** |
 | `rotate-client-secret <clientId>` | Makes a new client secret and prints it once. The old one stops working |
-| `create-admin`, `rotate-keys`, `convert-to-single`, `convert-to-multi` | Planned (later phases) |
+| `rotate-keys` | Makes a new signing and encryption key pair. The old keys keep checking old tokens until they are removed ([security.md](security.md)) |
+| `create-admin <userName> <email>` | Creates a global admin. The password is read from the environment variable `AUTH2_ADMIN_PASSWORD`, never from the command line |
+| `convert-to-single`, `convert-to-multi` | Not built yet ([roadmap.md](roadmap.md)) |
 
 Exit codes: `0` success, `1` the command failed, `2` wrong usage.
 

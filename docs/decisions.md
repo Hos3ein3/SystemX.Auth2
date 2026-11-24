@@ -15,7 +15,7 @@ The spec names xUnit with `xunit.runner.visualstudio`. We use xUnit 2.9.3 with r
 Every Contracts enum has `[JsonConverter(typeof(JsonStringEnumConverter<T>))]`, so JSON is readable and stable.
 
 ## ADR-005: Result type
-`Result` / `Result<T>` live in Contracts for server-side use. The Client will choose between `Result<T>` and exceptions in phase 11 and record it here.
+`Result` / `Result<T>` live in Contracts for server-side use. The Client package uses exceptions for faults and `Result<T>` for answers it can handle (see [client-setup.md](client-setup.md)).
 
 ## ADR-006: Gateway project is a class library
 The Gateway is an empty class library with one internal marker type so it can be packed.
@@ -39,7 +39,7 @@ The spec lists settings in groups. In code each group is a class (`Password`, `L
 Tenant tables use `FiltersBypassed || ApplicationId == CurrentApplicationId`. With no selected application nothing is visible (safe default). Roles also show global roles (`ApplicationId` null). Join tables (`role_permissions`, `user_groups`, ...) have no filter; they are reached through filtered tables. EF warning `PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning` is ignored on purpose.
 
 ## ADR-013: Application resolution
-`IApplicationContext` sets `IApplicationScope` when it resolves the application. The DbContext reads `IApplicationScope`, not `IApplicationContext`, so there is no circular dependency. Multi mode resolves from the admin's selected project key, otherwise from `IClientIdAccessor.ClientId`. Phase 5 fills the client id from the token or the authorize request.
+`IApplicationContext` sets `IApplicationScope` when it resolves the application. The DbContext reads `IApplicationScope`, not `IApplicationContext`, so there is no circular dependency. Multi mode resolves from the admin's selected project key, otherwise from `IClientIdAccessor.ClientId`. The token and authorize endpoints fill the client id from the token or the authorize request.
 
 ## ADR-014: Naming
 Tables and columns are `snake_case`. Identity tables are renamed `users`, `roles`, `user_roles`, `user_claims`, `role_claims`, `user_logins`, `user_tokens`. OpenIddict tables are `openiddict_*`. We use our own small snake_case function, not an extra package.
@@ -48,8 +48,8 @@ Tables and columns are `snake_case`. Identity tables are renamed `users`, `roles
 The default Identity email index is replaced by a unique index on `NormalizedEmail` (nulls allowed), and `RequireUniqueEmail = true`. One person = one `AppUser`.
 
 ## ADR-016: Seeder and credentials
-In multi mode with `CredentialScope.PerApplication` the seeder stores the admin's password hash and security stamp in `user_applications` and leaves the `users` row without a hash. In single mode or `Shared` scope the hash stays in `users`. Phase 4 stores follow the same rule.
-The OpenIddict client made by the seeder and by `create-application` is a basic public client (authorization code + PKCE, refresh token). Phase 5 reconciles redirect URIs, secrets and permissions.
+In multi mode with `CredentialScope.PerApplication` the seeder stores the admin's password hash and security stamp in `user_applications` and leaves the `users` row without a hash. In single mode or `Shared` scope the hash stays in `users`. The user stores follow the same rule.
+The OpenIddict client made by the seeder and by `create-application` is a basic public client (authorization code + PKCE, refresh token). Redirect URIs, secrets and permissions are reconciled when the application is saved.
 
 ## ADR-017: Single-application mode switch
 `ServerWithSingleApplication()` sets `Mode = SingleApplication`, forces `CredentialScope = Shared` and replaces `IApplicationContext`. `AddSystemXAuth2Server` registers a runtime-switching context, so the call order does not matter. In single mode `ApplicationService.CreateAsync` throws: there is exactly one application.
@@ -58,7 +58,7 @@ The OpenIddict client made by the seeder and by `create-application` is a basic 
 `AddDataProtection().SetApplicationName("SystemX.Auth2").PersistKeysToDbContext<Auth2DbContext>()`. Needed by Identity token providers and by scale-out later.
 
 ## ADR-019: IdentityUserLogin / IdentityUserToken keys
-`AppUserLogin` and `AppUserToken` add a nullable `ApplicationId` column only. The primary keys are unchanged. If the same external account must be linked twice for different applications, the keys must change; this is left for phase 14 (experimental).
+`AppUserLogin` and `AppUserToken` add a nullable `ApplicationId` column only. The primary keys are unchanged. If the same external account must be linked twice for different applications, the keys must change; this was left open until external identity needed it and is handled there.
 
 ## ADR-020: Test host
 Integration tests use one PostgreSQL 15 container per test run and one new database per test. `WebApplicationFactory<Program>` runs with environment `Testing` (no automatic migration). Tests call `DatabaseInitializer`.
@@ -67,7 +67,7 @@ Integration tests use one PostgreSQL 15 container per test run and one new datab
 `ICredentialState` has two implementations (`UserRowCredentialState`, `UserApplicationCredentialState`). `Auth2UserStore` overrides every credential member of Identity (password, stamp, 2FA, lockout, TOTP key, recovery codes) and asks `ICredentialStateProvider`. The effective scope is `Shared` in single mode, the application override when the server allows it, else the server option.
 
 ## ADR-022: Row-first rule in the store
-A new user's `user_applications` row is held in memory and saved together with the user (`BeforeUserCreated`), so there is never a password without a row and a failed validation leaves no rows. For an existing person without a row, the store throws instead of creating one: joining needs proof of ownership (phase 6). Reading with no row returns "no credentials".
+A new user's `user_applications` row is held in memory and saved together with the user (`BeforeUserCreated`), so there is never a password without a row and a failed validation leaves no rows. For an existing person without a row, the store throws instead of creating one: joining needs proof of ownership (see [authentication-flows.md](authentication-flows.md)). Reading with no row returns "no credentials".
 
 ## ADR-023: Per-application lockout in the manager
 `IdentityOptions.Lockout` is global. `Auth2UserManager` overrides `CreateAsync`, `GetLockoutEnabledAsync` and `AccessFailedAsync` to use `Lockout` settings of the current application. `IdentityOptions.Lockout.AllowedForNewUsers` is false. The standard `UserValidator` still checks uniqueness and email format; `AllowedUserNameCharacters` is empty so our validator owns the character rule.
@@ -109,19 +109,19 @@ Unknown user, inactive user, wrong password and "not in this application" return
 The `two_factor_token` is a Data Protection time-limited token (5 minutes) that holds the user id and the application id. It is stateless; replay inside 5 minutes still needs the second factor, and wrong codes count as failed attempts (lockout).
 
 ## ADR-036: pv claim
-`pv` = application `AccessVersion` + the user's `UserAccessVersion` in that application (single mode: application only). Both only grow, so the sum only grows. Phase 7 raises them.
+`pv` = application `AccessVersion` + the user's `UserAccessVersion` in that application (single mode: application only). Both only grow, so the sum only grows. Role, permission and group changes raise them.
 
 ## ADR-037: SingleActiveSession and the security stamp
 Revoking tokens and authorizations is per OpenIddict client, so it is per application. The security stamp is changed only with per-application credentials. With shared credentials the stamp is global, and changing it would sign the user out of other applications too. `ActiveSessionId` in `user_applications` is not used: we revoke all earlier sessions at login, so no session id has to be remembered (and single mode has no such table).
 
 ## ADR-038: Keys
-In Development and Testing the server creates temporary keys (RSA signing key and a symmetric encryption key). We do not use `AddDevelopmentSigningCertificate`, because it writes to the machine's certificate store. Other environments need PFX certificates in `Auth2:Keys` and an HTTPS issuer, or the startup guard stops the app. Rotation (`IKeyRing`, `rotate-keys`) is phase 10.
+In Development and Testing the server creates temporary keys (RSA signing key and a symmetric encryption key). We do not use `AddDevelopmentSigningCertificate`, because it writes to the machine's certificate store. Other environments need PFX certificates in `Auth2:Keys` and an HTTPS issuer, or the startup guard stops the app. Rotation is done by `IKeyRing` and the `rotate-keys` command.
 
 ## ADR-039: Only S256
 `plain` is removed from `CodeChallengeMethods`. PKCE is required for the authorization code flow.
 
-## ADR-040: Consent and OTP grant move to phase 6
-The spec puts the consent service and the OTP service in phase 6. Phase 5 has the `ConsentMode` setting mapped to the OpenIddict consent type, but no consent page. The OTP grant constant exists (`Auth2GrantTypes.Otp`) but is not registered yet.
+## ADR-040: Consent and the OTP grant belong to the accounts work
+The consent service and the OTP service are part of the accounts work. The sign-in work only maps the `ConsentMode` setting to the OpenIddict consent type; it has no consent page. The OTP grant constant exists (`Auth2GrantTypes.Otp`) but is not registered yet.
 
 ## ADR-041: Email uniqueness moved into our validator
 `IdentityOptions.User.RequireUniqueEmail` is now **false**: with `true`, Identity demands an email for every user, and phone-only users (the spec supports them) could not exist. `Auth2UserValidator` reports `DuplicateEmail`, and the unique index on `NormalizedEmail` stays as the last guard (nulls are allowed). This replaces the setting in ADR-015.
@@ -133,7 +133,7 @@ The spec puts the consent service and the OTP service in phase 6. Phase 5 has th
 The proof channel is the confirmed email, else the confirmed phone. An address that is not confirmed is never used (the audit event `join.no_proof_channel` is written). The new password is checked against the rules **before** the code is used. The membership row and the password are saved in one transaction. With shared credentials only the row is added.
 
 ## ADR-044: OTP in a table, one open code per user, purpose and application
-`otp_codes` stores a salted hash (ISecretHasher). Issuing a new code closes the older open one. "Works once" is one conditional UPDATE, so parallel requests cannot both succeed. Reads use `AsNoTracking`, because `ExecuteUpdate` does not refresh tracked entities. A Redis implementation behind `IOtpService` comes in phase 10. The creation time is derived from the expiry minus the lifetime in the settings at that time.
+`otp_codes` stores a salted hash (ISecretHasher). Issuing a new code closes the older open one. "Works once" is one conditional UPDATE, so parallel requests cannot both succeed. Reads use `AsNoTracking`, because `ExecuteUpdate` does not refresh tracked entities. A Redis implementation sits behind `IOtpService`. The creation time is derived from the expiry minus the lifetime in the settings at that time.
 
 ## ADR-045: Notification senders are interfaces; the defaults only log a masked line
 `IEmailSender` / `ISmsSender` have logging implementations that never write a body. `Auth2:Development:LogMessageBodies` works only in `Development`. Messages are built by `IUserNotifier` from `Emails.resx` in the user's saved culture. `EmailMessage.Data` carries the raw token or code for tests and must not be logged.
@@ -151,7 +151,7 @@ The effective mode is `ConsentPolicy.Effective`: `RequireConsent` off is implici
 `HttpContext.User` is the hosted-UI session on every page, so anti-forgery tokens are bound to the same user everywhere. API endpoints and `/connect/userinfo` choose their own scheme explicitly. The Manage pages need the cookie (policy `Auth2.Session`); the application comes from the cookie claim `client_id`, never from the query.
 
 ## ADR-050: Access version service
-`IAccessVersionService` raises `user_applications.user_access_version` (or the application version in single mode). Reset, change and two-factor changes call it. Phase 7 adds `IAccessService` / `IGroupService` that call it (see ADR-052 to ADR-056).
+`IAccessVersionService` raises `user_applications.user_access_version` (or the application version in single mode). Reset, change and two-factor changes call it. `IAccessService` and `IGroupService` call it (see ADR-052 to ADR-056).
 
 ## ADR-051: Phone and OTP details
 Phone login and OTP request look the user up by exact `PhoneNumber`; two users with one number are treated as unknown. A right login code marks the email or phone confirmed. TOTP is not asked after an OTP login.
@@ -163,10 +163,10 @@ Effective permissions are the union of direct grants, permissions of the user's 
 `accessVersion = Application.AccessVersion + UserAccessVersion`. Both only grow, so each sum belongs to one state. The version is read from the database on each call so other instances see changes at once; only the (heavier) access lists are cached in memory, keyed `(application, user, version)`. User-level changes raise the user version; changes that can reach many users raise the application version. A no-op change raises nothing. A Redis/distributed cache is not needed because the key contains the version.
 
 ## ADR-054: Access services work on the current application only
-`IAccessService` and `IGroupService` take no application id. They use `IAuthFlowResolver`, so the global query filters apply and nothing can touch another application. The admin API (phase 9) sets the current application from its route or token before it calls them. Roles of other applications are "not found". Granting to a non-member is "not found".
+`IAccessService` and `IGroupService` take no application id. They use `IAuthFlowResolver`, so the global query filters apply and nothing can touch another application. The admin API sets the current application from its route or token before it calls them. Roles of other applications are "not found". Granting to a non-member is "not found".
 
 ## ADR-055: Keys are checked without regular expressions
-`AccessKeys.NormalizePermissionKey` is a small loop (lowercase, 1–100 chars, `a-z0-9._:-`, start and end with a letter or digit). No regex means no timeout problem (pitfall 12). Group names use the same rules. Phase 8 sync uses the same method.
+`AccessKeys.NormalizePermissionKey` is a small loop (lowercase, 1–100 chars, `a-z0-9._:-`, start and end with a letter or digit). No regex means no timeout problem (pitfall 12). Group names use the same rules. Sync uses the same method.
 
 ## ADR-056: `/me` reads only the token
 `GET /api/auth2/me` has no id parameter; extra query values are ignored. It needs a user token (`auth2.me`); a machine token gets 403 `forbidden`. The answer is computed now, so it is correct even when the token is older than a role change.
@@ -227,13 +227,13 @@ The client never guesses the mode. It sends the project key (or none) and also c
 One cache entry per sorted scope set, kept until `expires_in - 60 s` (at least 30 s), one request at a time per scope set (single flight), failures not cached. The default login scope of the client is `openid offline_access auth2.me`, so `GetMeAsync` works with the tokens it gets.
 
 ## ADR-075: Client authorization is policy names plus one requirement type
-Attributes derive from `AuthorizeAttribute` and set a policy name such as `auth2:perm:any:orders.read|orders.write`. `Auth2PolicyProvider` builds the policy (authenticated user + one `Auth2Requirement`) and sends every other name to the default provider, so user policies keep working. Several attributes on one endpoint are several policies and ASP.NET combines them with AND. The Minimal API extensions only add these attributes (or plain metadata) to the endpoint, so scanners can read them (phase 13). `WithOnlyRolePermission` / `WithOnlyUserPermission` are metadata that the permission check reads from the endpoint.
+Attributes derive from `AuthorizeAttribute` and set a policy name such as `auth2:perm:any:orders.read|orders.write`. `Auth2PolicyProvider` builds the policy (authenticated user + one `Auth2Requirement`) and sends every other name to the default provider, so user policies keep working. Several attributes on one endpoint are several policies and ASP.NET combines them with AND. The Minimal API extensions only add these attributes (or plain metadata) to the endpoint, so scanners can read them. `WithOnlyRolePermission` / `WithOnlyUserPermission` are metadata that the permission check reads from the endpoint.
 
 ## ADR-076: /me tells where permissions come from
 `CurrentUserInfo` got two optional lists, `DirectPermissions` and `RolePermissions` (roles of the user and roles of the user's groups). Permissions given directly to a group are in `Permissions` only. A missing list (older server) makes source checks fail closed.
 
 ## ADR-077: Roles, scopes and token kind from claims; permissions and groups from the server
-Tokens carry roles and scopes but not permissions (size, ADR in phase 7). The cache key is client id + user id; the entry is read again when its version is older than the token's `pv`, or when the time is over. Same-token changes stay hidden until then (documented). When the server cannot be asked: an old cached answer is used, otherwise the check fails closed (403).
+Tokens carry roles and scopes but not permissions (size, see ADR-052 to ADR-056). The cache key is client id + user id; the entry is read again when its version is older than the token's `pv`, or when the time is over. Same-token changes stay hidden until then (documented). When the server cannot be asked: an old cached answer is used, otherwise the check fails closed (403).
 
 ## ADR-078: API authentication uses the JWT bearer handler
 The standard handler gives discovery, a cached key set and a reload on an unknown key id. Claims are not remapped (`sub`, `role`, `scope`). The audience is the client id, so tokens of other applications are refused. Revocation is not checked (no introspection): tokens are short-lived. After a rotation the first token with an unknown key id triggers a read of the keys and a wait of up to 2 seconds (a signing-key resolver, rate limited by `KeyRefreshInterval`), so no request is refused.
@@ -326,3 +326,8 @@ While this package was implemented, another process changed the same working tre
 **Who may change it.** Global admin only: the setting decides where addresses, links and codes are sent and holds a password. A project-admin-editable variant was rejected.
 **Package.** MailKit 4.18.2 (4.13.0 was refused by the build: known advisories). `System.Net.Mail.SmtpClient` was not used (Microsoft marks it obsolete for new code).
 **Not done.** No admin console page yet (the routes exist), no "send a test email" route, no real SMS provider (only the extension point and `logging`).
+
+## ADR-098: Registration can hand out roles, groups and permissions (not scopes)
+**Decision.** `Registration.AssignedRoles`, `AssignedGroups` and `AssignedPermissions` list what every new member of a project gets. One service (`IRegistrationDefaults`) does it and is called from the three places that create a member by themselves: register, join with proof of ownership, and the first external sign-in. Admin-created users are not touched (the admin chooses).
+**Rules.** The settings are `GlobalOnly` (they decide what rights a stranger gets). The validator refuses `GlobalAdmin`, `Developer` and `ProjectAdmin`, bad names, duplicates and more than 50 entries; the service refuses the admin roles again at run time. A name that does not exist is skipped, logged by count and written to the audit event `register.defaults_applied` with an `assigned` and a `skipped` list; it never fails a registration.
+**Scopes are left out on purpose.** A scope is what a **client** may ask for (it lives on the application), and a person has no scopes, so there is nothing to assign at registration. Which scopes an application may use is the `allowedScopes` of the application.

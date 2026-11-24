@@ -15,7 +15,7 @@ Flows in this version:
 | Password grant | Self UI, mobile apps | Implemented, **off by default** |
 | Two-factor grant | Second step of the password grant | Implemented |
 | OTP grant (`urn:systemx:auth2:grant:otp`) | Login with a one-time code (email or SMS) | Implemented, same rules as the password grant |
-| External login, passkeys | Social login, passkeys | Phase 14 (experimental) |
+| External login, passkeys | Social login, passkeys | See [external-identity.md](external-identity.md) |
 
 *PKCE* (Proof Key for Code Exchange) protects the authorization code. *M2M* means machine to machine. *TOTP* is the six-digit code from an authenticator app.
 
@@ -98,7 +98,7 @@ It is on only when the application setting `AllowSelfUiLogin` is `true`. Then:
 
 - The OpenIddict client gets the permission for `password` and for the two-factor grant. Without the setting the server answers `unauthorized_client`.
 - The client is always **confidential**: it must send its secret. (Every client of this server has a secret.)
-- Rate limiting is added in phase 10. Until then, the lockout rules are the only brake. Do not expose this on the internet before that.
+- The password grant is rate limited (policy `token`, see [security.md](security.md)) and counts toward the lockout rules.
 
 ```http
 POST /connect/token
@@ -141,7 +141,7 @@ The hosted UI does the same in `/Account/TwoFactor`.
 
 With `Sessions.SingleActiveSession=true`, a successful login revokes all tokens and authorizations of that user **in this application**. Other applications are not touched. The server also changes the per-application security stamp (only with per-application credentials; a shared stamp would also affect other applications). Audit event: `session.revoked_others`.
 Access tokens are checked against the stored entries, so the old access token stops working at `/connect/userinfo` at once. APIs that only check the signature accept it until it expires (15 minutes by default).
-A cache of access data does not exist yet; when it arrives in phase 7 it will be cleared here too.
+The access data of the user (roles, permissions, groups) is read again after a password change, because the access version goes up.
 
 ## Return URL and redirect rules
 
@@ -168,7 +168,8 @@ These flows have JSON endpoints (for your backend) and pages (for the hosted UI)
 
 - Which identifiers are accepted (`UserName`, `Email`, `PhoneNumber`) depends on `Methods.AllowedRegisterMethods`.
 - A new person is created together with the membership row in one transaction. The password follows the [credential scope](credential-scope.md).
-- A confirmation email (link) and, for a phone number, a confirmation code (SMS) are sent. They are sent even when the application does not force confirmation.
+- A confirmation email (link) and, for a phone number, a confirmation code (SMS) are sent. They are sent even when the application does not force confirmation, unless you turn them off with `Registration.SendConfirmationEmail` / `SendConfirmationSMS` (an application can override each). They are always sent when `Email.RequireConfirmedEmail` / `Phone.RequireConfirmedPhone` is on, because the user could not sign in otherwise. Which mail or SMS provider sends them: [email-and-sms.md](email-and-sms.md).
+- **Default roles, groups and permissions.** A new member gets every name in `Registration.AssignedRoles`, `AssignedGroups` and `AssignedPermissions` ([server-settings.md](server-settings.md#registration)). It happens in three places: the register call above, the join with proof of ownership (below), and the first external sign-in that creates a person. It does **not** happen when an admin creates a user. A name that does not exist (or cannot be assigned) is skipped and written to the audit event `register.defaults_applied` (`assigned` and `skipped` lists); the registration never fails because of it. `GlobalAdmin`, `Developer` and `ProjectAdmin` are refused by the settings validator and are skipped again at run time.
 - It is **idempotent**: calling it again for the same person creates nothing and **never changes the password**. Many parallel calls create one person.
 - The answer says `userWasCreated`, `joinedProject` and `confirmationRequired`. These are for your **trusted backend**. Do not show them to the end user. That would tell a stranger whether an account exists. The hosted `Account/Register` page gives every visitor the same answer.
 - `Registration.RegistrationEnabled=false` closes registration (`registration_disabled`).
@@ -290,7 +291,7 @@ Access tokens are **signed JWTs** (not encrypted), so APIs can validate them wit
 | `sid` | Session id (user tokens only) |
 | `machine` | `true` on client-credentials tokens only |
 
-**The permission list is not in the token** (it would make tokens huge). Clients read it from `/api/auth2/me` (phase 7) and cache it by `pv`.
+**The permission list is not in the token** (it would make tokens huge). Clients read it from `/api/auth2/me` and cache it by `pv`.
 Default lifetimes: access token 15 minutes, refresh token 14 days, identity token 10 minutes. They come from `Sessions.*` in the settings.
 
 ## Keys
@@ -300,7 +301,7 @@ Default lifetimes: access token 15 minutes, refresh token 14 days, identity toke
 | Development, Testing | Temporary keys are made at startup. Tokens stop working when the app restarts. Two instances do not share them |
 | Any other | You must set certificates in `Auth2:Keys` (see [server-setup.md](server-setup.md)). The server **refuses to start** without them, or without an `https://` `Auth2:Issuer` |
 
-Key rotation steps are written in `security.md` (phase 10).
+Key rotation steps are written in [security.md](security.md).
 
 ## Client secrets
 

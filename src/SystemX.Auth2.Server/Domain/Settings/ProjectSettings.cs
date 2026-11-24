@@ -172,6 +172,15 @@ public sealed class RegistrationSettings
     /// <c>Email.RequireConfirmedEmail</c> is on, because the user could not sign in otherwise. The user can ask for it again later.
     /// </summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public bool SendConfirmationEmail { get; set; } = true;
+    /// <summary>
+    /// Role names every new member of the project gets (by self registration, joining with proof, or the first external sign-in).
+    /// The roles must exist in the project. A missing one is skipped and written to the audit log. The built-in admin roles are refused.
+    /// </summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AssignedRoles { get; set; } = [];
+    /// <summary>Group names every new member gets (keys: lowercase letters, digits and <c>. _ : -</c>). The groups must exist. A missing one is skipped and audited.</summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AssignedGroups { get; set; } = [];
+    /// <summary>Permission keys every new member gets directly (for example <c>orders.read</c>). The permissions must exist. A missing one is skipped and audited.</summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AssignedPermissions { get; set; } = [];
 }
 
 /// <summary>Lockout rules.</summary>

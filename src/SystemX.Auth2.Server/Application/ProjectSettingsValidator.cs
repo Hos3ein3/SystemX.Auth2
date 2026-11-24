@@ -73,6 +73,10 @@ public static class ProjectSettingsValidator
         else if (!lo.SupportedCultures.Contains(lo.DefaultCulture, StringComparer.OrdinalIgnoreCase))
             Err("Localization.DefaultCulture", "Must be one of SupportedCultures.");
 
+        CheckAssigned("Registration.AssignedRoles", s.Registration.AssignedRoles, IsRoleName, Err, ReservedRoles);
+        CheckAssigned("Registration.AssignedGroups", s.Registration.AssignedGroups, IsKey, Err);
+        CheckAssigned("Registration.AssignedPermissions", s.Registration.AssignedPermissions, IsKey, Err);
+
         ExternalProviderSettingsValidator.Validate(s, Err);
 
         return e;
@@ -83,6 +87,32 @@ public static class ProjectSettingsValidator
     {
         var errors = Validate(s);
         if (errors.Count > 0) throw new SettingsValidationException(errors);
+    }
+
+    /// <summary>Roles that a registration may never hand out: they open the administration.</summary>
+    public static readonly IReadOnlyList<string> ReservedRoles = ["GlobalAdmin", "Developer", "ProjectAdmin"];
+
+    /// <summary>Most names in one assigned list.</summary>
+    public const int MaxAssigned = 50;
+
+    private static bool IsKey(string v)
+    {
+        static bool Alnum(char c) => c is >= 'a' and <= 'z' or >= '0' and <= '9';
+        return v.Length is >= 1 and <= 100 && Alnum(v[0]) && Alnum(v[^1]) && v.All(c => Alnum(c) || c is '.' or '_' or ':' or '-');
+    }
+
+    private static bool IsRoleName(string v) =>
+        v.Length is >= 1 and <= 100 && v.Trim() == v && v.All(c => char.IsLetterOrDigit(c) || c is ' ' or '.' or '_' or ':' or '-');
+
+    private static void CheckAssigned(string path, List<string> names, Func<string, bool> valid, Action<string, string> err, IReadOnlyList<string>? reserved = null)
+    {
+        if (names.Count > MaxAssigned) err(path, $"At most {MaxAssigned} entries are allowed.");
+        if (names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Count) err(path, "Has the same entry twice.");
+        foreach (var name in names)
+        {
+            if (!valid(name)) err(path, $"'{name}' is not a valid name.");
+            else if (reserved?.Contains(name, StringComparer.OrdinalIgnoreCase) == true) err(path, $"'{name}' is a built-in admin role and cannot be assigned at registration.");
+        }
     }
 
     private static void CheckRegex(string path, string? pattern, int timeoutMs, Action<string, string> err)

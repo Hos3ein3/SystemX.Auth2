@@ -63,12 +63,12 @@ The values are constants in `Persistence/Seeding/Auth2Seeder.cs`. To read them f
 
 ## After the first login
 
-Change the admin password. The self-service password change arrives in phase 6.
-To add more admins, use the `create-admin` command (planned, later phase).
+Change the admin password with the page `/Manage/ChangePassword` (or `POST /api/auth2/password/change`).
+To add more admins, use the `create-admin` command (see [server-setup.md](server-setup.md)) or the admin pages.
 
 ## Common problems
 
-- *I cannot log in as `globaladmin`.* Check that the seed ran (`seed` command, or `Development` startup). Check the log for the warning "Default GlobalAdmin created". If an admin already existed before, the seeder did not create a new one. Login itself arrives in phase 5.
+- *I cannot log in as `globaladmin`.* Check that the seed ran (`seed` command, or `Development` startup). Check the log for the warning "Default GlobalAdmin created". If an admin already existed before, the seeder did not create a new one. Then try the sign-in again.
 - *The seed ran twice.* This is safe. The second run changes nothing.
 - *I forgot the admin password.* Use `create-admin` (planned) to add a new GlobalAdmin.
 - *The seeder says a user named `globaladmin` exists but is not a GlobalAdmin.* The seeder will not touch it. Rename that user or add it to the `GlobalAdmin` role yourself.

@@ -2,7 +2,7 @@
 
 ## What this is
 
-The JSON API that a future admin UI (and scripts) use to manage the Server. Base route: `/api/auth2/admin`.
+The JSON API that the admin pages (and your scripts) use to manage the Server. Base route: `/api/auth2/admin`.
 The pages of the admin UI do not hold logic: everything they do is available here.
 
 ## When to use it

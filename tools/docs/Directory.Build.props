@@ -1,0 +1,3 @@
+<Project>
+  <!-- ListPublic.cs is a stand-alone tool: it must not inherit the settings of the solution. -->
+</Project>

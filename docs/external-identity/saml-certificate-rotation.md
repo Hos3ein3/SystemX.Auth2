@@ -12,7 +12,7 @@ SAML trust is based on certificates. They expire and must be replaced **without*
 
 ### The Server's own certificate (used to sign requests, decrypt assertions, sign metadata)
 
-1. Make a new certificate with the admin route (step 9). The Server stores it encrypted and shows only the public part and the expiry.
+1. Make a new certificate with the admin route (`POST .../saml/generate-sp-certificate`, see [admin-api.md](../admin-api.md#external-identity-routes)). The Server stores it encrypted and shows only the public part and the expiry.
 2. The metadata at `/saml/{slug}/{name}/metadata` now has the new public certificate. Give it to the identity provider (import the metadata again).
 3. Check one sign-in. The old certificate is not kept: if the identity provider still encrypts with the old one, assertions fail until it has the new metadata. Plan the change for a quiet moment.
 

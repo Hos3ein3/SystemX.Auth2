@@ -44,4 +44,4 @@ The secret is sent in plain text **once** when you save. The Server encrypts it 
 
 ## How to implement or extend
 
-The engine is `OidcIdentitySource` (`Infrastructure/External/OidcIdentitySource.cs`). It uses the code flow with PKCE, `state` and `nonce`. This provider type has its own descriptor in `ExternalProviderDescriptors.cs` and its own rules in the same engine. Tests: `OidcSourceTests.cs`, with `FakeOidcProvider`.
+The engine is OpenIddict.Client with its WebIntegration package: `ExternalClientRegistrations` builds the registration of this provider (`web.AddGoogle(...)`), and `OpenIddictIdentitySource` runs the code flow (PKCE, `state`, `nonce`) and applies the rules of this type. The type has its own descriptor in `ExternalProviderDescriptors.cs`. How to enable and use the engine: [social-webintegration.md](social-webintegration.md). Tests: `OidcSourceTests.cs`, `ExternalClientIntegrationTests.cs`, with `FakeOidcProvider`.

@@ -46,7 +46,7 @@ A user must not be added to another project without proof that they own the acco
 The rules in the code:
 
 - A **new** user gets the `user_projects` row saved in the same transaction as the user. The row is created *before* the password is stored.
-- For a person who **already exists**, the store never creates the row by itself. Setting a password for them in an project where they have no row throws `InvalidOperationException` (`user_not_in_project`).
+- For a person who **already exists**, the store never creates the row by itself. Setting a password for them in a project where they have no row throws `InvalidOperationException` (`user_not_in_project`).
 - Reading credentials where there is no row gives "no password". So the password from project A never works in project B.
 - The join flow with the proof step is `IJoinService` (a code to a confirmed email or phone, then the row and the new password in one transaction). See [authentication-flows.md](authentication-flows.md#joining-a-second-project-proof-of-ownership).
 - A membership row that exists without credentials (for example added by an admin) gets a security stamp the first time it is needed, so Identity can save the user.
@@ -66,8 +66,8 @@ var result = await userManager.CreateAsync(new AppUser { UserName = "sara", Emai
 
 ## Common problems
 
-- *`ProjectNotFoundException` from UserManager:* the request has no project. In a request the client id comes from the token (phase 5). In your own code, set `IClientIdAccessor.ClientId` or `IApplicationSelection.ProjectKey` first.
-- *`InvalidOperationException: user_not_in_project`:* the person exists but has no membership row in this project. Use the join flow (phase 6).
+- *`ProjectNotFoundException` from UserManager:* the request has no project. In a request the client id comes from the token. In your own code, set `IClientIdAccessor.ClientId` or `IProjectSelection.ProjectKey` first.
+- *`InvalidOperationException: user_not_in_project`:* the person exists but has no membership row in this project. Use the join flow ([authentication-flows.md](authentication-flows.md#joining-a-second-project-proof-of-ownership)).
 - *Passwords stopped working after I changed the scope:* see step 3.
 
 ## External logins and passkeys
