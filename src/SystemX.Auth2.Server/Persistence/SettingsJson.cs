@@ -53,7 +53,9 @@ public static class SettingsJson
     {
         var copy = Clone(settings);
         copy.ExternalProviders = [.. copy.ExternalProviders.Select(redact)];
+        copy.Messaging.Email.PasswordProtected = null;
         var root = JsonSerializer.SerializeToNode(copy, Options)!.AsObject();
+        if (root["messaging"]?["email"] is System.Text.Json.Nodes.JsonObject email) DropProtected(email);
         foreach (var provider in root["externalProviders"]?.AsArray() ?? []) if (provider is System.Text.Json.Nodes.JsonObject o) DropProtected(o);
         return root.ToJsonString();
     }

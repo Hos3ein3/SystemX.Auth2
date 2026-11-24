@@ -1,4 +1,6 @@
 using System.Net;
+using SystemX.Auth2.Contracts.Access;
+using SystemX.Auth2.Contracts.Constants;
 
 namespace SystemX.Auth2.Server.IntegrationTests;
 
@@ -70,5 +72,17 @@ public class AdminPagesTests : Phase6Base
         (await b.PostPageAsync("/Account/Login?ClientId=appa", new Dictionary<string, string> { ["Input.Login"] = "sara", ["Input.Password"] = PassA })).StatusCode.ShouldBe(HttpStatusCode.Redirect);
         foreach (var page in new[] { "/admin/p/appa/users", "/admin/p/appa", "/admin/p/appb/users", "/admin/projects", "/admin/keys" })
             (await b.GetAsync(page + "?ClientId=appa")).StatusCode.ShouldBeOneOf([HttpStatusCode.NotFound, HttpStatusCode.Redirect, HttpStatusCode.Forbidden], page);
+    }
+
+    [Fact]
+    public async Task RolesPage_ListsARoleThatAClientSynced()
+    {
+        var admin = await GlobalAdminAsync();
+        var token = await ClientTokenAsync("appa", "auth2.permissions.sync auth2.roles.sync");
+        (await CallAsync(new Browser(Factory), Auth2Routes.RolesSync, new RoleSyncRequest([new RoleDefinition("Oskol")]), token)).Status.ShouldBe(HttpStatusCode.OK);
+
+        var r = await admin.GetAsync("/admin/p/appa/roles?ClientId=_global");
+        r.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await r.Content.ReadAsStringAsync()).ShouldContain("Oskol");
     }
 }

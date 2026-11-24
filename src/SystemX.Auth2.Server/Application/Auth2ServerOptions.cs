@@ -36,6 +36,9 @@ public sealed class Auth2ServerOptions
     /// <summary>Single-project options.</summary>
     public SingleProjectOptions SingleProject { get; set; } = new();
 
+    /// <summary>The default email and SMS providers. A project or an application can set its own (admin settings).</summary>
+    public ServerMessagingOptions Messaging { get; set; } = new();
+
     /// <summary>Options that only work in Development.</summary>
     public DevelopmentOptions Development { get; set; } = new();
 
@@ -197,4 +200,38 @@ public sealed class SingleProjectOptions
 {
     /// <summary>Name of the one fixed application.</summary>
     public string Name { get; set; } = "Default";
+}
+
+/// <summary>Server default for sending messages (<c>Auth2:Messaging</c>). Used when neither the application nor the project chose a provider.</summary>
+public sealed class ServerMessagingOptions
+{
+    /// <summary>Default email provider.</summary>
+    public ServerEmailOptions Email { get; set; } = new();
+    /// <summary>Default SMS provider name (<c>logging</c> unless you register your own).</summary>
+    public string SmsProvider { get; set; } = Domain.Settings.SmsProviders.Logging;
+    /// <summary>Default SMS sender id.</summary>
+    public string? SmsSender { get; set; }
+}
+
+/// <summary>Server default email provider. The password is plain here: keep it in a secret store or an environment variable, never in a file in the repository.</summary>
+public sealed class ServerEmailOptions
+{
+    /// <summary>Provider name: <c>logging</c> (default), <c>smtp</c>, <c>google</c> or a custom one.</summary>
+    public string Provider { get; set; } = Domain.Settings.EmailProviders.Logging;
+    /// <summary>SMTP host.</summary>
+    public string? Host { get; set; }
+    /// <summary>SMTP port.</summary>
+    public int Port { get; set; } = 587;
+    /// <summary>Connection security.</summary>
+    public Domain.Settings.SmtpSecurity Security { get; set; } = Domain.Settings.SmtpSecurity.StartTls;
+    /// <summary>SMTP user name (Google: the Gmail address).</summary>
+    public string? UserName { get; set; }
+    /// <summary>SMTP password (Google: an app password).</summary>
+    public string? Password { get; set; }
+    /// <summary>From address.</summary>
+    public string? FromAddress { get; set; }
+    /// <summary>From display name.</summary>
+    public string? FromName { get; set; }
+    /// <summary>Timeout of one send in seconds.</summary>
+    public int TimeoutSeconds { get; set; } = 15;
 }

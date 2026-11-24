@@ -10,6 +10,7 @@ What works today. "Done" means: code, tests, docs and a CHANGELOG entry exist.
 | External identity: data model, settings, descriptors, secrets | Done | Work package step 2 |
 | External identity: provider registry and reload | Done | Step 3 |
 | Social login and generic OIDC (OpenIddict.Client + WebIntegration, run-time registrations, SSRF guard, setup guides) | Done | Step 4, rebuilt on OpenIddict.Client after the spike ([ADR-096](decisions.md)) |
+| Email and SMS factories (provider per project and application), SMTP and Google providers, admin routes | Done (no admin page, no test-send route) | [ADR-097](decisions.md) |
 | Login service, mapping, brokering, unlink rules, pages | Done | Step 5 |
 | SAML 2.0 service provider (ACS, metadata, SLO, rotation) | Done | Step 6 |
 | LDAP and Active Directory | Done | Step 7 |

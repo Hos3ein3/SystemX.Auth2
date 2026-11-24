@@ -62,6 +62,8 @@ In single-project mode the only project id is the one of the single project.
 | `DELETE /projects/{projectId}/applications/{applicationId}` | global | Delete with its tokens and authorizations. The `_global` application cannot be deleted |
 | `GET .../{applicationId}/setup` | project (own) / global | The client setup (server URL, `ProjectKey`, `ApplicationName`, client id and a C# snippet). The secret is **not** part of it |
 | `POST .../{applicationId}/secret/rotate` | global; project admin only if `Clients.AllowProjectAdminRotateSecret` | New client secret, **shown once** (also in `setup.clientSecret`) |
+| `GET /projects/{projectId}/messaging`, `PUT` | global | How the project sends email and SMS (SMTP, Google). The password is never returned (`passwordIsSet`). See [email-and-sms.md](email-and-sms.md) |
+| `GET`, `PUT`, `DELETE .../{applicationId}/messaging` | global | The application's own email / SMS provider. `DELETE` goes back to the project's |
 | `GET .../{applicationId}/settings`, `PUT` | project (own) read / global write | Application settings JSON (UI mode, cookie lifetime, token lifetimes, CORS origins, Self UI, shown providers), with `ETag` |
 | `GET`, `PUT .../{applicationId}/redirect-uris` | read: project (own) / write: global | `{ redirectUris, postLogoutRedirectUris }`. Exact match, no wildcards. These are fields of the OpenIddict application |
 

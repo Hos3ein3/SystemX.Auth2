@@ -34,7 +34,7 @@ public abstract class AdminBase : Phase6Base
         var target = asked switch { null => token == GlobalToken ? GlobalProjectId : A.Id, "appa" => A.Id, "appb" => B.Id, "_global" => GlobalProjectId, _ => Guid.NewGuid() };
 
         if (path.StartsWith("/applications")) return ("/projects" + path["/applications".Length..], rest);   // list, create, one, settings, external-providers ...
-        var projectLevel = new[] { "/users", "/roles", "/permissions", "/groups", "/audit-events", "/external-provider-types" };
+        var projectLevel = new[] { "/users", "/roles", "/permissions", "/groups", "/audit-events", "/external-provider-types", "/messaging" };
         if (projectLevel.Any(p => path == p || path.StartsWith(p + "/") || path.StartsWith(p + "?"))) return ($"/projects/{target}{path}", rest);
         return (path, rest);
     }

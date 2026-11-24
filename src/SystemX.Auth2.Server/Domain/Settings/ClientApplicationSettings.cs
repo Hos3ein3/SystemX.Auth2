@@ -32,4 +32,6 @@ public sealed class ClientApplicationSettings
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public List<string>? ExternalProviders { get; set; }
     /// <summary>Consent mode. Null: the project value.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public ConsentMode? ConsentMode { get; set; }
+    /// <summary>This application's own email / SMS providers. Null: the project's. Changed only through the messaging admin routes.</summary>
+    public MessagingSettings? Messaging { get; set; }
 }

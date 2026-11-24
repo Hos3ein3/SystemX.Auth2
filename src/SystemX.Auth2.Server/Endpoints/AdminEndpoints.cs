@@ -331,6 +331,13 @@ public static class AdminEndpoints
             http.Response.Headers.ETag = $"\"v{version}\"";
             return Results.NoContent();
         }).Require(AdminLevel.Project);
+
+        // How the project sends email and SMS. Holds a password, so only a global admin may see or change it.
+        g.MapGet("/projects/{projectId:guid}/messaging", async (HttpContext http, Guid projectId, IAdminMessagingService svc) =>
+            await svc.GetProjectAsync(projectId, http.RequestAborted) is { } m ? Results.Ok(m) : Hidden(http)).Require(AdminLevel.Global);
+
+        g.MapPut("/projects/{projectId:guid}/messaging", async (HttpContext http, Guid projectId, MessagingUpdate update, IAdminMessagingService svc) =>
+            ApiResults.From(http, await svc.UpdateProjectAsync(projectId, update, http.Ctx().UserId, http.RequestAborted))).Require(AdminLevel.Global);
     }
 
     // ------------------------------------------------------------------ applications
@@ -392,6 +399,16 @@ public static class AdminEndpoints
             http.Response.Headers.ETag = $"\"v{version}\"";
             return Results.NoContent();
         }).Require(AdminLevel.Project);
+
+        // An application may send through its own provider (only a global admin: it holds a password).
+        a.MapGet("/{applicationId:guid}/messaging", async (HttpContext http, Guid projectId, Guid applicationId, IAdminMessagingService svc) =>
+            await svc.GetApplicationAsync(projectId, applicationId, http.RequestAborted) is { } m ? Results.Ok(m) : Hidden(http)).Require(AdminLevel.Global);
+
+        a.MapPut("/{applicationId:guid}/messaging", async (HttpContext http, Guid projectId, Guid applicationId, MessagingUpdate update, IAdminMessagingService svc) =>
+            ApiResults.From(http, await svc.UpdateApplicationAsync(projectId, applicationId, update, http.Ctx().UserId, http.RequestAborted))).Require(AdminLevel.Global);
+
+        a.MapDelete("/{applicationId:guid}/messaging", async (HttpContext http, Guid projectId, Guid applicationId, IAdminMessagingService svc) =>
+            ApiResults.From(http, await svc.ClearApplicationAsync(projectId, applicationId, http.Ctx().UserId, http.RequestAborted))).Require(AdminLevel.Global);
 
         a.MapGet("/{applicationId:guid}/redirect-uris", async (HttpContext http, Guid projectId, Guid applicationId, IAdminApplicationService apps) =>
             await apps.GetAsync(projectId, applicationId, http.RequestAborted) is { } app ? Results.Ok(new RedirectUrisDto(app.RedirectUris, app.PostLogoutRedirectUris)) : Hidden(http))

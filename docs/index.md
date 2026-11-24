@@ -26,6 +26,7 @@ The map of all documentation pages. Pages marked *(planned)* are written in a la
 | [permission-sync.md](permission-sync.md) | Push and pull of permissions and roles | Written |
 | [handshake-and-startup.md](handshake-and-startup.md) | Startup check and server mode | Written |
 | [admin-api.md](admin-api.md) | Global and project admin API | Written |
+| [email-and-sms.md](email-and-sms.md) | Email and SMS providers per project and application (SMTP, Google) | Written |
 | [security.md](security.md) | Threat model, rate limits, keys, checklist | Written |
 | [deployment-and-scaling.md](deployment-and-scaling.md) | Several instances, Redis, probes | Written |
 | [observability.md](observability.md) | Logs, traces, metrics, health | Written |

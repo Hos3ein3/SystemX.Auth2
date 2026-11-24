@@ -65,6 +65,26 @@ public class ProjectModelTests
     }
 
     [Fact]
+    public void Effective_EmailProvider_ApplicationThenProjectThenNothing()
+    {
+        var project = new ProjectSettings();
+        new EffectiveSettings(project, Client()).EmailProvider.ShouldBeNull();   // nothing chosen: the server default counts
+
+        project.Messaging.Email.Provider = EmailProviders.Smtp;
+        project.Messaging.Sms.Provider = SmsProviders.Logging;
+        var e = new EffectiveSettings(project, Client());
+        e.EmailProvider!.Provider.ShouldBe("smtp");
+        e.SmsProvider!.Provider.ShouldBe("logging");
+
+        var app = new ClientApplicationSettings { Messaging = new MessagingSettings() };   // an override that names no provider still inherits
+        new EffectiveSettings(project, Client(app)).EmailProvider!.Provider.ShouldBe("smtp");
+
+        app.Messaging.Email.Provider = EmailProviders.Google;
+        new EffectiveSettings(project, Client(app)).EmailProvider!.Provider.ShouldBe("google");
+        new EffectiveSettings(project, null).EmailProvider!.Provider.ShouldBe("smtp");   // no application: the project
+    }
+
+    [Fact]
     public void Effective_WithoutAnApplication_IsTheProjectValues()
     {
         var project = new ProjectSettings();

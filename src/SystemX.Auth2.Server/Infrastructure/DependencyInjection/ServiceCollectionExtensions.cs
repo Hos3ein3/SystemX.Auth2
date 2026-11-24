@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Infrastructure.Messaging;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Infrastructure;
 using SystemX.Auth2.Server.Infrastructure.Auth;
@@ -70,7 +71,13 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddAuthentication(o => o.DefaultAuthenticateScheme = Auth2Cookie.Scheme).AddAuth2Cookie();
         services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, SessionRoleClaims>();
         services.AddAuthorization(o => o.AddPolicy("Auth2.Session", p => p.AddAuthenticationSchemes(Auth2Cookie.Scheme).RequireAuthenticatedUser()));
-        services.AddRazorPages(o => o.Conventions.AuthorizeFolder("/Manage", "Auth2.Session"));
+        services.AddRazorPages(o =>
+        {
+            o.Conventions.AuthorizeFolder("/Manage", "Auth2.Session");
+            o.Conventions.AddPageRoute("/Admin/Global/Settings", "/admin/global/settings");
+            o.Conventions.AddPageRoute("/Admin/Global/Jobs", "/admin/global/jobs");
+            o.Conventions.AddPageRoute("/Admin/Global/Keys", "/admin/global/keys");
+        });
 
         services.AddScoped<Auth2IdentityErrorDescriber>();
         services.AddIdentityCore<AppUser>(o =>
@@ -132,8 +139,20 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IOtpService, OtpService>();
         AddOperations(services, configuration);
         services.AddScoped<IServerUrls, ServerUrls>();
-        services.TryAddScoped<IEmailSender, LoggingEmailSender>();   // replace with your own sender in production
-        services.TryAddScoped<ISmsSender, LoggingSmsSender>();
+        // Email and SMS go through factories: the application's provider, else the project's, else Auth2:Messaging, else logging.
+        // Add your own provider with services.AddScoped<IEmailTransport, MyTransport>(). Registering your own IEmailSender still replaces all of it.
+        services.AddScoped<LoggingEmailSender>();
+        services.AddScoped<LoggingSmsSender>();
+        services.AddScoped<SmtpEmailTransport>();
+        services.AddScoped<IEmailTransport, LoggingEmailTransport>();
+        services.AddScoped<IEmailTransport>(sp => sp.GetRequiredService<SmtpEmailTransport>());
+        services.AddScoped<IEmailTransport, GoogleEmailTransport>();
+        services.AddScoped<ISmsTransport, LoggingSmsTransport>();
+        services.AddScoped<IEmailFactory, EmailFactory>();
+        services.AddScoped<ISmsFactory, SmsFactory>();
+        services.AddScoped<IAdminMessagingService, SystemX.Auth2.Server.Infrastructure.Admin.AdminMessagingService>();
+        services.TryAddScoped<IEmailSender, FactoryEmailSender>();
+        services.TryAddScoped<ISmsSender, FactorySmsSender>();
         services.AddScoped<IUserNotifier, UserNotifier>();
         services.AddScoped<IAccessVersionService, AccessVersionService>();
         services.AddScoped<IAccessService, AccessService>();

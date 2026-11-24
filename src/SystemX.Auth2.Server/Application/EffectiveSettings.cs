@@ -33,6 +33,14 @@ public sealed class EffectiveSettings(ProjectSettings project, ClientApplication
     /// <summary>Redirect URIs of the application (OpenIddict field). Empty when the request has no client.</summary>
     public IReadOnlyList<string> AllowedRedirectUris => Application?.RedirectUris ?? [];
 
+    /// <summary>The email provider chosen for this request: application, else project. Null means "use the server default".</summary>
+    public EmailProviderSettings? EmailProvider => Pick(App?.Messaging?.Email, Project.Messaging.Email);
+    /// <summary>The SMS provider chosen for this request: application, else project. Null means "use the server default".</summary>
+    public SmsProviderSettings? SmsProvider => App?.Messaging?.Sms is { Provider.Length: > 0 } a ? a : Project.Messaging.Sms is { Provider.Length: > 0 } p ? p : null;
+
+    private static EmailProviderSettings? Pick(EmailProviderSettings? application, EmailProviderSettings project) =>
+        application is { Provider.Length: > 0 } ? application : project is { Provider.Length: > 0 } ? project : null;
+
     /// <summary>The external providers this client shows: a subset of the project's providers (all when the application lists none).</summary>
     public IEnumerable<T> FilterProviders<T>(IEnumerable<T> projectProviders, Func<T, string> name)
     {

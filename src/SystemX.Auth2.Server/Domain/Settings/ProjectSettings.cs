@@ -82,6 +82,8 @@ public sealed class ProjectSettings
     /// the generic settings route ignores this list.
     /// </summary>
     public List<ExternalProviderSettings> ExternalProviders { get; set; } = [];
+    /// <summary>How emails and SMS are sent for this project. Changed only through the messaging admin routes (they hold a secret).</summary>
+    public MessagingSettings Messaging { get; set; } = new();
     /// <summary>Passkey rules.</summary>
     public PasskeySettings Passkeys { get; set; } = new();
 

@@ -153,6 +153,19 @@ Email rules.
 | `AllowedDomains` | `List<string>` | `empty list` | ProjectAdminEditable | If not empty, only these domains are allowed. |
 | `BlockedDomains` | `List<string>` | `empty list` | ProjectAdminEditable | These domains are never allowed. |
 
+### Messaging (email and SMS providers)
+
+Which provider sends email and SMS. It exists on the project and, as an override, on an application. It is **not** edited through the generic settings route (it holds a password): use the messaging routes. See [email-and-sms.md](email-and-sms.md).
+
+| Field | Type | Default | Editable by | Meaning |
+|---|---|---|---|---|
+| `Email.Provider` | `string` | empty (inherit) | GlobalOnly | `logging`, `smtp`, `google` or a custom name |
+| `Email.Host`, `Email.Port`, `Email.Security` | | `587`, `StartTls` | GlobalOnly | SMTP server (not used by `google`) |
+| `Email.UserName`, `Email.PasswordProtected` | | | GlobalOnly | Login. The password is encrypted and never returned |
+| `Email.FromAddress`, `Email.FromName` | | | GlobalOnly | From header. Empty name: the brand name |
+| `Email.TimeoutSeconds` | `int` | `15` | GlobalOnly | Timeout of one send |
+| `Sms.Provider`, `Sms.Sender` | `string` | empty (inherit) | GlobalOnly | SMS provider and sender id |
+
 ### Phone
 
 Phone rules.

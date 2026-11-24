@@ -4,6 +4,9 @@ All notable changes are listed here. The format follows "Keep a Changelog".
 
 ## [Unreleased]
 
+### Added
+- **EmailFactory and SmsFactory.** The default `IEmailSender` / `ISmsSender` ask `IEmailFactory` / `ISmsFactory`, which pick the provider per request: the application's, else the project's, else the server default (`Auth2:Messaging`), else logging. New providers: `smtp` (MailKit) and `google` (Gmail, app password). Add your own with `IEmailTransport` / `ISmsTransport`. Settings are `GlobalOnly` and live in `ProjectSettings.Messaging` and `ClientApplicationSettings.Messaging`; the password is encrypted and never returned. Admin routes: `GET|PUT /projects/{id}/messaging`, `GET|PUT|DELETE /projects/{id}/applications/{appId}/messaging`. See [docs/email-and-sms.md](docs/email-and-sms.md).
+
 ### Changed
 - **Social login and generic OpenID Connect now use OpenIddict.Client** (`OpenIddict.Client.AspNetCore`, `.SystemNetHttp`, `.WebIntegration`) instead of a hand-written client. Registrations are built from the provider list at run time (no restart); see ADR-096 for the spike result and the findings. Behaviour changes: a specific Microsoft tenant refuses another tenant at the issuer check; Apple, Google and GitHub follow the library (RFC 9207 `iss`); the Facebook Graph version is applied to the library's endpoints. Upstream tokens are never stored in the Server's token table.
 - The HTTP clients of OpenIddict.Client get the SSRF guard (`SsrfGuardHandler`). The answer of a provider (`/callback/login/...`) is read by Auth2 itself; the OpenIddict middleware does not handle it.

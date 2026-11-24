@@ -397,6 +397,7 @@ internal sealed class AdminProjectService(
 
         // The providers have their own routes (they have secrets and extra rules). This route never changes them.
         settings.ExternalProviders = current.ExternalProviders;
+        settings.Messaging = current.Messaging;   // same for the messaging routes (they hold a password)
 
         var errors = ProjectSettingsValidator.Validate(settings);
         if (errors.Count > 0) return (AdminSupport.Invalid(errors), version);
@@ -507,13 +508,14 @@ internal sealed class AdminApplicationService(
     public async Task<(OperationResult Result, ClientApplicationSettings? Settings, int Version)> GetSettingsAsync(Guid projectId, Guid applicationId, CancellationToken ct = default)
     {
         var current = await applications.FindAsync(applicationId, ct);
-        return current is null || current.ProjectId != projectId ? (OperationResult.Fail(Auth2ErrorCodes.NotFound), null, 0) : (OperationResult.Ok, current.Settings, current.SettingsVersion);
+        return current is null || current.ProjectId != projectId ? (OperationResult.Fail(Auth2ErrorCodes.NotFound), null, 0) : (OperationResult.Ok, Redacted(current.Settings), current.SettingsVersion);
     }
 
     public async Task<(OperationResult Result, int Version)> UpdateSettingsAsync(Guid projectId, Guid applicationId, ClientApplicationSettings settings, bool isGlobalAdmin, int? ifMatchVersion, CancellationToken ct = default)
     {
         var current = await applications.FindAsync(applicationId, ct);
         if (current is null || current.ProjectId != projectId) return (OperationResult.Fail(Auth2ErrorCodes.NotFound), 0);
+        settings.Messaging = current.Settings.Messaging;   // changed only through the messaging routes (they hold a password)
         if (ifMatchVersion is { } v && v != current.SettingsVersion) return (OperationResult.Fail(Auth2ErrorCodes.Conflict), current.SettingsVersion);
         if (!isGlobalAdmin)
         {
@@ -527,6 +529,13 @@ internal sealed class AdminApplicationService(
             return (OperationResult.Ok, info.SettingsVersion);
         }
         catch (SettingsValidationException ex) { return (AdminSupport.Invalid(ex.Errors), current.SettingsVersion); }
+    }
+
+    private static ClientApplicationSettings Redacted(ClientApplicationSettings s)
+    {
+        var copy = SettingsJson.Clone(s);
+        if (copy.Messaging is { } m) m.Email.PasswordProtected = null;
+        return copy;
     }
 
     internal static ApplicationDto ToDto(ClientApplicationInfo a) =>
