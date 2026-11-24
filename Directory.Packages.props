@@ -39,5 +39,9 @@
     <PackageVersion Include="ITfoxtec.Identity.Saml2.MvcCore" Version="4.22.3" />
     <PackageVersion Include="OpenIddict.AspNetCore" Version="7.9.0" />
     <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Client" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Client.AspNetCore" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Client.SystemNetHttp" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Client.WebIntegration" Version="7.9.0" />
   </ItemGroup>
 </Project>

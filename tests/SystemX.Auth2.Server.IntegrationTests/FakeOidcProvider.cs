@@ -91,6 +91,13 @@ public sealed class FakeOidcProvider : HttpMessageHandler
                 token_endpoint = origin + prefix + "/token",
                 userinfo_endpoint = origin + prefix + "/userinfo",
                 jwks_uri = origin + prefix + "/jwks",
+                response_types_supported = new[] { "code" },
+                grant_types_supported = new[] { "authorization_code", "refresh_token" },
+                subject_types_supported = new[] { "public" },
+                id_token_signing_alg_values_supported = new[] { "RS256" },
+                code_challenge_methods_supported = new[] { "S256" },
+                token_endpoint_auth_methods_supported = new[] { "client_secret_post", "client_secret_basic" },
+                scopes_supported = new[] { "openid", "email", "profile" },
             });
         }
         if (path.EndsWith("/jwks", StringComparison.Ordinal))
@@ -166,6 +173,7 @@ public sealed class FakeOidcProvider : HttpMessageHandler
             Issuer = iss,
             Audience = AudienceOverride ?? issued.ClientId,
             Claims = claims,
+            IssuedAt = ExpiredToken ? now.AddHours(-2) : now.AddMinutes(-1),   // real providers always send iat
             NotBefore = ExpiredToken ? now.AddHours(-2) : now.AddMinutes(-1),
             Expires = ExpiredToken ? now.AddHours(-1) : now.AddMinutes(10),
             SigningCredentials = new SigningCredentials(_key, SecurityAlgorithms.RsaSha256),
