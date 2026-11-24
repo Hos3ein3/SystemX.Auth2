@@ -12,7 +12,7 @@ public sealed class SettingsModel(IOptions<Auth2ServerOptions> options) : PageMo
     public IActionResult OnGet()
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
 
         ServerOptions = options.Value;
         return Page();

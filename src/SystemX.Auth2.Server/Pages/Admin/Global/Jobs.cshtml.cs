@@ -19,7 +19,7 @@ public sealed class JobsModel(IAdminJobService jobService) : PageModel
     public async Task<IActionResult> OnGetAsync()
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
 
         JobStatuses = await jobService.GetStatusAsync(HttpContext.RequestAborted);
         JobRuns = await jobService.ListRunsAsync(new PageQuery(PageNumber, PageSize), JobName, Success, HttpContext.RequestAborted);
@@ -29,7 +29,7 @@ public sealed class JobsModel(IAdminJobService jobService) : PageModel
     public async Task<IActionResult> OnPostRunNowAsync(string jobName)
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
 
         var (result, run) = await jobService.RunNowAsync(jobName, HttpContext.RequestAborted);
         if (result.Succeeded) TempData["Success"] = $"Job '{jobName}' executed successfully. Rows affected: {run?.RowsAffected ?? 0}.";

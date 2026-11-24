@@ -52,6 +52,9 @@ public abstract class AdminPageModel : PageModel
             }
         }
 
+        // The services of this request now work on the project of the route (like the admin API does).
+        Svc<IProjectSelection>().ProjectKey = ProjectKey;
+        await Svc<IProjectContext>().GetRequiredAsync(ct);
         return true;
     }
 

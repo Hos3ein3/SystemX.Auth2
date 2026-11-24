@@ -23,12 +23,12 @@ public sealed class IndexModel : PageModel
     {
         if (!IsGlobalAdmin)
         {
-            var projectKey = User.FindFirst("project_key")?.Value;
+            var projectKey = User.FindFirst(Auth2Claims.ProjectKey)?.Value;
             if (!string.IsNullOrEmpty(projectKey))
             {
                 return Redirect($"/admin/p/{projectKey}");
             }
-            return Forbid();
+            return NotFound();
         }
 
         Projects = await _projectService.ListAsync(new PageQuery(page, 20, q), HttpContext.RequestAborted);

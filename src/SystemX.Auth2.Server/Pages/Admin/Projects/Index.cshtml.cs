@@ -19,7 +19,7 @@ public sealed class IndexModel(IAdminProjectService projectService) : PageModel
     public async Task<IActionResult> OnGetAsync()
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
 
         Projects = await projectService.ListAsync(new PageQuery(PageNumber, PageSize, Q, Sort, Desc), HttpContext.RequestAborted);
         return Page();

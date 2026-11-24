@@ -68,6 +68,7 @@ public static class Auth2ServerServiceCollectionExtensions
         // The session cookie is the default way to know who is on a page (HttpContext.User), so every page, and its anti-forgery token,
         // sees the same user. API endpoints and /connect/userinfo name their own scheme (the OpenIddict validation or server scheme).
         services.AddAuthentication(o => o.DefaultAuthenticateScheme = Auth2Cookie.Scheme).AddAuth2Cookie();
+        services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, SessionRoleClaims>();
         services.AddAuthorization(o => o.AddPolicy("Auth2.Session", p => p.AddAuthenticationSchemes(Auth2Cookie.Scheme).RequireAuthenticatedUser()));
         services.AddRazorPages(o => o.Conventions.AuthorizeFolder("/Manage", "Auth2.Session"));
 
@@ -148,6 +149,14 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IAdminProjectService, SystemX.Auth2.Server.Infrastructure.Admin.AdminProjectService>();
         services.AddScoped<IAdminApplicationService, SystemX.Auth2.Server.Infrastructure.Admin.AdminApplicationService>();
         services.AddScoped<IAdminJobService, SystemX.Auth2.Server.Infrastructure.Admin.AdminJobService>();
+        services.AddScoped<IAdminScopeService, SystemX.Auth2.Server.Infrastructure.Admin.AdminScopeService>();
+        services.AddScoped<SystemX.Auth2.Server.Infrastructure.Admin.AdminAuthorizationService>();
+        services.AddScoped<IAdminAuthorizationService>(sp => sp.GetRequiredService<SystemX.Auth2.Server.Infrastructure.Admin.AdminAuthorizationService>());
+        services.AddScoped<IAdminSessionService>(sp => sp.GetRequiredService<SystemX.Auth2.Server.Infrastructure.Admin.AdminAuthorizationService>());
+        services.AddScoped<IAdminBrandingService, SystemX.Auth2.Server.Infrastructure.Admin.AdminBrandingService>();
+        services.AddScoped<SystemX.Auth2.Server.Infrastructure.Admin.AdminDashboardService>();
+        services.AddScoped<IAdminDashboardService>(sp => sp.GetRequiredService<SystemX.Auth2.Server.Infrastructure.Admin.AdminDashboardService>());
+        services.AddScoped<IAdminReportService>(sp => sp.GetRequiredService<SystemX.Auth2.Server.Infrastructure.Admin.AdminDashboardService>());
         services.AddScoped<IAuditReader, SystemX.Auth2.Server.Infrastructure.Admin.AuditReader>();
         services.AddScoped<SystemX.Auth2.Server.Endpoints.Q>();
         services.AddScoped<IRegisterService, RegisterService>();

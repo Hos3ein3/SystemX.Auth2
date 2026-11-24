@@ -1,5 +1,5 @@
 @{
-    var projectKey = ViewContext.RouteData.Values["projectKey"]?.ToString() ?? Model?.ProjectKey ?? "_global";
+    var projectKey = ViewContext.RouteData.Values["projectKey"]?.ToString() ?? (Model as SystemX.Auth2.Server.Pages.Admin.AdminPageModel)?.ProjectKey ?? "_global";
     var isGlobalAdmin = User.IsInRole("GlobalAdmin") || User.IsInRole("Developer") || User.HasClaim("scope", "auth2.admin.global");
 }
 <!DOCTYPE html>
@@ -10,13 +10,6 @@
     <title>@ViewData["Title"] - Auth2 Admin Console</title>
     <link rel="stylesheet" href="/css/site.css" />
     <script src="/js/a2.js" defer></script>
-    <style>
-        :root {
-            --a2-color-primary: #1e40af;
-            --a2-color-primary-text: #ffffff;
-            --a2-radius: 0.375rem;
-        }
-    </style>
 </head>
 <body class="h-full flex overflow-hidden antialiased bg-gray-100 text-gray-900">
     <!-- Left Sidebar -->

@@ -33,7 +33,7 @@ public sealed class DetailModel(IAdminProjectService projectService) : PageModel
     public async Task<IActionResult> OnGetAsync()
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
 
         Project = await projectService.GetAsync(Id, HttpContext.RequestAborted);
         if (Project is null) return NotFound();
@@ -50,7 +50,7 @@ public sealed class DetailModel(IAdminProjectService projectService) : PageModel
     public async Task<IActionResult> OnPostUpdateAsync()
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
 
         Project = await projectService.GetAsync(Id, HttpContext.RequestAborted);
         if (Project is null) return NotFound();
@@ -69,7 +69,7 @@ public sealed class DetailModel(IAdminProjectService projectService) : PageModel
     public async Task<IActionResult> OnPostDeleteAsync()
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
 
         Project = await projectService.GetAsync(Id, HttpContext.RequestAborted);
         if (Project is null) return NotFound();

@@ -529,7 +529,7 @@ internal sealed class AdminApplicationService(
         catch (SettingsValidationException ex) { return (AdminSupport.Invalid(ex.Errors), current.SettingsVersion); }
     }
 
-    private static ApplicationDto ToDto(ClientApplicationInfo a) =>
+    internal static ApplicationDto ToDto(ClientApplicationInfo a) =>
         new(a.Id, a.ProjectId, a.Name, a.ClientId, a.IsEnabled, a.RedirectUris, a.PostLogoutRedirectUris, a.AllowedScopes, a.SettingsVersion, a.CreatedAtUtc);
 }
 

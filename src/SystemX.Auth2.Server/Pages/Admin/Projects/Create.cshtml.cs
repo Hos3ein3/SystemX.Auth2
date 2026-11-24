@@ -26,14 +26,14 @@ public sealed class CreateModel(IAdminProjectService projectService) : PageModel
     public IActionResult OnGet()
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
         if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return Forbid();
+            return NotFound();
 
         if (!ModelState.IsValid) return Page();
 
