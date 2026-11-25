@@ -51,6 +51,13 @@ public sealed class Auth2ClientOptions
     /// <summary>Version text sent in the handshake. Default: the version of this package.</summary>
     public string ClientVersion { get; set; } = typeof(Auth2ClientOptions).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
+    /// <summary>
+    /// Send the language of the current request to the server (header <c>Accept-Language</c>, taken from <c>CultureInfo.CurrentUICulture</c>), so error messages,
+    /// emails and SMS written for the call are in the language of your user. Default <c>true</c>. A culture chosen with
+    /// <c>IAuth2ApiClientService.WithCulture</c> is always sent. The invariant culture sends nothing.
+    /// </summary>
+    public bool SendRequestCulture { get; set; } = true;
+
     /// <summary>Time limit of one call to the server (not the handshake). Default 30 seconds.</summary>
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(30);
 

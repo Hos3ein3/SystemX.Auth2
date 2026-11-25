@@ -449,6 +449,34 @@ public class PasswordApiTests : Phase6Base
     }
 
     [Fact]
+    public async Task TheChangeRoutes_NeedAUserToken_WithTheMeScope()
+    {
+        await RegisteredAsync();
+        var noScope = (await UserTokensAsync("sara", PassA, scope: "openid")).Str("access_token");
+        var machine = await ClientTokenAsync("appa", "auth2.me");
+        foreach (var route in new[] { Auth2Routes.UserNameChange, Auth2Routes.EmailChange, Auth2Routes.EmailChangeConfirm, Auth2Routes.PhoneChange, Auth2Routes.PhoneChangeConfirm })
+        {
+            var body = new { NewUserName = "x", NewEmail = "x@example.com", NewPhoneNumber = "+15551234567", Token = "t", Code = "1" };
+            (await CallAsync(new Browser(Factory), route, body, null)).Status.ShouldBe(HttpStatusCode.Unauthorized, route);
+            (await CallAsync(new Browser(Factory), route, body, noScope)).Status.ShouldBe(HttpStatusCode.Forbidden, route);
+            (await CallAsync(new Browser(Factory), route, body, machine)).Status.ShouldBe(HttpStatusCode.Forbidden, route);
+        }
+    }
+
+    [Fact]
+    public async Task TheChangeRoutes_AnswerInTheLanguageOfTheCall_WithTheSameCode()
+    {
+        await RegisteredAsync();
+        var bearer = (await UserTokensAsync("sara", PassA)).Str("access_token");
+        var body = new ChangeUserNameRequest("sara2", "Wrong-Password-1");
+        var english = await CallAsync(new Browser(Factory), Auth2Routes.UserNameChange, body, bearer, "en");
+        var persian = await CallAsync(new Browser(Factory), Auth2Routes.UserNameChange, body, bearer, "fa");
+        ErrorCode(english.Body).ShouldBe(Auth2ErrorCodes.InvalidCredentials);
+        ErrorCode(persian.Body).ShouldBe(Auth2ErrorCodes.InvalidCredentials);
+        persian.Body.GetProperty("message").GetString().ShouldNotBe(english.Body.GetProperty("message").GetString());
+    }
+
+    [Fact]
     public async Task Change_NeedsAUserToken_WithTheMeScope()
     {
         await RegisteredAsync();

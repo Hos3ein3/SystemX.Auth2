@@ -48,6 +48,11 @@ See [error-codes.md](error-codes.md).
 | `POST /api/auth2/email/confirm/resend` | client | `auth2.login` | `ResendEmailConfirmationRequest` | `202` (always the same) |
 | `POST /api/auth2/phone/confirm` | client | `auth2.login` | `ConfirmPhoneRequest` | `204` |
 | `POST /api/auth2/password/change` | user | `auth2.me` | `ChangePasswordRequest` | `204` |
+| `POST /api/auth2/user-name/change` | user | `auth2.me` | `ChangeUserNameRequest` | `204` (needs the current password when the person has one) |
+| `POST /api/auth2/email/change` | user | `auth2.me` | `ChangeEmailRequest` | `202`: a link goes to the **new** address, nothing changes yet |
+| `POST /api/auth2/email/change/confirm` | user | `auth2.me` | `ConfirmEmailChangeRequest` | `204`: the address is replaced and confirmed (`invalid_token` for a wrong, used or foreign token) |
+| `POST /api/auth2/phone/change` | user | `auth2.me` | `ChangePhoneNumberRequest` | `202`: an SMS code goes to the **new** number, nothing changes yet (`rate_limited` when asked again too soon) |
+| `POST /api/auth2/phone/change/confirm` | user | `auth2.me` | `ConfirmPhoneChangeRequest` | `204`: the number is replaced and confirmed (`invalid_otp` for a wrong code) |
 | `POST /api/auth2/2fa/setup` | user | `auth2.me` | none | `200 TwoFactorSetupResponse` |
 | `POST /api/auth2/2fa/enable` | user | `auth2.me` | `TwoFactorEnableRequest` | `200 TwoFactorEnableResponse` (recovery codes, once) |
 | `POST /api/auth2/2fa/disable` | user | `auth2.me` | `TwoFactorDisableRequest` | `204` |
@@ -144,3 +149,8 @@ All routes under `/api/auth2/admin` need the token of a signed-in admin with sco
 - [Machine to machine (client credentials)](machine-to-machine.md)
 - [Server reference](server-reference.md)
 - [Documentation index](index.md)
+- [Calling the Server: `IAuth2ApiClientService`](client-api-service.md)
+- [Client setup](client-setup.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)
+- [Localization](localization.md)

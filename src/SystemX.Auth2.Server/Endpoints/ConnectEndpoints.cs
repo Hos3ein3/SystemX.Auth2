@@ -130,7 +130,7 @@ public static class ConnectEndpoints
         {
             // The caller only sees access_denied. The real reason (project or application) goes to the audit log.
             await audit.WriteAsync(new AuditEntry("token.denied", app.Id, ActorClientId: request.ClientId, Data: new Dictionary<string, object?> { ["reason"] = denied, ["grant"] = request.GrantType }), ct);
-            return OAuthError(Errors.AccessDenied, Auth2ErrorCodes.AccessDenied);
+            return OAuthError(http, Errors.AccessDenied, Auth2ErrorCodes.AccessDenied);
         }
 
         if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
@@ -139,7 +139,7 @@ public static class ConnectEndpoints
             var principal = auth.Principal!;
             var user = await users.FindByIdAsync(principal.GetClaim(Claims.Subject) ?? "");
             if (user is null || !await login.IsSubjectValidAsync(user, ct))
-                return OAuthError(Errors.InvalidGrant, Auth2ErrorCodes.InvalidCredentials);
+                return OAuthError(http, Errors.InvalidGrant, Auth2ErrorCodes.InvalidCredentials);
 
             if (request.IsRefreshTokenGrantType()) await issuer.RefreshUserClaimsAsync(principal, user, ct);
             Issued(request);
@@ -156,36 +156,36 @@ public static class ConnectEndpoints
         {
             // OpenIddict already checked that this client has the password permission (only given when AllowSelfUiLogin is true).
             // The client is confidential: it was authenticated with its secret before we got here. We check the setting again.
-            if (!settings.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
+            if (!settings.AllowSelfUiLogin) return OAuthError(http, Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
 
             var result = await login.PasswordLoginAsync(new PasswordLoginRequest(request.Username ?? "", request.Password ?? "",
                 http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString()), ct);
-            return await ToTokenResultAsync(result, request, issuer, ct);
+            return await ToTokenResultAsync(http, result, request, issuer, ct);
         }
 
         if (request.GrantType == Auth2GrantTypes.TwoFactor)
         {
-            if (!settings.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
+            if (!settings.AllowSelfUiLogin) return OAuthError(http, Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
             var result = await login.CompleteTwoFactorAsync((string?)request["two_factor_token"] ?? "", (string?)request["code"], (string?)request["recovery_code"],
                 http.Connection.RemoteIpAddress?.ToString(), ct);
-            return await ToTokenResultAsync(result, request, issuer, ct);
+            return await ToTokenResultAsync(http, result, request, issuer, ct);
         }
 
         if (request.GrantType == Auth2GrantTypes.Otp)
         {
-            if (!settings.AllowSelfUiLogin) return OAuthError(Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
+            if (!settings.AllowSelfUiLogin) return OAuthError(http, Errors.UnauthorizedClient, Auth2ErrorCodes.GrantNotAllowed);
             var result = await login.OtpLoginAsync(new OtpLoginRequest(request.Username ?? "", (string?)request["code"] ?? "",
                 http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString()), ct);
-            return await ToTokenResultAsync(result, request, issuer, ct);
+            return await ToTokenResultAsync(http, result, request, issuer, ct);
         }
 
-        return OAuthError(Errors.UnsupportedGrantType, Auth2ErrorCodes.GrantNotAllowed);
+        return OAuthError(http, Errors.UnsupportedGrantType, Auth2ErrorCodes.GrantNotAllowed);
     }
 
     private static void Issued(OpenIddictRequest request) =>
         Infrastructure.Operations.Auth2Metrics.TokensIssued.Add(1, new KeyValuePair<string, object?>("grant_type", request.GrantType ?? "unknown"));
 
-    private static async Task<IResult> ToTokenResultAsync(LoginResult result, OpenIddictRequest request, ITokenIssuer issuer, CancellationToken ct)
+    private static async Task<IResult> ToTokenResultAsync(HttpContext http, LoginResult result, OpenIddictRequest request, ITokenIssuer issuer, CancellationToken ct)
     {
         if (result.Succeeded)
         {
@@ -194,19 +194,25 @@ public static class ConnectEndpoints
             return Results.SignIn(principal, properties: null, OpenIddictScheme);
         }
         if (result.ErrorCode == Auth2ErrorCodes.TwoFactorRequired)
-            return OAuthError(Auth2ErrorCodes.TwoFactorRequired, Auth2ErrorCodes.TwoFactorRequired, result.TwoFactorToken);
-        return OAuthError(Errors.InvalidGrant, result.ErrorCode ?? Auth2ErrorCodes.InvalidCredentials);
+            return OAuthError(http, Auth2ErrorCodes.TwoFactorRequired, Auth2ErrorCodes.TwoFactorRequired, result.TwoFactorToken);
+        return OAuthError(http, Errors.InvalidGrant, result.ErrorCode ?? Auth2ErrorCodes.InvalidCredentials);
     }
 
-    /// <summary>Standard OAuth <c>error</c> + <c>error_description</c>, plus our stable <c>error_code</c>.</summary>
-    private static IResult OAuthError(string error, string code, string? twoFactorToken = null) =>
-        Results.Json(new Dictionary<string, string?>
+    /// <summary>
+    /// Standard OAuth <c>error</c> + <c>error_description</c>, plus our stable <c>error_code</c>. The description is written in the language of the call
+    /// (like the messages of the JSON API); the <c>error</c> and the <c>error_code</c> never change with the language.
+    /// </summary>
+    private static IResult OAuthError(HttpContext http, string error, string code, string? twoFactorToken = null)
+    {
+        var text = http.RequestServices.GetRequiredService<IAuth2Localizer>().Error(code);
+        return Results.Json(new Dictionary<string, string?>
         {
             ["error"] = error,
-            ["error_description"] = code.Replace('_', ' '),
+            ["error_description"] = text == code ? code.Replace('_', ' ') : text,
             ["error_code"] = code,
             ["two_factor_token"] = twoFactorToken,
         }.Where(p => p.Value is not null).ToDictionary(p => p.Key, p => p.Value), statusCode: StatusCodes.Status400BadRequest);
+    }
 
     // ---------------------------------------------------------------- end session
 

@@ -106,3 +106,5 @@ Every code has an English text in `Errors.resx`. See [localization.md](localizat
 - [Passkeys](external-identity/passkeys.md)
 - [Database tables](database-tables.md)
 - [Decisions (ADR list)](decisions.md)
+- [Calling the Server: `IAuth2ApiClientService`](client-api-service.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)

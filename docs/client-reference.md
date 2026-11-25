@@ -146,7 +146,7 @@ app.MapGet("/api/reports", () => Results.Ok(/* ... */)).WithScope("reports.read"
 
 ### 6. Calling the Server: `IAuth2ApiClientService`
 
-Returns `Result` / `Result<T>` and never throws for a failed call. The Minimal API sample's `/api/auth/login` is one line: `var result = await api.LoginAsync(request, ct);`. Methods for login, two-factor, OTP, register, password and token calls, `/me`, sync, pull and the external provider list ([api-reference.md](api-reference.md)).
+Returns `Result` / `Result<T>` and never throws for a failed call. The Minimal API sample's `/api/auth/login` is one line: `var result = await api.LoginAsync(request, ct);`. Methods for register and join, login (password, two-factor, one-time code), refresh and logout, confirmations, password reset and change, **two-factor setup**, **change of the own user name, email address and phone number**, `/me`, handshake, sync, pull and the external provider list. Every call carries the language of the current request (`WithCulture` chooses another), and the service never makes a cookie: for a cookie use `IAuth2WebService` (section 7). Every method, route, token and scope: [client-api-service.md](client-api-service.md); the HTTP side: [api-reference.md](api-reference.md).
 
 ### 7. Browser sign-in: `IAuth2WebService`
 
@@ -181,6 +181,8 @@ Services return `Result`. Building blocks (token provider, handler, start-up) th
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Server settings](server-settings.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)
+- [Localization](localization.md)
 
 ## API tables (generated)
 
@@ -640,7 +642,7 @@ The calling **client** of the current request, read from the token. Everything h
 
 | Member | What it does |
 |---|---|
-| `IsTokenAuthenticated` | True when the request carries a valid token (user token or machine token). |
+| `IsTokenAuthenticated` | True when the request is authenticated: a valid token (user or machine), or a signed-in cookie session of the hosted or Self UI. |
 | `ClientId` | OAuth client id (`client_id`) of the application that got the token. |
 | `ApplicationId` | Id of the application (`application_id`). |
 | `ProjectId` | Id of the project the application belongs to (`project_id`). |
@@ -874,6 +876,7 @@ Main options of the client. Section name `Auth2` when you use `AddAuth2Client(IC
 | `HandshakeInitialDelay` | Wait before the first retry. It doubles each time. Default 2 seconds. |
 | `HandshakeMaxDelay` | Longest wait between two retries. Default 60 seconds. |
 | `ClientVersion` | Version text sent in the handshake. Default: the version of this package. |
+| `SendRequestCulture` | Send the language of the current request to the server (header `Accept-Language`, taken from `CultureInfo.CurrentUICulture`), so error messages, emails and SMS written for the call are in the language of your user. Default `true`. A culture chosen with `IAuth2ApiClientService.WithCulture` is always sent. The invariant culture sends nothing. |
 | `RequestTimeout` | Time limit of one call to the server (not the handshake). Default 30 seconds. |
 | `CatalogRefreshInterval` | How often permissions, roles and groups are read again from the server when their policy is `Pull` or `Both`. Default 10 minutes. |
 | `SyncMaxRetries` | How many times a failed sync is tried again (waits grow like the handshake retries). Default 5. |
@@ -1111,10 +1114,11 @@ How an enum member name becomes a key.
 
 ### IAuth2ApiClientService
 
-Calls the Auth2 Server. Every method returns `Result` or `Result` and never throws for server errors (a wrong password is a normal answer). The error code is in `Result.Error.Code`; a server that cannot be reached gives `ServerUnavailable`. Calls that change something (register, login, password change) are never repeated automatically.
+Calls the Auth2 Server. Every method returns `Result` or `Result` and never throws for server errors (a wrong password is a normal answer). The error code is in `Result.Error.Code`; a server that cannot be reached gives `ServerUnavailable`. Calls that change something (register, login, password change) are never repeated automatically. **Language.** Every call carries the language of the current request (`Accept-Language`, from `CultureInfo.CurrentUICulture`; switch off with `Auth2ClientOptions.SendRequestCulture`), so the error message, and the email or SMS that the call causes, are written in that language when the server has it (`en`, `fa`, `nl`, `it`). Use `WithCulture` to choose it for some calls. The error **code** never changes with the language. **Cookies.** This service never makes a cookie and never keeps a token. Login methods only return the tokens. For an application with cookie sign-in use `IAuth2WebService`, which calls this service and then signs the cookie in.
 
 | Member | What it does |
 |---|---|
+| `WithCulture(string)` | The same service for calls in another language. `culture` is a language tag such as `fa` or `fa-IR`; `null` or empty goes back to the language of the current request. Nothing is changed on this instance: use the returned one. |
 | `RegisterAsync(RegisterRequest, CancellationToken)` | Registers a user (or adds an existing person; see `RegisterResponse`). Needs the client scope `auth2.register`. |
 | `LoginAsync(LoginRequest, CancellationToken)` | Signs a user in with the password grant (the server must allow `AllowSelfUiLogin`). When two-factor is needed the result succeeds with `TwoFactorRequired = true` and a `TwoFactorToken`: call `TwoFactorLoginAsync` next. |
 | `TwoFactorLoginAsync(TwoFactorRequest, CancellationToken)` | Second step of a login: the authenticator code or a recovery code. |
@@ -1136,6 +1140,19 @@ Calls the Auth2 Server. Every method returns `Result` or `Result` and never thro
 | `GetPermissionsAsync(CancellationToken)` | Reads the permissions of this application. |
 | `GetRolesAsync(CancellationToken)` | Reads the roles of this application with their permission keys. |
 | `GetGroupsAsync(CancellationToken)` | Reads the groups of this application with their roles and permission keys. |
+| `ConfirmEmailAsync(ConfirmEmailRequest, CancellationToken)` | Confirms an email address with the user id and the token of the link in the email. Needs the client scope `auth2.login`. |
+| `ResendEmailConfirmationAsync(ResendEmailConfirmationRequest, CancellationToken)` | Sends the email confirmation again. The answer is always the same. Needs the client scope `auth2.login`. |
+| `ConfirmPhoneAsync(ConfirmPhoneRequest, CancellationToken)` | Confirms a phone number with the code from the SMS (ask for it with `RequestOtpAsync`, purpose `confirm_phone`). Needs the client scope `auth2.login`. |
+| `CompleteJoinAsync(JoinCompleteRequest, CancellationToken)` | Finishes joining this application for a person who already has an account elsewhere: the code that proves ownership and the new password. Needs the client scope `auth2.register`. |
+| `SetupTwoFactorAsync(string, CancellationToken)` | Makes the key for the authenticator app. Show `SharedKey` and `AuthenticatorUri` (as a QR code), then call `EnableTwoFactorAsync`. |
+| `EnableTwoFactorAsync(string, TwoFactorEnableRequest, CancellationToken)` | Turns two-factor on with the first code of the app. The recovery codes in the answer are shown once. |
+| `DisableTwoFactorAsync(string, TwoFactorDisableRequest, CancellationToken)` | Turns two-factor off. The password is needed. Refused when the application requires two-factor. |
+| `RegenerateRecoveryCodesAsync(string, RecoveryCodesRequest, CancellationToken)` | Makes new recovery codes (the old ones stop working). A code from the authenticator app is needed. The codes are shown once. |
+| `ChangeUserNameAsync(string, ChangeUserNameRequest, CancellationToken)` | Changes the user name at once. A person who has a password must send it. |
+| `RequestEmailChangeAsync(string, ChangeEmailRequest, CancellationToken)` | Starts an email change: a link goes to the **new** address and nothing changes yet. Finish with `ConfirmEmailChangeAsync`. |
+| `ConfirmEmailChangeAsync(string, ConfirmEmailChangeRequest, CancellationToken)` | Finishes an email change with the new address and the token of the link. The address is replaced and marked as confirmed. |
+| `RequestPhoneChangeAsync(string, ChangePhoneNumberRequest, CancellationToken)` | Starts a phone change: an SMS code goes to the **new** number and nothing changes yet. Finish with `ConfirmPhoneChangeAsync`. |
+| `ConfirmPhoneChangeAsync(string, ConfirmPhoneChangeRequest, CancellationToken)` | Finishes a phone change with the new number and the code. The number is replaced and marked as confirmed. |
 
 
 ## `SystemX.Auth2.Client.Sync`

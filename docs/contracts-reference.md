@@ -670,6 +670,15 @@ Update a project. The project key cannot be changed. Disabling a project blocks 
 ## `SystemX.Auth2.Contracts.Auth`
 
 
+### ChangeEmailRequest
+
+Start an email change. A confirmation link goes to `NewEmail`; nothing changes until it is used. `CurrentPassword` is needed when the person has a password.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, string, string)` | Start an email change. A confirmation link goes to `NewEmail`; nothing changes until it is used. `CurrentPassword` is needed when the person has a password. |
+
+
 ### ChangePasswordRequest
 
 Change the own password for the token's application.
@@ -679,6 +688,33 @@ Change the own password for the token's application.
 | `(constructor)(string, string)` | Change the own password for the token's application. |
 
 
+### ChangePhoneNumberRequest
+
+Start a phone change. An SMS code goes to `NewPhoneNumber`; nothing changes until it is used. `CurrentPassword` is needed when the person has a password.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, string)` | Start a phone change. An SMS code goes to `NewPhoneNumber`; nothing changes until it is used. `CurrentPassword` is needed when the person has a password. |
+
+
+### ChangeUserNameRequest
+
+Change the own user name. `CurrentPassword` is needed when the person has a password.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, string)` | Change the own user name. `CurrentPassword` is needed when the person has a password. |
+
+
+### ConfirmEmailChangeRequest
+
+Finish an email change with the token of the link that was sent to the new address (the link carries `email` and `token`).
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, string)` | Finish an email change with the token of the link that was sent to the new address (the link carries `email` and `token`). |
+
+
 ### ConfirmEmailRequest
 
 Confirm an email address with the token from the email.
@@ -686,6 +722,15 @@ Confirm an email address with the token from the email.
 | Member | What it does |
 |---|---|
 | `(constructor)(Guid, string)` | Confirm an email address with the token from the email. |
+
+
+### ConfirmPhoneChangeRequest
+
+Finish a phone change with the code that was sent to the new number.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, string)` | Finish a phone change with the code that was sent to the new number. |
 
 
 ### ConfirmPhoneRequest
@@ -981,6 +1026,8 @@ Stable error codes. Also used as localization keys.
 | `PasswordTooLong` | Password is too long. |
 | `PasswordRequiresUniqueChars` | Password needs more different characters. |
 | `PasswordBanned` | Password is on the banned list. |
+| `PasswordReused` | The new password is the current one or one of the remembered old ones (`Password.SaveOldPasswords`). |
+| `PasswordExpired` | The password is older than `Password.PasswordExpiryDays`. The person must choose a new one (reset). |
 | `InvalidUserName` | User name has a wrong length or wrong characters. |
 | `InvalidEmail` | Email is not valid. |
 | `EmailDomainNotAllowed` | The email domain is not allowed in this application. |
@@ -1045,6 +1092,7 @@ Why a one-time code was made. A code only works for its own purpose.
 | `ConfirmPhone` | Confirm a phone number. |
 | `Join` | Proof of ownership when joining a second application. |
 | `PasswordReset` | Password reset by phone. |
+| `ChangePhone` | A code sent to a **new** phone number to prove it belongs to the person. The real purpose adds a short hash of the number, so the code works for that number only. |
 
 
 ### Auth2Roles
@@ -1074,6 +1122,11 @@ Every route string. Client and Server both use this class so they never disagree
 | `EmailConfirm` | Confirm email. |
 | `PhoneConfirm` | Confirm phone. |
 | `EmailConfirmResend` | Send the email confirmation again. |
+| `UserNameChange` | Change the own user name (user token). |
+| `EmailChange` | Start an email change: a link goes to the new address (user token). |
+| `EmailChangeConfirm` | Finish an email change with the token of the link (user token). |
+| `PhoneChange` | Start a phone change: a code goes to the new number (user token). |
+| `PhoneChangeConfirm` | Finish a phone change with the code (user token). |
 | `JoinComplete` | Finish joining a second application (proof of ownership + new password). |
 | `TwoFactorSetup` | Start TOTP setup. |
 | `TwoFactorEnable` | Enable TOTP. |

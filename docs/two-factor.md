@@ -147,7 +147,7 @@ var second = await web.TwoFactorLoginAsync(HttpContext, new TwoFactorRequest(tok
 // or: new TwoFactorRequest(token, RecoveryCode: recoveryCode)
 ```
 
-`IAuth2ApiClientService.LoginAsync` and `TwoFactorLoginAsync` do the same without a cookie. The sign-in is complete only when the second call succeeds; the tokens or the cookie are made then ([client-reference.md](client-reference.md#7-browser-sign-in-iauth2webservice)).
+`IAuth2ApiClientService.LoginAsync` and `TwoFactorLoginAsync` do the same without a cookie. The Client also wraps the setup routes: `SetupTwoFactorAsync`, `EnableTwoFactorAsync`, `DisableTwoFactorAsync` and `RegenerateRecoveryCodesAsync` ([client-api-service.md](client-api-service.md#the-signed-in-person-user-token-scope-auth2me)). The sign-in is complete only when the second call succeeds; the tokens or the cookie are made then ([client-reference.md](client-reference.md#7-browser-sign-in-iauth2webservice)).
 
 ### What the second step checks (`CompleteTwoFactorAsync`)
 
@@ -245,3 +245,6 @@ POST /api/auth2/admin/projects/{projectId}/users/{userId}/reset-2fa
 - [Contracts reference](contracts-reference.md)
 - [Password history and password expiry](password-history.md)
 - [Decisions (ADR list)](decisions.md)
+- [API reference](api-reference.md)
+- [Localization](localization.md)
+- [Machine to machine (client credentials)](machine-to-machine.md)

@@ -87,6 +87,8 @@ Before anything is sent or saved, the new value goes through the same validators
 
 The email and the SMS are written in the language of the person and sent through the same email and SMS senders as every other message ([email-and-sms.md](email-and-sms.md)), so each application can use its own provider. The texts are `change_email.subject`, `change_email.body` and `sms.change_phone` in the `Emails` resource.
 
+The same changes are available as JSON routes (`/api/auth2/user-name/change`, `/email/change`, `/email/change/confirm`, `/phone/change`, `/phone/change/confirm`; [api-reference.md](api-reference.md)) and as methods of `IAuth2ApiClientService` ([client-api-service.md](client-api-service.md)): the pages and the routes use the same service on the Server, so they behave the same.
+
 `/Manage/ChangePassword` and `/Manage/ChangeEmail` are older pages of the signed-in area; the pages above are the complete ones.
 
 ## Passkey routes (JSON for the UI script)

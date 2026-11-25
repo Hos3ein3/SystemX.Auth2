@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -19,6 +20,16 @@ namespace SystemX.Auth2.Client.Services;
 internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, HandshakeRunner handshake, Auth2ClientState state,
     IOptions<Auth2ClientOptions> options) : IAuth2ApiClientService
 {
+    // The language chosen with WithCulture; null means "the language of the current request".
+    private string? _culture;
+
+    public IAuth2ApiClientService WithCulture(string? culture)
+    {
+        var copy = (Auth2ApiClientService)MemberwiseClone();
+        copy._culture = string.IsNullOrWhiteSpace(culture) ? null : culture.Trim();
+        return copy;
+    }
+
     // ---------------------------------------------------------------- accounts (machine token)
 
     public Task<Result<RegisterResponse>> RegisterAsync(RegisterRequest request, CancellationToken ct = default) =>
@@ -33,7 +44,46 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
     public Task<Result> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default) =>
         CallAsync(HttpMethod.Post, Auth2Routes.PasswordReset, request, [Auth2Scopes.Login], null, idempotent: false, ct);
 
+    public Task<Result> ConfirmEmailAsync(ConfirmEmailRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.EmailConfirm, request, [Auth2Scopes.Login], null, idempotent: false, ct);
+
+    public Task<Result> ResendEmailConfirmationAsync(ResendEmailConfirmationRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.EmailConfirmResend, request, [Auth2Scopes.Login], null, idempotent: false, ct);
+
+    public Task<Result> ConfirmPhoneAsync(ConfirmPhoneRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.PhoneConfirm, request, [Auth2Scopes.Login], null, idempotent: false, ct);
+
+    public Task<Result> CompleteJoinAsync(JoinCompleteRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.JoinComplete, request, [Auth2Scopes.Register], null, idempotent: false, ct);
+
     // ---------------------------------------------------------------- user token
+
+    public Task<Result<TwoFactorSetupResponse>> SetupTwoFactorAsync(string accessToken, CancellationToken ct = default) =>
+        CallAsync<TwoFactorSetupResponse>(HttpMethod.Post, Auth2Routes.TwoFactorSetup, null, null, accessToken, idempotent: false, ct);
+
+    public Task<Result<TwoFactorEnableResponse>> EnableTwoFactorAsync(string accessToken, TwoFactorEnableRequest request, CancellationToken ct = default) =>
+        CallAsync<TwoFactorEnableResponse>(HttpMethod.Post, Auth2Routes.TwoFactorEnable, request, null, accessToken, idempotent: false, ct);
+
+    public Task<Result> DisableTwoFactorAsync(string accessToken, TwoFactorDisableRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.TwoFactorDisable, request, null, accessToken, idempotent: false, ct);
+
+    public Task<Result<RecoveryCodesResponse>> RegenerateRecoveryCodesAsync(string accessToken, RecoveryCodesRequest request, CancellationToken ct = default) =>
+        CallAsync<RecoveryCodesResponse>(HttpMethod.Post, Auth2Routes.TwoFactorRecoveryCodes, request, null, accessToken, idempotent: false, ct);
+
+    public Task<Result> ChangeUserNameAsync(string accessToken, ChangeUserNameRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.UserNameChange, request, null, accessToken, idempotent: false, ct);
+
+    public Task<Result> RequestEmailChangeAsync(string accessToken, ChangeEmailRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.EmailChange, request, null, accessToken, idempotent: false, ct);
+
+    public Task<Result> ConfirmEmailChangeAsync(string accessToken, ConfirmEmailChangeRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.EmailChangeConfirm, request, null, accessToken, idempotent: false, ct);
+
+    public Task<Result> RequestPhoneChangeAsync(string accessToken, ChangePhoneNumberRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.PhoneChange, request, null, accessToken, idempotent: false, ct);
+
+    public Task<Result> ConfirmPhoneChangeAsync(string accessToken, ConfirmPhoneChangeRequest request, CancellationToken ct = default) =>
+        CallAsync(HttpMethod.Post, Auth2Routes.PhoneChangeConfirm, request, null, accessToken, idempotent: false, ct);
 
     public Task<Result> ChangePasswordAsync(string accessToken, ChangePasswordRequest request, CancellationToken ct = default) =>
         CallAsync(HttpMethod.Post, Auth2Routes.PasswordChange, request, null, accessToken, idempotent: false, ct);
@@ -72,7 +122,7 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
         {
             ["token"] = refreshToken, ["token_type_hint"] = "refresh_token", ["client_id"] = o.ClientId, ["client_secret"] = o.ClientSecret,
         };
-        var (response, failure) = await SendAsync(() => new HttpRequestMessage(HttpMethod.Post, Auth2Routes.Revoke.TrimStart('/')) { Content = new FormUrlEncodedContent(form) }, idempotent: true, ct);
+        var (response, failure) = await SendAsync(() => WithLanguage(new HttpRequestMessage(HttpMethod.Post, Auth2Routes.Revoke.TrimStart('/')) { Content = new FormUrlEncodedContent(form) }), idempotent: true, ct);
         if (response is null) return failure!;
         using (response) return response.IsSuccessStatusCode ? Result.Success() : await FailureAsync(response, ct);
     }
@@ -84,7 +134,7 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
         form["client_secret"] = o.ClientSecret;
         // A login must not be repeated by itself: a repeated wrong password would count twice towards the lockout.
         // (A refresh token can be used once, so a repeated refresh would also fail.)
-        var (response, failure) = await SendAsync(() => new HttpRequestMessage(HttpMethod.Post, Auth2Routes.Token.TrimStart('/')) { Content = new FormUrlEncodedContent(form) }, idempotent: false, ct);
+        var (response, failure) = await SendAsync(() => WithLanguage(new HttpRequestMessage(HttpMethod.Post, Auth2Routes.Token.TrimStart('/')) { Content = new FormUrlEncodedContent(form) }), idempotent: false, ct);
         if (response is null) return Result<LoginResponse>.Failure(failure!.Error!.Code, failure.Error.Message);
         using (response)
         {
@@ -198,7 +248,7 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
                 var request = new HttpRequestMessage(method, path.TrimStart('/'));
                 if (body is not null) request.Content = JsonContent.Create(body, body.GetType());
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-                return request;
+                return WithLanguage(request);
             }, idempotent, ct);
 
             // A machine token can be revoked or the secret rotated. One new token, one more try, only for calls that are safe to repeat.
@@ -210,6 +260,18 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
             }
             return (response, failure);
         }
+    }
+
+    /// <summary>
+    /// Adds <c>Accept-Language</c>: the language chosen with <c>WithCulture</c>, else the language of the current request (<c>CurrentUICulture</c>) unless
+    /// <c>SendRequestCulture</c> is off. A value that is not a language tag is not sent.
+    /// </summary>
+    private HttpRequestMessage WithLanguage(HttpRequestMessage request)
+    {
+        var tag = _culture ?? (options.Value.SendRequestCulture ? CultureInfo.CurrentUICulture.Name : null);
+        if (!string.IsNullOrEmpty(tag) && tag.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
+            request.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue(tag.Replace('_', '-')));
+        return request;
     }
 
     private async Task<(HttpResponseMessage? Response, Result? Failure)> SendAsync(Func<HttpRequestMessage> build, bool idempotent, CancellationToken ct)

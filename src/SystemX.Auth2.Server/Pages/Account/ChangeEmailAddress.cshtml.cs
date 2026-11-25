@@ -46,15 +46,8 @@ public sealed class ChangeEmailAddressModel(IClientIdAccessor clientId, IAuthFlo
         CurrentEmail = CurrentUser!.Email;
         if (!ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
 
-        var newEmail = Input.NewEmail.Trim();
-        if (string.Equals(newEmail, CurrentUser.Email, StringComparison.OrdinalIgnoreCase)) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
-        if (!await ConfirmWithPasswordAsync(Input.CurrentPassword)) return Page();
-        if (!await ValidateChangeAsync(email: newEmail)) return Page();
-
-        var users = Svc<UserManager<AppUser>>();
-        var token = await users.GenerateChangeEmailTokenAsync(CurrentUser, newEmail);
-        await Svc<IUserNotifier>().SendEmailChangeAsync(CurrentUser, newEmail, token, SafeReturnUrl(), HttpContext.RequestAborted);
-        await AuditAsync("email.change_requested");
+        var result = await Svc<IAccountChangeService>().RequestEmailChangeAsync(CurrentUser, Input.NewEmail, Input.CurrentPassword, SafeReturnUrl(), HttpContext.RequestAborted);
+        if (!result.Succeeded) { FailWith(result); return Page(); }
         EmailSent = true;
         return Page();
     }
@@ -74,17 +67,8 @@ public sealed class ChangeEmailAddressModel(IClientIdAccessor clientId, IAuthFlo
         CurrentEmail = CurrentUser!.Email;
         if (UserId != CurrentUser.Id || string.IsNullOrWhiteSpace(Email) || string.IsNullOrEmpty(Token)) { Fail(Auth2ErrorCodes.InvalidToken); return Page(); }
 
-        var users = Svc<UserManager<AppUser>>();
-        var result = await users.ChangeEmailAsync(CurrentUser, Email.Trim(), Token);
-        if (!result.Succeeded)
-        {
-            // A broken, used or foreign token says nothing more than "invalid"; a rule problem (taken, domain) shows its reason.
-            var tokenProblem = result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.InvalidToken));
-            Fail(tokenProblem ? OperationResult.Fail(Auth2ErrorCodes.InvalidToken) : OperationResult.Fail(result.Errors));
-            return Page();
-        }
-
-        await AuditAsync("email.changed");
+        var result = await Svc<IAccountChangeService>().ConfirmEmailChangeAsync(CurrentUser, Email, Token, HttpContext.RequestAborted);
+        if (!result.Succeeded) { FailWith(result); return Page(); }
         CurrentEmail = CurrentUser.Email;
         Changed = true;
         return Page();

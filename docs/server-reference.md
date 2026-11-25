@@ -488,6 +488,19 @@ Raises the access versions, so caches of access data (the `pv` claim) are refres
 | `BumpProjectAsync(CancellationToken)` | Raises the application's version. |
 
 
+### IAccountChangeService
+
+A signed-in person changes their own user name, email address or phone number. Used by the pages of `/Account` and by the API routes, so both behave the same. A person who has a password must give it (a wrong one counts as a failed attempt). The new value goes through the user validators before anything is sent or saved. A new email address and a new phone number change only after the person proves they own them.
+
+| Member | What it does |
+|---|---|
+| `ChangeUserNameAsync(AppUser, string, string, CancellationToken)` | Changes the user name at once. |
+| `RequestEmailChangeAsync(AppUser, string, string, string, CancellationToken)` | Step 1 of an email change: sends a confirmation link to the **new** address. Nothing changes yet. |
+| `ConfirmEmailChangeAsync(AppUser, string, string, CancellationToken)` | Step 2 of an email change: replaces the address and marks it confirmed. The token is the one from the link; it works once, for this person and this address. |
+| `RequestPhoneChangeAsync(AppUser, string, string, CancellationToken)` | Step 1 of a phone change: sends an SMS code to the **new** number. Nothing changes yet. |
+| `ConfirmPhoneChangeAsync(AppUser, string, string, CancellationToken)` | Step 2 of a phone change: checks the code, replaces the number and marks it confirmed. The code works once and only for that number. |
+
+
 ### IAdminApplicationService
 
 Admin work on the applications of a project. Every method checks that the application belongs to the project of the route.
@@ -812,6 +825,8 @@ Where the credential state (password, security stamp, 2FA, lockout, TOTP key, re
 | `RedeemRecoveryCodeAsync(AppUser, string, CancellationToken)` | Uses one recovery code. True when the code was valid and unused. |
 | `CountRecoveryCodesAsync(AppUser, CancellationToken)` | Number of unused recovery codes. |
 | `BeforeUserCreated(AppUser)` | Called before a new user is saved, so pending credential rows can be saved in the same transaction. |
+| `GetPasswordChangedAtAsync(AppUser, CancellationToken)` | When the password was last set. A password with no recorded date counts from the day the person was created (shared credentials) or joined the project (per-project credentials). Null when there is no password. |
+| `SetPasswordChangedAtAsync(AppUser, Nullable<DateTimeOffset>, CancellationToken)` | Records when the password was set. |
 
 
 ### ICredentialStateProvider
@@ -1009,6 +1024,17 @@ Passkeys (WebAuthn) as a primary way to sign in, per application. Built on the A
 | `ListAsync(AppUser, CancellationToken)` | The passkeys of a user in the current application. |
 | `RenameAsync(AppUser, string, string, CancellationToken)` | Renames a passkey. |
 | `RemoveAsync(AppUser, string, CancellationToken)` | Removes a passkey. The last way to sign in cannot be removed. |
+
+
+### IPasswordHistoryService
+
+The memory of old passwords and the age of the password (settings `Password.SaveOldPasswords`, `OldPasswordsToKeep`, `AllowOldPasswordReuse` and `PasswordExpiryDays`). Only hashes are kept.
+
+| Member | What it does |
+|---|---|
+| `IsReusedAsync(AppUser, string, CancellationToken)` | True when `newPassword` may not be used: it is the current password, or (history on) a remembered old one. With `AllowOldPasswordReuse` only the one used right before the current password is refused. Always false when `SaveOldPasswords` is off. |
+| `RememberAsync(AppUser, string, CancellationToken)` | Remembers the hash that is about to be replaced and forgets the oldest ones beyond `OldPasswordsToKeep`. Does nothing when the history is off. |
+| `IsExpiredAsync(AppUser, CancellationToken)` | True when `PasswordExpiryDays` is set and the password is older. |
 
 
 ### IPasswordService
@@ -1294,6 +1320,8 @@ Builds the localized messages and sends them.
 |---|---|
 | `SendEmailConfirmationAsync(AppUser, string, string, CancellationToken)` | Sends the email confirmation link. |
 | `SendPasswordResetAsync(AppUser, string, string, CancellationToken)` | Sends the password reset link. |
+| `SendEmailChangeAsync(AppUser, string, string, string, CancellationToken)` | Sends the link that confirms a **new** email address. It goes to the new address, not the old one. |
+| `SendPhoneChangeCodeAsync(AppUser, string, string, CancellationToken)` | Sends the code that proves a **new** phone number, by SMS to the new number. |
 | `SendOtpAsync(AppUser, string, string, NotificationChannel, CancellationToken)` | Sends a one-time code by email or SMS. |
 
 
@@ -1469,6 +1497,15 @@ Input of a password login. The application always comes from `IProjectContext`.
 | `Password` | The password. Never logged. |
 | `IpAddress` | Caller IP (for the audit log). |
 | `UserAgent` | Caller user agent (for the audit log). |
+
+
+### PasswordRehashMarker
+
+Set while Identity checks a password and may replace the hash by a stronger one (a "rehash"). That is not a password change.
+
+| Member | What it does |
+|---|---|
+| `Active` | True during the check of a password. |
 
 
 ### ProjectCreationResult
@@ -2120,6 +2157,11 @@ Password rules.
 | `RequireNonAlphanumeric` | Needs a non-alphanumeric character. |
 | `UniqueChars` | Minimum number of different characters. |
 | `BannedPasswords` | Passwords that are never allowed. A breached-list check can be plugged in later (hook only). |
+| `SaveOldPasswords` | Remember the hashes of the passwords a person had before (when the password changes by change, reset or join). With this on, the new password may not be the current one. Off by default; nothing is saved and nothing is checked. |
+| `OldPasswordsToKeep` | How many old passwords are remembered (1 to 24), not counting the current one. The oldest are forgotten. Used with `SaveOldPasswords`. |
+| `AllowOldPasswordReuse` | With `SaveOldPasswords` on: `false` refuses the current password and every remembered one. `true` allows an older password again and refuses only the current one and the one used right before it. |
+| `PasswordExpiryDays` | A password must be changed after this many days (0 = never). When it is older, the password sign-in answers `password_expired` until the person chooses a new password (the forgot-password flow). A password without a date counts from the day the person joined. |
+| `SignOutAfterChangePassword` | When a person changes their own password, end **every** session, also the one that made the change (the hosted-UI cookie is removed and the person is sent to the sign-in page). Off (default): the other sessions end and the current one stays. |
 
 
 ### PhoneSettings

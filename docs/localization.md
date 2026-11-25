@@ -43,7 +43,7 @@ A culture is used only if **both** the server has a resx file for it **and** the
 
 The code is `Auth2CultureResolver` (the order) and `Auth2RequestCultureProvider` (reads the request). Add `app.UseAuth2Localization()` to the pipeline. The Server `Program.cs` already does.
 
-The application is found from the `client_id` of the request. If no application is known, the server's own cultures are used.
+The application is found from the `client_id` of the request (in the **query**). If no application is known, the server's own cultures are used. This holds for every route: the messages of the JSON API and the `error_description` of the token endpoint (a failed sign-in) are written in the chosen language, while the `error`, `error_code` and the status code never change. The Client package sends the language of the call as `Accept-Language` ([client-api-service.md](client-api-service.md#language-of-the-calls)).
 
 ## Step by step: add a language
 
@@ -95,3 +95,9 @@ API errors always return the stable `code` too, so your program never has to rea
 - [Passkeys](external-identity/passkeys.md)
 - [Authentication flows](authentication-flows.md)
 - [Documentation index](index.md)
+- [Client setup](client-setup.md)
+- [Client package reference](client-reference.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [API reference](api-reference.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)
+- [Machine to machine (client credentials)](machine-to-machine.md)

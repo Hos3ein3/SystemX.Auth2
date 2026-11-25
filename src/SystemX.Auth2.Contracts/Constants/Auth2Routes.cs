@@ -22,6 +22,16 @@ public static class Auth2Routes
     public const string PhoneConfirm = Base + "/phone/confirm";
     /// <summary>Send the email confirmation again.</summary>
     public const string EmailConfirmResend = Base + "/email/confirm/resend";
+    /// <summary>Change the own user name (user token).</summary>
+    public const string UserNameChange = Base + "/user-name/change";
+    /// <summary>Start an email change: a link goes to the new address (user token).</summary>
+    public const string EmailChange = Base + "/email/change";
+    /// <summary>Finish an email change with the token of the link (user token).</summary>
+    public const string EmailChangeConfirm = Base + "/email/change/confirm";
+    /// <summary>Start a phone change: a code goes to the new number (user token).</summary>
+    public const string PhoneChange = Base + "/phone/change";
+    /// <summary>Finish a phone change with the code (user token).</summary>
+    public const string PhoneChangeConfirm = Base + "/phone/change/confirm";
     /// <summary>Finish joining a second application (proof of ownership + new password).</summary>
     public const string JoinComplete = Base + "/join/complete";
     /// <summary>Start TOTP setup.</summary>

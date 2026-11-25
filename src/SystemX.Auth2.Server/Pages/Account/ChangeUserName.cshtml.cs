@@ -41,16 +41,9 @@ public sealed class ChangeUserNameModel(IClientIdAccessor clientId, IAuthFlowRes
         CurrentUserName = CurrentUser!.UserName;
         if (!ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
 
-        var newName = Input.NewUserName.Trim();
-        if (string.Equals(newName, CurrentUser.UserName, StringComparison.Ordinal)) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
-        if (!await ConfirmWithPasswordAsync(Input.CurrentPassword)) return Page();
-        if (!await ValidateChangeAsync(userName: newName)) return Page();
+        var result = await Svc<IAccountChangeService>().ChangeUserNameAsync(CurrentUser, Input.NewUserName, Input.CurrentPassword, HttpContext.RequestAborted);
+        if (!result.Succeeded) { FailWith(result); return Page(); }
 
-        var users = Svc<UserManager<AppUser>>();
-        var result = await users.SetUserNameAsync(CurrentUser, newName);
-        if (!result.Succeeded) { Fail(OperationResult.Fail(result.Errors)); return Page(); }
-
-        await AuditAsync("user.name_changed");
         await RefreshCookieAsync(CurrentUser);
         CurrentUserName = CurrentUser.UserName;
         Changed = true;

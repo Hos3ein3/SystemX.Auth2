@@ -12,7 +12,7 @@ namespace SystemX.Auth2.Server.Pages.Account;
 /// <summary>
 /// Base of the pages where a signed-in person changes their own password, user name, email address or phone number.
 /// The person comes from the hosted-UI session cookie (see <see cref="ManagePageModel"/>). A person who has a password must give it again
-/// for every change except the password itself (which asks for the current one anyway); a wrong password counts as a failed attempt.
+/// for every change except the password itself (which asks for the current one anyway); <see cref="IAccountChangeService"/> checks it and does the change.
 /// </summary>
 public abstract class AccountChangePageModel(IClientIdAccessor clientId, IAuthFlowResolver flow, IReturnUrlValidator urls, IAuth2Localizer text)
     : ManagePageModel(clientId, flow, urls, text)
@@ -28,44 +28,8 @@ public abstract class AccountChangePageModel(IClientIdAccessor clientId, IAuthFl
         return true;
     }
 
-    /// <summary>
-    /// Checks the password that confirms a change. True when there is nothing to check (the person has no password) or it is right.
-    /// Otherwise the page error is set and a wrong password counts as a failed attempt, so guessing it locks the account like a sign-in does.
-    /// </summary>
-    protected async Task<bool> ConfirmWithPasswordAsync(string? password)
-    {
-        if (!PasswordRequired) return true;
-        var users = Svc<UserManager<AppUser>>();
-        if (await users.IsLockedOutAsync(CurrentUser!)) { Fail(Auth2ErrorCodes.LockedOut, StatusCodes.Status403Forbidden); return false; }
-        if (string.IsNullOrEmpty(password)) { Fail(Auth2ErrorCodes.ValidationFailed); return false; }
-        if (await users.CheckPasswordAsync(CurrentUser!, password)) return true;
-        await users.AccessFailedAsync(CurrentUser!);
-        Fail(Auth2ErrorCodes.InvalidCredentials);
-        return false;
-    }
-
-    /// <summary>
-    /// Runs the user validators (format, rules of the project, uniqueness) on a copy of the person with the new values, <b>before</b> anything is sent or saved.
-    /// True when the values are fine; otherwise the page error lists what is wrong.
-    /// </summary>
-    protected async Task<bool> ValidateChangeAsync(string? userName = null, string? email = null, string? phoneNumber = null)
-    {
-        var users = Svc<UserManager<AppUser>>();
-        var probe = new AppUser { Id = CurrentUser!.Id, UserName = userName ?? CurrentUser.UserName, Email = email ?? CurrentUser.Email, PhoneNumber = phoneNumber ?? CurrentUser.PhoneNumber };
-        var errors = new List<IdentityError>();
-        foreach (var validator in users.UserValidators)
-        {
-            var result = await validator.ValidateAsync(users, probe);
-            if (!result.Succeeded) errors.AddRange(result.Errors);
-        }
-        if (errors.Count == 0) return true;
-        Fail(OperationResult.Fail(errors));
-        return false;
-    }
-
-    /// <summary>Writes the audit event of a change of the own account.</summary>
-    protected Task AuditAsync(string action) =>
-        Svc<IAuditService>().WriteAsync(new AuditEntry(action, Project!.Id, ActorUserId: CurrentUser!.Id, TargetType: "user", TargetId: CurrentUser.Id.ToString()), HttpContext.RequestAborted);
+    /// <summary>Shows the failure of <see cref="IAccountChangeService"/> or <see cref="IPasswordService"/> with the status code the API uses for the same code (400, 423 locked, 429 too soon).</summary>
+    protected void FailWith(OperationResult result) => Fail(result, Endpoints.ApiResults.StatusFor(result.ErrorCode ?? Auth2ErrorCodes.ValidationFailed));
 
     /// <summary>Signs the same session in again, so the cookie shows the new user name.</summary>
     protected Task RefreshCookieAsync(AppUser user) =>

@@ -93,6 +93,7 @@ The builder methods can be called **in any order**.
 | `HandshakeMaxRetries` | 6 | Background retries (only with `Continue`) |
 | `HandshakeInitialDelay` / `HandshakeMaxDelay` | 2 s / 60 s | Wait before the first retry; it doubles up to the maximum |
 | `RequestTimeout` | 30 s | Time limit of one call to the server |
+| `SendRequestCulture` | `true` | Send the language of the current request (`Accept-Language`) with every call, so messages, emails and SMS are in your user's language ([client-api-service.md](client-api-service.md#language-of-the-calls)) |
 
 The options are checked at start-up. A wrong option stops the application with a message that says what to fix.
 
@@ -131,7 +132,7 @@ To try again by hand: `await api.HandshakeAsync()`.
 
 ## The Auth2 API service
 
-`IAuth2ApiClientService` calls the server: `RegisterAsync`, `LoginAsync` (+ `TwoFactorLoginAsync`, `OtpLoginAsync`), `RequestOtpAsync`, `ForgotPasswordAsync`, `ResetPasswordAsync`, `ChangePasswordAsync`, `RefreshAsync`, `LogoutAsync`, `GetMeAsync`, `HandshakeAsync`, `SyncPermissionsAsync`, `SyncRolesAsync`, `GetPermissionsAsync`, `GetRolesAsync`, `GetGroupsAsync`.
+`IAuth2ApiClientService` calls the server: `RegisterAsync`, `CompleteJoinAsync`, `LoginAsync` (+ `TwoFactorLoginAsync`, `OtpLoginAsync`), `RequestOtpAsync`, `ForgotPasswordAsync`, `ResetPasswordAsync`, `ConfirmEmailAsync`, `ResendEmailConfirmationAsync`, `ConfirmPhoneAsync`, `ChangePasswordAsync`, `ChangeUserNameAsync`, `RequestEmailChangeAsync` / `ConfirmEmailChangeAsync`, `RequestPhoneChangeAsync` / `ConfirmPhoneChangeAsync`, `SetupTwoFactorAsync`, `EnableTwoFactorAsync`, `DisableTwoFactorAsync`, `RegenerateRecoveryCodesAsync`, `RefreshAsync`, `LogoutAsync`, `GetMeAsync`, `HandshakeAsync`, the four `Sync...Async` and the `Get...Async` of the catalogs. `WithCulture("fa")` makes the calls in another language. The service **never makes a cookie**: for a cookie app call `IAuth2WebService` (below). Everything about it, with the routes, tokens and examples: [client-api-service.md](client-api-service.md).
 
 **Results, not exceptions.** Every method returns `Result` or `Result<T>`. A wrong password or a server that is down is a normal answer:
 
@@ -190,6 +191,8 @@ Calls that **change something** (register, login, password calls, refresh) are *
 - [Redis: what it does, how to enable it, and the Client's cache](redis.md)
 - [Deployment and scaling](deployment-and-scaling.md)
 - [Observability](observability.md)
+- [API reference](api-reference.md)
+- [Localization](localization.md)
 
 ## Sign-in for browser apps (UI modes)
 

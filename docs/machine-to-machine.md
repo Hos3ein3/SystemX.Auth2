@@ -82,3 +82,6 @@ Scopes set with `.EnableMachineToMachine(o => o.Scopes = [...])` are used when y
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Server settings](server-settings.md)
+- [Calling the Server: `IAuth2ApiClientService`](client-api-service.md)
+- [Two-factor authentication and `TwoFactorService`](two-factor.md)
+- [Localization](localization.md)

@@ -187,6 +187,29 @@ public interface IPasswordService
     Task<OperationResult> ChangeAsync(AppUser user, string currentPassword, string newPassword, string? keepAuthorizationId, CancellationToken ct = default);
 }
 
+/// <summary>
+/// A signed-in person changes their own user name, email address or phone number. Used by the pages of <c>/Account</c> and by the API routes, so both behave the same.
+/// A person who has a password must give it (a wrong one counts as a failed attempt). The new value goes through the user validators before anything is sent or saved.
+/// A new email address and a new phone number change only after the person proves they own them.
+/// </summary>
+public interface IAccountChangeService
+{
+    /// <summary>Changes the user name at once.</summary>
+    Task<OperationResult> ChangeUserNameAsync(AppUser user, string newUserName, string? currentPassword, CancellationToken ct = default);
+
+    /// <summary>Step 1 of an email change: sends a confirmation link to the <b>new</b> address. Nothing changes yet.</summary>
+    Task<OperationResult> RequestEmailChangeAsync(AppUser user, string newEmail, string? currentPassword, string? returnUrl, CancellationToken ct = default);
+
+    /// <summary>Step 2 of an email change: replaces the address and marks it confirmed. The token is the one from the link; it works once, for this person and this address.</summary>
+    Task<OperationResult> ConfirmEmailChangeAsync(AppUser user, string newEmail, string token, CancellationToken ct = default);
+
+    /// <summary>Step 1 of a phone change: sends an SMS code to the <b>new</b> number. Nothing changes yet.</summary>
+    Task<OperationResult> RequestPhoneChangeAsync(AppUser user, string newPhoneNumber, string? currentPassword, CancellationToken ct = default);
+
+    /// <summary>Step 2 of a phone change: checks the code, replaces the number and marks it confirmed. The code works once and only for that number.</summary>
+    Task<OperationResult> ConfirmPhoneChangeAsync(AppUser user, string newPhoneNumber, string code, CancellationToken ct = default);
+}
+
 /// <summary>Email and phone confirmation.</summary>
 public interface IConfirmationService
 {

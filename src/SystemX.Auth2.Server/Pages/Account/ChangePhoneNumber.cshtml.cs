@@ -1,7 +1,5 @@
 #pragma warning disable CS1591 // Page models are not a public API; the UI reads their properties (see docs/ui-handover.md).
 using System.ComponentModel.DataAnnotations;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SystemX.Auth2.Contracts.Constants;
@@ -49,15 +47,8 @@ public sealed class ChangePhoneNumberModel(IClientIdAccessor clientId, IAuthFlow
         CurrentPhoneNumber = CurrentUser!.PhoneNumber;
         if (!ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
 
-        var newNumber = Input.NewPhoneNumber.Trim();
-        if (string.Equals(newNumber, CurrentUser.PhoneNumber, StringComparison.Ordinal) && CurrentUser.PhoneNumberConfirmed) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
-        if (!await ConfirmWithPasswordAsync(Input.CurrentPassword)) return Page();
-        if (!await ValidateChangeAsync(phoneNumber: newNumber)) return Page();
-
-        var issued = await Svc<IOtpService>().IssueAsync(CurrentUser, PurposeFor(newNumber), HttpContext.RequestAborted);
-        if (issued.Code is null) { Fail(Auth2ErrorCodes.RateLimited, StatusCodes.Status429TooManyRequests); return Page(); }   // a code was sent a moment ago
-        await Svc<IUserNotifier>().SendPhoneChangeCodeAsync(CurrentUser, newNumber, issued.Code, HttpContext.RequestAborted);
-        await AuditAsync("phone.change_requested");
+        var result = await Svc<IAccountChangeService>().RequestPhoneChangeAsync(CurrentUser, Input.NewPhoneNumber, Input.CurrentPassword, HttpContext.RequestAborted);
+        if (!result.Succeeded) { FailWith(result); return Page(); }
         CodeSent = true;
         return Page();
     }
@@ -69,28 +60,11 @@ public sealed class ChangePhoneNumberModel(IClientIdAccessor clientId, IAuthFlow
         CurrentPhoneNumber = CurrentUser!.PhoneNumber;
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(Input.Code)) { Fail(Auth2ErrorCodes.ValidationFailed); CodeSent = true; return Page(); }
 
-        var newNumber = Input.NewPhoneNumber.Trim();
-        if (!await ValidateChangeAsync(phoneNumber: newNumber)) { CodeSent = true; return Page(); }
-        if (await Svc<IOtpService>().VerifyAsync(CurrentUser, PurposeFor(newNumber), Input.Code.Trim(), HttpContext.RequestAborted) != OtpVerifyResult.Ok)
-        {
-            Fail(Auth2ErrorCodes.InvalidOtp);
-            CodeSent = true;
-            return Page();
-        }
+        var result = await Svc<IAccountChangeService>().ConfirmPhoneChangeAsync(CurrentUser, Input.NewPhoneNumber, Input.Code, HttpContext.RequestAborted);
+        if (!result.Succeeded) { FailWith(result); CodeSent = true; return Page(); }
 
-        var users = Svc<UserManager<AppUser>>();
-        CurrentUser.PhoneNumber = newNumber;
-        CurrentUser.PhoneNumberConfirmed = true;   // the code proved that the person holds this number
-        var result = await users.UpdateAsync(CurrentUser);
-        if (!result.Succeeded) { Fail(OperationResult.Fail(result.Errors)); return Page(); }
-
-        await AuditAsync("phone.changed");
         CurrentPhoneNumber = CurrentUser.PhoneNumber;
         Changed = true;
         return Page();
     }
-
-    /// <summary>The purpose of the code is tied to the number, so a code sent for one number cannot confirm another.</summary>
-    private static string PurposeFor(string phoneNumber) =>
-        Auth2OtpPurposes.ChangePhone + "_" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(phoneNumber)))[..16].ToLowerInvariant();
 }

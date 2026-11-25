@@ -101,7 +101,7 @@ You can mix: call overload 2, then `builder.Services.Configure<Auth2ClientOption
 | `Auth2CatalogStartupService`, `Auth2SyncHostedService` | hosted | Check all catalog sources when the host starts; push and pull |
 | `Auth2ClientState`, `HandshakeRunner`, `HandshakeHostedService` | singleton / hosted | The handshake and its result |
 | `IAuth2MachineTokenProvider`, `IAuth2MachineService` | singleton | Client-credentials tokens |
-| `IAuth2ApiClientService` | singleton | Every call to the Server ([client-reference.md](client-reference.md)) |
+| `IAuth2ApiClientService` | singleton | Every call to the Server ([client-api-service.md](client-api-service.md), [client-reference.md](client-reference.md)) |
 
 All of these use `TryAdd...`: **if you registered your own implementation of the same service before `AddAuth2Client`, yours stays.** That is how you replace `IAuth2AuditSink`, `ICurrentUserStore` or `IAuth2AccessTokenAccessor`. Only the policy provider and the result handler are replaced on purpose.
 
@@ -123,6 +123,7 @@ All of these use `TryAdd...`: **if you registered your own implementation of the
 | `HandshakeMaxDelay` | 60 s | The longest wait between two retries |
 | `ClientVersion` | the package version | Text sent in the handshake |
 | `RequestTimeout` | 30 s | Time limit of one call to the Server that is not the handshake |
+| `SendRequestCulture` | `true` | Send `CultureInfo.CurrentUICulture` as `Accept-Language` with every call. `false` sends nothing unless `WithCulture` was used ([client-api-service.md](client-api-service.md#language-of-the-calls)) |
 | `CatalogRefreshInterval` | 10 min | How often permissions, roles, scopes and groups are read again when a policy is `Pull` or `Both` |
 | `SyncMaxRetries` | 5 | How many times a failed sync is tried again (waits grow like the handshake retries) |
 | `FailOnSyncError` | `false` | When `true`, a sync that still fails after the retries **stops the application** with `Auth2StartupException`. Use it when the Server must always have your list (for example in a deployment check) |
@@ -382,3 +383,7 @@ builder.Services.AddHttpClient("reports", c => c.BaseAddress = new Uri("https://
 - [Security](security.md)
 - [Observability](observability.md)
 - [Troubleshooting](troubleshooting.md)
+- [API reference](api-reference.md)
+- [Authentication flows](authentication-flows.md)
+- [Localization](localization.md)
+- [Error codes](error-codes.md)

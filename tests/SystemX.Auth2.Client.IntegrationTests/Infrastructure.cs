@@ -36,11 +36,27 @@ internal static class SharedPostgres
     }
 }
 
+/// <summary>Keeps the emails and SMS that the Server sends, so a test can read the link or the code.</summary>
+public sealed class CapturedMessages : IEmailSender, ISmsSender
+{
+    public System.Collections.Concurrent.ConcurrentQueue<EmailMessage> Emails { get; } = new();
+    public System.Collections.Concurrent.ConcurrentQueue<SmsMessage> Texts { get; } = new();
+
+    public Task SendAsync(EmailMessage message, CancellationToken ct = default) { Emails.Enqueue(message); return Task.CompletedTask; }
+    public Task SendAsync(SmsMessage message, CancellationToken ct = default) { Texts.Enqueue(message); return Task.CompletedTask; }
+
+    public EmailMessage? LastEmailTo(string to) => Emails.LastOrDefault(e => e.To.Equals(to, StringComparison.OrdinalIgnoreCase));
+    public SmsMessage? LastTextTo(string to) => Texts.LastOrDefault(t => t.To == to);
+}
+
 /// <summary>The real Server in memory with its own database.</summary>
 public class ServerFactory(string connectionString, bool single) : WebApplicationFactory<Program>
 {
+    public CapturedMessages Messages { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.ConfigureTestServices(s => { s.AddSingleton<IEmailSender>(Messages); s.AddSingleton<ISmsSender>(Messages); });
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Auth2", connectionString);
         builder.UseSetting("Auth2:ProjectStatusCacheSeconds", "0");

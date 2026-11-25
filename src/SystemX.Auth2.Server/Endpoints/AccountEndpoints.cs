@@ -51,6 +51,27 @@ public static class AccountEndpoints
         routes.MapPost(Auth2Routes.PasswordChange, async (HttpContext http, ChangePasswordRequest r, IPasswordService passwords) =>
             ApiResults.From(http, await passwords.ChangeAsync(http.CurrentUser(), r.CurrentPassword, r.NewPassword, http.User.GetAuthorizationId(), http.RequestAborted))).RequireUser(Auth2Scopes.Me);
 
+        routes.MapPost(Auth2Routes.UserNameChange, async (HttpContext http, ChangeUserNameRequest r, IAccountChangeService changes) =>
+            ApiResults.From(http, await changes.ChangeUserNameAsync(http.CurrentUser(), r.NewUserName, r.CurrentPassword, http.RequestAborted))).RequireUser(Auth2Scopes.Me);
+
+        routes.MapPost(Auth2Routes.EmailChange, async (HttpContext http, ChangeEmailRequest r, IAccountChangeService changes, IReturnUrlValidator urls, IAuthFlowResolver flow) =>
+        {
+            var result = await changes.RequestEmailChangeAsync(http.CurrentUser(), r.NewEmail, r.CurrentPassword, await SafeReturnUrlAsync(r.ReturnUrl, urls, flow, http), http.RequestAborted);
+            return result.Succeeded ? Results.Accepted() : ApiResults.From(http, result);   // the link is on its way; nothing has changed yet
+        }).RequireUser(Auth2Scopes.Me);
+
+        routes.MapPost(Auth2Routes.EmailChangeConfirm, async (HttpContext http, ConfirmEmailChangeRequest r, IAccountChangeService changes) =>
+            ApiResults.From(http, await changes.ConfirmEmailChangeAsync(http.CurrentUser(), r.NewEmail, r.Token, http.RequestAborted))).RequireUser(Auth2Scopes.Me);
+
+        routes.MapPost(Auth2Routes.PhoneChange, async (HttpContext http, ChangePhoneNumberRequest r, IAccountChangeService changes) =>
+        {
+            var result = await changes.RequestPhoneChangeAsync(http.CurrentUser(), r.NewPhoneNumber, r.CurrentPassword, http.RequestAborted);
+            return result.Succeeded ? Results.Accepted() : ApiResults.From(http, result);   // the code is on its way; nothing has changed yet
+        }).RequireUser(Auth2Scopes.Me);
+
+        routes.MapPost(Auth2Routes.PhoneChangeConfirm, async (HttpContext http, ConfirmPhoneChangeRequest r, IAccountChangeService changes) =>
+            ApiResults.From(http, await changes.ConfirmPhoneChangeAsync(http.CurrentUser(), r.NewPhoneNumber, r.Code, http.RequestAborted))).RequireUser(Auth2Scopes.Me);
+
         routes.MapPost(Auth2Routes.TwoFactorSetup, async (HttpContext http, ITwoFactorService tf) =>
         {
             var (result, setup) = await tf.SetupAsync(http.CurrentUser(), http.RequestAborted);

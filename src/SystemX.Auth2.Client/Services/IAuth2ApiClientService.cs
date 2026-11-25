@@ -10,9 +10,24 @@ namespace SystemX.Auth2.Client.Services;
 /// Calls the Auth2 Server. Every method returns <see cref="Result"/> or <see cref="Result{T}"/> and never throws for server errors
 /// (a wrong password is a normal answer). The error code is in <c>Result.Error.Code</c>; a server that cannot be reached gives
 /// <see cref="Auth2ClientErrorCodes.ServerUnavailable"/>. Calls that change something (register, login, password change) are never repeated automatically.
+/// <para>
+/// <b>Language.</b> Every call carries the language of the current request (<c>Accept-Language</c>, from <c>CultureInfo.CurrentUICulture</c>; switch off with
+/// <c>Auth2ClientOptions.SendRequestCulture</c>), so the error message, and the email or SMS that the call causes, are written in that language when the server has it
+/// (<c>en</c>, <c>fa</c>, <c>nl</c>, <c>it</c>). Use <see cref="WithCulture"/> to choose it for some calls. The error <b>code</b> never changes with the language.
+/// </para>
+/// <para>
+/// <b>Cookies.</b> This service never makes a cookie and never keeps a token. Login methods only return the tokens. For an application with cookie sign-in use
+/// <c>IAuth2WebService</c>, which calls this service and then signs the cookie in.
+/// </para>
 /// </summary>
 public interface IAuth2ApiClientService
 {
+    /// <summary>
+    /// The same service for calls in another language. <paramref name="culture"/> is a language tag such as <c>fa</c> or <c>fa-IR</c>; <c>null</c> or empty goes back to the language of the current request.
+    /// Nothing is changed on this instance: use the returned one.
+    /// </summary>
+    IAuth2ApiClientService WithCulture(string? culture);
+
     /// <summary>Registers a user (or adds an existing person; see <c>RegisterResponse</c>). Needs the client scope <c>auth2.register</c>.</summary>
     Task<Result<RegisterResponse>> RegisterAsync(RegisterRequest request, CancellationToken ct = default);
 
@@ -81,4 +96,49 @@ public interface IAuth2ApiClientService
 
     /// <summary>Reads the groups of this application with their roles and permission keys.</summary>
     Task<Result<IReadOnlyList<GroupDto>>> GetGroupsAsync(CancellationToken ct = default);
+
+    // ---- confirmations and joining (client token)
+
+    /// <summary>Confirms an email address with the user id and the token of the link in the email. Needs the client scope <c>auth2.login</c>.</summary>
+    Task<Result> ConfirmEmailAsync(ConfirmEmailRequest request, CancellationToken ct = default);
+
+    /// <summary>Sends the email confirmation again. The answer is always the same. Needs the client scope <c>auth2.login</c>.</summary>
+    Task<Result> ResendEmailConfirmationAsync(ResendEmailConfirmationRequest request, CancellationToken ct = default);
+
+    /// <summary>Confirms a phone number with the code from the SMS (ask for it with <see cref="RequestOtpAsync"/>, purpose <c>confirm_phone</c>). Needs the client scope <c>auth2.login</c>.</summary>
+    Task<Result> ConfirmPhoneAsync(ConfirmPhoneRequest request, CancellationToken ct = default);
+
+    /// <summary>Finishes joining this application for a person who already has an account elsewhere: the code that proves ownership and the new password. Needs the client scope <c>auth2.register</c>.</summary>
+    Task<Result> CompleteJoinAsync(JoinCompleteRequest request, CancellationToken ct = default);
+
+    // ---- two-factor (user token with the scope auth2.me)
+
+    /// <summary>Makes the key for the authenticator app. Show <c>SharedKey</c> and <c>AuthenticatorUri</c> (as a QR code), then call <see cref="EnableTwoFactorAsync"/>.</summary>
+    Task<Result<TwoFactorSetupResponse>> SetupTwoFactorAsync(string accessToken, CancellationToken ct = default);
+
+    /// <summary>Turns two-factor on with the first code of the app. The recovery codes in the answer are shown once.</summary>
+    Task<Result<TwoFactorEnableResponse>> EnableTwoFactorAsync(string accessToken, TwoFactorEnableRequest request, CancellationToken ct = default);
+
+    /// <summary>Turns two-factor off. The password is needed. Refused when the application requires two-factor.</summary>
+    Task<Result> DisableTwoFactorAsync(string accessToken, TwoFactorDisableRequest request, CancellationToken ct = default);
+
+    /// <summary>Makes new recovery codes (the old ones stop working). A code from the authenticator app is needed. The codes are shown once.</summary>
+    Task<Result<RecoveryCodesResponse>> RegenerateRecoveryCodesAsync(string accessToken, RecoveryCodesRequest request, CancellationToken ct = default);
+
+    // ---- change the own details (user token with the scope auth2.me)
+
+    /// <summary>Changes the user name at once. A person who has a password must send it.</summary>
+    Task<Result> ChangeUserNameAsync(string accessToken, ChangeUserNameRequest request, CancellationToken ct = default);
+
+    /// <summary>Starts an email change: a link goes to the <b>new</b> address and nothing changes yet. Finish with <see cref="ConfirmEmailChangeAsync"/>.</summary>
+    Task<Result> RequestEmailChangeAsync(string accessToken, ChangeEmailRequest request, CancellationToken ct = default);
+
+    /// <summary>Finishes an email change with the new address and the token of the link. The address is replaced and marked as confirmed.</summary>
+    Task<Result> ConfirmEmailChangeAsync(string accessToken, ConfirmEmailChangeRequest request, CancellationToken ct = default);
+
+    /// <summary>Starts a phone change: an SMS code goes to the <b>new</b> number and nothing changes yet. Finish with <see cref="ConfirmPhoneChangeAsync"/>.</summary>
+    Task<Result> RequestPhoneChangeAsync(string accessToken, ChangePhoneNumberRequest request, CancellationToken ct = default);
+
+    /// <summary>Finishes a phone change with the new number and the code. The number is replaced and marked as confirmed.</summary>
+    Task<Result> ConfirmPhoneChangeAsync(string accessToken, ConfirmPhoneChangeRequest request, CancellationToken ct = default);
 }

@@ -355,3 +355,5 @@ Every application is an OpenIddict client with a **secret**. OpenIddict stores o
 - [Client setup](client-setup.md)
 - [Password history and password expiry](password-history.md)
 - [Decisions (ADR list)](decisions.md)
+- [Calling the Server: `IAuth2ApiClientService`](client-api-service.md)
+- [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
