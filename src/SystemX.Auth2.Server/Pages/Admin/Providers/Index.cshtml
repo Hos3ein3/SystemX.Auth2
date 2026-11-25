@@ -8,38 +8,38 @@
 <div class="space-y-6">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">External Identity Providers</h1>
-            <p class="mt-1 text-sm text-gray-500">Configure OAuth, OpenID Connect, SAML 2.0, or LDAP providers for @Model.CurrentProject?.Name.</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">External Identity Providers</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Configure OAuth, OpenID Connect, SAML 2.0, or LDAP providers for @Model.CurrentProject?.Name.</p>
         </div>
         <a2-link-button href="/admin/p/@Model.ProjectKey/providers/create" variant="primary">
             + Add Provider
         </a2-link-button>
     </div>
 
-    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50">
+    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Provider Name</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Type</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Display Name</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Status</th>
-                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Provider Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Type</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Display Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 @if (Model.Providers.Count > 0)
                 {
                     @foreach (var p in Model.Providers)
                     {
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 font-semibold text-gray-900">
-                                <a href="/admin/p/@Model.ProjectKey/providers/detail?name=@p.Name" class="text-blue-600 hover:underline">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <td class="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
+                                <a href="/admin/p/@Model.ProjectKey/providers/detail?name=@p.Name" class="text-blue-600 dark:text-blue-400 hover:underline">
                                     @p.Name
                                 </a>
                             </td>
-                            <td class="px-6 py-4 font-mono text-xs text-gray-600">@p.Type</td>
-                            <td class="px-6 py-4 text-gray-800">@(p.DisplayName ?? "-")</td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-600 dark:text-gray-400">@p.Type</td>
+                            <td class="px-6 py-4 text-gray-800 dark:text-gray-200">@(p.DisplayName ?? "-")</td>
                             <td class="px-6 py-4">
                                 @if (p.Enabled)
                                 {
@@ -52,13 +52,13 @@
                             </td>
                             <td class="px-6 py-4 text-right space-x-2">
                                 <form method="post" asp-page-handler="Test" asp-route-name="@p.Name" class="inline">
-                                    <button type="submit" class="text-xs text-blue-600 hover:underline font-medium">Test Connection</button>
+                                    <button type="submit" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">Test Connection</button>
                                 </form>
-                                <span class="text-gray-300">|</span>
-                                <a href="/admin/p/@Model.ProjectKey/providers/detail?name=@p.Name" class="text-xs text-gray-700 hover:underline">Configure</a>
-                                <span class="text-gray-300">|</span>
+                                <span class="text-gray-300 dark:text-gray-600">|</span>
+                                <a href="/admin/p/@Model.ProjectKey/providers/detail?name=@p.Name" class="text-xs text-gray-700 dark:text-gray-300 hover:underline">Configure</a>
+                                <span class="text-gray-300 dark:text-gray-600">|</span>
                                 <form method="post" asp-page-handler="Delete" asp-route-name="@p.Name" class="inline" data-confirm="Delete provider @p.Name?">
-                                    <button type="submit" class="text-xs text-red-600 hover:underline">Delete</button>
+                                    <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Delete</button>
                                 </form>
                             </td>
                         </tr>
@@ -67,7 +67,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                             No external providers configured.
                         </td>
                     </tr>

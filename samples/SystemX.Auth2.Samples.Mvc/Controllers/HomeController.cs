@@ -60,4 +60,15 @@ public class HomeController(ICurrentUser currentUser, ILogger<HomeController> lo
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
+
+    [Auth2Role("Oskol")]
+    public IActionResult WithRole()
+    {
+        return View();
+    }
+    [Auth2Role("Oskol2")]
+    public IActionResult WithRole2()
+    {
+        return View();
+    }
 }

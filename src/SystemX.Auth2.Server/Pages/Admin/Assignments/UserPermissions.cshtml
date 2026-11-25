@@ -1,0 +1,122 @@
+@page "/admin/p/{projectKey}/user-permissions"
+@model SystemX.Auth2.Server.Pages.Admin.Assignments.UserPermissionsModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"User Permissions - {Model.CurrentProject?.Name}";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">User Permissions</h1>
+                <span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded font-mono">user_permissions</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                CRUD management for direct permissions granted to specific users in @Model.CurrentProject?.Name.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/admin/p/@Model.ProjectKey/assignments?tab=user_permissions" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                View in Matrix &rarr;
+            </a>
+        </div>
+    </div>
+
+    <!-- Grant Permission Form Card -->
+    <a2-card title="Grant Direct Permission to User">
+        <form method="post" asp-page-handler="Grant" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">User</label>
+                    <div class="space-y-2">
+                        <select name="userIdentifier" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="">-- Select from project users --</option>
+                            @foreach (var u in Model.AvailableUsers)
+                            {
+                                <option value="@u.Id">@u.UserName @(string.IsNullOrWhiteSpace(u.DisplayName) ? "" : $"({u.DisplayName})")</option>
+                            }
+                        </select>
+                        <input type="text" name="userIdentifierManual" placeholder="Or type username, email, or user GUID..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Permission</label>
+                    <div class="space-y-2">
+                        <select name="permissionKey" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="">-- Select from existing permissions --</option>
+                            @foreach (var p in Model.AvailablePermissions)
+                            {
+                                <option value="@p.Key">@p.Key @(p.ProjectId != Model.CurrentProject?.Id ? "(Global)" : "")</option>
+                            }
+                        </select>
+                        <input type="text" name="permissionKeyManual" placeholder="Or type permission key (e.g. orders.read)..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end pt-2">
+                <a2-button type="submit" variant="primary">Grant Direct Permission</a2-button>
+            </div>
+        </form>
+    </a2-card>
+
+    <!-- Filter & Search -->
+    <div class="flex items-center justify-between gap-4">
+        <form method="get" class="flex items-center gap-2 max-w-sm w-full">
+            <input type="text" name="q" value="@Model.Q" placeholder="Filter user or permission..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <a2-button type="submit" variant="secondary">Search</a2-button>
+            @if (!string.IsNullOrEmpty(Model.Q))
+            {
+                <a href="/admin/p/@Model.ProjectKey/user-permissions" class="text-xs text-gray-500 dark:text-gray-400 hover:underline">Clear</a>
+            }
+        </form>
+        <span class="text-xs text-gray-500 dark:text-gray-400">Total: <strong>@Model.Items.Count</strong> direct permissions</span>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-900/60">
+                <tr>
+                    <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">User</th>
+                    <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Permission Key</th>
+                    <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Granted At</th>
+                    <th class="px-6 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                @if (Model.Items.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                            No direct user permissions found. Use the form above to grant permissions directly to users.
+                        </td>
+                    </tr>
+                }
+                @foreach (var item in Model.Items)
+                {
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-6 py-3.5 font-medium text-gray-900 dark:text-gray-100">
+                            <a href="/admin/p/@Model.ProjectKey/users/detail?id=@item.UserId" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                @item.UserName @(string.IsNullOrWhiteSpace(item.DisplayName) ? "" : $"({item.DisplayName})")
+                            </a>
+                        </td>
+                        <td class="px-6 py-3.5 font-mono text-xs text-blue-700 dark:text-blue-400">
+                            <a href="/admin/p/@Model.ProjectKey/permissions/detail?key=@item.PermissionKey" class="hover:underline">
+                                @item.PermissionKey
+                            </a>
+                        </td>
+                        <td class="px-6 py-3.5 text-xs text-gray-500 dark:text-gray-400">
+                            @item.GrantedAtUtc.ToString("g")
+                        </td>
+                        <td class="px-6 py-3.5 text-right">
+                            <form method="post" asp-page-handler="Revoke" asp-route-userId="@item.UserId" asp-route-permissionKey="@item.PermissionKey" data-confirm="Revoke direct permission '@item.PermissionKey' from @item.UserName?" class="inline">
+                                <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline font-medium">Revoke</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -45,7 +45,7 @@ public abstract class AdminPageModel : PageModel
                 return false;
             }
 
-            if (!User.IsInRole("ProjectAdmin") && !User.IsInRole("Developer"))
+            if (!User.IsInRole("ProjectAdmin") && !User.IsInRole("Developer") && !User.IsInRole("GlobalAdmin"))
             {
                 Response.StatusCode = StatusCodes.Status404NotFound;
                 return false;

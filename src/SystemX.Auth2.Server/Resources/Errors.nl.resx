@@ -25,8 +25,80 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
   <data name="invalid_credentials" xml:space="preserve"><value>De gebruikersnaam of het wachtwoord is onjuist.</value></data>
-  <data name="locked_out" xml:space="preserve"><value>Dit account is geblokkeerd. Probeer het later opnieuw.</value></data>
-  <data name="password_too_short" xml:space="preserve"><value>Het wachtwoord moet minstens {0} tekens lang zijn.</value></data>
+  <data name="locked_out" xml:space="preserve"><value>Dit account is vergrendeld. Probeer het later opnieuw.</value></data>
+  <data name="two_factor_required" xml:space="preserve"><value>Een tweede factor is vereist.</value></data>
+  <data name="not_registered_in_project" xml:space="preserve"><value>U bent niet geregistreerd in dit project.</value></data>
+  <data name="project_not_found" xml:space="preserve"><value>Het project is niet gevonden.</value></data>
+  <data name="project_disabled" xml:space="preserve"><value>Dit project is uitgeschakeld.</value></data>
+  <data name="application_disabled" xml:space="preserve"><value>Deze applicatie is uitgeschakeld.</value></data>
+  <data name="access_denied" xml:space="preserve"><value>Toegang geweigerd.</value></data>
+  <data name="project_key_or_name_mismatch" xml:space="preserve"><value>De projectsleutel of applicatienaam komt niet overeen met de server.</value></data>
+  <data name="server_mode_mismatch" xml:space="preserve"><value>De client en de server gebruiken verschillende modi (enkelvoudig of multi-applicatie).</value></data>
+  <data name="password_too_short" xml:space="preserve"><value>Het wachtwoord moet minimaal {0} tekens lang zijn.</value></data>
+  <data name="password_too_long" xml:space="preserve"><value>Het wachtwoord mag niet langer zijn dan {0} tekens.</value></data>
+  <data name="password_requires_digit" xml:space="preserve"><value>Het wachtwoord moet een cijfer bevatten.</value></data>
+  <data name="password_requires_lower" xml:space="preserve"><value>Het wachtwoord moet een kleine letter bevatten.</value></data>
+  <data name="password_requires_upper" xml:space="preserve"><value>Het wachtwoord moet een hoofdletter bevatten.</value></data>
+  <data name="password_requires_non_alphanumeric" xml:space="preserve"><value>Het wachtwoord moet een speciaal teken bevatten.</value></data>
+  <data name="password_requires_unique_chars" xml:space="preserve"><value>Het wachtwoord moet minimaal {0} verschillende tekens bevatten.</value></data>
+  <data name="password_banned" xml:space="preserve"><value>Dit wachtwoord is niet toegestaan.</value></data>
+  <data name="password_reused" xml:space="preserve"><value>Dit wachtwoord is eerder gebruikt. Kies een nieuw wachtwoord.</value></data>
+  <data name="password_expired" xml:space="preserve"><value>Uw wachtwoord is verlopen. Gebruik 'Wachtwoord vergeten' om een nieuw wachtwoord te kiezen.</value></data>
+  <data name="invalid_user_name" xml:space="preserve"><value>De gebruikersnaam is ongeldig.</value></data>
+  <data name="invalid_email" xml:space="preserve"><value>Het e-mailadres is ongeldig.</value></data>
+  <data name="email_domain_not_allowed" xml:space="preserve"><value>E-mailadressen van dit domein zijn niet toegestaan.</value></data>
+  <data name="invalid_phone_number" xml:space="preserve"><value>Het telefoonnummer is ongeldig.</value></data>
+  <data name="user_not_in_project" xml:space="preserve"><value>De gebruiker behoort niet tot dit project.</value></data>
+  <data name="login_method_not_allowed" xml:space="preserve"><value>Deze manier van inloggen is niet toegestaan.</value></data>
+  <data name="registration_disabled" xml:space="preserve"><value>Registratie is gesloten.</value></data>
+  <data name="invalid_token" xml:space="preserve"><value>Het token ontbreekt of is ongeldig.</value></data>
+  <data name="insufficient_scope" xml:space="preserve"><value>Het token heeft niet de benodigde reikwijdte (scope).</value></data>
+  <data name="forbidden" xml:space="preserve"><value>U heeft geen toestemming om dit te doen.</value></data>
+  <data name="validation_failed" xml:space="preserve"><value>De invoer is ongeldig.</value></data>
+  <data name="not_found" xml:space="preserve"><value>Het record is niet gevonden.</value></data>
+  <data name="conflict" xml:space="preserve"><value>Het record is door iemand anders gewijzigd.</value></data>
+  <data name="rate_limited" xml:space="preserve"><value>Te veel verzoeken. Probeer het later opnieuw.</value></data>
+  <data name="invalid_otp" xml:space="preserve"><value>De code is onjuist of verlopen.</value></data>
+  <data name="ownership_proof_required" xml:space="preserve"><value>U moet aantonen dat u eigenaar bent van dit account voordat u lid kunt worden.</value></data>
+  <data name="sync_not_allowed" xml:space="preserve"><value>Synchronisatie is niet toegestaan voor deze applicatie.</value></data>
+  <data name="invalid_permission_key" xml:space="preserve"><value>Een machtigingssleutel is ongeldig.</value></data>
+  <data name="invalid_scope_name" xml:space="preserve"><value>Een scopenaam is ongeldig of gereserveerd.</value></data>
+  <data name="too_many_items" xml:space="preserve"><value>Er zijn te veel items in dit verzoek.</value></data>
+  <data name="invalid_redirect_uri" xml:space="preserve"><value>Het omleidingsadres (redirect URI) is niet toegestaan.</value></data>
+  <data name="server_error" xml:space="preserve"><value>Er is een onverwachte fout opgetreden.</value></data>
+  <data name="identity.DefaultError" xml:space="preserve"><value>Er is een onbekende fout opgetreden.</value></data>
+  <data name="identity.ConcurrencyFailure" xml:space="preserve"><value>Het record is door iemand anders gewijzigd.</value></data>
+  <data name="identity.PasswordMismatch" xml:space="preserve"><value>Het wachtwoord is onjuist.</value></data>
+  <data name="identity.InvalidToken" xml:space="preserve"><value>Het token is ongeldig.</value></data>
+  <data name="identity.RecoveryCodeRedemptionFailed" xml:space="preserve"><value>De herstelcode is ongeldig.</value></data>
+  <data name="identity.LoginAlreadyAssociated" xml:space="preserve"><value>Deze externe login is al gekoppeld aan een gebruiker.</value></data>
+  <data name="identity.DuplicateUserName" xml:space="preserve"><value>Deze gebruikersnaam is al in gebruik.</value></data>
   <data name="identity.DuplicateEmail" xml:space="preserve"><value>Dit e-mailadres is al in gebruik.</value></data>
+  <data name="identity.InvalidRoleName" xml:space="preserve"><value>De rolnaam is ongeldig.</value></data>
+  <data name="identity.DuplicateRoleName" xml:space="preserve"><value>Deze rolnaam is al in gebruik.</value></data>
+  <data name="identity.UserAlreadyHasPassword" xml:space="preserve"><value>De gebruiker heeft al een wachtwoord ingesteld.</value></data>
+  <data name="identity.UserLockoutNotEnabled" xml:space="preserve"><value>Vergrendeling is niet ingeschakeld voor deze gebruiker.</value></data>
+  <data name="identity.UserAlreadyInRole" xml:space="preserve"><value>De gebruiker heeft deze rol al.</value></data>
+  <data name="identity.UserNotInRole" xml:space="preserve"><value>De gebruiker heeft deze rol niet.</value></data>
+  <data name="email_not_confirmed" xml:space="preserve"><value>Bevestig uw e-mailadres voordat u inlogt.</value></data>
+  <data name="phone_not_confirmed" xml:space="preserve"><value>Bevestig uw telefoonnummer voordat u inlogt.</value></data>
+  <data name="two_factor_setup_required" xml:space="preserve"><value>Deze applicatie vereist tweeledige verificatie. Stel dit eerst in.</value></data>
+  <data name="grant_not_allowed" xml:space="preserve"><value>Deze methode om een token te verkrijgen is niet toegestaan voor deze applicatie.</value></data>
+  <data name="two_factor_not_enabled" xml:space="preserve"><value>Tweeledige verificatie is niet ingeschakeld.</value></data>
+  <data name="two_factor_not_allowed" xml:space="preserve"><value>Deze applicatie staat geen authenticator-apps toe.</value></data>
+  <data name="consent_required" xml:space="preserve"><value>U moet akkoord gaan voordat de applicatie kan doorgaan.</value></data>
+  <data name="external_email_exists_not_verified" xml:space="preserve"><value>Er bestaat al een account met dit e-mailadres, maar de provider heeft dit niet geverifieerd. Log in met uw gebruikelijke methode en koppel het account daar.</value></data>
+  <data name="external_registration_not_allowed" xml:space="preserve"><value>Nieuwe accounts kunnen niet worden aangemaakt met deze inlogmethode.</value></data>
+  <data name="external_provider_disabled" xml:space="preserve"><value>Deze inlogmethode is niet beschikbaar.</value></data>
+  <data name="external_claims_invalid" xml:space="preserve"><value>De inlogprovider heeft niet de benodigde gegevens verzonden.</value></data>
+  <data name="cannot_remove_last_login_method" xml:space="preserve"><value>U kunt uw laatste inlogmethode niet verwijderen.</value></data>
+  <data name="saml_response_invalid" xml:space="preserve"><value>Het SAML-inlogantwoord kon niet worden geaccepteerd.</value></data>
+  <data name="saml_replay_detected" xml:space="preserve"><value>Dit inlogantwoord is al eerder gebruikt.</value></data>
+  <data name="ldap_unavailable" xml:space="preserve"><value>De adreslijst is momenteel niet beschikbaar. Probeer het later opnieuw.</value></data>
+  <data name="ldap_account_disabled" xml:space="preserve"><value>Uw adreslijstaccount is uitgeschakeld.</value></data>
+  <data name="passkey_not_allowed" xml:space="preserve"><value>Toegangssleutels (passkeys) zijn niet toegestaan in deze applicatie.</value></data>
+  <data name="passkey_limit_reached" xml:space="preserve"><value>U heeft het maximale aantal toegangssleutels bereikt.</value></data>
+  <data name="passkey_blocked_authenticator" xml:space="preserve"><value>Dit type authenticatieapparaat is niet toegestaan.</value></data>
 </root>

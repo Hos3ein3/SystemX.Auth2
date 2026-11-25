@@ -35,6 +35,8 @@ public sealed class EffectiveSettings(ProjectSettings project, ClientApplication
 
     /// <summary>True when the confirmation email is sent right after registration: application, else project; always true when a confirmed email is required.</summary>
     public bool SendConfirmationEmail => Project.Email.RequireConfirmedEmail || (App?.SendConfirmationEmail ?? Project.Registration.SendConfirmationEmail);
+    /// <summary>True when the confirmation SMS is sent right after registration: application, else project; always true when a confirmed phone is required.</summary>
+    public bool SendConfirmationSMS => Project.Phone.RequireConfirmedPhone || (App?.SendConfirmationSMS ?? Project.Registration.SendConfirmationSMS);
     /// <summary>The email provider chosen for this request: application, else project. Null means "use the server default".</summary>
     public EmailProviderSettings? EmailProvider => Pick(App?.Messaging?.Email, Project.Messaging.Email);
     /// <summary>The SMS provider chosen for this request: application, else project. Null means "use the server default".</summary>

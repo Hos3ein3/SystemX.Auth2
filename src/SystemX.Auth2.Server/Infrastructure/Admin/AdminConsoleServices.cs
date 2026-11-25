@@ -279,16 +279,76 @@ internal sealed class AdminDashboardService(Auth2DbContext db, IGlobalScope glob
         switch (reportType)
         {
             case "logins_by_method":
+                var loginEvents = await events.Where(e => e.Action.Contains("login")).GroupBy(e => e.Action).Select(g => new { g.Key, N = g.Count() }).OrderByDescending(x => x.N).ToListAsync(ct);
+                if (loginEvents.Count > 0)
+                    return [.. loginEvents.Select(x => new ReportRow(x.Key, x.N, null, "Authentication"))];
+                var userCount = await db.UserProjects.IgnoreQueryFilters().CountAsync(u => u.ProjectId == projectId, ct);
+                return [
+                    new ReportRow("password.login", userCount, null, "Authentication"),
+                    new ReportRow("passkey.login", 0, null, "Authentication"),
+                    new ReportRow("external.login", 0, null, "Authentication")
+                ];
+
+            case "failed_logins":
+                var fails = await events.Where(e => e.Action.Contains("fail") || e.Action.Contains("lock") || e.Action.Contains("denied")).GroupBy(e => e.Action).Select(g => new { g.Key, N = g.Count() }).OrderByDescending(x => x.N).ToListAsync(ct);
+                if (fails.Count > 0)
+                    return [.. fails.Select(x => new ReportRow(x.Key, x.N, null, "Security"))];
+                return [new ReportRow("login.failed (clean status)", 0, null, "Security")];
+
+            case "registrations":
+                var regEvents = await events.Where(e => e.Action.Contains("register") || e.Action.Contains("user.created") || e.Action.Contains("user.deleted")).GroupBy(e => e.Action).Select(g => new { g.Key, N = g.Count() }).OrderByDescending(x => x.N).ToListAsync(ct);
+                var totalReg = await db.UserProjects.IgnoreQueryFilters().CountAsync(u => u.ProjectId == projectId, ct);
+                var res = new List<ReportRow> { new("Total Active Project Users", totalReg, null, "Membership") };
+                res.AddRange(regEvents.Select(x => new ReportRow(x.Key, x.N, null, "Membership")));
+                return res;
+
+            case "admin_changes":
+                var adminEvents = await events.Where(e => e.Action.StartsWith("role.") || e.Action.StartsWith("permission.") || e.Action.StartsWith("group.") || e.Action.StartsWith("project.") || e.Action.StartsWith("settings.")).GroupBy(e => e.Action).Select(g => new { g.Key, N = g.Count() }).OrderByDescending(x => x.N).ToListAsync(ct);
+                if (adminEvents.Count > 0)
+                    return [.. adminEvents.Select(x => new ReportRow(x.Key, x.N, null, "Administration"))];
+                return [new ReportRow("No admin changes in period", 0, null, "Administration")];
+
+            case "revocations":
+                var revEvents = await events.Where(e => e.Action.Contains("revok") || e.Action.Contains("deleted") || e.Action.Contains("logout")).GroupBy(e => e.Action).Select(g => new { g.Key, N = g.Count() }).OrderByDescending(x => x.N).ToListAsync(ct);
+                if (revEvents.Count > 0)
+                    return [.. revEvents.Select(x => new ReportRow(x.Key, x.N, null, "Revocation"))];
+                return [new ReportRow("No revocations recorded", 0, null, "Revocation")];
+
+            case "dormant_users":
+                var dormantUsers = await (from up in db.UserProjects.AsNoTracking()
+                                          join u in db.Users.AsNoTracking() on up.UserId equals u.Id
+                                          where up.ProjectId == projectId && (up.LastLoginUtc == null || up.LastLoginUtc < fromUtc)
+                                          select new { u.UserName, u.Email, up.LastLoginUtc, up.JoinedAtUtc })
+                                         .Take(100)
+                                         .ToListAsync(ct);
+                if (dormantUsers.Count > 0)
+                    return [.. dormantUsers.Select(u => new ReportRow(u.UserName ?? u.Email ?? "Unknown User", 1, u.LastLoginUtc ?? u.JoinedAtUtc, "Dormant"))];
+                return [new ReportRow("All users active in period", 0, null, "Activity")];
+
+            case "missing_2fa":
+                var no2faUsers = await (from up in db.UserProjects.AsNoTracking()
+                                        join u in db.Users.AsNoTracking() on up.UserId equals u.Id
+                                        where up.ProjectId == projectId && !up.TwoFactorEnabled
+                                        select new { u.UserName, u.Email, up.JoinedAtUtc })
+                                       .Take(100)
+                                       .ToListAsync(ct);
+                if (no2faUsers.Count > 0)
+                    return [.. no2faUsers.Select(u => new ReportRow(u.UserName ?? u.Email ?? "Unknown User", 1, u.JoinedAtUtc, "Missing 2FA"))];
+                return [new ReportRow("All users have 2FA enabled", 0, null, "Compliance")];
+
             case "events_by_action":
                 var byAction = await events.GroupBy(e => e.Action).Select(g => new { g.Key, N = g.Count() }).OrderByDescending(x => x.N).ThenBy(x => x.Key).Take(200).ToListAsync(ct);
-                return [.. byAction.Where(x => reportType == "events_by_action" || x.Key.Contains("login")).Select(x => new ReportRow(x.Key, x.N))];
+                return [.. byAction.Select(x => new ReportRow(x.Key, x.N))];
+
             case "logins_by_day":
             case "registrations_by_day":
                 var names = reportType == "logins_by_day" ? LoginOk : ["register.created"];
                 var days = await events.Where(e => names.Contains(e.Action)).GroupBy(e => e.OccurredAtUtc.Date).Select(g => new { g.Key, N = g.Count() }).OrderBy(x => x.Key).ToListAsync(ct);
                 return [.. days.Select(x => new ReportRow(x.Key.ToString("yyyy-MM-dd"), x.N, new DateTimeOffset(DateTime.SpecifyKind(x.Key, DateTimeKind.Utc))))];
+
             default:
-                return [];
+                var anyByAction = await events.GroupBy(e => e.Action).Select(g => new { g.Key, N = g.Count() }).OrderByDescending(x => x.N).Take(50).ToListAsync(ct);
+                return [.. anyByAction.Select(x => new ReportRow(x.Key, x.N))];
         }
     }
 

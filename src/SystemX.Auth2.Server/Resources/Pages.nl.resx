@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="common.save" xml:space="preserve"><value>Opslaan</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Annuleren</value></data>
+  <data name="common.back" xml:space="preserve"><value>Terug</value></data>
+  <data name="common.submit" xml:space="preserve"><value>Verzenden</value></data>
+  <data name="common.continue" xml:space="preserve"><value>Doorgaan</value></data>
+  <data name="common.back_to_login" xml:space="preserve"><value>Terug naar inloggen</value></data>
+  <data name="common.home" xml:space="preserve"><value>Terug naar startpagina</value></data>
+  <data name="common.loading" xml:space="preserve"><value>Laden...</value></data>
+  <data name="login.title" xml:space="preserve"><value>Inloggen</value></data>
+  <data name="login.subtitle" xml:space="preserve"><value>Voer uw gegevens in om toegang te krijgen tot uw account</value></data>
+  <data name="login.username_or_email" xml:space="preserve"><value>Gebruikersnaam of e-mailadres</value></data>
+  <data name="login.password" xml:space="preserve"><value>Wachtwoord</value></data>
+  <data name="login.remember_me" xml:space="preserve"><value>Onthoud mij</value></data>
+  <data name="login.forgot_password" xml:space="preserve"><value>Wachtwoord vergeten?</value></data>
+  <data name="login.sign_in_button" xml:space="preserve"><value>Inloggen</value></data>
+  <data name="login.dont_have_account" xml:space="preserve"><value>Nog geen account?</value></data>
+  <data name="login.sign_up_link" xml:space="preserve"><value>Maak er nu een aan</value></data>
+  <data name="login.or_continue_with" xml:space="preserve"><value>Of ga door met</value></data>
+  <data name="login.sign_in_with_passkey" xml:space="preserve"><value>Inloggen met Passkey</value></data>
+  <data name="register.title" xml:space="preserve"><value>Account aanmaken</value></data>
+  <data name="register.subtitle" xml:space="preserve"><value>Ga aan de slag met uw nieuwe account</value></data>
+  <data name="register.username" xml:space="preserve"><value>Gebruikersnaam</value></data>
+  <data name="register.email" xml:space="preserve"><value>E-mailadres</value></data>
+  <data name="register.phone" xml:space="preserve"><value>Telefoonnummer</value></data>
+  <data name="register.password" xml:space="preserve"><value>Wachtwoord</value></data>
+  <data name="register.confirm_password" xml:space="preserve"><value>Bevestig wachtwoord</value></data>
+  <data name="register.sign_up_button" xml:space="preserve"><value>Account aanmaken</value></data>
+  <data name="register.already_have_account" xml:space="preserve"><value>Heeft u al een account?</value></data>
+  <data name="register.sign_in_link" xml:space="preserve"><value>Inloggen</value></data>
+  <data name="register.register_with_passkey" xml:space="preserve"><value>Registreren met Passkey</value></data>
+  <data name="forgot_password.title" xml:space="preserve"><value>Wachtwoord vergeten?</value></data>
+  <data name="forgot_password.subtitle" xml:space="preserve"><value>Voer uw e-mailadres of gebruikersnaam in en we sturen u een herstellink</value></data>
+  <data name="forgot_password.login_field" xml:space="preserve"><value>Gebruikersnaam, e-mail of telefoon</value></data>
+  <data name="forgot_password.send_link" xml:space="preserve"><value>Verstuur herstellink</value></data>
+  <data name="forgot_password.sent_title" xml:space="preserve"><value>Herstellink verzonden</value></data>
+  <data name="forgot_password.sent_desc" xml:space="preserve"><value>Als er een account overeenkomt, hebben we instructies gestuurd om uw wachtwoord opnieuw in te stellen.</value></data>
+  <data name="reset_password.title" xml:space="preserve"><value>Wachtwoord opnieuw instellen</value></data>
+  <data name="reset_password.subtitle" xml:space="preserve"><value>Kies een nieuw veilig wachtwoord</value></data>
+  <data name="reset_password.new_password" xml:space="preserve"><value>Nieuw wachtwoord</value></data>
+  <data name="reset_password.confirm_password" xml:space="preserve"><value>Bevestig nieuw wachtwoord</value></data>
+  <data name="reset_password.update_button" xml:space="preserve"><value>Wachtwoord bijwerken</value></data>
+  <data name="change_password.title" xml:space="preserve"><value>Wachtwoord wijzigen</value></data>
+  <data name="change_password.subtitle" xml:space="preserve"><value>Werk uw accountwachtwoord bij</value></data>
+  <data name="change_password.current_password" xml:space="preserve"><value>Huidig wachtwoord</value></data>
+  <data name="change_password.new_password" xml:space="preserve"><value>Nieuw wachtwoord</value></data>
+  <data name="change_password.confirm_password" xml:space="preserve"><value>Bevestig nieuw wachtwoord</value></data>
+  <data name="change_password.save_button" xml:space="preserve"><value>Wachtwoord wijzigen</value></data>
+  <data name="change_password.success" xml:space="preserve"><value>Uw wachtwoord is succesvol gewijzigd.</value></data>
+  <data name="change_username.title" xml:space="preserve"><value>Gebruikersnaam wijzigen</value></data>
+  <data name="change_username.subtitle" xml:space="preserve"><value>Werk uw openbare gebruikersnaam bij</value></data>
+  <data name="change_username.current_username" xml:space="preserve"><value>Huidige gebruikersnaam</value></data>
+  <data name="change_username.new_username" xml:space="preserve"><value>Nieuwe gebruikersnaam</value></data>
+  <data name="change_username.password_confirm" xml:space="preserve"><value>Huidig wachtwoord</value></data>
+  <data name="change_username.save_button" xml:space="preserve"><value>Gebruikersnaam bijwerken</value></data>
+  <data name="change_username.success" xml:space="preserve"><value>Uw gebruikersnaam is succesvol bijgewerkt.</value></data>
+  <data name="change_email.title" xml:space="preserve"><value>E-mailadres wijzigen</value></data>
+  <data name="change_email.subtitle" xml:space="preserve"><value>Werk het e-mailadres van uw account bij</value></data>
+  <data name="change_email.current_email" xml:space="preserve"><value>Huidig e-mailadres</value></data>
+  <data name="change_email.new_email" xml:space="preserve"><value>Nieuw e-mailadres</value></data>
+  <data name="change_email.password_confirm" xml:space="preserve"><value>Huidig wachtwoord</value></data>
+  <data name="change_email.send_link" xml:space="preserve"><value>Bevestigingslink versturen</value></data>
+  <data name="change_email.sent_title" xml:space="preserve"><value>Bevestigingsmail verzonden</value></data>
+  <data name="change_email.sent_desc" xml:space="preserve"><value>Er is een bevestigingslink naar uw nieuwe e-mailadres gestuurd. Klik op de link om de wijziging te voltooien.</value></data>
+  <data name="change_email.success" xml:space="preserve"><value>Uw e-mailadres is succesvol bijgewerkt en bevestigd.</value></data>
+  <data name="change_phone.title" xml:space="preserve"><value>Telefoonnummer wijzigen</value></data>
+  <data name="change_phone.subtitle" xml:space="preserve"><value>Werk uw mobiele telefoonnummer bij</value></data>
+  <data name="change_phone.current_phone" xml:space="preserve"><value>Huidig nummer</value></data>
+  <data name="change_phone.new_phone" xml:space="preserve"><value>Nieuw telefoonnummer</value></data>
+  <data name="change_phone.password_confirm" xml:space="preserve"><value>Huidig wachtwoord</value></data>
+  <data name="change_phone.send_code" xml:space="preserve"><value>Verificatiecode verzenden</value></data>
+  <data name="change_phone.code_sent" xml:space="preserve"><value>Voer verificatiecode in</value></data>
+  <data name="change_phone.code_sent_desc" xml:space="preserve"><value>We hebben een verificatiecode naar uw nieuwe nummer verzonden.</value></data>
+  <data name="change_phone.verification_code" xml:space="preserve"><value>Verificatiecode</value></data>
+  <data name="change_phone.verify_button" xml:space="preserve"><value>Nummer verifiëren en opslaan</value></data>
+  <data name="change_phone.success" xml:space="preserve"><value>Uw telefoonnummer is succesvol bijgewerkt en geverifieerd.</value></data>
+  <data name="confirm_email.title" xml:space="preserve"><value>E-mail bevestigen</value></data>
+  <data name="confirm_email.success" xml:space="preserve"><value>Uw e-mailadres is bevestigd. U kunt nu inloggen.</value></data>
+  <data name="confirm_phone.title" xml:space="preserve"><value>Telefoonnummer bevestigen</value></data>
+  <data name="confirm_phone.success" xml:space="preserve"><value>Uw telefoonnummer is bevestigd.</value></data>
+  <data name="two_factor.title" xml:space="preserve"><value>Tweeledige verificatie</value></data>
+  <data name="two_factor.subtitle" xml:space="preserve"><value>Voer de authenticatiecode in van uw app of apparaat</value></data>
+  <data name="two_factor.code" xml:space="preserve"><value>Beveiligingscode</value></data>
+  <data name="two_factor.verify_button" xml:space="preserve"><value>Verifiëren</value></data>
+  <data name="two_factor.use_recovery_code" xml:space="preserve"><value>Gebruik een herstelcode</value></data>
+  <data name="two_factor.recovery_title" xml:space="preserve"><value>Tweeledig herstel</value></data>
+  <data name="two_factor.recovery_subtitle" xml:space="preserve"><value>Voer een van uw opgeslagen herstelcodes in</value></data>
+  <data name="logout.title" xml:space="preserve"><value>Uitloggen</value></data>
+  <data name="logout.confirm" xml:space="preserve"><value>Weet u zeker dat u wilt uitloggen?</value></data>
+  <data name="logout.button" xml:space="preserve"><value>Ja, uitloggen</value></data>
+  <data name="lockout.title" xml:space="preserve"><value>Account tijdelijk vergrendeld</value></data>
+  <data name="lockout.desc" xml:space="preserve"><value>Dit account is tijdelijk vergrendeld vanwege meerdere mislukte inlogpogingen. Probeer het later opnieuw.</value></data>
+  <data name="access_denied.title" xml:space="preserve"><value>Toegang geweigerd</value></data>
+  <data name="access_denied.desc" xml:space="preserve"><value>U heeft geen toestemming om de opgevraagde bron te openen.</value></data>
+  <data name="consent.title" xml:space="preserve"><value>Applicatie-autorisatie</value></data>
+  <data name="consent.subtitle" xml:space="preserve"><value>De applicatie vraagt toegang tot uw account</value></data>
+  <data name="consent.allow" xml:space="preserve"><value>Autoriseren</value></data>
+  <data name="consent.deny" xml:space="preserve"><value>Weigeren</value></data>
+  <data name="join_project.title" xml:space="preserve"><value>Deelnemen aan project</value></data>
+  <data name="join_project.confirm" xml:space="preserve"><value>Deelnemen aan dit project</value></data>
+</root>

@@ -12,43 +12,11 @@ namespace SystemX.Auth2.Samples.Mvc.Controllers;
 /// </summary>
 public class AccountController(ICurrentUser currentUser, ICurrentClient currentClient) : Controller
 {
+    /// <summary>Old link or bookmark: the sign-in page is on the Auth2 server (hosted UI), so go there.</summary>
     [HttpGet]
     [AllowAnonymous]
-    public IActionResult Login(string? returnUrl = null)
-    {
-        if (User.Identity?.IsAuthenticated == true) return LocalRedirect(SafeReturnUrl(returnUrl));
-        return View(new LoginViewModel { ReturnUrl = returnUrl });
-    }
-
-    /// <summary>Self UI: this app collects the password and sends it to the Auth2 server; the package signs the cookie in.</summary>
-    [HttpPost]
-    [AllowAnonymous]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginViewModel model, [FromServices] IAuth2WebService web, CancellationToken ct)
-    {
-        if (!ModelState.IsValid) return View(model);
-        var result = await web.LoginAsync(HttpContext, new LoginRequest(model.Login, model.Password), model.RememberMe, ct);
-        if (!result.IsSuccess)
-        {
-            ModelState.AddModelError("", result.Error!.Code is "invalid_credentials" ? "The user name or password is wrong." : $"Sign-in failed ({result.Error.Code}).");
-            return View(model);
-        }
-        if (result.Value!.TwoFactorRequired)
-        {
-            ModelState.AddModelError("", "This account needs a two-factor code. The sample does not show that step; use the hosted UI (.UseHostedUi()) for it.");
-            return View(model);
-        }
-        return LocalRedirect(SafeReturnUrl(model.ReturnUrl));
-    }
-
-    [HttpPost]
-    [Authorize]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout([FromServices] IAuth2WebService web, string? returnUrl = null, CancellationToken ct = default)
-    {
-        await web.LogoutAsync(HttpContext, ct);
-        return LocalRedirect(SafeReturnUrl(returnUrl));
-    }
+    public IActionResult Login(string? returnUrl = null) =>
+        Redirect("/auth2/login?returnUrl=" + Uri.EscapeDataString(SafeReturnUrl(returnUrl)));
 
     private string SafeReturnUrl(string? returnUrl) =>
         !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? returnUrl : "/";

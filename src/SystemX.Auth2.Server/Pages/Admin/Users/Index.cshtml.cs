@@ -26,13 +26,13 @@ public sealed class IndexModel : AdminPageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostLockAsync(Guid id)
+    public async Task<IActionResult> OnPostLockAsync(Guid id, DateTimeOffset? untilUtc)
     {
         if (!await AuthorizeAdminAsync()) return Page();
         var userSvc = Svc<IAdminUserService>();
-        var result = await userSvc.LockAsync(id, null, HttpContext.RequestAborted);
+        var result = await userSvc.LockAsync(id, untilUtc, HttpContext.RequestAborted);
         if (!result.Succeeded) TempData["Error"] = "Failed to lock user.";
-        else TempData["Success"] = "User locked successfully.";
+        else TempData["Success"] = untilUtc.HasValue ? $"User locked until {untilUtc.Value:g} UTC." : "User locked indefinitely.";
         return RedirectToPage(new { projectKey = ProjectKey });
     }
 

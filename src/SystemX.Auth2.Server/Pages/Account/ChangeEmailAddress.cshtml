@@ -1,2 +1,92 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.ChangeEmailAddressModel
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = Loc["change_email.title"];
+    ViewData["Subtitle"] = Loc["change_email.subtitle"];
+}
+
+@if (Model.Changed)
+{
+    <div class="text-center space-y-4">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+            <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+        </div>
+        <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">@Loc["change_email.title"]</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            @Loc["change_email.success"]
+        </p>
+        <div class="pt-4">
+            <a2-link-button href="@(Model.SafeReturnUrl() ?? "/")" variant="primary" class="w-full">
+                @Loc["common.continue"]
+            </a2-link-button>
+        </div>
+    </div>
+}
+else if (Model.EmailSent)
+{
+    <div class="text-center space-y-4">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
+            <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+        </div>
+        <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">@Loc["change_email.sent_title"]</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            @Loc["change_email.sent_desc"]
+        </p>
+        <div class="pt-4">
+            <a2-link-button href="@(Model.SafeReturnUrl() ?? "/")" variant="secondary" class="w-full">
+                @Loc["common.continue"]
+            </a2-link-button>
+        </div>
+    </div>
+}
+else
+{
+    <form method="post" class="space-y-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReturnUrl" />
+        <input type="hidden" asp-for="ClientId" />
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <a2-alert variant="danger">
+                @Model.ErrorMessage
+            </a2-alert>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.CurrentEmail))
+        {
+            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm">
+                <span class="block text-xs font-medium text-gray-500 dark:text-gray-400">@Loc["change_email.current_email"]</span>
+                <span class="font-mono font-semibold text-gray-900 dark:text-gray-100">@Model.CurrentEmail</span>
+            </div>
+        }
+
+        <a2-field label="@Loc["change_email.new_email"]" required="true" for="Input_NewEmail">
+            <a2-input id="Input_NewEmail" name="Input.NewEmail" type="email" value="@Model.Input.NewEmail" required="true" autocomplete="email" placeholder="new.email@example.com" />
+        </a2-field>
+
+        @if (Model.PasswordRequired)
+        {
+            <a2-field label="@Loc["change_email.password_confirm"]" required="true" for="Input_CurrentPassword" hint="Confirm your password to authorize sending the confirmation link.">
+                <a2-password id="Input_CurrentPassword" name="Input.CurrentPassword" required="true" autocomplete="current-password" placeholder="••••••••••••" />
+            </a2-field>
+        }
+
+        <div class="pt-2">
+            <a2-button type="submit" variant="primary" class="w-full">
+                @Loc["change_email.send_link"]
+            </a2-button>
+        </div>
+
+        <div class="mt-4 text-center text-sm">
+            <a href="@(Model.SafeReturnUrl() ?? "/")" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">
+                @Loc["common.back"]
+            </a>
+        </div>
+    </form>
+}

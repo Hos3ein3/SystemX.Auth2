@@ -2,8 +2,8 @@
 @model SystemX.Auth2.Server.Pages.Account.LoginModel
 @{
     Layout = "_LayoutAuth";
-    ViewData["Title"] = "Sign In";
-    ViewData["Subtitle"] = "Sign in to your account to continue";
+    ViewData["Title"] = Loc["login.title"];
+    ViewData["Subtitle"] = Loc["login.subtitle"];
 }
 
 <form method="post" class="space-y-4">
@@ -11,35 +11,115 @@
     <input type="hidden" asp-for="ReturnUrl" />
     <input type="hidden" asp-for="ClientId" />
 
-    <a2-field label="Email or Username" required="true" for="Input_Login">
+    <a2-field label="@Loc["login.username_or_email"]" required="true" for="Input_Login">
         <a2-input id="Input_Login" name="Input.Login" value="@Model.Input?.Login" placeholder="you@example.com" autocomplete="username" required="true" />
     </a2-field>
 
-    <a2-field label="Password" required="true" for="Input_Password">
-        <a2-password id="Input_Password" name="Input.Password" placeholder="••••••••••••" required="true" autocomplete="current-password" />
+    <a2-field label="@Loc["login.password"]" required="true" for="Input_Password">
+        <a2-password id="Input_Password" name="Input.Password" placeholder="••••••••••••" required="true" autocomplete="current-password"></a2-password>
     </a2-field>
 
     <div class="flex items-center justify-between text-sm">
         <div class="flex items-center">
             <input type="checkbox" id="rememberMe" name="RememberMe" class="h-4 w-4 rounded border-gray-300 text-[var(--a2-color-primary,#2563eb)] focus:ring-[var(--a2-color-primary,#2563eb)]" />
-            <label for="rememberMe" class="ml-2 block text-sm text-[var(--a2-color-muted,#6b7280)]">Remember me</label>
+            <label for="rememberMe" class="ml-2 block text-sm text-[var(--a2-color-muted,#6b7280)] dark:text-gray-400">@Loc["login.remember_me"]</label>
         </div>
         <div>
-            <a href="/Account/ForgotPassword?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">Forgot password?</a>
+            <a href="/Account/ForgotPassword?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">@Loc["login.forgot_password"]</a>
         </div>
     </div>
 
     <div>
-        <a2-button type="submit" variant="primary" class="w-full">Sign in</a2-button>
+        <a2-button type="submit" variant="primary" class="w-full">@Loc["login.sign_in_button"]</a2-button>
     </div>
+
+    @if (Model.EnabledExternalProviders.Count > 0 || Model.ShowPasskeyLogin)
+    {
+        <div class="relative my-5">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+            </div>
+            <div class="relative flex justify-center text-xs uppercase">
+                <span class="bg-white dark:bg-gray-800 px-3 text-gray-500 dark:text-gray-400 font-medium">@Loc["login.or_continue_with"]</span>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            @if (Model.ShowPasskeyLogin)
+            {
+                <a href="/Account/LoginPasskey?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <svg class="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                    <span>@Loc["login.sign_in_with_passkey"]</span>
+                </a>
+            }
+
+            @foreach (var p in Model.EnabledExternalProviders)
+            {
+                <form method="post" action="/Account/External/Challenge" class="w-full">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Provider" value="@p.Name" />
+                    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                    <input type="hidden" name="ClientId" value="@Model.ClientId" />
+                    <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        @if (p.Name.Contains("google", StringComparison.OrdinalIgnoreCase) || p.Type.ToString().Contains("Google", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <svg class="h-4 w-4" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                            </svg>
+                        }
+                        else if (p.Name.Contains("github", StringComparison.OrdinalIgnoreCase) || p.Type.ToString().Contains("GitHub", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                        else if (p.Name.Contains("microsoft", StringComparison.OrdinalIgnoreCase) || p.Type.ToString().Contains("Microsoft", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <svg class="h-4 w-4" viewBox="0 0 23 23">
+                                <path fill="#f35325" d="M1 1h10v10H1z"/>
+                                <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                                <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                                <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        }
+                        <span>Continue with @p.DisplayName</span>
+                    </button>
+                </form>
+            }
+        </div>
+    }
 
     @if (Model.ShowRegisterLink)
     {
         <div class="mt-6 text-center text-sm">
-            <span class="text-[var(--a2-color-muted,#6b7280)]">Don't have an account?</span>
-            <a href="/Account/Register?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline ml-1">Create an account</a>
+            <span class="text-[var(--a2-color-muted,#6b7280)] dark:text-gray-400">@Loc["login.dont_have_account"]</span>
+            <a href="/Account/Register?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline ml-1">@Loc["login.sign_up_link"]</a>
         </div>
     }
+
+    <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <span>Language / زبان:</span>
+        <select data-culture-select class="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 py-1 px-2 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            <!option value="en" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "en" ? "selected" : "")>English (EN)</!option>
+            <!option value="fa" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "fa" ? "selected" : "")>فارسی (FA)</!option>
+            <!option value="nl" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "nl" ? "selected" : "")>Nederlands (NL)</!option>
+            <!option value="it" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "it" ? "selected" : "")>Italiano (IT)</!option>
+            <!option value="de" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de" ? "selected" : "")>Deutsch (DE)</!option>
+            <!option value="es" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "es" ? "selected" : "")>Español (ES)</!option>
+            <!option value="fr" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "fr" ? "selected" : "")>Français (FR)</!option>
+        </select>
+    </div>
 </form>
 
 @if (Model.ShowDeveloperModal)

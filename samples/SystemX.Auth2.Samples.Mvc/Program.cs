@@ -12,11 +12,10 @@ var auth2Section = builder.Configuration.GetSection("Auth2");
 builder.Services
     .AddAuth2Client(auth2Section)
     .ServerWithMultiProject(builder.Configuration["Auth2:ProjectKey"] ?? "sample-project")
-    .UseSelfUi()   // this app shows its own login page (Views/Account/Login); use .UseHostedUi() instead to sign in on the Auth2 server pages
+    .UseHostedUi()   // sign in and out on the Auth2 server pages (/auth2/login and /auth2/logout); use .UseSelfUi() for your own form
     .UseCookieAuthentication(o =>
     {
         o.AccessMode = AccessLoadMode.OnSignIn;
-        o.LoginPath = "/Account/Login";
         o.AccessDeniedPath = "/Account/AccessDenied";
     })
     .UseApiAuthentication()
@@ -28,7 +27,7 @@ builder.Services
         o.PermissionList =
         [
             new("orders.read", "Read Orders", "Allows viewing customer orders", "Orders"),
-            new("orders.write", "Write Orders", "Allows creating and updating customer orders", "Orders"),
+
             new("reports.read", "Read Reports", "Allows generating and reading business reports", "Reports")
         ];
         o.AssembliesToScan = [typeof(Program).Assembly];

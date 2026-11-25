@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="required" xml:space="preserve"><value>{0} è obbligatorio.</value></data>
+  <data name="too_short" xml:space="preserve"><value>{0} deve contenere almeno {1} caratteri.</value></data>
+  <data name="too_long" xml:space="preserve"><value>{0} non può superare {1} caratteri.</value></data>
+  <data name="length_between" xml:space="preserve"><value>{0} deve essere compreso tra {1} e {2} caratteri.</value></data>
+  <data name="invalid_format" xml:space="preserve"><value>Il formato di {0} non è valido.</value></data>
+  <data name="invalid_email" xml:space="preserve"><value>{0} non è un indirizzo email valido.</value></data>
+  <data name="invalid_phone" xml:space="preserve"><value>{0} non è un numero di telefono valido.</value></data>
+  <data name="invalid_url" xml:space="preserve"><value>{0} non è un URL valido.</value></data>
+  <data name="passwords_mismatch" xml:space="preserve"><value>{0} e {1} non corrispondono.</value></data>
+  <data name="range_between" xml:space="preserve"><value>{0} deve essere compreso tra {1} e {2}.</value></data>
+  <data name="min_value" xml:space="preserve"><value>{0} deve essere almeno {1}.</value></data>
+  <data name="max_value" xml:space="preserve"><value>{0} non può essere maggiore di {1}.</value></data>
+  <data name="unique_chars" xml:space="preserve"><value>{0} deve contenere almeno {1} caratteri distinti.</value></data>
+  <data name="already_taken" xml:space="preserve"><value>{0} è già in uso.</value></data>
+  <data name="not_found" xml:space="preserve"><value>{0} non è stato trovato.</value></data>
+  <data name="invalid_choice" xml:space="preserve"><value>{0} non è un'opzione valida.</value></data>
+  <data name="must_accept" xml:space="preserve"><value>È necessario accettare {0}.</value></data>
+  <data name="alphanumeric" xml:space="preserve"><value>{0} può contenere solo lettere e numeri.</value></data>
+  <data name="digits_only" xml:space="preserve"><value>{0} può contenere solo cifre.</value></data>
+  <data name="invalid_code" xml:space="preserve"><value>{0} è un codice non valido.</value></data>
+</root>

@@ -3,89 +3,563 @@
 @{
     Layout = "_LayoutAdmin";
     ViewData["Title"] = $"Settings - {Model.CurrentProject?.Name}";
+    var isGlobal = Model.IsGlobalAdmin;
 }
 
-<div class="max-w-4xl mx-auto space-y-6">
-    <div class="flex items-center justify-between">
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Project Configuration</h1>
-            <p class="mt-1 text-sm text-gray-500">Configure registration, security policies, and defaults for @Model.CurrentProject?.Name.</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Project Configuration</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Comprehensive security policies, user identifiers, token lifetimes, and identity rules for <span class="font-semibold text-gray-800 dark:text-gray-200">@Model.CurrentProject?.Name</span>.
+            </p>
         </div>
-        <span class="text-xs text-gray-500 font-mono">Settings Version: @Model.SettingsVersion</span>
+        <div class="flex items-center space-x-2">
+            @if (isGlobal)
+            {
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    Developer / Global Admin
+                </span>
+            }
+            else
+            {
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                    Project Admin
+                </span>
+            }
+            <span class="text-xs text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-700">
+                v@(Model.SettingsVersion)
+            </span>
+        </div>
     </div>
+
+    @if (!isGlobal)
+    {
+        <a2-alert variant="info">
+            You are signed in with <strong>Project Administrator</strong> permissions. Settings marked with <span class="font-mono text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200 px-1.5 py-0.5 rounded">Global Only</span> are governed by global policies and can only be modified by a Global Admin or Developer.
+        </a2-alert>
+    }
 
     <form method="post" class="space-y-6">
         <input type="hidden" name="FormVersion" value="@Model.FormVersion" />
 
-        <!-- Localization & Branding Basic -->
-        <a2-card title="General & Support">
+        <!-- 1. General, Support & Localization -->
+        <a2-card title="General, Support & Localization">
             <div class="space-y-4">
-                <a2-field label="Brand Display Name" hint="Shown on login header and consent pages.">
-                    <a2-input name="InputSettings.Localization.BrandName" value="@Model.InputSettings.Localization.BrandName" placeholder="@Model.CurrentProject?.Name" />
-                </a2-field>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a2-field label="Brand Display Name" hint="Shown on login header, emails, and consent screens.">
+                        <a2-input name="InputSettings.Localization.BrandName" value="@Model.InputSettings.Localization.BrandName" placeholder="@Model.CurrentProject?.Name" />
+                    </a2-field>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <a2-field label="Default Culture">
+                    <a2-field label="Support Contact Email" hint="Public contact email for help requests.">
+                        <a2-input name="InputSettings.Localization.SupportEmail" type="email" value="@Model.InputSettings.Localization.SupportEmail" placeholder="support@example.com" />
+                    </a2-field>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a2-field label="Default Culture" hint="Primary locale (e.g. en, fa, de, fr).">
                         <a2-input name="InputSettings.Localization.DefaultCulture" value="@Model.InputSettings.Localization.DefaultCulture" placeholder="en" />
                     </a2-field>
 
-                    <a2-field label="Support Contact Email">
-                        <a2-input name="InputSettings.Localization.SupportEmail" type="email" value="@Model.InputSettings.Localization.SupportEmail" placeholder="support@example.com" />
+                    <a2-field label="Supported Cultures" hint="Comma-separated list of enabled languages.">
+                        <a2-input name="SupportedCulturesText" value="@Model.SupportedCulturesText" placeholder="en, fa, de, fr" />
+                    </a2-field>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <a2-field label="Credential Scope" hint="Determines whether user accounts are isolated to this project or shared globally.">
+                        <select name="InputSettings.CredentialScope" disabled="@(!isGlobal)" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:opacity-60">
+                            <option value="" selected="@(Model.InputSettings.CredentialScope == null ? "selected" : null)">Default (Inherit from Server Options)</option>
+                            <option value="Shared" selected="@(Model.InputSettings.CredentialScope == SystemX.Auth2.Contracts.Enums.CredentialScope.Shared ? "selected" : null)">Shared (Credentials shared across projects)</option>
+                            <option value="PerProject" selected="@(Model.InputSettings.CredentialScope == SystemX.Auth2.Contracts.Enums.CredentialScope.PerProject ? "selected" : null)">Per-Project (Isolated credentials)</option>
+                        </select>
                     </a2-field>
                 </div>
             </div>
         </a2-card>
 
-        <!-- Registration & Join Mode -->
-        <a2-card title="Registration & Membership">
+        <!-- 2. User Names & Registration -->
+        <a2-card title="User Names & Self-Registration">
             <div class="space-y-4">
-                <a2-checkbox name="InputSettings.Registration.RegistrationEnabled" checked="@Model.InputSettings.Registration.RegistrationEnabled" label="Enable self-service registration" description="Allows users to register for an account from the login page." />
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a2-field label="Username Minimum Length">
+                        <a2-input name="InputSettings.UserName.MinLength" type="number" value="@Model.InputSettings.UserName.MinLength.ToString()" />
+                    </a2-field>
 
-                <a2-field label="Join Mode" hint="Controls how existing accounts can access this project.">
-                    <select name="InputSettings.Registration.JoinMode" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="AutoJoin" selected="@(Model.InputSettings.Registration.JoinMode == SystemX.Auth2.Server.Domain.Settings.JoinMode.AutoJoin ? "selected" : null)">AutoJoin (Users can self-join with verification)</option>
-                        <option value="InviteOnly" selected="@(Model.InputSettings.Registration.JoinMode == SystemX.Auth2.Server.Domain.Settings.JoinMode.InviteOnly ? "selected" : null)">Invite Only (Admin invitation required)</option>
-                        <option value="Closed" selected="@(Model.InputSettings.Registration.JoinMode == SystemX.Auth2.Server.Domain.Settings.JoinMode.Closed ? "selected" : null)">Closed (No new members permitted)</option>
-                    </select>
-                </a2-field>
+                    <a2-field label="Username Maximum Length">
+                        <a2-input name="InputSettings.UserName.MaxLength" type="number" value="@Model.InputSettings.UserName.MaxLength.ToString()" />
+                    </a2-field>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a2-field label="Username Allowed Characters (Regex)" hint="Validated with safety timeout to prevent ReDoS.">
+                        <a2-input name="InputSettings.UserName.AllowedCharacters" value="@Model.InputSettings.UserName.AllowedCharacters" />
+                    </a2-field>
+
+                    <div class="pt-6">
+                        <a2-checkbox name="InputSettings.UserName.RequireUnique" checked="@Model.InputSettings.UserName.RequireUnique" label="Require Unique Usernames" description="Enforce uniqueness of usernames within this project context." />
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                    <a2-checkbox name="InputSettings.Registration.RegistrationEnabled" checked="@Model.InputSettings.Registration.RegistrationEnabled" label="Enable Public Self-Registration" description="Allow new visitors to register an account from the hosted login page." />
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <a2-field label="Membership Join Mode" hint="Governs access for existing user accounts.">
+                            <select name="InputSettings.Registration.JoinMode" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="AutoJoin" selected="@(Model.InputSettings.Registration.JoinMode == SystemX.Auth2.Server.Domain.Settings.JoinMode.AutoJoin ? "selected" : null)">AutoJoin (Users can self-join with verification)</option>
+                                <option value="InviteOnly" selected="@(Model.InputSettings.Registration.JoinMode == SystemX.Auth2.Server.Domain.Settings.JoinMode.InviteOnly ? "selected" : null)">Invite Only (Admin invitation required)</option>
+                                <option value="Closed" selected="@(Model.InputSettings.Registration.JoinMode == SystemX.Auth2.Server.Domain.Settings.JoinMode.Closed ? "selected" : null)">Closed (No new members permitted)</option>
+                            </select>
+                        </a2-field>
+
+                        <div class="pt-6">
+                            <a2-checkbox name="InputSettings.Registration.LoginRequiredAfterRegister" checked="@Model.InputSettings.Registration.LoginRequiredAfterRegister" label="Require Sign-in After Register" description="User must enter credentials after successful registration." />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <a2-checkbox name="InputSettings.Registration.SendConfirmationEmail" checked="@Model.InputSettings.Registration.SendConfirmationEmail" label="Send Confirmation Email on Register" description="Automatically send an email verification link to newly registered users." />
+                        <a2-checkbox name="InputSettings.Registration.SendConfirmationSMS" checked="@Model.InputSettings.Registration.SendConfirmationSMS" label="Send Confirmation SMS on Register" description="Automatically send a phone verification OTP code when registered with a phone number." />
+                    </div>
+
+                    <!-- Default Rights for New Members (Global Only) -->
+                    <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Default Rights for New Members</h4>
+                                    <span class="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 text-xs font-medium text-purple-800 dark:text-purple-300">Global Admin Only</span>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Roles, groups, and permissions automatically assigned to every user who self-registers or joins this project.
+                                </p>
+                            </div>
+                        </div>
+
+                        @if (!Model.IsGlobalAdmin)
+                        {
+                            <div class="rounded-md bg-amber-50 dark:bg-amber-950/40 p-3 mb-3 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                                Only Global Administrators can configure automatic roles, groups, and permissions. These options are view-only.
+                            </div>
+                        }
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                            <!-- Assigned Roles -->
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                        Assigned Roles (<span id="roles-count">@Model.SelectedAssignedRoles.Count</span>)
+                                    </label>
+                                </div>
+                                <div class="relative">
+                                    <input type="text" placeholder="Search roles..." data-multiselect-search="assigned-roles-list" class="w-full text-xs rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                                <div id="assigned-roles-list" data-multiselect-list data-count-target="roles-count" class="max-h-56 overflow-y-auto rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-2 space-y-1">
+                                    @if (Model.AvailableRoles.Count == 0)
+                                    {
+                                        <div class="text-xs text-gray-400 py-2 text-center">No available roles</div>
+                                    }
+                                    @foreach (var role in Model.AvailableRoles)
+                                    {
+                                        var isChecked = Model.SelectedAssignedRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
+                                        <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 p-1 rounded cursor-pointer multi-select-item" data-search="@role">
+                                            <input type="checkbox" name="SelectedAssignedRoles" value="@role" checked="@(isChecked ? "checked" : null)" disabled="@(!Model.IsGlobalAdmin ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                            <span class="font-medium font-mono truncate">@role</span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Assigned Groups -->
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                        Assigned Groups (<span id="groups-count">@Model.SelectedAssignedGroups.Count</span>)
+                                    </label>
+                                </div>
+                                <div class="relative">
+                                    <input type="text" placeholder="Search groups..." data-multiselect-search="assigned-groups-list" class="w-full text-xs rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                                <div id="assigned-groups-list" data-multiselect-list data-count-target="groups-count" class="max-h-56 overflow-y-auto rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-2 space-y-1">
+                                    @if (Model.AvailableGroups.Count == 0)
+                                    {
+                                        <div class="text-xs text-gray-400 py-2 text-center">No available groups</div>
+                                    }
+                                    @foreach (var group in Model.AvailableGroups)
+                                    {
+                                        var isChecked = Model.SelectedAssignedGroups.Contains(group, StringComparer.OrdinalIgnoreCase);
+                                        <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 p-1 rounded cursor-pointer multi-select-item" data-search="@group">
+                                            <input type="checkbox" name="SelectedAssignedGroups" value="@group" checked="@(isChecked ? "checked" : null)" disabled="@(!Model.IsGlobalAdmin ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                            <span class="font-medium font-mono truncate">@group</span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Assigned Permissions -->
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                        Assigned Permissions (<span id="perms-count">@Model.SelectedAssignedPermissions.Count</span>)
+                                    </label>
+                                </div>
+                                <div class="relative">
+                                    <input type="text" placeholder="Search permissions..." data-multiselect-search="assigned-perms-list" class="w-full text-xs rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                                <div id="assigned-perms-list" data-multiselect-list data-count-target="perms-count" class="max-h-56 overflow-y-auto rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-2 space-y-1">
+                                    @if (Model.AvailablePermissions.Count == 0)
+                                    {
+                                        <div class="text-xs text-gray-400 py-2 text-center">No available permissions</div>
+                                    }
+                                    @foreach (var perm in Model.AvailablePermissions)
+                                    {
+                                        var isChecked = Model.SelectedAssignedPermissions.Contains(perm, StringComparer.OrdinalIgnoreCase);
+                                        <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 p-1 rounded cursor-pointer multi-select-item" data-search="@perm">
+                                            <input type="checkbox" name="SelectedAssignedPermissions" value="@perm" checked="@(isChecked ? "checked" : null)" disabled="@(!Model.IsGlobalAdmin ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                            <span class="font-medium font-mono truncate text-[11px]">@perm</span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </a2-card>
 
-        <!-- Passwords & Security Policies -->
+        <!-- 3. Password Complexity & Rules -->
         <a2-card title="Password Complexity & Security">
-            <div class="grid grid-cols-2 gap-4">
-                <a2-field label="Minimum Password Length">
-                    <a2-input name="InputSettings.Password.MinLength" type="number" value="@Model.InputSettings.Password.MinLength.ToString()" disabled="@(!Model.IsGlobalAdmin)" />
-                </a2-field>
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <a2-field label="Minimum Length (>= 6)">
+                        <a2-input name="InputSettings.Password.MinLength" type="number" value="@Model.InputSettings.Password.MinLength.ToString()" />
+                    </a2-field>
 
-                <a2-field label="Maximum Failed Attempts (Lockout)">
-                    <a2-input name="InputSettings.Lockout.MaxFailedAttempts" type="number" value="@Model.InputSettings.Lockout.MaxFailedAttempts.ToString()" disabled="@(!Model.IsGlobalAdmin)" />
-                </a2-field>
-            </div>
+                    <a2-field label="Maximum Length (<= 1024)">
+                        <a2-input name="InputSettings.Password.MaxLength" type="number" value="@Model.InputSettings.Password.MaxLength.ToString()" />
+                    </a2-field>
 
-            <div class="pt-2">
-                <a2-checkbox name="InputSettings.Password.RequireDigit" checked="@Model.InputSettings.Password.RequireDigit" label="Require numeric digit" disabled="@(!Model.IsGlobalAdmin)" />
-                <a2-checkbox name="InputSettings.Password.RequireUpper" checked="@Model.InputSettings.Password.RequireUpper" label="Require uppercase letter" disabled="@(!Model.IsGlobalAdmin)" />
-                <a2-checkbox name="InputSettings.Password.RequireLower" checked="@Model.InputSettings.Password.RequireLower" label="Require lowercase letter" disabled="@(!Model.IsGlobalAdmin)" />
+                    <a2-field label="Minimum Distinct Characters">
+                        <a2-input name="InputSettings.Password.UniqueChars" type="number" value="@Model.InputSettings.Password.UniqueChars.ToString()" />
+                    </a2-field>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                    <a2-checkbox name="InputSettings.Password.RequireDigit" checked="@Model.InputSettings.Password.RequireDigit" label="Require Digit" />
+                    <a2-checkbox name="InputSettings.Password.RequireLower" checked="@Model.InputSettings.Password.RequireLower" label="Require Lowercase" />
+                    <a2-checkbox name="InputSettings.Password.RequireUpper" checked="@Model.InputSettings.Password.RequireUpper" label="Require Uppercase" />
+                    <a2-checkbox name="InputSettings.Password.RequireNonAlphanumeric" checked="@Model.InputSettings.Password.RequireNonAlphanumeric" label="Require Special Char" />
+                </div>
+
+                <!-- Password History & Expiry Policy -->
+                <div class="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Password History & Expiry</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <a2-field label="Old Passwords To Keep (1 to 24)" hint="How many old passwords are remembered (not counting current). Default is 5.">
+                            <a2-input name="InputSettings.Password.OldPasswordsToKeep" type="number" value="@Model.InputSettings.Password.OldPasswordsToKeep.ToString()" min="1" max="24" />
+                        </a2-field>
+
+                        <a2-field label="Password Expiry (Days)" hint="Password must be changed after this many days (0 = never expires).">
+                            <a2-input name="InputSettings.Password.PasswordExpiryDays" type="number" value="@Model.InputSettings.Password.PasswordExpiryDays.ToString()" min="0" max="3650" />
+                        </a2-field>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        <a2-checkbox name="InputSettings.Password.SaveOldPasswords" checked="@Model.InputSettings.Password.SaveOldPasswords" label="Save Old Passwords" description="Remember history to forbid reusing previous passwords." />
+                        <a2-checkbox name="InputSettings.Password.AllowOldPasswordReuse" checked="@Model.InputSettings.Password.AllowOldPasswordReuse" label="Allow Old Password Reuse" description="Allows older passwords; only refuses current and previous one." />
+                        <a2-checkbox name="InputSettings.Password.SignOutAfterChangePassword" checked="@Model.InputSettings.Password.SignOutAfterChangePassword" label="Sign Out After Password Change" description="End all active sessions on password change." />
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <a2-field label="Banned Passwords List" hint="One per line. Passwords explicitly forbidden (e.g. Password123!, admin, qwerty).">
+                        <a2-textarea name="BannedPasswordsText" value="@Model.BannedPasswordsText" rows="3" />
+                    </a2-field>
+                </div>
             </div>
         </a2-card>
 
-        <!-- Session & Token Lifetimes -->
-        <a2-card title="Sessions & Token Lifetimes">
-            <div class="grid grid-cols-2 gap-4">
-                <a2-field label="Access Token Lifetime (Minutes)">
-                    <a2-input name="InputSettings.Sessions.AccessTokenMinutes" type="number" value="@Model.InputSettings.Sessions.AccessTokenMinutes.ToString()" disabled="@(!Model.IsGlobalAdmin)" />
-                </a2-field>
+        <!-- 4. Authentication Methods & Passkeys -->
+        <a2-card title="Authentication Methods & Passkeys (WebAuthn)">
+            <div class="space-y-6">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Allowed Login Methods</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        @foreach (var m in new[] { "UserNamePassword", "EmailPassword", "PhonePassword", "EmailOtp", "PhoneOtp", "Passkey", "External" })
+                        {
+                            var isChecked = Model.SelectedLoginMethods.Contains(m, StringComparer.OrdinalIgnoreCase);
+                            <label class="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+                                <input type="checkbox" name="SelectedLoginMethods" value="@m" checked="@(isChecked ? "checked" : null)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                <span>@m</span>
+                            </label>
+                        }
+                    </div>
+                </div>
 
-                <a2-field label="Refresh Token Lifetime (Days)">
-                    <a2-input name="InputSettings.Sessions.RefreshTokenDays" type="number" value="@Model.InputSettings.Sessions.RefreshTokenDays.ToString()" disabled="@(!Model.IsGlobalAdmin)" />
-                </a2-field>
+                <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Allowed Register Methods</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        @foreach (var m in new[] { "UserNamePassword", "EmailPassword", "PhonePassword", "EmailOtp", "PhoneOtp", "Passkey", "External" })
+                        {
+                            var isChecked = Model.SelectedRegisterMethods.Contains(m, StringComparer.OrdinalIgnoreCase);
+                            <label class="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+                                <input type="checkbox" name="SelectedRegisterMethods" value="@m" checked="@(isChecked ? "checked" : null)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                <span>@m</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Passkey (FIDO2 / WebAuthn) Rules</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <a2-checkbox name="InputSettings.Passkeys.AllowPasskeys" checked="@Model.InputSettings.Passkeys.AllowPasskeys" label="Enable Passkeys in this project" description="Allows passwordless login and biometrics." />
+                        <a2-checkbox name="InputSettings.Passkeys.RequirePasskeyBackupMethod" checked="@Model.InputSettings.Passkeys.RequirePasskeyBackupMethod" label="Require Backup Method" description="User must maintain at least one other login method or 2+ passkeys." />
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <a2-field label="User Verification">
+                            <select name="InputSettings.Passkeys.PasskeyUserVerification" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:opacity-60">
+                                <option value="required" selected="@(Model.InputSettings.Passkeys.PasskeyUserVerification == "required" ? "selected" : null)">Required</option>
+                                <option value="preferred" selected="@(Model.InputSettings.Passkeys.PasskeyUserVerification == "preferred" ? "selected" : null)">Preferred</option>
+                            </select>
+                        </a2-field>
+
+                        <a2-field label="Resident Key">
+                            <select name="InputSettings.Passkeys.PasskeyResidentKey" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:opacity-60">
+                                <option value="preferred" selected="@(Model.InputSettings.Passkeys.PasskeyResidentKey == "preferred" ? "selected" : null)">Preferred</option>
+                                <option value="required" selected="@(Model.InputSettings.Passkeys.PasskeyResidentKey == "required" ? "selected" : null)">Required</option>
+                                <option value="discouraged" selected="@(Model.InputSettings.Passkeys.PasskeyResidentKey == "discouraged" ? "selected" : null)">Discouraged</option>
+                            </select>
+                        </a2-field>
+
+                        <a2-field label="Max Passkeys Per User">
+                            <a2-input name="InputSettings.Passkeys.MaxPasskeysPerUser" type="number" value="@Model.InputSettings.Passkeys.MaxPasskeysPerUser.ToString()" />
+                        </a2-field>
+
+                        <a2-field label="Max Passkey Name Length">
+                            <a2-input name="InputSettings.Passkeys.PasskeyNameMaxLength" type="number" value="@Model.InputSettings.Passkeys.PasskeyNameMaxLength.ToString()" />
+                        </a2-field>
+                    </div>
+                </div>
             </div>
-
-            <a2-checkbox name="InputSettings.Sessions.SingleActiveSession" checked="@Model.InputSettings.Sessions.SingleActiveSession" label="Enforce single active session" description="Revokes previous sessions when a user logs in from a new device." disabled="@(!Model.IsGlobalAdmin)" />
         </a2-card>
 
-        <div class="pt-4 flex justify-end">
+        <!-- 5. Email & Phone Rules -->
+        <a2-card title="Email & Phone Verification">
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Email rules -->
+                    <div class="space-y-4">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Email Policies</h4>
+                        <a2-checkbox name="InputSettings.Email.RequireConfirmedEmail" checked="@Model.InputSettings.Email.RequireConfirmedEmail" label="Require Email Confirmation" description="Users must verify their email address before they can sign in." />
+
+                        <a2-field label="Allowed Email Domains" hint="One per line. If set, only users with these email domains may register.">
+                            <a2-textarea name="AllowedEmailDomainsText" value="@Model.AllowedEmailDomainsText" rows="2" placeholder="company.com" />
+                        </a2-field>
+
+                        <a2-field label="Blocked Email Domains" hint="One per line. Blocks disposable or untrusted domains.">
+                            <a2-textarea name="BlockedEmailDomainsText" value="@Model.BlockedEmailDomainsText" rows="2" placeholder="tempmail.com" />
+                        </a2-field>
+                    </div>
+
+                    <!-- Phone rules -->
+                    <div class="space-y-4">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Phone Policies</h4>
+                        <a2-checkbox name="InputSettings.Phone.RequireConfirmedPhone" checked="@Model.InputSettings.Phone.RequireConfirmedPhone" label="Require Phone Confirmation" description="Users must verify their phone number with OTP." />
+
+                        <a2-field label="Phone Number Regex" hint="Standard format (E.164: ^\+[1-9]\d{6,14}$)">
+                            <a2-input name="InputSettings.Phone.PhoneNumberRegex" value="@Model.InputSettings.Phone.PhoneNumberRegex" />
+                        </a2-field>
+
+                        <a2-field label="Regex Safety Timeout (ms)" hint="Range 1 - 1000ms. Protects against ReDoS attacks.">
+                            <a2-input name="InputSettings.Phone.RegexTimeoutMs" type="number" value="@Model.InputSettings.Phone.RegexTimeoutMs.ToString()" />
+                        </a2-field>
+                    </div>
+                </div>
+            </div>
+        </a2-card>
+
+        <!-- 6. Account Lockout & Brute-force Protection -->
+        <a2-card title="Account Lockout & Brute-Force Protection">
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a2-checkbox name="InputSettings.Lockout.LockoutEnabled" checked="@Model.InputSettings.Lockout.LockoutEnabled" label="Enable Account Lockout" description="Lock accounts after repeated failed password/OTP attempts." />
+                    <a2-checkbox name="InputSettings.Lockout.LockoutForNewUsers" checked="@Model.InputSettings.Lockout.LockoutForNewUsers" label="Lockout Applies To New Users" description="Immediately enforces lockout threshold on newly registered accounts." />
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a2-field label="Max Failed Attempts Before Lockout">
+                        <a2-input name="InputSettings.Lockout.MaxFailedAttempts" type="number" value="@Model.InputSettings.Lockout.MaxFailedAttempts.ToString()" />
+                    </a2-field>
+
+                    <a2-field label="Lockout Duration (Minutes)">
+                        <a2-input name="InputSettings.Lockout.LockoutMinutes" type="number" value="@Model.InputSettings.Lockout.LockoutMinutes.ToString()" />
+                    </a2-field>
+                </div>
+            </div>
+        </a2-card>
+
+        <!-- 7. Two-Factor Authentication & OTP Rules -->
+        <a2-card title="Two-Factor Authentication & OTP Rules">
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <a2-field label="2FA Requirement Mode">
+                        <select name="InputSettings.TwoFactor.Mode" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:opacity-60">
+                            <option value="Off" selected="@(Model.InputSettings.TwoFactor.Mode == SystemX.Auth2.Server.Domain.Settings.TwoFactorMode.Off ? "selected" : null)">Off (Disabled)</option>
+                            <option value="Optional" selected="@(Model.InputSettings.TwoFactor.Mode == SystemX.Auth2.Server.Domain.Settings.TwoFactorMode.Optional ? "selected" : null)">Optional (Users can opt in)</option>
+                            <option value="Required" selected="@(Model.InputSettings.TwoFactor.Mode == SystemX.Auth2.Server.Domain.Settings.TwoFactorMode.Required ? "selected" : null)">Required (Mandatory for all)</option>
+                        </select>
+                    </a2-field>
+
+                    <div class="pt-6">
+                        <a2-checkbox name="InputSettings.TwoFactor.AllowTotp" checked="@Model.InputSettings.TwoFactor.AllowTotp" label="Allow TOTP Apps" description="Google Authenticator, Microsoft Authenticator, etc." />
+                    </div>
+
+                    <div class="pt-6">
+                        <a2-checkbox name="InputSettings.TwoFactor.AllowRecoveryCodes" checked="@Model.InputSettings.TwoFactor.AllowRecoveryCodes" label="Allow Recovery Codes" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                    <a2-field label="Recovery Code Count (1-50)">
+                        <a2-input name="InputSettings.TwoFactor.RecoveryCodeCount" type="number" value="@Model.InputSettings.TwoFactor.RecoveryCodeCount.ToString()" />
+                    </a2-field>
+
+                    <a2-field label="OTP Code Length (4-10)">
+                        <a2-input name="InputSettings.TwoFactor.OtpLength" type="number" value="@Model.InputSettings.TwoFactor.OtpLength.ToString()" />
+                    </a2-field>
+
+                    <a2-field label="OTP Lifetime (Seconds)">
+                        <a2-input name="InputSettings.TwoFactor.OtpLifetimeSeconds" type="number" value="@Model.InputSettings.TwoFactor.OtpLifetimeSeconds.ToString()" />
+                    </a2-field>
+
+                    <a2-field label="Max Wrong OTP Attempts">
+                        <a2-input name="InputSettings.TwoFactor.OtpMaxAttempts" type="number" value="@Model.InputSettings.TwoFactor.OtpMaxAttempts.ToString()" />
+                    </a2-field>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a2-field label="OTP Resend Cooldown (Seconds)">
+                        <a2-input name="InputSettings.TwoFactor.OtpResendSeconds" type="number" value="@Model.InputSettings.TwoFactor.OtpResendSeconds.ToString()" />
+                    </a2-field>
+
+                    <div class="pt-6">
+                        <a2-checkbox name="InputSettings.TwoFactor.AllowPasskeys" checked="@Model.InputSettings.TwoFactor.AllowPasskeys" label="Allow Passkeys for 2FA" />
+                    </div>
+                </div>
+            </div>
+        </a2-card>
+
+        <!-- 8. Sessions, Token Lifetimes & Consent -->
+        <a2-card title="Sessions, Token Lifetimes & Consent">
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <a2-field label="Access Token (Minutes)">
+                        <a2-input name="InputSettings.Sessions.AccessTokenMinutes" type="number" value="@Model.InputSettings.Sessions.AccessTokenMinutes.ToString()" />
+                    </a2-field>
+
+                    <a2-field label="Refresh Token (Days)">
+                        <a2-input name="InputSettings.Sessions.RefreshTokenDays" type="number" value="@Model.InputSettings.Sessions.RefreshTokenDays.ToString()" />
+                    </a2-field>
+
+                    <a2-field label="Identity Token (Minutes)">
+                        <a2-input name="InputSettings.Sessions.IdentityTokenMinutes" type="number" value="@Model.InputSettings.Sessions.IdentityTokenMinutes.ToString()" />
+                    </a2-field>
+
+                    <a2-field label="Cookie Lifetime (Minutes)" hint="Leave blank for client default.">
+                        <a2-input name="InputSettings.Sessions.CookieLifetimeMinutes" type="number" value="@Model.InputSettings.Sessions.CookieLifetimeMinutes?.ToString()" />
+                    </a2-field>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <a2-checkbox name="InputSettings.Sessions.CookieSliding" checked="@Model.InputSettings.Sessions.CookieSliding" label="Sliding Cookie Expiration" description="Renews session cookie lifetime on active requests." />
+                    <a2-checkbox name="InputSettings.Sessions.SingleActiveSession" checked="@Model.InputSettings.Sessions.SingleActiveSession" label="Enforce Single Active Session" description="Revokes existing sessions when logging in from a new device." />
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <a2-checkbox name="InputSettings.Sessions.RequireConsent" checked="@Model.InputSettings.Sessions.RequireConsent" label="Require Consent Screen" description="Prompts users to approve requested scopes." />
+
+                    <a2-field label="Consent Mode">
+                        <select name="InputSettings.Sessions.ConsentMode" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:opacity-60">
+                            <option value="Implicit" selected="@(Model.InputSettings.Sessions.ConsentMode == SystemX.Auth2.Contracts.Enums.ConsentMode.Implicit ? "selected" : null)">Implicit (Auto-grant allowed scopes)</option>
+                            <option value="Explicit" selected="@(Model.InputSettings.Sessions.ConsentMode == SystemX.Auth2.Contracts.Enums.ConsentMode.Explicit ? "selected" : null)">Explicit (User must click approve)</option>
+                        </select>
+                    </a2-field>
+                </div>
+            </div>
+        </a2-card>
+
+        <!-- 9. Fallback Redirect Targets -->
+        <a2-card title="Fallback Redirect Targets">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Default destinations when no explicit return URL is supplied in authorization requests. Must be a relative path (e.g. <code class="font-mono text-blue-600 dark:text-blue-400">/dashboard</code>) or an absolute URL.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <a2-field label="Redirect After Login">
+                    <a2-input name="InputSettings.Redirects.RedirectAfterLogin" value="@Model.InputSettings.Redirects.RedirectAfterLogin" placeholder="/dashboard" />
+                </a2-field>
+
+                <a2-field label="Redirect After Register">
+                    <a2-input name="InputSettings.Redirects.RedirectAfterRegister" value="@Model.InputSettings.Redirects.RedirectAfterRegister" placeholder="/welcome" />
+                </a2-field>
+
+                <a2-field label="Redirect After Logout">
+                    <a2-input name="InputSettings.Redirects.RedirectAfterLogout" value="@Model.InputSettings.Redirects.RedirectAfterLogout" placeholder="/Account/Login" />
+                </a2-field>
+            </div>
+        </a2-card>
+
+        <!-- 10. Client Applications & Sync Policies -->
+        <a2-card title="Client Applications & Sync Policies">
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a2-field label="Default Client UI Mode">
+                        <select name="InputSettings.Clients.DefaultUiMode" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:opacity-60">
+                            <option value="Hosted" selected="@(Model.InputSettings.Clients.DefaultUiMode == SystemX.Auth2.Contracts.Enums.UiMode.Hosted ? "selected" : null)">Hosted (Auth2 handles UI)</option>
+                            <option value="Self" selected="@(Model.InputSettings.Clients.DefaultUiMode == SystemX.Auth2.Contracts.Enums.UiMode.Self ? "selected" : null)">Self (Application renders custom UI)</option>
+                            <option value="None" selected="@(Model.InputSettings.Clients.DefaultUiMode == SystemX.Auth2.Contracts.Enums.UiMode.None ? "selected" : null)">None (Machine-to-Machine / API)</option>
+                        </select>
+                    </a2-field>
+
+                    <div class="pt-6">
+                        <a2-checkbox name="InputSettings.Clients.AllowProjectAdminRotateSecret" checked="@Model.InputSettings.Clients.AllowProjectAdminRotateSecret" label="Allow Project Admin Secret Rotation" description="Enables project administrators to rotate client credentials." />
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Allowed Client Types</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                        @foreach (var t in new[] { "Api", "Mvc", "RazorPages", "Blazor", "Machine" })
+                        {
+                            var isChecked = Model.SelectedClientTypes.Contains(t, StringComparer.OrdinalIgnoreCase);
+                            <label class="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+                                <input type="checkbox" name="SelectedClientTypes" value="@t" checked="@(isChecked ? "checked" : null)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                <span>@t</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Client Push & Sync Permissions</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <a2-checkbox name="InputSettings.Clients.PermissionSyncAllowed" checked="@Model.InputSettings.Clients.PermissionSyncAllowed" label="Permission Sync Allowed" />
+                        <a2-checkbox name="InputSettings.Clients.ScopeSyncAllowed" checked="@Model.InputSettings.Clients.ScopeSyncAllowed" label="Custom Scope Sync Allowed" />
+                        <a2-checkbox name="InputSettings.Clients.GroupSyncAllowed" checked="@Model.InputSettings.Clients.GroupSyncAllowed" label="Group Sync Allowed" />
+                        <a2-checkbox name="InputSettings.Clients.RoleSyncAllowed" checked="@Model.InputSettings.Clients.RoleSyncAllowed" label="Role Sync Allowed" />
+                        <a2-checkbox name="InputSettings.Clients.AllowRemovePermissionsFromSync" checked="@Model.InputSettings.Clients.AllowRemovePermissionsFromSync" label="Sync Can Remove Permissions" />
+                    </div>
+                </div>
+            </div>
+        </a2-card>
+
+        <div class="pt-4 flex items-center justify-between">
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+                Saving updates project settings and increments the schema version.
+            </span>
             <a2-button type="submit" variant="primary">
                 Save Project Settings
             </a2-button>

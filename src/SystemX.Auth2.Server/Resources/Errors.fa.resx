@@ -25,10 +25,80 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
   <data name="invalid_credentials" xml:space="preserve"><value>نام کاربری یا گذرواژه اشتباه است.</value></data>
   <data name="locked_out" xml:space="preserve"><value>این حساب قفل شده است. بعداً دوباره تلاش کنید.</value></data>
+  <data name="two_factor_required" xml:space="preserve"><value>تأیید دو مرحله‌ای مورد نیاز است.</value></data>
+  <data name="not_registered_in_project" xml:space="preserve"><value>شما در این پروژه ثبت‌نام نکرده‌اید.</value></data>
+  <data name="project_not_found" xml:space="preserve"><value>پروژه یافت نشد.</value></data>
+  <data name="project_disabled" xml:space="preserve"><value>این پروژه غیرفعال است.</value></data>
+  <data name="application_disabled" xml:space="preserve"><value>این برنامه غیرفعال است.</value></data>
+  <data name="access_denied" xml:space="preserve"><value>دسترسی رد شد.</value></data>
+  <data name="project_key_or_name_mismatch" xml:space="preserve"><value>کلید پروژه یا نام برنامه با سرور مطابقت ندارد.</value></data>
+  <data name="server_mode_mismatch" xml:space="preserve"><value>کلاینت و سرور از حالت‌های متفاوتی استفاده می‌کنند.</value></data>
   <data name="password_too_short" xml:space="preserve"><value>گذرواژه باید دست‌کم {0} نویسه باشد.</value></data>
+  <data name="password_too_long" xml:space="preserve"><value>گذرواژه نباید بیشتر از {0} نویسه باشد.</value></data>
+  <data name="password_requires_digit" xml:space="preserve"><value>گذرواژه باید شامل حداقل یک عدد باشد.</value></data>
+  <data name="password_requires_lower" xml:space="preserve"><value>گذرواژه باید شامل حروف کوچک انگلیسی باشد.</value></data>
+  <data name="password_requires_upper" xml:space="preserve"><value>گذرواژه باید شامل حروف بزرگ انگلیسی باشد.</value></data>
+  <data name="password_requires_non_alphanumeric" xml:space="preserve"><value>گذرواژه باید شامل نویسه‌های خاص (غیرالفبایی) باشد.</value></data>
+  <data name="password_requires_unique_chars" xml:space="preserve"><value>گذرواژه باید شامل حداقل {0} نویسه متفاوت باشد.</value></data>
+  <data name="password_banned" xml:space="preserve"><value>این گذرواژه مجاز نیست.</value></data>
   <data name="password_reused" xml:space="preserve"><value>این گذرواژه پیش‌تر استفاده شده است. گذرواژه جدیدی انتخاب کنید.</value></data>
   <data name="password_expired" xml:space="preserve"><value>گذرواژه شما منقضی شده است. از «فراموشی گذرواژه» برای انتخاب گذرواژه جدید استفاده کنید.</value></data>
+  <data name="invalid_user_name" xml:space="preserve"><value>نام کاربری نامعتبر است.</value></data>
+  <data name="invalid_email" xml:space="preserve"><value>نشانی ایمیل نامعتبر است.</value></data>
+  <data name="email_domain_not_allowed" xml:space="preserve"><value>دامنه این ایمیل در این برنامه مجاز نیست.</value></data>
+  <data name="invalid_phone_number" xml:space="preserve"><value>شماره تلفن نامعتبر است.</value></data>
+  <data name="user_not_in_project" xml:space="preserve"><value>کاربر به این پروژه تعلق ندارد.</value></data>
+  <data name="login_method_not_allowed" xml:space="preserve"><value>این روش ورود به سیستم مجاز نیست.</value></data>
+  <data name="registration_disabled" xml:space="preserve"><value>ثبت‌نام غیرفعال است.</value></data>
+  <data name="invalid_token" xml:space="preserve"><value>توکن نامعتبر است یا منقضی شده است.</value></data>
+  <data name="insufficient_scope" xml:space="preserve"><value>توکن فاقد دسترسی‌های (Scope) لازم است.</value></data>
+  <data name="forbidden" xml:space="preserve"><value>شما دسترسی لازم برای انجام این عملیات را ندارید.</value></data>
+  <data name="validation_failed" xml:space="preserve"><value>اطلاعات وارد شده نامعتبر است.</value></data>
+  <data name="not_found" xml:space="preserve"><value>موردی یافت نشد.</value></data>
+  <data name="conflict" xml:space="preserve"><value>تداخل در ویرایش؛ اطلاعات توسط شخص دیگری تغییر یافته است.</value></data>
+  <data name="rate_limited" xml:space="preserve"><value>تعداد درخواست‌ها بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.</value></data>
+  <data name="invalid_otp" xml:space="preserve"><value>کد تأیید اشتباه است یا منقضی شده است.</value></data>
+  <data name="ownership_proof_required" xml:space="preserve"><value>برای پیوستن به این برنامه نیاز به تأیید مالکیت حساب کاربری دارید.</value></data>
+  <data name="sync_not_allowed" xml:space="preserve"><value>همگام‌سازی برای این برنامه مجاز نیست.</value></data>
+  <data name="invalid_permission_key" xml:space="preserve"><value>کلید دسترسی نامعتبر است.</value></data>
+  <data name="invalid_scope_name" xml:space="preserve"><value>نام Scope نامعتبر است یا رزرو شده است.</value></data>
+  <data name="too_many_items" xml:space="preserve"><value>تعداد آیتم‌های درخواست بیش از حد مجاز است.</value></data>
+  <data name="invalid_redirect_uri" xml:space="preserve"><value>نشانی بازگشت (Redirect URI) مجاز نیست.</value></data>
+  <data name="server_error" xml:space="preserve"><value>خطای غیرمنتظره‌ای در سرور رخ داده است.</value></data>
+  <data name="identity.DefaultError" xml:space="preserve"><value>خطای ناشناخته‌ای رخ داد.</value></data>
+  <data name="identity.ConcurrencyFailure" xml:space="preserve"><value>اطلاعات توسط فرآیند دیگری به‌روزرسانی شده است.</value></data>
+  <data name="identity.PasswordMismatch" xml:space="preserve"><value>گذرواژه نادرست است.</value></data>
+  <data name="identity.InvalidToken" xml:space="preserve"><value>توکن نامعتبر است.</value></data>
+  <data name="identity.RecoveryCodeRedemptionFailed" xml:space="preserve"><value>کد بازیابی نامعتبر است.</value></data>
+  <data name="identity.LoginAlreadyAssociated" xml:space="preserve"><value>این حساب خارجی قبلاً به کاربری متصل شده است.</value></data>
+  <data name="identity.DuplicateUserName" xml:space="preserve"><value>این نام کاربری قبلاً استفاده شده است.</value></data>
   <data name="identity.DuplicateEmail" xml:space="preserve"><value>این نشانی ایمیل قبلاً استفاده شده است.</value></data>
+  <data name="identity.InvalidRoleName" xml:space="preserve"><value>نام نقش نامعتبر است.</value></data>
+  <data name="identity.DuplicateRoleName" xml:space="preserve"><value>این نام نقش قبلاً استفاده شده است.</value></data>
+  <data name="identity.UserAlreadyHasPassword" xml:space="preserve"><value>کاربر از قبل گذرواژه دارد.</value></data>
+  <data name="identity.UserLockoutNotEnabled" xml:space="preserve"><value>قفل شدن حساب برای این کاربر فعال نیست.</value></data>
+  <data name="identity.UserAlreadyInRole" xml:space="preserve"><value>کاربر از قبل این نقش را دارد.</value></data>
+  <data name="identity.UserNotInRole" xml:space="preserve"><value>کاربر این نقش را ندارد.</value></data>
+  <data name="email_not_confirmed" xml:space="preserve"><value>لطفاً پیش از ورود، ایمیل خود را تأیید کنید.</value></data>
+  <data name="phone_not_confirmed" xml:space="preserve"><value>لطفاً پیش از ورود، شماره همراه خود را تأیید کنید.</value></data>
+  <data name="two_factor_setup_required" xml:space="preserve"><value>ورود به این برنامه مستلزم فعال‌سازی ورود دومرحله‌ای است.</value></data>
+  <data name="grant_not_allowed" xml:space="preserve"><value>این نوع درخواست اعطای دسترسی مجاز نیست.</value></data>
+  <data name="two_factor_not_enabled" xml:space="preserve"><value>ورود دومرحله‌ای فعال نشده است.</value></data>
+  <data name="two_factor_not_allowed" xml:space="preserve"><value>برنامه اجازه ورود دومرحله‌ای با برنامه‌های احراز هویت را نمی‌دهد.</value></data>
+  <data name="consent_required" xml:space="preserve"><value>برای ادامه نیاز به تأیید دسترسی توسط کاربر است.</value></data>
+  <data name="external_email_exists_not_verified" xml:space="preserve"><value>حسابی با این ایمیل وجود دارد اما توسط سرویس‌دهنده تأیید نشده است. لطفاً با روش معمول وارد شوید و حساب را متصل کنید.</value></data>
+  <data name="external_registration_not_allowed" xml:space="preserve"><value>امکان ثبت‌نام حساب جدید از طریق این سرویس‌دهنده وجود ندارد.</value></data>
+  <data name="external_provider_disabled" xml:space="preserve"><value>این روش ورود در حال حاضر در دسترس نیست.</value></data>
+  <data name="external_claims_invalid" xml:space="preserve"><value>سرویس‌دهنده خارجی اطلاعات لازم را ارسال نکرده است.</value></data>
+  <data name="cannot_remove_last_login_method" xml:space="preserve"><value>نمی‌توانید تنها روش ورود به حساب خود را حذف کنید.</value></data>
+  <data name="saml_response_invalid" xml:space="preserve"><value>پاسخ احراز هویت SAML نامعتبر است.</value></data>
+  <data name="saml_replay_detected" xml:space="preserve"><value>این پاسخ احراز هویت قبلاً استفاده شده است.</value></data>
+  <data name="ldap_unavailable" xml:space="preserve"><value>سرویس دایرکتوری در دسترس نیست. بعداً تلاش کنید.</value></data>
+  <data name="ldap_account_disabled" xml:space="preserve"><value>حساب کاربری دایرکتوری شما غیرفعال شده است.</value></data>
+  <data name="passkey_not_allowed" xml:space="preserve"><value>استفاده از کلید عبور (Passkey) مجاز نیست.</value></data>
+  <data name="passkey_limit_reached" xml:space="preserve"><value>تعداد کلیدهای عبور شما به سقف مجاز رسیده است.</value></data>
+  <data name="passkey_blocked_authenticator" xml:space="preserve"><value>این مدل از ابزار کلید عبور مجاز نیست.</value></data>
 </root>

@@ -2,30 +2,29 @@
 @model SystemX.Auth2.Server.Pages.Account.LockoutModel
 @{
     Layout = "_LayoutAuth";
-    ViewData["Title"] = "Account Locked";
+    ViewData["Title"] = Loc["lockout.title"];
 }
 
 <div class="text-center space-y-4">
-    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-        <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50">
+        <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
     </div>
 
-    <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">Account Temporarily Locked</h2>
+    <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">@Loc["lockout.title"]</h2>
     
-    <p class="text-sm text-[var(--a2-color-muted,#6b7280)] leading-relaxed">
-        This account has been temporarily locked out due to multiple failed sign-in attempts.
-        Please wait a short while before trying again, or reset your password.
+    <p class="text-sm text-[var(--a2-color-muted,#6b7280)] dark:text-gray-400 leading-relaxed">
+        @Loc["lockout.desc"]
     </p>
 
     <div class="pt-4 space-y-3">
         <a2-link-button href="@Url.Page("ForgotPassword", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" variant="primary" class="w-full">
-            Reset Password
+            @Loc["reset_password.title"]
         </a2-link-button>
 
         <a href="@Url.Page("Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" class="block text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
-            Back to Sign In
+            @Loc["common.back_to_login"]
         </a>
     </div>
 </div>

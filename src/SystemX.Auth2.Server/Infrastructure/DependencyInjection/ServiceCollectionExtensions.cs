@@ -80,6 +80,14 @@ public static class Auth2ServerServiceCollectionExtensions
             o.Conventions.AddPageRoute("/Admin/Global/Settings", "/admin/global/settings");
             o.Conventions.AddPageRoute("/Admin/Global/Jobs", "/admin/global/jobs");
             o.Conventions.AddPageRoute("/Admin/Global/Keys", "/admin/global/keys");
+            o.Conventions.AddPageRoute("/Admin/Settings/Messaging", "/admin/global/messaging");
+            o.Conventions.AddPageRoute("/Admin/Settings/Messaging", "/admin/messaging");
+            o.Conventions.AddPageRoute("/Admin/Settings/Messaging", "/admin/p/{projectKey}/settings/messaging");
+            o.Conventions.AddPageRoute("/Admin/Assignments/RolePermissions", "/admin/p/{projectKey}/role_permissions");
+            o.Conventions.AddPageRoute("/Admin/Assignments/UserPermissions", "/admin/p/{projectKey}/user_permissions");
+            o.Conventions.AddPageRoute("/Admin/Assignments/UserGroups", "/admin/p/{projectKey}/user_groups");
+            o.Conventions.AddPageRoute("/Admin/Assignments/GroupRoles", "/admin/p/{projectKey}/group_roles");
+            o.Conventions.AddPageRoute("/Admin/Assignments/GroupPermissions", "/admin/p/{projectKey}/group_permissions");
         });
 
         services.AddScoped<Auth2IdentityErrorDescriber>();

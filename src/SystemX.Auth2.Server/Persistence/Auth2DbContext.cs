@@ -68,6 +68,64 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IProjectSc
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
 
     /// <inheritdoc />
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        AssignProjectId();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        AssignProjectId();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override int SaveChanges()
+    {
+        AssignProjectId();
+        return base.SaveChanges();
+    }
+
+    /// <inheritdoc />
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        AssignProjectId();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    private void AssignProjectId()
+    {
+        var currentId = CurrentProjectId;
+        if (currentId is null || currentId == Guid.Empty) return;
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State != EntityState.Added) continue;
+
+            // Never override Project entity's own Id
+            if (entry.Entity is Project) continue;
+
+            var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "ProjectId");
+            if (prop != null)
+            {
+                if (prop.CurrentValue is Guid g && g == Guid.Empty)
+                {
+                    prop.CurrentValue = currentId.Value;
+                }
+                else if (prop.CurrentValue is null && prop.Metadata.ClrType == typeof(Guid?))
+                {
+                    if (!FiltersBypassed)
+                    {
+                        prop.CurrentValue = currentId.Value;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <inheritdoc />
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);

@@ -2,25 +2,25 @@
 @model SystemX.Auth2.Server.Pages.Account.ConfirmEmailModel
 @{
     Layout = "_LayoutAuth";
-    ViewData["Title"] = "Confirm Email";
+    ViewData["Title"] = Loc["confirm_email.title"];
 }
 
 <div class="space-y-6">
     @if (Model.Confirmed)
     {
         <div class="text-center space-y-4">
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
             </div>
-            <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">Email Confirmed</h2>
-            <p class="text-sm text-[var(--a2-color-muted,#6b7280)]">
-                Your email address has been successfully verified. You can now continue.
+            <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">@Loc["confirm_email.title"]</h2>
+            <p class="text-sm text-[var(--a2-color-muted,#6b7280)] dark:text-gray-400">
+                @Loc["confirm_email.success"]
             </p>
             <div class="pt-4">
                 <a2-link-button href="@(Model.ContinueUrl ?? "/Account/Login")" variant="primary" class="w-full">
-                    Continue
+                    @Loc["common.continue"]
                 </a2-link-button>
             </div>
         </div>
@@ -28,8 +28,8 @@
     else
     {
         <div class="text-center">
-            <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">Verify Your Email</h2>
-            <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)]">
+            <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">@Loc["confirm_email.title"]</h2>
+            <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)] dark:text-gray-400">
                 Enter your email address to receive a new confirmation link.
             </p>
         </div>
@@ -43,19 +43,19 @@
 
         <form method="post" asp-page-handler="Resend" class="space-y-4">
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-            <a2-field label="Email address" required="true">
+            <a2-field label="@Loc["register.email"]" required="true">
                 <a2-input name="Input.Login" type="email" value="@Model.Input.Login" required="true" placeholder="you@example.com" autocomplete="email" />
             </a2-field>
 
             <a2-button type="submit" variant="primary" class="w-full">
-                Resend Confirmation Link
+                @Loc["common.submit"]
             </a2-button>
-
-            <div class="text-center pt-2">
-                <a href="@Url.Page("Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
-                    Back to Sign In
-                </a>
-            </div>
         </form>
+
+        <div class="text-center">
+            <a href="/Account/Login?returnUrl=@Model.ReturnUrl" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
+                @Loc["common.back_to_login"]
+            </a>
+        </div>
     }
 </div>

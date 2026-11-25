@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="invalid_credentials" xml:space="preserve"><value>Der Benutzername oder das Passwort ist falsch.</value></data>
+  <data name="locked_out" xml:space="preserve"><value>Dieses Konto ist gesperrt. Bitte versuchen Sie es später erneut.</value></data>
+  <data name="two_factor_required" xml:space="preserve"><value>Ein zweiter Faktor ist erforderlich.</value></data>
+  <data name="not_registered_in_project" xml:space="preserve"><value>Sie sind in diesem Projekt nicht registriert.</value></data>
+  <data name="project_not_found" xml:space="preserve"><value>Das Projekt wurde nicht gefunden.</value></data>
+  <data name="project_disabled" xml:space="preserve"><value>Dieses Projekt ist deaktiviert.</value></data>
+  <data name="application_disabled" xml:space="preserve"><value>Diese Anwendung ist deaktiviert.</value></data>
+  <data name="access_denied" xml:space="preserve"><value>Zugriff verweigert.</value></data>
+  <data name="project_key_or_name_mismatch" xml:space="preserve"><value>Der Projektschlüssel oder der Anwendungsname stimmt nicht mit dem Server überein.</value></data>
+  <data name="server_mode_mismatch" xml:space="preserve"><value>Client und Server verwenden unterschiedliche Modi (Einzel- oder Mandantenbetrieb).</value></data>
+  <data name="password_too_short" xml:space="preserve"><value>Das Passwort muss mindestens {0} Zeichen lang sein.</value></data>
+  <data name="password_too_long" xml:space="preserve"><value>Das Passwort darf nicht länger als {0} Zeichen sein.</value></data>
+  <data name="password_requires_digit" xml:space="preserve"><value>Das Passwort muss mindestens eine Ziffer enthalten.</value></data>
+  <data name="password_requires_lower" xml:space="preserve"><value>Das Passwort muss mindestens einen Kleinbuchstaben enthalten.</value></data>
+  <data name="password_requires_upper" xml:space="preserve"><value>Das Passwort muss mindestens einen Großbuchstaben enthalten.</value></data>
+  <data name="password_requires_non_alphanumeric" xml:space="preserve"><value>Das Passwort muss mindestens ein Sonderzeichen enthalten.</value></data>
+  <data name="password_requires_unique_chars" xml:space="preserve"><value>Das Passwort muss mindestens {0} unterschiedliche Zeichen enthalten.</value></data>
+  <data name="password_banned" xml:space="preserve"><value>Dieses Passwort ist nicht zulässig.</value></data>
+  <data name="password_reused" xml:space="preserve"><value>Dieses Passwort wurde bereits verwendet. Bitte wählen Sie ein neues Passwort.</value></data>
+  <data name="password_expired" xml:space="preserve"><value>Ihr Passwort ist abgelaufen. Nutzen Sie 'Passwort vergessen', um ein neues festzulegen.</value></data>
+  <data name="invalid_user_name" xml:space="preserve"><value>Der Benutzername ist ungültig.</value></data>
+  <data name="invalid_email" xml:space="preserve"><value>Die E-Mail-Adresse ist ungültig.</value></data>
+  <data name="email_domain_not_allowed" xml:space="preserve"><value>E-Mail-Adressen dieser Domäne sind nicht zugelassen.</value></data>
+  <data name="invalid_phone_number" xml:space="preserve"><value>Die Telefonnummer ist ungültig.</value></data>
+  <data name="user_not_in_project" xml:space="preserve"><value>Der Benutzer gehört nicht zu diesem Projekt.</value></data>
+  <data name="login_method_not_allowed" xml:space="preserve"><value>Diese Anmeldemethode ist nicht zulässig.</value></data>
+  <data name="registration_disabled" xml:space="preserve"><value>Die Registrierung ist geschlossen.</value></data>
+  <data name="invalid_token" xml:space="preserve"><value>Das Token fehlt oder ist ungültig.</value></data>
+  <data name="insufficient_scope" xml:space="preserve"><value>Das Token verfügt nicht über die erforderlichen Berechtigungen (Scope).</value></data>
+  <data name="forbidden" xml:space="preserve"><value>Sie sind nicht berechtigt, diesen Vorgang auszuführen.</value></data>
+  <data name="validation_failed" xml:space="preserve"><value>Die Eingabe ist ungültig.</value></data>
+  <data name="not_found" xml:space="preserve"><value>Der Datensatz wurde nicht gefunden.</value></data>
+  <data name="conflict" xml:space="preserve"><value>Der Datensatz wurde zwischenzeitlich von jemand anderem geändert.</value></data>
+  <data name="rate_limited" xml:space="preserve"><value>Zu viele Anfragen. Bitte versuchen Sie es später erneut.</value></data>
+  <data name="invalid_otp" xml:space="preserve"><value>Der Code ist falsch oder abgelaufen.</value></data>
+  <data name="ownership_proof_required" xml:space="preserve"><value>Sie müssen den Besitz dieses Kontos nachweisen, bevor Sie beitreten können.</value></data>
+  <data name="sync_not_allowed" xml:space="preserve"><value>Synchronisierung ist für diese Anwendung nicht erlaubt.</value></data>
+  <data name="invalid_permission_key" xml:space="preserve"><value>Ein Berechtigungsschlüssel ist ungültig.</value></data>
+  <data name="invalid_scope_name" xml:space="preserve"><value>Ein Scope-Name ist ungültig oder reserviert.</value></data>
+  <data name="too_many_items" xml:space="preserve"><value>Die Anfrage enthält zu viele Elemente.</value></data>
+  <data name="invalid_redirect_uri" xml:space="preserve"><value>Die Weiterleitungsadresse ist nicht zulässig.</value></data>
+  <data name="server_error" xml:space="preserve"><value>Ein unerwarteter Fehler ist aufgetreten.</value></data>
+  <data name="identity.DefaultError" xml:space="preserve"><value>Ein unbekannter Fehler ist aufgetreten.</value></data>
+  <data name="identity.ConcurrencyFailure" xml:space="preserve"><value>Der Datensatz wurde durch einen anderen Vorgang geändert.</value></data>
+  <data name="identity.PasswordMismatch" xml:space="preserve"><value>Das Passwort ist falsch.</value></data>
+  <data name="identity.InvalidToken" xml:space="preserve"><value>Das Token ist ungültig.</value></data>
+  <data name="identity.RecoveryCodeRedemptionFailed" xml:space="preserve"><value>Der Wiederherstellungscode ist ungültig.</value></data>
+  <data name="identity.LoginAlreadyAssociated" xml:space="preserve"><value>Diese externe Anmeldung ist bereits mit einem Benutzer verknüpft.</value></data>
+  <data name="identity.DuplicateUserName" xml:space="preserve"><value>Dieser Benutzername ist bereits vergeben.</value></data>
+  <data name="identity.DuplicateEmail" xml:space="preserve"><value>Diese E-Mail-Adresse wird bereits verwendet.</value></data>
+  <data name="identity.InvalidRoleName" xml:space="preserve"><value>Der Rollenname ist ungültig.</value></data>
+  <data name="identity.DuplicateRoleName" xml:space="preserve"><value>Dieser Rollenname wird bereits verwendet.</value></data>
+  <data name="identity.UserAlreadyHasPassword" xml:space="preserve"><value>Der Benutzer hat bereits ein Passwort festgelegt.</value></data>
+  <data name="identity.UserLockoutNotEnabled" xml:space="preserve"><value>Die Kontosperrung ist für diesen Benutzer nicht aktiviert.</value></data>
+  <data name="identity.UserAlreadyInRole" xml:space="preserve"><value>Der Benutzer besitzt diese Rolle bereits.</value></data>
+  <data name="identity.UserNotInRole" xml:space="preserve"><value>Der Benutzer besitzt diese Rolle nicht.</value></data>
+  <data name="email_not_confirmed" xml:space="preserve"><value>Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden.</value></data>
+  <data name="phone_not_confirmed" xml:space="preserve"><value>Bitte bestätigen Sie Ihre Telefonnummer, bevor Sie sich anmelden.</value></data>
+  <data name="two_factor_setup_required" xml:space="preserve"><value>Diese Anwendung erfordert Zwei-Faktor-Authentifizierung. Bitte richten Sie diese zuerst ein.</value></data>
+  <data name="grant_not_allowed" xml:space="preserve"><value>Dieser Autorisierungstyp (Grant) ist für diese Anwendung nicht zulässig.</value></data>
+  <data name="two_factor_not_enabled" xml:space="preserve"><value>Zwei-Faktor-Authentifizierung ist nicht aktiviert.</value></data>
+  <data name="two_factor_not_allowed" xml:space="preserve"><value>Diese Anwendung erlaubt keine Authenticator-Apps.</value></data>
+  <data name="consent_required" xml:space="preserve"><value>Sie müssen zustimmen, bevor die Anwendung fortfahren kann.</value></data>
+  <data name="external_email_exists_not_verified" xml:space="preserve"><value>Ein Konto mit dieser E-Mail existiert bereits, wurde aber vom Anbieter nicht bestätigt. Melden Sie sich regulär an und verknüpfen Sie das Konto.</value></data>
+  <data name="external_registration_not_allowed" xml:space="preserve"><value>Mit dieser Methode können keine neuen Konten erstellt werden.</value></data>
+  <data name="external_provider_disabled" xml:space="preserve"><value>Diese Anmeldemethode ist nicht verfügbar.</value></data>
+  <data name="external_claims_invalid" xml:space="preserve"><value>Der Anbieter hat nicht alle erforderlichen Benutzerdaten übermittelt.</value></data>
+  <data name="cannot_remove_last_login_method" xml:space="preserve"><value>Die letzte Anmeldemethode kann nicht entfernt werden.</value></data>
+  <data name="saml_response_invalid" xml:space="preserve"><value>Die SAML-Antwort konnte nicht akzeptiert werden.</value></data>
+  <data name="saml_replay_detected" xml:space="preserve"><value>Diese Anmeldeantwort wurde bereits verwendet.</value></data>
+  <data name="ldap_unavailable" xml:space="preserve"><value>Der Verzeichnisdienst ist derzeit nicht erreichbar. Bitte versuchen Sie es später erneut.</value></data>
+  <data name="ldap_account_disabled" xml:space="preserve"><value>Ihr Verzeichniskonto ist deaktiviert.</value></data>
+  <data name="passkey_not_allowed" xml:space="preserve"><value>Passkeys sind in dieser Anwendung nicht zulässig.</value></data>
+  <data name="passkey_limit_reached" xml:space="preserve"><value>Sie haben die maximale Anzahl an Passkeys erreicht.</value></data>
+  <data name="passkey_blocked_authenticator" xml:space="preserve"><value>Dieser Typ von Authentifizierungsgerät ist nicht zugelassen.</value></data>
+</root>

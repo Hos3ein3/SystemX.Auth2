@@ -8,10 +8,10 @@
 
 <div class="max-w-4xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2 text-sm text-gray-500">
+        <div class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
             <a href="/admin/p/@Model.ProjectKey/groups" class="hover:underline">Groups</a>
             <span>/</span>
-            <span class="text-gray-900 font-medium">@g?.Name</span>
+            <span class="text-gray-900 dark:text-gray-100 font-medium">@g?.Name</span>
         </div>
         <form method="post" asp-page-handler="Delete" data-confirm="Are you sure you want to delete this group?">
             <a2-button type="submit" variant="danger">Delete Group</a2-button>
@@ -19,60 +19,137 @@
     </div>
 
     <!-- Group Header Card -->
-    <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
         <div class="flex items-center justify-between mb-2">
             <div>
-                <span class="font-mono text-sm text-gray-500 block mb-1">Group Key</span>
-                <h1 class="text-2xl font-bold font-mono text-gray-900">@g?.Name</h1>
+                <span class="font-mono text-sm text-gray-500 dark:text-gray-400 block mb-1">Group Key</span>
+                <h1 class="text-2xl font-bold font-mono text-gray-900 dark:text-gray-100">@g?.Name</h1>
             </div>
             @if (!string.IsNullOrEmpty(g?.DisplayName))
             {
-                <span class="text-lg font-medium text-gray-700">@g.DisplayName</span>
+                <span class="text-lg font-medium text-gray-700 dark:text-gray-200">@g.DisplayName</span>
             }
         </div>
-        <p class="text-sm text-gray-600 mt-2">@(g?.Description ?? "No description provided.")</p>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">@(g?.Description ?? "No description provided.")</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Roles assigned to group -->
-        <a2-card title="Group Roles (@g?.Roles.Count)">
-            @if (g?.Roles.Count > 0)
+    <!-- Group Members (UserGroup) -->
+    <a2-card title="Group Members (@Model.Members.Count)">
+        <div class="space-y-4">
+            @if (Model.Members.Count > 0)
             {
-                <ul class="divide-y divide-gray-200">
-                    @foreach (var role in g.Roles)
-                    {
-                        <li class="py-2.5 flex items-center justify-between">
-                            <span class="text-sm font-semibold text-gray-800">@role</span>
-                            <form method="post" asp-page-handler="RemoveRole" asp-route-roleName="@role">
-                                <button type="submit" class="text-xs text-red-600 hover:underline">Remove</button>
-                            </form>
-                        </li>
-                    }
-                </ul>
-            }
-            else
-            {
-                <p class="text-sm text-gray-500 py-3">No roles assigned to this group.</p>
-            }
-        </a2-card>
-
-        <!-- Permissions assigned to group -->
-        <a2-card title="Group Permissions (@g?.Permissions.Count)">
-            @if (g?.Permissions.Count > 0)
-            {
-                <div class="flex flex-wrap gap-2">
-                    @foreach (var perm in g.Permissions)
-                    {
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-blue-50 text-blue-800 border border-blue-200">
-                            @perm
-                        </span>
-                    }
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900/60">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Username / Name</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Email</th>
+                                <th class="px-4 py-2 text-right font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @foreach (var m in Model.Members)
+                            {
+                                <tr>
+                                    <td class="px-4 py-2 text-gray-900 dark:text-gray-100 font-medium">
+                                        <a href="/admin/p/@Model.ProjectKey/users/detail?id=@m.Id" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                            @m.UserName @(string.IsNullOrWhiteSpace(m.DisplayName) ? "" : $"({m.DisplayName})")
+                                        </a>
+                                    </td>
+                                    <td class="px-4 py-2 text-gray-500 dark:text-gray-400">@(m.Email ?? "-")</td>
+                                    <td class="px-4 py-2 text-right">
+                                        <form method="post" asp-page-handler="RemoveUser" asp-route-name="@Model.Name" asp-route-userId="@m.Id" class="inline">
+                                            <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Remove Member</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             }
             else
             {
-                <p class="text-sm text-gray-500 py-3">No direct permissions assigned to this group.</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 py-2">No users are members of this group.</p>
             }
+
+            <form method="post" asp-page-handler="AddUser" asp-route-name="@Model.Name" class="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <input type="text" name="userIdentifier" placeholder="Email, username, or User ID" required class="block w-full max-w-sm rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                <a2-button type="submit" variant="secondary">Add Member</a2-button>
+            </form>
+        </div>
+    </a2-card>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Roles assigned to group (GroupRole) -->
+        <a2-card title="Group Roles (@g?.Roles.Count)">
+            <div class="space-y-4">
+                @if (g?.Roles.Count > 0)
+                {
+                    <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @foreach (var role in g.Roles)
+                        {
+                            <li class="py-2.5 flex items-center justify-between">
+                                <a href="/admin/p/@Model.ProjectKey/roles/detail?name=@role" class="text-sm font-semibold text-gray-800 dark:text-gray-200 hover:underline">@role</a>
+                                <form method="post" asp-page-handler="RemoveRole" asp-route-name="@Model.Name" asp-route-roleName="@role">
+                                    <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Remove</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-sm text-gray-500 dark:text-gray-400 py-3">No roles assigned to this group.</p>
+                }
+
+                <form method="post" asp-page-handler="AddRole" asp-route-name="@Model.Name" class="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <select name="roleName" required class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="">-- Select Role to Add --</option>
+                        @foreach (var r in Model.AvailableRoles.Where(r => !(g?.Roles.Contains(r.Name) ?? false)))
+                        {
+                            <option value="@r.Name">@r.Name</option>
+                        }
+                    </select>
+                    <a2-button type="submit" variant="secondary">Add Role</a2-button>
+                </form>
+            </div>
+        </a2-card>
+
+        <!-- Permissions assigned to group (GroupPermission) -->
+        <a2-card title="Group Permissions (@g?.Permissions.Count)">
+            <div class="space-y-4">
+                @if (g?.Permissions.Count > 0)
+                {
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var perm in g.Permissions)
+                        {
+                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-medium bg-blue-50 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                                <span>@perm</span>
+                                <form method="post" asp-page-handler="RemovePermission" asp-route-name="@Model.Name" asp-route-permissionKey="@perm" class="inline">
+                                    <button type="submit" class="hover:text-red-600 dark:hover:text-red-400 font-bold focus:outline-none" title="Remove permission">&times;</button>
+                                </form>
+                            </span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-sm text-gray-500 dark:text-gray-400 py-3">No direct permissions assigned to this group.</p>
+                }
+
+                <form method="post" asp-page-handler="AddPermission" asp-route-name="@Model.Name" class="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <select name="permissionKey" class="block w-full max-w-xs rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="">-- Select Permission or Type Key --</option>
+                        @foreach (var p in Model.AvailablePermissions.Where(p => !(g?.Permissions.Contains(p.Key) ?? false)))
+                        {
+                            <option value="@p.Key">@p.Key</option>
+                        }
+                    </select>
+                    <input type="text" name="permissionKeyManual" placeholder="Or enter permission key" class="block w-48 rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <a2-button type="submit" variant="secondary">Add Permission</a2-button>
+                </form>
+            </div>
         </a2-card>
     </div>
 </div>

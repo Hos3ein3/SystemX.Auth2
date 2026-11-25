@@ -4,16 +4,17 @@
     var settings = Model?.Settings as ProjectSettings;
     var project = Model?.Project as Project;
 
-    // Default branding tokens
-    var primary = "#2563eb";
-    var primaryText = "#ffffff";
-    var background = "#f9fafb";
+    // Branding tokens from project settings or safe defaults
+    var branding = settings?.Branding;
+    var primary = !string.IsNullOrWhiteSpace(branding?.PrimaryColor) ? branding.PrimaryColor : "#2563eb";
+    var primaryText = !string.IsNullOrWhiteSpace(branding?.PrimaryTextColor) ? branding.PrimaryTextColor : "#ffffff";
+    var background = !string.IsNullOrWhiteSpace(branding?.BackgroundColor) ? branding.BackgroundColor : "#f9fafb";
     var surface = "#ffffff";
     var text = "#111827";
     var muted = "#6b7280";
     var error = "#dc2626";
     var success = "#16a34a";
-    var radius = "0.375rem";
+    var radius = !string.IsNullOrWhiteSpace(branding?.Radius) ? branding.Radius : "0.375rem";
     var font = "system-ui, -apple-system, sans-serif";
 
     var title = settings?.Localization?.BrandName ?? project?.Name ?? "SystemX Auth2";

@@ -25,5 +25,104 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="login.title" xml:space="preserve"><value>ورود</value></data>
+
+  <data name="common.save" xml:space="preserve"><value>ذخیره</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>انصراف</value></data>
+  <data name="common.back" xml:space="preserve"><value>بازگشت</value></data>
+  <data name="common.submit" xml:space="preserve"><value>ارسال</value></data>
+  <data name="common.continue" xml:space="preserve"><value>ادامه</value></data>
+  <data name="common.back_to_login" xml:space="preserve"><value>بازگشت به صفحه ورود</value></data>
+  <data name="common.home" xml:space="preserve"><value>بازگشت به خانه</value></data>
+  <data name="common.loading" xml:space="preserve"><value>در حال بارگذاری...</value></data>
+  <data name="login.title" xml:space="preserve"><value>ورود به حساب</value></data>
+  <data name="login.subtitle" xml:space="preserve"><value>برای دسترسی به حساب کاربری خود مشخصات خود را وارد کنید</value></data>
+  <data name="login.username_or_email" xml:space="preserve"><value>نام کاربری یا ایمیل</value></data>
+  <data name="login.password" xml:space="preserve"><value>رمز عبور</value></data>
+  <data name="login.remember_me" xml:space="preserve"><value>مرا به خاطر بسپار</value></data>
+  <data name="login.forgot_password" xml:space="preserve"><value>رمز عبور خود را فراموش کرده‌اید؟</value></data>
+  <data name="login.sign_in_button" xml:space="preserve"><value>ورود</value></data>
+  <data name="login.dont_have_account" xml:space="preserve"><value>حساب کاربری ندارید؟</value></data>
+  <data name="login.sign_up_link" xml:space="preserve"><value>ایجاد حساب جدید</value></data>
+  <data name="login.or_continue_with" xml:space="preserve"><value>یا ادامه با</value></data>
+  <data name="login.sign_in_with_passkey" xml:space="preserve"><value>ورود با کلید عبور (Passkey)</value></data>
+  <data name="register.title" xml:space="preserve"><value>ایجاد حساب کاربری</value></data>
+  <data name="register.subtitle" xml:space="preserve"><value>با ایجاد حساب جدید کار خود را آغاز کنید</value></data>
+  <data name="register.username" xml:space="preserve"><value>نام کاربری</value></data>
+  <data name="register.email" xml:space="preserve"><value>آدرس ایمیل</value></data>
+  <data name="register.phone" xml:space="preserve"><value>شماره تلفن</value></data>
+  <data name="register.password" xml:space="preserve"><value>رمز عبور</value></data>
+  <data name="register.confirm_password" xml:space="preserve"><value>تکرار رمز عبور</value></data>
+  <data name="register.sign_up_button" xml:space="preserve"><value>ایجاد حساب</value></data>
+  <data name="register.already_have_account" xml:space="preserve"><value>قبلاً ثبت‌نام کرده‌اید؟</value></data>
+  <data name="register.sign_in_link" xml:space="preserve"><value>ورود</value></data>
+  <data name="register.register_with_passkey" xml:space="preserve"><value>ثبت‌نام با کلید عبور (Passkey)</value></data>
+  <data name="forgot_password.title" xml:space="preserve"><value>فراموشی رمز عبور</value></data>
+  <data name="forgot_password.subtitle" xml:space="preserve"><value>ایمیل یا نام کاربری خود را وارد کنید تا لینک بازیابی ارسال شود</value></data>
+  <data name="forgot_password.login_field" xml:space="preserve"><value>نام کاربری، ایمیل یا تلفن</value></data>
+  <data name="forgot_password.send_link" xml:space="preserve"><value>ارسال لینک بازیابی</value></data>
+  <data name="forgot_password.sent_title" xml:space="preserve"><value>لینک بازیابی ارسال شد</value></data>
+  <data name="forgot_password.sent_desc" xml:space="preserve"><value>در صورت تطابق با حساب کاربری، راهنمای بازیابی ارسال شد.</value></data>
+  <data name="reset_password.title" xml:space="preserve"><value>تغییر رمز عبور</value></data>
+  <data name="reset_password.subtitle" xml:space="preserve"><value>یک رمز عبور جدید و امن انتخاب کنید</value></data>
+  <data name="reset_password.new_password" xml:space="preserve"><value>رمز عبور جدید</value></data>
+  <data name="reset_password.confirm_password" xml:space="preserve"><value>تکرار رمز عبور جدید</value></data>
+  <data name="reset_password.update_button" xml:space="preserve"><value>به‌روزرسانی رمز عبور</value></data>
+  <data name="change_password.title" xml:space="preserve"><value>تغییر رمز عبور</value></data>
+  <data name="change_password.subtitle" xml:space="preserve"><value>رمز عبور حساب کاربری خود را به‌روزرسانی کنید</value></data>
+  <data name="change_password.current_password" xml:space="preserve"><value>رمز عبور فعلی</value></data>
+  <data name="change_password.new_password" xml:space="preserve"><value>رمز عبور جدید</value></data>
+  <data name="change_password.confirm_password" xml:space="preserve"><value>تکرار رمز عبور جدید</value></data>
+  <data name="change_password.save_button" xml:space="preserve"><value>تغییر رمز عبور</value></data>
+  <data name="change_password.success" xml:space="preserve"><value>رمز عبور شما با موفقیت تغییر کرد.</value></data>
+  <data name="change_username.title" xml:space="preserve"><value>تغییر نام کاربری</value></data>
+  <data name="change_username.subtitle" xml:space="preserve"><value>نام کاربری عمومی خود را تغییر دهید</value></data>
+  <data name="change_username.current_username" xml:space="preserve"><value>نام کاربری فعلی</value></data>
+  <data name="change_username.new_username" xml:space="preserve"><value>نام کاربری جدید</value></data>
+  <data name="change_username.password_confirm" xml:space="preserve"><value>رمز عبور فعلی</value></data>
+  <data name="change_username.save_button" xml:space="preserve"><value>به‌روزرسانی نام کاربری</value></data>
+  <data name="change_username.success" xml:space="preserve"><value>نام کاربری شما با موفقیت به‌روزرسانی شد.</value></data>
+  <data name="change_email.title" xml:space="preserve"><value>تغییر آدرس ایمیل</value></data>
+  <data name="change_email.subtitle" xml:space="preserve"><value>آدرس ایمیل حساب کاربری خود را به‌روزرسانی کنید</value></data>
+  <data name="change_email.current_email" xml:space="preserve"><value>ایمیل فعلی</value></data>
+  <data name="change_email.new_email" xml:space="preserve"><value>آدرس ایمیل جدید</value></data>
+  <data name="change_email.password_confirm" xml:space="preserve"><value>رمز عبور فعلی</value></data>
+  <data name="change_email.send_link" xml:space="preserve"><value>ارسال لینک تأیید</value></data>
+  <data name="change_email.sent_title" xml:space="preserve"><value>ایمیل تأیید ارسال شد</value></data>
+  <data name="change_email.sent_desc" xml:space="preserve"><value>یک لینک تأیید به ایمیل جدید شما ارسال شد. لطفاً روی لینک کلیک کنید تا تغییر نهایی شود.</value></data>
+  <data name="change_email.success" xml:space="preserve"><value>آدرس ایمیل شما با موفقیت به‌روزرسانی و تأیید شد.</value></data>
+  <data name="change_phone.title" xml:space="preserve"><value>تغییر شماره تلفن</value></data>
+  <data name="change_phone.subtitle" xml:space="preserve"><value>شماره همراه خود را تغییر دهید</value></data>
+  <data name="change_phone.current_phone" xml:space="preserve"><value>شماره فعلی</value></data>
+  <data name="change_phone.new_phone" xml:space="preserve"><value>شماره تلفن جدید</value></data>
+  <data name="change_phone.password_confirm" xml:space="preserve"><value>رمز عبور فعلی</value></data>
+  <data name="change_phone.send_code" xml:space="preserve"><value>ارسال کد تأیید</value></data>
+  <data name="change_phone.code_sent" xml:space="preserve"><value>ورود کد تأیید</value></data>
+  <data name="change_phone.code_sent_desc" xml:space="preserve"><value>یک کد تأیید به شماره جدید شما ارسال شد.</value></data>
+  <data name="change_phone.verification_code" xml:space="preserve"><value>کد تأیید</value></data>
+  <data name="change_phone.verify_button" xml:space="preserve"><value>تأیید و ذخیره شماره</value></data>
+  <data name="change_phone.success" xml:space="preserve"><value>شماره تلفن شما با موفقیت تغییر و تأیید شد.</value></data>
+  <data name="confirm_email.title" xml:space="preserve"><value>تأیید ایمیل</value></data>
+  <data name="confirm_email.success" xml:space="preserve"><value>ایمیل شما تأیید شد. اکنون می‌توانید وارد شوید.</value></data>
+  <data name="confirm_phone.title" xml:space="preserve"><value>تأیید شماره تلفن</value></data>
+  <data name="confirm_phone.success" xml:space="preserve"><value>شماره تلفن شما تأیید شد.</value></data>
+  <data name="two_factor.title" xml:space="preserve"><value>احراز هویت دو مرحله‌ای</value></data>
+  <data name="two_factor.subtitle" xml:space="preserve"><value>کد امنیتی را از برنامه یا دستگاه احراز هویت خود وارد کنید</value></data>
+  <data name="two_factor.code" xml:space="preserve"><value>کد امنیتی</value></data>
+  <data name="two_factor.verify_button" xml:space="preserve"><value>تأیید</value></data>
+  <data name="two_factor.use_recovery_code" xml:space="preserve"><value>استفاده از کد بازیابی</value></data>
+  <data name="two_factor.recovery_title" xml:space="preserve"><value>بازیابی دو مرحله‌ای</value></data>
+  <data name="two_factor.recovery_subtitle" xml:space="preserve"><value>یکی از کدهای بازیابی ذخیره شده خود را وارد کنید</value></data>
+  <data name="logout.title" xml:space="preserve"><value>خروج از حساب</value></data>
+  <data name="logout.confirm" xml:space="preserve"><value>آیا مطمئن هستید که می‌خواهید خارج شوید؟</value></data>
+  <data name="logout.button" xml:space="preserve"><value>بله، خروج از حساب</value></data>
+  <data name="lockout.title" xml:space="preserve"><value>حساب کاربری موقتاً قفل شده است</value></data>
+  <data name="lockout.desc" xml:space="preserve"><value>این حساب به دلیل تلاش‌های ناموفق متعدد موقتاً مسدود شده است. لطفاً بعداً دوباره امتحان کنید.</value></data>
+  <data name="access_denied.title" xml:space="preserve"><value>دسترسی غیرمجاز</value></data>
+  <data name="access_denied.desc" xml:space="preserve"><value>شما اجازه دسترسی به این بخش یا منبع را ندارید.</value></data>
+  <data name="consent.title" xml:space="preserve"><value>مجوز دسترسی برنامه</value></data>
+  <data name="consent.subtitle" xml:space="preserve"><value>این برنامه درخواست دسترسی به حساب کاربری شما را دارد</value></data>
+  <data name="consent.allow" xml:space="preserve"><value>تأیید و اجازه دسترسی</value></data>
+  <data name="consent.deny" xml:space="preserve"><value>رد درخواست</value></data>
+  <data name="join_project.title" xml:space="preserve"><value>عضویت در پروژه</value></data>
+  <data name="join_project.confirm" xml:space="preserve"><value>عضویت در این پروژه</value></data>
 </root>

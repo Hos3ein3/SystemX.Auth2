@@ -25,6 +25,12 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
     /// <summary>Show a link to the register page.</summary>
     public bool ShowRegisterLink { get; private set; }
 
+    /// <summary>Enabled external identity providers (Google, GitHub, SAML, etc.).</summary>
+    public IReadOnlyList<Domain.Settings.ExternalProviderSettings> EnabledExternalProviders { get; private set; } = [];
+
+    /// <summary>Show passkey sign-in button.</summary>
+    public bool ShowPasskeyLogin { get; private set; }
+
     /// <summary>True when developer login prompt modal should be shown.</summary>
     public bool ShowDeveloperModal { get; private set; }
 
@@ -74,7 +80,8 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
             {
                 ShowDeveloperModal = true;
                 RedirectAfterLoginUrl = targetRedirect;
-                DeveloperDashboardUrl = "/";
+                var currentClient = Client?.ClientId ?? (!string.IsNullOrEmpty(ClientId) ? ClientId : (Project?.ProjectKey == "_global" ? "_global" : Project?.ProjectKey));
+                DeveloperDashboardUrl = !string.IsNullOrEmpty(currentClient) ? $"/?client_id={Uri.EscapeDataString(currentClient)}" : "/";
                 return Page();
             }
 
@@ -101,6 +108,8 @@ public sealed class LoginModel(IClientIdAccessor clientId, IAuthFlowResolver flo
         ShowEmailLogin = methods.Contains(LoginMethod.EmailPassword);
         ShowPhoneField = methods.Contains(LoginMethod.PhonePassword) || methods.Contains(LoginMethod.PhoneOtp);
         ShowRegisterLink = Settings.Registration.RegistrationEnabled;
+        EnabledExternalProviders = Settings.ExternalProviders.Where(p => p.Enabled).ToList();
+        ShowPasskeyLogin = methods.Contains(LoginMethod.Passkey) || Settings.Passkeys.AllowPasskeys;
         return true;
     }
 }

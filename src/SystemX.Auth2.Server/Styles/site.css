@@ -1,7 +1,6 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 @source "../Pages";
-@source "../Admin";
-@source "../Components";
 /* Utilities for the branding tokens, always generated (components may use them from tag helpers). */
 @source inline("{bg,text,border,ring}-a2-{primary,primary-text,bg,surface,text,muted,error,success}");
 

@@ -1,2 +1,73 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.ChangeUserNameModel
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = Loc["change_username.title"];
+    ViewData["Subtitle"] = Loc["change_username.subtitle"];
+}
+
+@if (Model.Changed)
+{
+    <div class="text-center space-y-4">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+            <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+        </div>
+        <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">@Loc["change_username.title"]</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            @Loc["change_username.success"]
+        </p>
+        <div class="pt-4">
+            <a2-link-button href="@(Model.SafeReturnUrl() ?? "/")" variant="primary" class="w-full">
+                @Loc["common.continue"]
+            </a2-link-button>
+        </div>
+    </div>
+}
+else
+{
+    <form method="post" class="space-y-4">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReturnUrl" />
+        <input type="hidden" asp-for="ClientId" />
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <a2-alert variant="danger">
+                @Model.ErrorMessage
+            </a2-alert>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.CurrentUserName))
+        {
+            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm">
+                <span class="block text-xs font-medium text-gray-500 dark:text-gray-400">@Loc["change_username.current_username"]</span>
+                <span class="font-mono font-semibold text-gray-900 dark:text-gray-100">@Model.CurrentUserName</span>
+            </div>
+        }
+
+        <a2-field label="@Loc["change_username.new_username"]" required="true" for="Input_NewUserName">
+            <a2-input id="Input_NewUserName" name="Input.NewUserName" value="@Model.Input.NewUserName" required="true" autocomplete="username" placeholder="john.doe" />
+        </a2-field>
+
+        @if (Model.PasswordRequired)
+        {
+            <a2-field label="@Loc["change_username.password_confirm"]" required="true" for="Input_CurrentPassword" hint="Confirm your password to authorize this change.">
+                <a2-password id="Input_CurrentPassword" name="Input.CurrentPassword" required="true" autocomplete="current-password" placeholder="••••••••••••" />
+            </a2-field>
+        }
+
+        <div class="pt-2">
+            <a2-button type="submit" variant="primary" class="w-full">
+                @Loc["change_username.save_button"]
+            </a2-button>
+        </div>
+
+        <div class="mt-4 text-center text-sm">
+            <a href="@(Model.SafeReturnUrl() ?? "/")" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">
+                @Loc["common.back"]
+            </a>
+        </div>
+    </form>
+}

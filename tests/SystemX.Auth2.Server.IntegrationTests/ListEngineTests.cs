@@ -44,7 +44,7 @@ public class ListEngineTests : Phase6Base
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        return await ListEngine.PageAsync(UserList.For(db, project.Id, false), Q(query, problems), Def, problems);
+        return await ListEngine.PageAsync(UserList.For(db.Users, db.UserProjects, project.Id, false), Q(query, problems), Def, problems);
     }
 
     // ------------------------------------------------------------------ paging
@@ -164,7 +164,7 @@ public class ListEngineTests : Phase6Base
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
         using var stream = new MemoryStream();
-        await CsvExport.WriteAsync(stream, ListEngine.Apply(UserList.For(db, A.Id, false), Q(""), Def).Select(Def.Select).AsAsyncEnumerable(), 1000);
+        await CsvExport.WriteAsync(stream, ListEngine.Apply(UserList.For(db.Users, db.UserProjects, A.Id, false), Q(""), Def).Select(Def.Select).AsAsyncEnumerable(), 1000);
         Encoding.UTF8.GetString(stream.ToArray()).ShouldNotContain("userb");
     }
 
@@ -177,7 +177,7 @@ public class ListEngineTests : Phase6Base
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        var rows = ListEngine.Apply(UserList.For(db, A.Id, false), Q("sort=userName"), Def).Select(Def.Select).AsAsyncEnumerable();
+        var rows = ListEngine.Apply(UserList.For(db.Users, db.UserProjects, A.Id, false), Q("sort=userName"), Def).Select(Def.Select).AsAsyncEnumerable();
         using var stream = new MemoryStream();
         await CsvExport.WriteAsync(stream, rows, rowLimit: 4);
         var bytes = stream.ToArray();
@@ -204,7 +204,7 @@ public class ListEngineTests : Phase6Base
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
         using var _ = scope.ServiceProvider.GetRequiredService<IGlobalScope>().Begin();
-        var sql = ListEngine.Apply(UserList.For(db, A.Id, false), Q("page=2&pageSize=10&sort=email&q=user"), Def).Skip(10).Take(10).Select(Def.Select).ToQueryString();
+        var sql = ListEngine.Apply(UserList.For(db.Users, db.UserProjects, A.Id, false), Q("page=2&pageSize=10&sort=email&q=user"), Def).Skip(10).Take(10).Select(Def.Select).ToQueryString();
         sql.ShouldContain("LIMIT");
         sql.ShouldContain("OFFSET");
         sql.ShouldContain("ORDER BY");

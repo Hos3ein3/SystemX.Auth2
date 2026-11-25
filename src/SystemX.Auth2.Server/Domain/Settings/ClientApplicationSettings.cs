@@ -34,6 +34,8 @@ public sealed class ClientApplicationSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public ConsentMode? ConsentMode { get; set; }
     /// <summary>Send the confirmation email after registration through this application. Null: the project value.</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public bool? SendConfirmationEmail { get; set; }
+    /// <summary>Send the confirmation SMS after registration through this application. Null: the project value.</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public bool? SendConfirmationSMS { get; set; }
     /// <summary>This application's own email / SMS providers. Null: the project's. Changed only through the messaging admin routes.</summary>
     public MessagingSettings? Messaging { get; set; }
 }

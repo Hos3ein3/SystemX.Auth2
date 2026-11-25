@@ -1,6 +1,10 @@
 using System.Net;
 using SystemX.Auth2.Contracts.Access;
 using SystemX.Auth2.Contracts.Constants;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Identity;
+using SystemX.Auth2.Server.Domain.Entities;
+using SystemX.Auth2.Server.Application;
 
 namespace SystemX.Auth2.Server.IntegrationTests;
 
@@ -13,6 +17,8 @@ public class AdminPagesTests : Phase6Base
         "/admin/p/{k}", "/admin/p/{k}/users", "/admin/p/{k}/roles", "/admin/p/{k}/permissions", "/admin/p/{k}/groups", "/admin/p/{k}/applications",
         "/admin/p/{k}/scopes", "/admin/p/{k}/authorizations", "/admin/p/{k}/providers", "/admin/p/{k}/sessions", "/admin/p/{k}/audit", "/admin/p/{k}/reports",
         "/admin/p/{k}/settings", "/admin/p/{k}/ui", "/admin/p/{k}/branding", "/admin/p/{k}/email-templates",
+        "/admin/p/{k}/assignments", "/admin/p/{k}/role-permissions", "/admin/p/{k}/user-permissions", "/admin/p/{k}/user-groups", "/admin/p/{k}/group-roles", "/admin/p/{k}/group-permissions",
+        "/admin/p/{k}/role_permissions", "/admin/p/{k}/user_permissions", "/admin/p/{k}/user_groups", "/admin/p/{k}/group_roles", "/admin/p/{k}/group_permissions",
         "/admin/p/{k}/users/create", "/admin/p/{k}/roles/create", "/admin/p/{k}/permissions/create", "/admin/p/{k}/groups/create",
         "/admin/p/{k}/applications/create", "/admin/p/{k}/scopes/create", "/admin/p/{k}/providers/create", "/admin/projects/create",
     ];
@@ -87,6 +93,55 @@ public class AdminPagesTests : Phase6Base
     }
 
     [Fact]
+    public async Task DetailAndAssignmentPages_RenderWithRealData_InsteadOfFailingToTranslateTheQuery()
+    {
+        var admin = await GlobalAdminAsync();
+        await CreateUserInAsync("appa");   // sara
+        await using (var scope = ScopeFor("appa"))
+        {
+            var sp = scope.ServiceProvider;
+            var access = sp.GetRequiredService<IAccessService>();
+            var groups = sp.GetRequiredService<IGroupService>();
+            var sara = (await sp.GetRequiredService<UserManager<AppUser>>().FindByNameAsync("sara"))!;
+            (await access.CreatePermissionAsync(new SystemX.Auth2.Contracts.Access.PermissionDefinition("orders.read"))).Succeeded.ShouldBeTrue();
+            (await access.CreateRoleAsync("Editor")).Succeeded.ShouldBeTrue();
+            (await access.AddRolePermissionAsync("Editor", "orders.read")).Succeeded.ShouldBeTrue();
+            (await access.GrantPermissionAsync(sara, "orders.read")).Succeeded.ShouldBeTrue();
+            (await groups.CreateAsync("finance")).Succeeded.ShouldBeTrue();
+            (await groups.AddUserAsync("finance", sara)).Succeeded.ShouldBeTrue();
+            (await groups.AddRoleAsync("finance", "Editor")).Succeeded.ShouldBeTrue();
+        }
+
+        var seen = new Dictionary<string, string>
+        {
+            ["/admin/p/appa/permissions/detail?key=orders.read&ClientId=_global"] = "sara",   // users granted the permission
+            ["/admin/p/appa/groups/detail?name=finance&ClientId=_global"] = "sara",           // members of the group
+            ["/admin/p/appa/assignments?ClientId=_global"] = "sara",                          // user permissions, user groups, group roles, role permissions
+            ["/admin/p/appa/role-permissions?ClientId=_global"] = "orders.read",
+            ["/admin/p/appa/user-permissions?ClientId=_global"] = "sara",
+            ["/admin/p/appa/user-groups?ClientId=_global"] = "finance",
+            ["/admin/p/appa/group-roles?ClientId=_global"] = "Editor",
+        };
+        var failures = new List<string>();
+        foreach (var (url, text) in seen)
+        {
+            var r = await admin.GetAsync(url);
+            if (r.StatusCode != HttpStatusCode.OK) { failures.Add($"{url} -> {(int)r.StatusCode}"); continue; }
+            if (!(await r.Content.ReadAsStringAsync()).Contains(text)) failures.Add($"{url} does not show '{text}'");
+        }
+        failures.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task RoleDetailPage_ListsTheUsersWhoHoldTheRole()
+    {
+        var admin = await GlobalAdminAsync();
+        var r = await admin.GetAsync("/admin/p/_global/roles/detail?name=GlobalAdmin&ClientId=_global");
+        r.StatusCode.ShouldBe(HttpStatusCode.OK);   // used to fail: a Guid.ToString() in the query could not be translated to SQL
+        (await r.Content.ReadAsStringAsync()).ShouldContain("globaladmin");
+    }
+
+    [Fact]
     public async Task RolesPage_ListsARoleThatAClientSynced()
     {
         var admin = await GlobalAdminAsync();
@@ -96,5 +151,34 @@ public class AdminPagesTests : Phase6Base
         var r = await admin.GetAsync("/admin/p/appa/roles?ClientId=_global");
         r.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await r.Content.ReadAsStringAsync()).ShouldContain("Oskol");
+    }
+
+    [Fact]
+    public async Task AuditPage_RendersFilterForm_AndTable_Correctly()
+    {
+        var b = await GlobalAdminAsync();
+        var r = await b.GetAsync("/admin/p/_global/audit?ClientId=_global");
+        r.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var html = await r.Content.ReadAsStringAsync();
+        html.ShouldContain("Audit Events");
+        html.ShouldContain("name=\"q\"");
+        html.ShouldContain("name=\"actionFilter\"");
+        html.ShouldContain("name=\"targetType\"");
+        html.ShouldContain("name=\"pageSize\"");
+        html.ShouldContain("<table");
+    }
+
+    [Fact]
+    public async Task SettingsPage_ShowsDefaultAssignedRights_ForRegistration()
+    {
+        var b = await GlobalAdminAsync();
+        var r = await b.GetAsync("/admin/p/_global/settings?ClientId=_global");
+        r.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var html = await r.Content.ReadAsStringAsync();
+        html.ShouldContain("Default Rights for New Members");
+        html.ShouldContain("Assigned Roles");
+        html.ShouldContain("Assigned Groups");
+        html.ShouldContain("Assigned Permissions");
+        html.ShouldContain("data-multiselect-search");
     }
 }

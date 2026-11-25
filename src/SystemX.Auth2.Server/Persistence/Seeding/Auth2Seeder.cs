@@ -58,6 +58,7 @@ public sealed partial class Auth2Seeder(
 
         if (env is null || !env.IsEnvironment("Testing") || string.Equals(Environment.GetEnvironmentVariable("AUTH2_SEED_SAMPLES"), "true", StringComparison.OrdinalIgnoreCase))
         {
+            await EnsureGlobalPermissionsAsync(globalApp, ct);
             await EnsureSampleProjectAndApplicationsAsync(ct);
         }
 
@@ -239,6 +240,48 @@ public sealed partial class Auth2Seeder(
                 Description = "Administrator of the sample project.",
             });
         }
+
+        // Ensure sample permissions for sample project
+        var samplePerms = new (string Key, string DisplayName, string Description, string Group)[]
+        {
+            ("reports.read", "Read Reports", "Access and view system reports", "reporting"),
+            ("orders.read", "Read Orders", "View customer orders", "commerce"),
+            ("orders.write", "Write Orders", "Create and modify customer orders", "commerce"),
+        };
+
+        var createdSamplePerms = new List<Permission>();
+        foreach (var (k, name, desc, grp) in samplePerms)
+        {
+            var p = await db.Permissions.FirstOrDefaultAsync(x => x.ProjectId == project.Id && x.Key == k, ct);
+            if (p is null)
+            {
+                p = new Permission
+                {
+                    ProjectId = project.Id,
+                    Key = k,
+                    DisplayName = name,
+                    Description = desc,
+                    Group = grp,
+                    Source = PermissionSource.Manual
+                };
+                db.Permissions.Add(p);
+            }
+            createdSamplePerms.Add(p);
+        }
+        await db.SaveChangesAsync(ct);
+
+        var sampleAdminRole = await roles.Roles.FirstOrDefaultAsync(r => r.ProjectId == project.Id && r.Name == "Admin", ct);
+        if (sampleAdminRole is not null)
+        {
+            foreach (var perm in createdSamplePerms)
+            {
+                if (!await db.RolePermissions.AnyAsync(rp => rp.RoleId == sampleAdminRole.Id && rp.PermissionId == perm.Id, ct))
+                {
+                    db.RolePermissions.Add(new RolePermission { RoleId = sampleAdminRole.Id, PermissionId = perm.Id });
+                }
+            }
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     private async Task EnsureApplicationAsync(
@@ -252,11 +295,34 @@ public sealed partial class Auth2Seeder(
         ClientApplicationSettings settings,
         CancellationToken ct)
     {
-        var existing = await db.Set<Auth2Application>().FirstOrDefaultAsync(a => a.ProjectId == project.Id && a.ClientId == clientId, ct);
+        var existing = await db.Set<Auth2Application>().FirstOrDefaultAsync(a => a.ClientId == clientId, ct);
         if (existing is null)
         {
             var spec = new ApplicationSpec(name, clientId, redirectUris, postLogoutRedirectUris, allowedScopes, settings);
             await provisioner.CreateAsync(project, spec, clock.GetUtcNow(), ct);
+        }
+        else
+        {
+            bool modified = false;
+            if (existing.ProjectId != project.Id)
+            {
+                existing.ProjectId = project.Id;
+                modified = true;
+            }
+            if (existing.Name != name)
+            {
+                existing.Name = name;
+                modified = true;
+            }
+            if (!existing.IsEnabled)
+            {
+                existing.IsEnabled = true;
+                modified = true;
+            }
+            if (modified)
+            {
+                await db.SaveChangesAsync(ct);
+            }
         }
 
         if (appManager is not null)
@@ -329,6 +395,54 @@ public sealed partial class Auth2Seeder(
         });
         EnsureSucceeded(result, "create the Developer role");
         await Task.CompletedTask;
+    }
+
+    private async Task EnsureGlobalPermissionsAsync(Project globalApp, CancellationToken ct)
+    {
+        var perms = new (string Key, string DisplayName, string Description, string Group)[]
+        {
+            ("users.manage", "Manage Users", "Create, edit, and lock user accounts", "identity"),
+            ("roles.manage", "Manage Roles", "Create, edit, and assign roles and permissions", "access"),
+            ("audit.view", "View Audit Logs", "Read security and system audit events", "monitoring"),
+            ("settings.manage", "Manage Settings", "Configure server and project settings", "system"),
+        };
+
+        var createdPerms = new List<Permission>();
+        foreach (var (k, name, desc, grp) in perms)
+        {
+            var p = await db.Permissions.FirstOrDefaultAsync(x => x.ProjectId == globalApp.Id && x.Key == k, ct);
+            if (p is null)
+            {
+                p = new Permission
+                {
+                    ProjectId = globalApp.Id,
+                    Key = k,
+                    DisplayName = name,
+                    Description = desc,
+                    Group = grp,
+                    Source = PermissionSource.Manual
+                };
+                db.Permissions.Add(p);
+            }
+            createdPerms.Add(p);
+        }
+        await db.SaveChangesAsync(ct);
+
+        var devRole = await roles.FindByNameAsync(Auth2Roles.Developer);
+        var adminRole = await roles.FindByNameAsync(Auth2Roles.GlobalAdmin);
+
+        foreach (var role in new[] { devRole, adminRole })
+        {
+            if (role is null) continue;
+            foreach (var perm in createdPerms)
+            {
+                if (!await db.RolePermissions.AnyAsync(rp => rp.RoleId == role.Id && rp.PermissionId == perm.Id, ct))
+                {
+                    db.RolePermissions.Add(new RolePermission { RoleId = role.Id, PermissionId = perm.Id });
+                }
+            }
+        }
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task<bool> EnsureAdminAsync(Project globalApp, bool single, CancellationToken ct)

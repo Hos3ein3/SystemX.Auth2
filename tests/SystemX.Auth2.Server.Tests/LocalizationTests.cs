@@ -59,11 +59,11 @@ public class LocalizationTests
 
     [Fact]
     public void Error_MissingKeyInCulture_FallsBackToEnglish() =>
-        With("nl", () => Localizer().Error(Auth2ErrorCodes.ServerError)).ShouldBe(With("en", () => Localizer().Error(Auth2ErrorCodes.ServerError)));
+        With("nl", () => Localizer().Error("test_english_fallback")).ShouldBe(With("en", () => Localizer().Error("test_english_fallback")));
 
     [Fact]
     public void Error_UnknownCulture_FallsBackToEnglish() =>
-        With("de", () => Localizer().Error(Auth2ErrorCodes.LockedOut)).ShouldBe(With("en", () => Localizer().Error(Auth2ErrorCodes.LockedOut)));
+        With("ja", () => Localizer().Error(Auth2ErrorCodes.LockedOut)).ShouldBe(With("en", () => Localizer().Error(Auth2ErrorCodes.LockedOut)));
 
     [Fact]
     public void Error_UnknownKey_ReturnsTheKey() => With("en", () => Localizer().Error("no_such_key")).ShouldBe("no_such_key");
@@ -119,7 +119,7 @@ public class CultureResolverTests
     public void Resolve_ApplicationDefault_IsUsedLast() => Resolve(appDefault: "it").ShouldBe("it");
 
     [Fact]
-    public void Resolve_UiLocalesTakesFirstSupportedValue() => Resolve(ui: "de xx fa nl").ShouldBe("fa");
+    public void Resolve_UiLocalesTakesFirstSupportedValue() => Resolve(ui: "ja xx fa nl").ShouldBe("fa");
 
     [Fact]
     public void Resolve_RegionTag_MatchesNeutralCulture() => Resolve(accept: ["fa-IR"]).ShouldBe("fa");
@@ -129,11 +129,11 @@ public class CultureResolverTests
         Resolve(ui: "nl", accept: ["fa"], supported: ["en", "fa"]).ShouldBe("fa");
 
     [Fact]
-    public void Resolve_UnsupportedEverywhere_IsEnglish() => Resolve(ui: "de", accept: ["fr"], appDefault: "es").ShouldBe("en");
+    public void Resolve_UnsupportedEverywhere_IsEnglish() => Resolve(ui: "ja", accept: ["zh"], appDefault: "ko").ShouldBe("en");
 
     [Fact]
     public void Resolve_ServerWithoutResxForCulture_IsSkippedEvenIfApplicationListsIt() =>
-        Resolve(ui: "de", supported: ["en", "de"]).ShouldBe("en");
+        Resolve(ui: "ja", supported: ["en", "ja"]).ShouldBe("en");
 }
 
 public class SecretHasherTests

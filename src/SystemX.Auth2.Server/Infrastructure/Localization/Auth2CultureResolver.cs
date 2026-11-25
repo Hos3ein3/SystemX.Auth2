@@ -16,7 +16,7 @@ public static class Auth2CultureResolver
     public const string Fallback = "en";
 
     /// <summary>Cultures the server has resx files for.</summary>
-    public static readonly IReadOnlyList<string> ServerCultures = ["en", "fa", "nl", "it"];
+    public static readonly IReadOnlyList<string> ServerCultures = ["en", "fa", "nl", "it", "de", "es", "fr"];
 
     /// <summary>Picks the culture. All candidates are optional.</summary>
     /// <param name="uiLocales">Space-separated <c>ui_locales</c> value.</param>
@@ -68,7 +68,8 @@ public sealed class Auth2RequestCultureProvider : RequestCultureProvider
     {
         var request = httpContext.Request;
         var uiLocales = request.Query["ui_locales"].ToString();
-        if (string.IsNullOrEmpty(uiLocales)) uiLocales = FromReturnUrl(request.Query["ReturnUrl"].ToString(), "ui_locales") ?? "";
+        if (string.IsNullOrEmpty(uiLocales)) uiLocales = request.Query["culture"].ToString();
+        if (string.IsNullOrEmpty(uiLocales)) uiLocales = FromReturnUrl(request.Query["ReturnUrl"].ToString(), "ui_locales") ?? FromReturnUrl(request.Query["ReturnUrl"].ToString(), "culture") ?? "";
 
         // The saved culture of a signed-in user is read from the "locale" claim.
         var userCulture = httpContext.User.FindFirst("locale")?.Value;

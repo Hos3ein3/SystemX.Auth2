@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="common.save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="common.back" xml:space="preserve"><value>Zurück</value></data>
+  <data name="common.submit" xml:space="preserve"><value>Absenden</value></data>
+  <data name="common.continue" xml:space="preserve"><value>Weiter</value></data>
+  <data name="common.back_to_login" xml:space="preserve"><value>Zurück zur Anmeldung</value></data>
+  <data name="common.home" xml:space="preserve"><value>Zur Startseite</value></data>
+  <data name="common.loading" xml:space="preserve"><value>Laden...</value></data>
+  <data name="login.title" xml:space="preserve"><value>Anmelden</value></data>
+  <data name="login.subtitle" xml:space="preserve"><value>Geben Sie Ihre Zugangsdaten ein, um sich anzumelden</value></data>
+  <data name="login.username_or_email" xml:space="preserve"><value>Benutzername oder E-Mail</value></data>
+  <data name="login.password" xml:space="preserve"><value>Passwort</value></data>
+  <data name="login.remember_me" xml:space="preserve"><value>Angemeldet bleiben</value></data>
+  <data name="login.forgot_password" xml:space="preserve"><value>Passwort vergessen?</value></data>
+  <data name="login.sign_in_button" xml:space="preserve"><value>Anmelden</value></data>
+  <data name="login.dont_have_account" xml:space="preserve"><value>Noch kein Konto?</value></data>
+  <data name="login.sign_up_link" xml:space="preserve"><value>Jetzt registrieren</value></data>
+  <data name="login.or_continue_with" xml:space="preserve"><value>Oder fortfahren mit</value></data>
+  <data name="login.sign_in_with_passkey" xml:space="preserve"><value>Mit Passkey anmelden</value></data>
+  <data name="register.title" xml:space="preserve"><value>Konto erstellen</value></data>
+  <data name="register.subtitle" xml:space="preserve"><value>Erstellen Sie Ihr neues Benutzerkonto</value></data>
+  <data name="register.username" xml:space="preserve"><value>Benutzername</value></data>
+  <data name="register.email" xml:space="preserve"><value>E-Mail-Adresse</value></data>
+  <data name="register.phone" xml:space="preserve"><value>Telefonnummer</value></data>
+  <data name="register.password" xml:space="preserve"><value>Passwort</value></data>
+  <data name="register.confirm_password" xml:space="preserve"><value>Passwort bestätigen</value></data>
+  <data name="register.sign_up_button" xml:space="preserve"><value>Konto erstellen</value></data>
+  <data name="register.already_have_account" xml:space="preserve"><value>Bereits registriert?</value></data>
+  <data name="register.sign_in_link" xml:space="preserve"><value>Anmelden</value></data>
+  <data name="register.register_with_passkey" xml:space="preserve"><value>Mit Passkey registrieren</value></data>
+  <data name="forgot_password.title" xml:space="preserve"><value>Passwort vergessen?</value></data>
+  <data name="forgot_password.subtitle" xml:space="preserve"><value>Geben Sie Ihre E-Mail-Adresse oder Ihren Benutzernamen ein</value></data>
+  <data name="forgot_password.login_field" xml:space="preserve"><value>Benutzername, E-Mail oder Telefon</value></data>
+  <data name="forgot_password.send_link" xml:space="preserve"><value>Link anfordern</value></data>
+  <data name="forgot_password.sent_title" xml:space="preserve"><value>Link versendet</value></data>
+  <data name="forgot_password.sent_desc" xml:space="preserve"><value>Falls ein passendes Konto existiert, haben wir Anweisungen zum Zurücksetzen gesendet.</value></data>
+  <data name="reset_password.title" xml:space="preserve"><value>Passwort zurücksetzen</value></data>
+  <data name="reset_password.subtitle" xml:space="preserve"><value>Wählen Sie ein neues sicheres Passwort</value></data>
+  <data name="reset_password.new_password" xml:space="preserve"><value>Neues Passwort</value></data>
+  <data name="reset_password.confirm_password" xml:space="preserve"><value>Neues Passwort bestätigen</value></data>
+  <data name="reset_password.update_button" xml:space="preserve"><value>Passwort aktualisieren</value></data>
+  <data name="change_password.title" xml:space="preserve"><value>Passwort ändern</value></data>
+  <data name="change_password.subtitle" xml:space="preserve"><value>Aktualisieren Sie Ihr Passwort</value></data>
+  <data name="change_password.current_password" xml:space="preserve"><value>Aktuelles Passwort</value></data>
+  <data name="change_password.new_password" xml:space="preserve"><value>Neues Passwort</value></data>
+  <data name="change_password.confirm_password" xml:space="preserve"><value>Neues Passwort bestätigen</value></data>
+  <data name="change_password.save_button" xml:space="preserve"><value>Passwort ändern</value></data>
+  <data name="change_password.success" xml:space="preserve"><value>Ihr Passwort wurde erfolgreich geändert.</value></data>
+  <data name="change_username.title" xml:space="preserve"><value>Benutzernamen ändern</value></data>
+  <data name="change_username.subtitle" xml:space="preserve"><value>Aktualisieren Sie Ihren öffentlichen Benutzernamen</value></data>
+  <data name="change_username.current_username" xml:space="preserve"><value>Aktueller Benutzername</value></data>
+  <data name="change_username.new_username" xml:space="preserve"><value>Neuer Benutzername</value></data>
+  <data name="change_username.password_confirm" xml:space="preserve"><value>Aktuelles Passwort</value></data>
+  <data name="change_username.save_button" xml:space="preserve"><value>Benutzername speichern</value></data>
+  <data name="change_username.success" xml:space="preserve"><value>Ihr Benutzername wurde erfolgreich geändert.</value></data>
+  <data name="change_email.title" xml:space="preserve"><value>E-Mail-Adresse ändern</value></data>
+  <data name="change_email.subtitle" xml:space="preserve"><value>Aktualisieren Sie Ihre E-Mail-Adresse</value></data>
+  <data name="change_email.current_email" xml:space="preserve"><value>Aktuelle E-Mail</value></data>
+  <data name="change_email.new_email" xml:space="preserve"><value>Neue E-Mail-Adresse</value></data>
+  <data name="change_email.password_confirm" xml:space="preserve"><value>Aktuelles Passwort</value></data>
+  <data name="change_email.send_link" xml:space="preserve"><value>Bestätigungslink senden</value></data>
+  <data name="change_email.sent_title" xml:space="preserve"><value>Bestätigungs-E-Mail gesendet</value></data>
+  <data name="change_email.sent_desc" xml:space="preserve"><value>Ein Bestätigungslink wurde an Ihre neue E-Mail-Adresse gesendet. Bitte klicken Sie darauf.</value></data>
+  <data name="change_email.success" xml:space="preserve"><value>Ihre E-Mail-Adresse wurde erfolgreich aktualisiert und bestätigt.</value></data>
+  <data name="change_phone.title" xml:space="preserve"><value>Telefonnummer ändern</value></data>
+  <data name="change_phone.subtitle" xml:space="preserve"><value>Aktualisieren Sie Ihre Mobilfunknummer</value></data>
+  <data name="change_phone.current_phone" xml:space="preserve"><value>Aktuelle Nummer</value></data>
+  <data name="change_phone.new_phone" xml:space="preserve"><value>Neue Telefonnummer</value></data>
+  <data name="change_phone.password_confirm" xml:space="preserve"><value>Aktuelles Passwort</value></data>
+  <data name="change_phone.send_code" xml:space="preserve"><value>Bestätigungscode senden</value></data>
+  <data name="change_phone.code_sent" xml:space="preserve"><value>Bestätigungscode eingeben</value></data>
+  <data name="change_phone.code_sent_desc" xml:space="preserve"><value>Wir haben einen Bestätigungscode an Ihre neue Nummer gesendet.</value></data>
+  <data name="change_phone.verification_code" xml:space="preserve"><value>Bestätigungscode</value></data>
+  <data name="change_phone.verify_button" xml:space="preserve"><value>Nummer bestätigen und speichern</value></data>
+  <data name="change_phone.success" xml:space="preserve"><value>Ihre Telefonnummer wurde erfolgreich aktualisiert und bestätigt.</value></data>
+  <data name="confirm_email.title" xml:space="preserve"><value>E-Mail bestätigen</value></data>
+  <data name="confirm_email.success" xml:space="preserve"><value>Ihre E-Mail-Adresse wurde bestätigt. Sie können sich nun anmelden.</value></data>
+  <data name="confirm_phone.title" xml:space="preserve"><value>Telefonnummer bestätigen</value></data>
+  <data name="confirm_phone.success" xml:space="preserve"><value>Ihre Telefonnummer wurde bestätigt.</value></data>
+  <data name="two_factor.title" xml:space="preserve"><value>Zwei-Faktor-Authentifizierung</value></data>
+  <data name="two_factor.subtitle" xml:space="preserve"><value>Geben Sie den Sicherheitscode Ihrer Authenticator-App ein</value></data>
+  <data name="two_factor.code" xml:space="preserve"><value>Sicherheitscode</value></data>
+  <data name="two_factor.verify_button" xml:space="preserve"><value>Bestätigen</value></data>
+  <data name="two_factor.use_recovery_code" xml:space="preserve"><value>Stattdessen Wiederherstellungscode verwenden</value></data>
+  <data name="two_factor.recovery_title" xml:space="preserve"><value>Zwei-Faktor-Wiederherstellung</value></data>
+  <data name="two_factor.recovery_subtitle" xml:space="preserve"><value>Geben Sie einen Ihrer gespeicherten Wiederherstellungscodes ein</value></data>
+  <data name="logout.title" xml:space="preserve"><value>Abmelden</value></data>
+  <data name="logout.confirm" xml:space="preserve"><value>Möchten Sie sich wirklich abmelden?</value></data>
+  <data name="logout.button" xml:space="preserve"><value>Ja, abmelden</value></data>
+  <data name="lockout.title" xml:space="preserve"><value>Konto vorübergehend gesperrt</value></data>
+  <data name="lockout.desc" xml:space="preserve"><value>Dieses Konto wurde aufgrund mehrerer fehlgeschlagener Anmeldeversuche vorübergehend gesperrt.</value></data>
+  <data name="access_denied.title" xml:space="preserve"><value>Zugriff verweigert</value></data>
+  <data name="access_denied.desc" xml:space="preserve"><value>Sie haben keine Berechtigung für den Zugriff auf diese Ressource.</value></data>
+  <data name="consent.title" xml:space="preserve"><value>Anwendungsautorisierung</value></data>
+  <data name="consent.subtitle" xml:space="preserve"><value>Die Anwendung fordert Zugriff auf Ihr Konto an</value></data>
+  <data name="consent.allow" xml:space="preserve"><value>Autorisieren</value></data>
+  <data name="consent.deny" xml:space="preserve"><value>Ablehnen</value></data>
+  <data name="join_project.title" xml:space="preserve"><value>Projekt beitreten</value></data>
+  <data name="join_project.confirm" xml:space="preserve"><value>Diesem Projekt beitreten</value></data>
+</root>

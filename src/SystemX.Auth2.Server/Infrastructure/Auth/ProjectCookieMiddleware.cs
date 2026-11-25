@@ -35,9 +35,39 @@ internal sealed class ProjectCookieMiddleware(RequestDelegate next)
         }
         if (key is null)
         {
+            var path = http.Request.Path.Value ?? "";
+            var prefix = Auth2Cookie.CookieName + ".";
+            if (path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase) && http.Request.Cookies.ContainsKey(prefix + "_global"))
+            {
+                key = "_global";
+            }
+            else if (path.StartsWith("/admin/p/", StringComparison.OrdinalIgnoreCase))
+            {
+                var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (segments.Length >= 3)
+                {
+                    key = segments[2];
+                }
+            }
+        }
+
+        if (key is null)
+        {
             var prefix = Auth2Cookie.CookieName + ".";
             var names = http.Request.Cookies.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList();
-            if (names.Count == 1) key = names[0][prefix.Length..];
+            if (names.Count == 1)
+            {
+                key = names[0][prefix.Length..];
+            }
+            else if (names.Count > 1)
+            {
+                // When multiple project session cookies exist on the same host,
+                // prefer _global for admin / root routes, or pick the first available.
+                if (names.Contains(prefix + "_global"))
+                    key = "_global";
+                else
+                    key = names[0][prefix.Length..];
+            }
         }
         cookieKey.CookieProjectKey = key;
         await next(http);

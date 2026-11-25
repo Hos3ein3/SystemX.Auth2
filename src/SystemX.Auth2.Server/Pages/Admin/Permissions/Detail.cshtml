@@ -8,10 +8,10 @@
 
 <div class="max-w-4xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2 text-sm text-gray-500">
+        <div class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
             <a href="/admin/p/@Model.ProjectKey/permissions" class="hover:underline">Permissions</a>
             <span>/</span>
-            <span class="text-gray-900 font-medium">@p?.Key</span>
+            <span class="text-gray-900 dark:text-gray-100 font-medium">@p?.Key</span>
         </div>
         <div class="flex items-center space-x-2">
             <form method="post" asp-page-handler="ToggleObsolete">
@@ -26,11 +26,11 @@
     </div>
 
     <!-- Permission Header Card -->
-    <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
         <div class="flex items-center justify-between mb-2">
             <div>
-                <span class="font-mono text-sm text-gray-500 block mb-1">Key</span>
-                <h1 class="text-2xl font-bold font-mono text-gray-900">@p?.Key</h1>
+                <span class="font-mono text-sm text-gray-500 dark:text-gray-400 block mb-1">Key</span>
+                <h1 class="text-2xl font-bold font-mono text-gray-900 dark:text-gray-100">@p?.Key</h1>
             </div>
             <div>
                 @if (p?.IsObsolete == true)
@@ -43,19 +43,142 @@
                 }
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 text-sm">
+        <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 text-sm">
             <div>
-                <span class="block text-gray-500 font-medium">Display Name</span>
-                <span class="text-gray-900">@(p?.DisplayName ?? "-")</span>
+                <span class="block text-gray-500 dark:text-gray-400 font-medium">Display Name</span>
+                <span class="text-gray-900 dark:text-gray-100">@(p?.DisplayName ?? "-")</span>
             </div>
             <div>
-                <span class="block text-gray-500 font-medium">Category</span>
-                <span class="text-gray-900 font-mono text-xs">@(p?.Group ?? "general")</span>
+                <span class="block text-gray-500 dark:text-gray-400 font-medium">Category</span>
+                <span class="text-gray-900 dark:text-gray-100 font-mono text-xs">@(p?.Group ?? "general")</span>
             </div>
             <div class="col-span-2">
-                <span class="block text-gray-500 font-medium">Description</span>
-                <span class="text-gray-900">@(p?.Description ?? "No description provided.")</span>
+                <span class="block text-gray-500 dark:text-gray-400 font-medium">Description</span>
+                <span class="text-gray-900 dark:text-gray-100">@(p?.Description ?? "No description provided.")</span>
             </div>
         </div>
     </div>
+
+    <!-- 1. Roles containing this permission (RolePermission) -->
+    <a2-card title="Roles With This Permission (@Model.AssignedRoles.Count)">
+        <div class="space-y-4">
+            @if (Model.AssignedRoles.Count > 0)
+            {
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var role in Model.AssignedRoles)
+                    {
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-700">
+                            <a href="/admin/p/@Model.ProjectKey/roles/detail?name=@role" class="hover:underline">@role</a>
+                            <form method="post" asp-page-handler="RemoveRole" asp-route-roleName="@role" data-confirm="Remove permission from role '@role'?" class="inline">
+                                <button type="submit" class="hover:text-red-600 dark:hover:text-red-400 font-bold focus:outline-none" title="Remove role">&times;</button>
+                            </form>
+                        </span>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-sm text-gray-500 dark:text-gray-400">No roles currently include this permission.</p>
+            }
+
+            <form method="post" asp-page-handler="AssignRole" class="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <select name="roleName" required class="block w-full max-w-xs rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">-- Assign to Role --</option>
+                    @foreach (var r in Model.AvailableRoles.Where(r => !Model.AssignedRoles.Contains(r.Name)))
+                    {
+                        <option value="@r.Name">@r.Name @(r.ProjectId == null ? "(Global)" : "")</option>
+                    }
+                </select>
+                <a2-button type="submit" variant="secondary">Assign to Role</a2-button>
+            </form>
+        </div>
+    </a2-card>
+
+    <!-- 2. Groups containing this permission (GroupPermission) -->
+    <a2-card title="Groups With This Permission (@Model.AssignedGroups.Count)">
+        <div class="space-y-4">
+            @if (Model.AssignedGroups.Count > 0)
+            {
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var group in Model.AssignedGroups)
+                    {
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                            <a href="/admin/p/@Model.ProjectKey/groups/detail?name=@group" class="hover:underline">@group</a>
+                            <form method="post" asp-page-handler="RemoveGroup" asp-route-groupName="@group" data-confirm="Remove permission from group '@group'?" class="inline">
+                                <button type="submit" class="hover:text-red-600 dark:hover:text-red-400 font-bold focus:outline-none" title="Remove group">&times;</button>
+                            </form>
+                        </span>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-sm text-gray-500 dark:text-gray-400">No groups currently include this permission.</p>
+            }
+
+            <form method="post" asp-page-handler="AssignGroup" class="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <select name="groupName" required class="block w-full max-w-xs rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">-- Assign to Group --</option>
+                    @foreach (var g in Model.AvailableGroups.Where(g => !Model.AssignedGroups.Contains(g.Name)))
+                    {
+                        <option value="@g.Name">@g.Name @(string.IsNullOrWhiteSpace(g.DisplayName) ? "" : $"({g.DisplayName})")</option>
+                    }
+                </select>
+                <a2-button type="submit" variant="secondary">Assign to Group</a2-button>
+            </form>
+        </div>
+    </a2-card>
+
+    <!-- 3. Direct User Grants (UserPermission) -->
+    <a2-card title="Directly Granted Users (@Model.AssignedUsers.Count)">
+        <div class="space-y-4">
+            @if (Model.AssignedUsers.Count > 0)
+            {
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900/60">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">User</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Granted At</th>
+                                <th class="px-4 py-2 text-right font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @foreach (var user in Model.AssignedUsers)
+                            {
+                                <tr>
+                                    <td class="px-4 py-2 text-gray-900 dark:text-gray-100 font-medium">
+                                        <a href="/admin/p/@Model.ProjectKey/users/detail?id=@user.Id" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                            @user.UserName @(string.IsNullOrWhiteSpace(user.DisplayName) ? "" : $"({user.DisplayName})")
+                                        </a>
+                                    </td>
+                                    <td class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">@user.GrantedAtUtc.ToString("g")</td>
+                                    <td class="px-4 py-2 text-right">
+                                        <form method="post" asp-page-handler="RevokeUser" asp-route-userId="@user.Id" data-confirm="Revoke permission from user '@user.UserName'?" class="inline">
+                                            <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline font-medium">Revoke</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-sm text-gray-500 dark:text-gray-400">No users directly granted this permission.</p>
+            }
+
+            <form method="post" asp-page-handler="GrantUser" class="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <select name="userIdentifier" required class="block w-full max-w-sm rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">-- Grant Directly to User --</option>
+                    @foreach (var u in Model.AvailableUsers.Where(u => !Model.AssignedUsers.Any(x => x.Id == u.Id)))
+                    {
+                        <option value="@u.Id">@u.UserName @(string.IsNullOrWhiteSpace(u.DisplayName) ? "" : $"({u.DisplayName})")</option>
+                    }
+                </select>
+                <a2-button type="submit" variant="secondary">Grant to User</a2-button>
+            </form>
+        </div>
+    </a2-card>
 </div>

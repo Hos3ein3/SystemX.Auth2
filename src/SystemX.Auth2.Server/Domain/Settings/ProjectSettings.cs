@@ -77,6 +77,8 @@ public sealed class ProjectSettings
     public ClientSettings Clients { get; set; } = new();
     /// <summary>Localization and branding.</summary>
     public LocalizationSettings Localization { get; set; } = new();
+    /// <summary>Branding and visual tokens.</summary>
+    public BrandingSettings Branding { get; set; } = new();
     /// <summary>
     /// External identity providers (social login, OIDC, SAML, LDAP). Changed only through the provider admin routes (they check each field):
     /// the generic settings route ignores this list.
@@ -203,6 +205,8 @@ public sealed class RegistrationSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AssignedGroups { get; set; } = [];
     /// <summary>Permission keys every new member gets directly (for example <c>orders.read</c>). The permissions must exist. A missing one is skipped and audited.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AssignedPermissions { get; set; } = [];
+    /// <summary>Send the confirmation SMS right after registration.</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public bool SendConfirmationSMS { get; set; } = true;
 }
 
 /// <summary>Lockout rules.</summary>
@@ -306,4 +310,20 @@ public sealed class LocalizationSettings
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string? BrandName { get; set; }
     /// <summary>Support email.</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string? SupportEmail { get; set; }
+}
+
+/// <summary>Branding and visual tokens.</summary>
+public sealed class BrandingSettings
+{
+    /// <summary>Primary brand accent color (e.g. #2563eb).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string PrimaryColor { get; set; } = "#2563eb";
+
+    /// <summary>Text color on primary accent background (e.g. #ffffff).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string PrimaryTextColor { get; set; } = "#ffffff";
+
+    /// <summary>Page background color (e.g. #f9fafb).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string BackgroundColor { get; set; } = "#f9fafb";
+
+    /// <summary>Border radius token (e.g. 0.375rem).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string Radius { get; set; } = "0.375rem";
 }

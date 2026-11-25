@@ -79,6 +79,16 @@ public static class ProjectSettingsValidator
         CheckAssigned("Registration.AssignedGroups", s.Registration.AssignedGroups, IsKey, Err);
         CheckAssigned("Registration.AssignedPermissions", s.Registration.AssignedPermissions, IsKey, Err);
 
+        if (s.Branding is { } b)
+        {
+            if (!string.IsNullOrWhiteSpace(b.PrimaryColor) && !Regex.IsMatch(b.PrimaryColor, @"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"))
+                Err("Branding.PrimaryColor", "Must be a valid hex color code (e.g. #2563eb).");
+            if (!string.IsNullOrWhiteSpace(b.PrimaryTextColor) && !Regex.IsMatch(b.PrimaryTextColor, @"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"))
+                Err("Branding.PrimaryTextColor", "Must be a valid hex color code (e.g. #ffffff).");
+            if (!string.IsNullOrWhiteSpace(b.BackgroundColor) && !Regex.IsMatch(b.BackgroundColor, @"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"))
+                Err("Branding.BackgroundColor", "Must be a valid hex color code (e.g. #f9fafb).");
+        }
+
         ExternalProviderSettingsValidator.Validate(s, Err);
 
         return e;

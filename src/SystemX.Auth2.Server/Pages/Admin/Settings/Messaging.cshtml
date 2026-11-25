@@ -1,0 +1,191 @@
+@page "/admin/p/{projectKey}/messaging"
+@model SystemX.Auth2.Server.Pages.Admin.Settings.MessagingModel
+@using SystemX.Auth2.Server.Domain.Settings
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"Email & SMS Delivery - {Model.CurrentProject?.Name}";
+    var isGlobal = Model.IsGlobalAdmin;
+    var msg = Model.Messaging;
+    var emailProvider = msg?.Email.Provider ?? "";
+    var smsProvider = msg?.Sms.Provider ?? "";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Email & SMS Delivery</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Configure outgoing email (SMTP, Google Workspace, logging) and SMS delivery channels for @Model.CurrentProject?.Name.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            @if (string.IsNullOrEmpty(emailProvider))
+            {
+                <a2-badge variant="neutral">Email: Server Default / Inherited</a2-badge>
+            }
+            else
+            {
+                <a2-badge variant="primary">Email: @emailProvider.ToUpperInvariant()</a2-badge>
+            }
+
+            @if (string.IsNullOrEmpty(smsProvider))
+            {
+                <a2-badge variant="neutral">SMS: Inherited</a2-badge>
+            }
+            else
+            {
+                <a2-badge variant="info">SMS: @smsProvider.ToUpperInvariant()</a2-badge>
+            }
+        </div>
+    </div>
+
+    @if (!isGlobal)
+    {
+        <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 p-4 text-sm text-amber-800 dark:text-amber-200">
+            <strong>Restricted Access:</strong> Messaging delivery channels and outbound credentials are host-level secrets. You are viewing these settings in read-only mode because only Global Administrators and Developers may alter delivery providers.
+        </div>
+    }
+
+    <!-- Main Configuration Form -->
+    <form method="post" asp-page-handler="Save" class="space-y-6">
+        <!-- 1. Email Provider Settings -->
+        <a2-card title="Email Provider Settings">
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a2-field label="Provider Channel" hint="Choose the email delivery mechanism.">
+                        <select name="Input.Provider" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="" selected="@(string.IsNullOrEmpty(Model.Input.Provider) ? "selected" : null)">Default / Inherit (Use next level or logging)</option>
+                            <option value="logging" selected="@(Model.Input.Provider == EmailProviders.Logging ? "selected" : null)">Logging Only (Development - writes to console/log)</option>
+                            <option value="smtp" selected="@(Model.Input.Provider == EmailProviders.Smtp ? "selected" : null)">Custom SMTP Server (Any RFC 5321 server)</option>
+                            <option value="google" selected="@(Model.Input.Provider == EmailProviders.Google ? "selected" : null)">Google Workspace / Gmail (smtp.gmail.com with App Password)</option>
+                            @foreach (var p in Model.AvailableEmailProviders.Where(x => x is not EmailProviders.Logging and not EmailProviders.Smtp and not EmailProviders.Google))
+                            {
+                                <option value="@p" selected="@(Model.Input.Provider == p ? "selected" : null)">@p (Custom Registered Provider)</option>
+                            }
+                        </select>
+                    </a2-field>
+
+                    <a2-field label="Connection Security" hint="TLS protocol negotiation mode.">
+                        <select name="Input.Security" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="StartTls" selected="@(Model.Input.Security == SmtpSecurity.StartTls ? "selected" : null)">STARTTLS (Port 587 recommended)</option>
+                            <option value="SslOnConnect" selected="@(Model.Input.Security == SmtpSecurity.SslOnConnect ? "selected" : null)">SSL / TLS On Connect (Port 465)</option>
+                            <option value="None" selected="@(Model.Input.Security == SmtpSecurity.None ? "selected" : null)">None (Plain text - trusted local relay only)</option>
+                        </select>
+                    </a2-field>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="sm:col-span-2">
+                        <a2-field label="SMTP Host" hint="Server hostname or IP (required for custom SMTP; not needed for Google).">
+                            <a2-input name="Input.Host" value="@Model.Input.Host" placeholder="e.g. smtp.mailgun.org or smtp.office365.com"></a2-input>
+                        </a2-field>
+                    </div>
+
+                    <div>
+                        <a2-field label="Port" hint="Default: 587 (STARTTLS) or 465 (SSL).">
+                            <a2-input name="Input.Port" type="number" value="@Model.Input.Port.ToString()"></a2-input>
+                        </a2-field>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <a2-field label="User Name" hint="Authentication username (for Google: full Gmail address).">
+                        <a2-input name="Input.UserName" value="@Model.Input.UserName" placeholder="user@example.com"></a2-input>
+                    </a2-field>
+
+                    <a2-field label="Password / App Password" hint="@(msg?.Email.PasswordIsSet == true ? "Password is currently configured. Leave empty to keep existing password." : "Empty means no authentication.")">
+                        <a2-input name="Input.Password" type="password" placeholder="@(msg?.Email.PasswordIsSet == true ? "•••••••• (Password Saved)" : "Enter SMTP / App Password")"></a2-input>
+                    </a2-field>
+                </div>
+
+                @if (msg?.Email.PasswordIsSet == true)
+                {
+                    <div class="pt-1">
+                        <a2-checkbox name="Input.ClearPassword" checked="@Model.Input.ClearPassword" label="Clear Saved Password" description="Check this box to remove the saved password on save." />
+                    </div>
+                }
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                    <div>
+                        <a2-field label="From Address" hint="Sender email address in RFC 5322 From header.">
+                            <a2-input name="Input.FromAddress" value="@Model.Input.FromAddress" placeholder="auth@mycompany.com"></a2-input>
+                        </a2-field>
+                    </div>
+
+                    <div>
+                        <a2-field label="From Display Name" hint="Display name (empty uses project brand name).">
+                            <a2-input name="Input.FromName" value="@Model.Input.FromName" placeholder="e.g. Auth2 Security"></a2-input>
+                        </a2-field>
+                    </div>
+
+                    <div>
+                        <a2-field label="Timeout (Seconds)" hint="Send connection timeout (1 to 120s).">
+                            <a2-input name="Input.TimeoutSeconds" type="number" value="@Model.Input.TimeoutSeconds.ToString()"></a2-input>
+                        </a2-field>
+                    </div>
+                </div>
+            </div>
+        </a2-card>
+
+        <!-- 2. SMS Provider Settings -->
+        <a2-card title="SMS Provider Settings">
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a2-field label="SMS Provider Channel" hint="Choose the SMS delivery mechanism.">
+                        <select name="Input.SmsProvider" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="" selected="@(string.IsNullOrEmpty(Model.Input.SmsProvider) ? "selected" : null)">Default / Inherit</option>
+                            <option value="logging" selected="@(Model.Input.SmsProvider == SmsProviders.Logging ? "selected" : null)">Logging Only (Development - writes to log)</option>
+                            @foreach (var s in Model.AvailableSmsProviders.Where(x => x is not SmsProviders.Logging))
+                            {
+                                <option value="@s" selected="@(Model.Input.SmsProvider == s ? "selected" : null)">@s (Custom SMS Provider)</option>
+                            }
+                        </select>
+                    </a2-field>
+
+                    <a2-field label="Sender ID / Phone Number" hint="Sender identifier shown to SMS recipients (e.g. AUTH2 or +1234567890).">
+                        <a2-input name="Input.Sender" value="@Model.Input.Sender" placeholder="AUTH2"></a2-input>
+                    </a2-field>
+                </div>
+            </div>
+        </a2-card>
+
+        @if (isGlobal)
+        {
+            <div class="flex justify-end">
+                <a2-button type="submit" variant="primary">Save Delivery Settings</a2-button>
+            </div>
+        }
+    </form>
+
+    <!-- 3. Live Test Delivery Card -->
+    <a2-card title="Test Live Delivery">
+        <div class="space-y-6">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                Dispatch immediate test messages using the currently active provider configuration to verify end-to-end connectivity.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <!-- Test Email -->
+                <form method="post" asp-page-handler="TestEmail" class="space-y-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Send Test Email</h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Verifies SMTP handshake, TLS certificate trust, and credential authentication.</p>
+                    <div class="space-y-3">
+                        <a2-input name="testEmail" placeholder="destination@example.com" required="true"></a2-input>
+                        <a2-button type="submit" variant="secondary">Dispatch Test Email</a2-button>
+                    </div>
+                </form>
+
+                <!-- Test SMS -->
+                <form method="post" asp-page-handler="TestSms" class="space-y-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Send Test SMS</h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Verifies SMS gateway dispatch, sender formatting, and recipient delivery.</p>
+                    <div class="space-y-3">
+                        <a2-input name="testPhone" placeholder="+1234567890" required="true"></a2-input>
+                        <a2-button type="submit" variant="secondary">Dispatch Test SMS</a2-button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </a2-card>
+</div>

@@ -8,8 +8,8 @@
 <div class="space-y-6">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Key Ring Management</h1>
-            <p class="mt-1 text-sm text-gray-500">Global JWT token signing and payload encryption keys kept in PostgreSQL.</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Key Ring Management</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Global JWT token signing and payload encryption keys kept in PostgreSQL.</p>
         </div>
         <form method="post" asp-page-handler="Rotate" data-confirm="Rotate signing and encryption keys now? New tokens will be signed with the fresh key.">
             <a2-button type="submit" variant="primary">
@@ -18,29 +18,29 @@
         </form>
     </div>
 
-    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50">
+    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Key ID</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Purpose</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Thumbprint (SHA256)</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Status</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Created</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Expires</th>
-                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Key ID</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Purpose</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Thumbprint (SHA256)</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Created</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Expires</th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 @if (Model.Keys.Count > 0)
                 {
                     @foreach (var k in Model.Keys)
                     {
                         var isRetired = k.RetiredAtUtc.HasValue;
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 font-mono text-xs text-gray-900 font-semibold">@k.Id</td>
-                            <td class="px-6 py-4 font-mono text-xs text-gray-700">@k.Purpose</td>
-                            <td class="px-6 py-4 font-mono text-xs text-gray-500">@k.Thumbprint[..Math.Min(16, k.Thumbprint.Length)]...</td>
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <td class="px-6 py-4 font-mono text-xs text-gray-900 dark:text-gray-100 font-semibold">@k.Id</td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-700 dark:text-gray-300">@k.Purpose</td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">@k.Thumbprint[..Math.Min(16, k.Thumbprint.Length)]...</td>
                             <td class="px-6 py-4">
                                 @if (isRetired)
                                 {
@@ -51,13 +51,13 @@
                                     <a2-badge variant="success">Active</a2-badge>
                                 }
                             </td>
-                            <td class="px-6 py-4 text-xs text-gray-500">@k.CreatedAtUtc.ToString("g")</td>
-                            <td class="px-6 py-4 text-xs text-gray-500">@k.NotAfterUtc.ToString("g")</td>
+                            <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">@k.CreatedAtUtc.ToString("g")</td>
+                            <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">@k.NotAfterUtc.ToString("g")</td>
                             <td class="px-6 py-4 text-right">
                                 @if (!isRetired)
                                 {
                                     <form method="post" asp-page-handler="Retire" asp-route-id="@k.Id" class="inline" data-confirm="Retire this key early?">
-                                        <button type="submit" class="text-xs text-amber-600 hover:underline font-medium">Retire</button>
+                                        <button type="submit" class="text-xs text-amber-600 dark:text-amber-400 hover:underline font-medium">Retire</button>
                                     </form>
                                 }
                             </td>
@@ -67,7 +67,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                             No keys loaded in the ring.
                         </td>
                     </tr>

@@ -2,16 +2,16 @@
 @model SystemX.Auth2.Server.Pages.Account.VerifyOtpModel
 @{
     Layout = "_LayoutAuth";
-    ViewData["Title"] = "One-Time Password Sign In";
+    ViewData["Title"] = Loc["two_factor.title"];
 }
 
 <div class="space-y-6">
     <div class="text-center">
-        <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)]">
-            Sign in with a Code
+        <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">
+            @Loc["two_factor.title"]
         </h2>
-        <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)]">
-            We'll send a one-time verification code to your email or phone.
+        <p class="mt-1 text-sm text-[var(--a2-color-muted,#6b7280)] dark:text-gray-400">
+            @Loc["two_factor.subtitle"]
         </p>
     </div>
 
@@ -22,22 +22,22 @@
             <input type="hidden" name="Input.Login" value="@Model.Input.Login" />
 
             <a2-alert variant="info">
-                A verification code was sent to @Model.Input.Login.
+                A verification code was sent to <span class="font-mono font-medium">@Model.Input.Login</span>.
             </a2-alert>
 
-            <a2-field label="One-Time Code" required="true">
-                <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" />
+            <a2-field label="@Loc["two_factor.code"]" required="true">
+                <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" class="text-center tracking-widest text-lg font-mono" />
             </a2-field>
 
             <a2-button type="submit" variant="primary" class="w-full">
-                Sign In
+                @Loc["login.sign_in_button"]
             </a2-button>
         </form>
 
         <form method="post" asp-page-handler="Send" class="text-center pt-2">
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
             <input type="hidden" name="Input.Login" value="@Model.Input.Login" />
-            <button type="submit" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline focus:outline-none">
+            <button type="submit" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline focus:outline-none bg-transparent border-0 cursor-pointer">
                 Resend Code
             </button>
         </form>
@@ -47,19 +47,19 @@
         <form method="post" asp-page-handler="Send" class="space-y-4">
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
 
-            <a2-field label="Email or Phone Number" required="true">
-                <a2-input name="Input.Login" value="@Model.Input.Login" required="true" placeholder="you@example.com or +1234567890" autocomplete="username" />
+            <a2-field label="@Loc["forgot_password.login_field"]" required="true">
+                <a2-input name="Input.Login" type="text" value="@Model.Input.Login" required="true" placeholder="you@example.com / +1234567890" autocomplete="username" />
             </a2-field>
 
             <a2-button type="submit" variant="primary" class="w-full">
-                Send Code
+                @Loc["change_phone.send_code"]
             </a2-button>
-
-            <div class="text-center pt-2">
-                <a href="@Url.Page("Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
-                    Back to Standard Sign In
-                </a>
-            </div>
         </form>
+
+        <div class="text-center">
+            <a href="/Account/Login?returnUrl=@Model.ReturnUrl" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
+                @Loc["common.back_to_login"]
+            </a>
+        </div>
     }
 </div>

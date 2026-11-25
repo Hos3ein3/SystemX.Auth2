@@ -15,6 +15,8 @@ internal sealed class SecurityHeadersMiddleware(RequestDelegate next, IOptions<A
 {
     public Task InvokeAsync(HttpContext http)
     {
+        if (http.Items.ContainsKey("Auth2.CspNonce")) return next(http);
+
         var nonce = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
         http.Items["Auth2.CspNonce"] = nonce;
         http.Response.OnStarting(() =>

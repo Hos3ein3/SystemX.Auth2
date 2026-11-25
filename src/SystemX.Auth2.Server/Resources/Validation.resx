@@ -25,7 +25,25 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
   <data name="required" xml:space="preserve"><value>{0} is required.</value></data>
+  <data name="too_short" xml:space="preserve"><value>{0} must be at least {1} characters.</value></data>
   <data name="too_long" xml:space="preserve"><value>{0} must not be longer than {1} characters.</value></data>
+  <data name="length_between" xml:space="preserve"><value>{0} must be between {1} and {2} characters.</value></data>
   <data name="invalid_format" xml:space="preserve"><value>{0} has a wrong format.</value></data>
+  <data name="invalid_email" xml:space="preserve"><value>{0} is not a valid email address.</value></data>
+  <data name="invalid_phone" xml:space="preserve"><value>{0} is not a valid phone number.</value></data>
+  <data name="invalid_url" xml:space="preserve"><value>{0} is not a valid URL.</value></data>
+  <data name="passwords_mismatch" xml:space="preserve"><value>{0} and {1} do not match.</value></data>
+  <data name="range_between" xml:space="preserve"><value>{0} must be between {1} and {2}.</value></data>
+  <data name="min_value" xml:space="preserve"><value>{0} must be at least {1}.</value></data>
+  <data name="max_value" xml:space="preserve"><value>{0} must not exceed {1}.</value></data>
+  <data name="unique_chars" xml:space="preserve"><value>{0} must contain at least {1} distinct characters.</value></data>
+  <data name="already_taken" xml:space="preserve"><value>{0} is already taken.</value></data>
+  <data name="not_found" xml:space="preserve"><value>{0} was not found.</value></data>
+  <data name="invalid_choice" xml:space="preserve"><value>{0} is not a valid option.</value></data>
+  <data name="must_accept" xml:space="preserve"><value>You must accept {0}.</value></data>
+  <data name="alphanumeric" xml:space="preserve"><value>{0} must only contain letters and numbers.</value></data>
+  <data name="digits_only" xml:space="preserve"><value>{0} must only contain digits.</value></data>
+  <data name="invalid_code" xml:space="preserve"><value>{0} is an invalid code.</value></data>
 </root>

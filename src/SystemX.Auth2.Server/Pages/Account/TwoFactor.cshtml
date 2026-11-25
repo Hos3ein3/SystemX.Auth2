@@ -2,8 +2,8 @@
 @model SystemX.Auth2.Server.Pages.Account.TwoFactorModel
 @{
     Layout = "_LayoutAuth";
-    ViewData["Title"] = "Two-Factor Verification";
-    ViewData["Subtitle"] = "Enter the 6-digit code from your authenticator app";
+    ViewData["Title"] = Loc["two_factor.title"];
+    ViewData["Subtitle"] = Loc["two_factor.subtitle"];
 }
 
 <form method="post" class="space-y-4">
@@ -12,27 +12,27 @@
     <input type="hidden" asp-for="ClientId" />
     <input type="hidden" asp-for="TwoFactorToken" />
 
-    <a2-field label="Authenticator Code" hint="Open your authenticator app to view your verification code" for="Input_Code">
-        <a2-input id="Input_Code" name="Input.Code" value="@Model.Input?.Code" placeholder="123456" autocomplete="one-time-code" autofocus="true" />
+    <a2-field label="@Loc["two_factor.code"]" hint="@Loc["two_factor.subtitle"]" for="Input_Code">
+        <a2-input id="Input_Code" name="Input.Code" value="@Model.Input?.Code" placeholder="123456" autocomplete="one-time-code" autofocus="true" class="text-center tracking-widest text-lg font-mono" />
     </a2-field>
 
     @if (Model.ShowRecoveryCode)
     {
         <details class="text-sm">
-            <summary class="font-medium text-[var(--a2-color-primary,#2563eb)] cursor-pointer hover:underline">Lost your device? Use a recovery code</summary>
+            <summary class="font-medium text-[var(--a2-color-primary,#2563eb)] cursor-pointer hover:underline">@Loc["two_factor.use_recovery_code"]</summary>
             <div class="mt-3">
-                <a2-field label="Recovery Code" for="Input_RecoveryCode">
-                    <a2-input id="Input_RecoveryCode" name="Input.RecoveryCode" value="@Model.Input?.RecoveryCode" placeholder="Enter recovery code" />
+                <a2-field label="@Loc["two_factor.recovery_title"]" for="Input_RecoveryCode">
+                    <a2-input id="Input_RecoveryCode" name="Input.RecoveryCode" value="@Model.Input?.RecoveryCode" placeholder="Enter recovery code" class="font-mono" />
                 </a2-field>
             </div>
         </details>
     }
 
     <div>
-        <a2-button type="submit" variant="primary" class="w-full">Verify & Continue</a2-button>
+        <a2-button type="submit" variant="primary" class="w-full">@Loc["two_factor.verify_button"]</a2-button>
     </div>
 
     <div class="mt-4 text-center text-sm">
-        <a href="/Account/Login?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">Cancel and return to sign in</a>
+        <a href="/Account/Login?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">@Loc["common.back_to_login"]</a>
     </div>
 </form>

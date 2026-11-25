@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using SystemX.Auth2.Server.Domain.Entities;
-using SystemX.Auth2.Server.Persistence;
 
 namespace SystemX.Auth2.Server.Application.Lists;
 
@@ -22,9 +21,9 @@ public sealed record UserListRow(Guid Id, string? Email, string? UserName, strin
 public static class UserList
 {
     /// <summary>The users of one project. Every list starts from this query, so it is always under the project (tenant) filter.</summary>
-    public static IQueryable<UserListEntity> For(Auth2DbContext db, Guid projectId, bool singleProject) =>
-        from u in db.Users.AsNoTracking()
-        from m in db.UserProjects.IgnoreQueryFilters().AsNoTracking().Where(x => x.UserId == u.Id && x.ProjectId == projectId).DefaultIfEmpty()
+    public static IQueryable<UserListEntity> For(IQueryable<AppUser> users, IQueryable<UserProject> userProjects, Guid projectId, bool singleProject) =>
+        from u in users.AsNoTracking()
+        from m in userProjects.AsNoTracking().Where(x => x.UserId == u.Id && x.ProjectId == projectId).DefaultIfEmpty()
         where singleProject || m != null
         select new UserListEntity { User = u, Membership = m };
 

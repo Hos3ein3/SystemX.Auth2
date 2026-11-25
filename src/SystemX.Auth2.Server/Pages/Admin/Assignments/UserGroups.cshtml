@@ -1,0 +1,115 @@
+@page "/admin/p/{projectKey}/user-groups"
+@model SystemX.Auth2.Server.Pages.Admin.Assignments.UserGroupsModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = $"User Groups - {Model.CurrentProject?.Name}";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">User Groups</h1>
+                <span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded font-mono">user_groups</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                CRUD management for user group memberships in @Model.CurrentProject?.Name.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/admin/p/@Model.ProjectKey/assignments?tab=user_groups" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                View in Matrix &rarr;
+            </a>
+        </div>
+    </div>
+
+    <!-- Add Member Form Card -->
+    <a2-card title="Add User to Group">
+        <form method="post" asp-page-handler="Add" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">User</label>
+                    <div class="space-y-2">
+                        <select name="userIdentifier" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="">-- Select from project users --</option>
+                            @foreach (var u in Model.AvailableUsers)
+                            {
+                                <option value="@u.Id">@u.UserName @(string.IsNullOrWhiteSpace(u.DisplayName) ? "" : $"({u.DisplayName})")</option>
+                            }
+                        </select>
+                        <input type="text" name="userIdentifierManual" placeholder="Or type username, email, or user GUID..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Group</label>
+                    <select name="groupName" required class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="">-- Select Group --</option>
+                        @foreach (var g in Model.AvailableGroups)
+                        {
+                            <option value="@g.Name">@g.Name @(string.IsNullOrWhiteSpace(g.DisplayName) ? "" : $"({g.DisplayName})")</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end pt-2">
+                <a2-button type="submit" variant="primary">Add Member to Group</a2-button>
+            </div>
+        </form>
+    </a2-card>
+
+    <!-- Filter & Search -->
+    <div class="flex items-center justify-between gap-4">
+        <form method="get" class="flex items-center gap-2 max-w-sm w-full">
+            <input type="text" name="q" value="@Model.Q" placeholder="Filter user or group..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <a2-button type="submit" variant="secondary">Search</a2-button>
+            @if (!string.IsNullOrEmpty(Model.Q))
+            {
+                <a href="/admin/p/@Model.ProjectKey/user-groups" class="text-xs text-gray-500 dark:text-gray-400 hover:underline">Clear</a>
+            }
+        </form>
+        <span class="text-xs text-gray-500 dark:text-gray-400">Total: <strong>@Model.Items.Count</strong> memberships</span>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-900/60">
+                <tr>
+                    <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">User</th>
+                    <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Group Name</th>
+                    <th class="px-6 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                @if (Model.Items.Count == 0)
+                {
+                    <tr>
+                        <td colspan="3" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                            No group memberships found. Use the form above to add users to groups.
+                        </td>
+                    </tr>
+                }
+                @foreach (var item in Model.Items)
+                {
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-6 py-3.5 font-medium text-gray-900 dark:text-gray-100">
+                            <a href="/admin/p/@Model.ProjectKey/users/detail?id=@item.UserId" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                @item.UserName @(string.IsNullOrWhiteSpace(item.DisplayName) ? "" : $"({item.DisplayName})")
+                            </a>
+                        </td>
+                        <td class="px-6 py-3.5 font-medium text-gray-800 dark:text-gray-200">
+                            <a href="/admin/p/@Model.ProjectKey/groups/detail?name=@item.GroupName" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                @item.GroupName @(string.IsNullOrWhiteSpace(item.GroupDisplayName) ? "" : $"({item.GroupDisplayName})")
+                            </a>
+                        </td>
+                        <td class="px-6 py-3.5 text-right">
+                            <form method="post" asp-page-handler="Remove" asp-route-userId="@item.UserId" asp-route-groupName="@item.GroupName" data-confirm="Remove @item.UserName from group '@item.GroupName'?" class="inline">
+                                <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline font-medium">Remove Member</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

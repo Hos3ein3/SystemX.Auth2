@@ -8,8 +8,8 @@
 <div class="space-y-8">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Background Maintenance Jobs</h1>
-            <p class="mt-1 text-sm text-gray-500">Monitor automated database cleanup, token pruning, and key retirement tasks.</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Background Maintenance Jobs</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Monitor automated database cleanup, token pruning, and key retirement tasks.</p>
         </div>
     </div>
 
@@ -17,10 +17,10 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         @foreach (var job in Model.JobStatuses)
         {
-            <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm flex flex-col justify-between">
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="font-mono text-sm font-bold text-gray-900">@job.Name</span>
+                        <span class="font-mono text-sm font-bold text-gray-900 dark:text-gray-100">@job.Name</span>
                         @if (job.IsHealthy)
                         {
                             <a2-badge variant="success">Healthy</a2-badge>
@@ -31,17 +31,17 @@
                         }
                     </div>
 
-                    <div class="text-xs text-gray-500 space-y-1 mt-3">
+                    <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mt-3">
                         <div>Last Run: @(job.LastRunUtc?.ToString("g") ?? "Never")</div>
                         <div>Last Success: @(job.LastSuccessUtc?.ToString("g") ?? "Never")</div>
                         @if (!string.IsNullOrEmpty(job.LastError))
                         {
-                            <div class="text-red-600 truncate" title="@job.LastError">Error: @job.LastError</div>
+                            <div class="text-red-600 dark:text-red-400 truncate" title="@job.LastError">Error: @job.LastError</div>
                         }
                     </div>
                 </div>
 
-                <div class="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+                <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
                     <form method="post" asp-page-handler="RunNow" asp-route-jobName="@job.Name">
                         <a2-button type="submit" variant="secondary">
                             Run Now
@@ -55,27 +55,27 @@
     <!-- Job Execution History Table -->
     <a2-card title="Execution History">
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                <thead class="bg-gray-50 dark:bg-gray-900/60">
                     <tr>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-700">Job</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-700">Instance</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-700">Started</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-700">Finished</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-700">Status</th>
-                        <th class="px-4 py-2 text-right font-semibold text-gray-700">Rows Affected</th>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Job</th>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Instance</th>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Started</th>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Finished</th>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                        <th class="px-4 py-2 text-right font-semibold text-gray-700 dark:text-gray-300">Rows Affected</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200">
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @if (Model.JobRuns.Items.Count > 0)
                     {
                         @foreach (var run in Model.JobRuns.Items)
                         {
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-2 font-mono text-xs font-semibold text-gray-900">@run.JobName</td>
-                                <td class="px-4 py-2 font-mono text-xs text-gray-500">@(run.InstanceId ?? "-")</td>
-                                <td class="px-4 py-2 text-xs text-gray-600">@run.StartedAtUtc.ToString("g")</td>
-                                <td class="px-4 py-2 text-xs text-gray-600">@(run.FinishedAtUtc?.ToString("g") ?? "Running...")</td>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td class="px-4 py-2 font-mono text-xs font-semibold text-gray-900 dark:text-gray-100">@run.JobName</td>
+                                <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">@(run.InstanceId ?? "-")</td>
+                                <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-300">@run.StartedAtUtc.ToString("g")</td>
+                                <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-300">@(run.FinishedAtUtc?.ToString("g") ?? "Running...")</td>
                                 <td class="px-4 py-2">
                                     @if (run.Success)
                                     {
@@ -86,14 +86,14 @@
                                         <a2-badge variant="danger">Failed</a2-badge>
                                     }
                                 </td>
-                                <td class="px-4 py-2 text-right font-mono text-xs text-gray-700">@run.RowsAffected</td>
+                                <td class="px-4 py-2 text-right font-mono text-xs text-gray-700 dark:text-gray-300">@run.RowsAffected</td>
                             </tr>
                         }
                     }
                     else
                     {
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                                 No job execution history records found.
                             </td>
                         </tr>

@@ -8,8 +8,8 @@
 <div class="space-y-6">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">OAuth Scopes</h1>
-            <p class="mt-1 text-sm text-gray-500">Manage scopes available to applications in @Model.CurrentProject?.Name.</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">OAuth Scopes</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage scopes available to applications in @Model.CurrentProject?.Name.</p>
         </div>
         <a2-link-button href="/admin/p/@Model.ProjectKey/scopes/create" variant="primary">
             + New Scope
@@ -18,39 +18,39 @@
 
     <!-- Filter Form -->
     <form method="get" class="flex flex-wrap items-center gap-3">
-        <a2-search name="q" value="@Model.Q" placeholder="Search scopes..." />
-        <select name="owner" data-autosubmit class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+        <a2-search name="q" value="@Model.Q" placeholder="Search scopes..."></a2-search>
+        <select name="owner" data-autosubmit class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
             <option value="">All Owners</option>
             <option value="project" selected="@(Model.Owner == "project" ? "selected" : null)">Project Scopes</option>
             <option value="global" selected="@(Model.Owner == "global" ? "selected" : null)">Global Scopes</option>
         </select>
-        <a2-page-size value="@Model.PageSize" />
+        <a2-page-size value="@Model.PageSize"></a2-page-size>
         <a2-button type="submit" variant="secondary">Filter</a2-button>
     </form>
 
-    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50">
+    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Scope Name</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Display Name</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Owner</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700">Resources</th>
-                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700">Actions</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Scope Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Display Name</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Owner</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Resources</th>
+                    <th scope="col" class="px-6 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 @if (Model.Scopes.Items.Count > 0)
                 {
                     @foreach (var s in Model.Scopes.Items)
                     {
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-900">
-                                <a href="/admin/p/@Model.ProjectKey/scopes/detail?id=@s.Id" class="text-blue-600 hover:underline">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                <a href="/admin/p/@Model.ProjectKey/scopes/detail?id=@s.Id" class="text-blue-600 dark:text-blue-400 hover:underline">
                                     @s.Name
                                 </a>
                             </td>
-                            <td class="px-6 py-4 text-gray-800">@(s.DisplayName ?? "-")</td>
+                            <td class="px-6 py-4 text-gray-800 dark:text-gray-200">@(s.DisplayName ?? "-")</td>
                             <td class="px-6 py-4">
                                 @if (s.IsGlobal)
                                 {
@@ -61,16 +61,16 @@
                                     <a2-badge variant="success">Project</a2-badge>
                                 }
                             </td>
-                            <td class="px-6 py-4 text-xs text-gray-600">
+                            <td class="px-6 py-4 text-xs text-gray-600 dark:text-gray-400">
                                 @(s.Resources.Count > 0 ? string.Join(", ", s.Resources) : "-")
                             </td>
                             <td class="px-6 py-4 text-right space-x-2">
-                                <a href="/admin/p/@Model.ProjectKey/scopes/detail?id=@s.Id" class="text-blue-600 hover:underline text-xs font-semibold">View</a>
+                                <a href="/admin/p/@Model.ProjectKey/scopes/detail?id=@s.Id" class="text-blue-600 dark:text-blue-400 hover:underline text-xs font-semibold">View</a>
                                 @if (!s.IsGlobal || Model.IsGlobalAdmin)
                                 {
-                                    <span class="text-gray-300">|</span>
+                                    <span class="text-gray-300 dark:text-gray-600">|</span>
                                     <form method="post" asp-page-handler="Delete" asp-route-id="@s.Id" class="inline" data-confirm="Delete scope @s.Name?">
-                                        <button type="submit" class="text-xs text-red-600 hover:underline">Delete</button>
+                                        <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Delete</button>
                                     </form>
                                 }
                             </td>
@@ -80,7 +80,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                             No scopes found.
                         </td>
                     </tr>

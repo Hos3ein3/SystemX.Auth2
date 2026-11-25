@@ -1,0 +1,604 @@
+@page "/admin/p/{projectKey}/components"
+@model SystemX.Auth2.Server.Pages.Admin.Components.IndexModel
+@{
+    Layout = "_LayoutAdmin";
+    ViewData["Title"] = "UI Components Showcase";
+}
+
+<div class="space-y-10 pb-16">
+    <!-- Page Header -->
+    <div class="border-b border-gray-200 dark:border-gray-700 pb-5">
+        <h1 class="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">UI Components Showcase</h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            A live catalog of design system components, forms, validation states, tables, navigation, and charts for Auth2 Admin.
+        </p>
+    </div>
+
+    <!-- 1. Buttons Section -->
+    <section class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Buttons</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <a2-card title="Button Variants">
+                <div class="flex flex-wrap gap-3 items-center">
+                    <a2-button type="button" variant="primary">Primary Button</a2-button>
+                    <a2-button type="button" variant="secondary">Secondary Button</a2-button>
+                    <a2-button type="button" variant="danger">Danger Button</a2-button>
+                    <button type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Outline Button
+                    </button>
+                    <button type="button" class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none">
+                        Ghost Button
+                    </button>
+                    <button type="button" disabled class="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 cursor-not-allowed">
+                        Disabled Button
+                    </button>
+                </div>
+            </a2-card>
+
+            <a2-card title="Button Sizes & With Icons">
+                <div class="flex flex-wrap gap-3 items-center">
+                    <button type="button" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                        Small Button
+                    </button>
+                    <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                        Regular Button
+                    </button>
+                    <button type="button" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                        Large Button
+                    </button>
+                    <button type="button" class="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        <span>With Icon</span>
+                    </button>
+                    <button type="button" class="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 opacity-80 cursor-wait">
+                        <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span>Loading...</span>
+                    </button>
+                </div>
+            </a2-card>
+        </div>
+    </section>
+
+    <!-- 2. Inputs & Validation Section -->
+    <section class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Inputs & Validation States</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <a2-card title="Text & Password Inputs">
+                <div class="space-y-3">
+                    <a2-field label="Standard Text Input" for="demo_text">
+                        <a2-input id="demo_text" name="demo_text" placeholder="Enter text here..." />
+                    </a2-field>
+                    <a2-field label="Password Input with Toggle" for="demo_password">
+                        <a2-password id="demo_password" name="demo_password" placeholder="••••••••••••" />
+                    </a2-field>
+                    <a2-field label="Disabled Input" for="demo_disabled">
+                        <input id="demo_disabled" type="text" disabled value="Readonly / Disabled value" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-400 dark:text-gray-500 cursor-not-allowed" />
+                    </a2-field>
+                </div>
+            </a2-card>
+
+            <a2-card title="Validation States">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Valid State <span class="text-emerald-500 font-semibold">(Passed)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" value="john.doe@example.com" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-emerald-500 dark:border-emerald-500 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 pr-10 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-emerald-500">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                            </div>
+                        </div>
+                        <p class="mt-1 text-xs text-emerald-600 dark:text-emerald-400">Username is available and valid.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Invalid State <span class="text-red-500 font-semibold">(Error)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" value="invalid-email@@" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-red-500 dark:border-red-500 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-red-900 dark:text-red-100 pr-10 focus:outline-none focus:ring-1 focus:ring-red-500" />
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-red-500">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                            </div>
+                        </div>
+                        <p class="mt-1 text-xs text-red-600 dark:text-red-400">Please enter a valid email address.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Required Field <span class="text-red-500 font-bold">*</span>
+                        </label>
+                        <input type="text" required placeholder="Required field cannot be empty" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </div>
+                </div>
+            </a2-card>
+
+            <a2-card title="Textarea & Labels">
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+                            <span class="text-xs text-gray-400">Optional</span>
+                        </div>
+                        <textarea rows="3" placeholder="Enter multi-line notes or description..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Label with Helper Badge
+                            <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">New</span>
+                        </label>
+                        <input type="text" placeholder="Input with badge label" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </div>
+                </div>
+            </a2-card>
+        </div>
+    </section>
+
+    <!-- 3. Checkboxes, Radios & Selects -->
+    <section class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Selects, Checkboxes & Radios</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <a2-card title="Checkboxes & Radios">
+                <div class="space-y-3">
+                    <div class="flex items-start">
+                        <input id="demo_cb1" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1" />
+                        <label for="demo_cb1" class="ml-2 block text-sm text-gray-700 dark:text-gray-300 font-medium">Checked Checkbox</label>
+                    </div>
+                    <div class="flex items-start">
+                        <input id="demo_cb2" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1" />
+                        <label for="demo_cb2" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Unchecked with helper description</label>
+                    </div>
+                    <div class="flex items-start">
+                        <input id="demo_cb3" type="checkbox" disabled class="h-4 w-4 rounded border-gray-300 text-gray-400 focus:ring-0 mt-1 cursor-not-allowed" />
+                        <label for="demo_cb3" class="ml-2 block text-sm text-gray-400 dark:text-gray-500 cursor-not-allowed">Disabled Checkbox</label>
+                    </div>
+                    <div class="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                        <span class="block text-xs font-semibold text-gray-500 uppercase">Radio Group</span>
+                        <div class="flex items-center">
+                            <input id="radio1" name="demo_radio" type="radio" checked class="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500" />
+                            <label for="radio1" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Option A (Selected)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input id="radio2" name="demo_radio" type="radio" class="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500" />
+                            <label for="radio2" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Option B</label>
+                        </div>
+                    </div>
+                </div>
+            </a2-card>
+
+            <a2-card title="Select & Select with Live Search">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Standard Select</label>
+                        <select class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="1">Option 1 - Development</option>
+                            <option value="2">Option 2 - Staging</option>
+                            <option value="3">Option 3 - Production</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select with Live Search</label>
+                        <div class="space-y-2">
+                            <input type="text" data-filter-select="demoFilterSelect" placeholder="Type to search options..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            <select id="demoFilterSelect" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="">-- Choose Role or Permission --</option>
+                                <option value="admin">Administrator (Global Access)</option>
+                                <option value="developer">Developer (Full APIs)</option>
+                                <option value="auditor">Compliance Auditor (Read Only)</option>
+                                <option value="orders.read">Permission: orders.read</option>
+                                <option value="orders.write">Permission: orders.write</option>
+                                <option value="users.manage">Permission: users.manage</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </a2-card>
+
+            <a2-card title="Select with Multi-Select & Search">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Multi-Select List</label>
+                        <span id="demoMultiCount" class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">2</span>
+                    </div>
+                    <input type="text" data-multiselect-search="demoMultiList" placeholder="Search items..." class="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2" />
+                    <div id="demoMultiList" data-multiselect-list data-count-target="demoMultiCount" class="max-h-40 overflow-y-auto rounded-md border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/50 p-1 bg-white dark:bg-gray-800">
+                        <label data-search="alpha group" class="flex items-center px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer text-xs text-gray-800 dark:text-gray-200">
+                            <input type="checkbox" checked class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
+                            <span>Alpha Engineering Group</span>
+                        </label>
+                        <label data-search="beta group" class="flex items-center px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer text-xs text-gray-800 dark:text-gray-200">
+                            <input type="checkbox" checked class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
+                            <span>Beta Support Operations</span>
+                        </label>
+                        <label data-search="gamma group" class="flex items-center px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer text-xs text-gray-800 dark:text-gray-200">
+                            <input type="checkbox" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
+                            <span>Gamma Security Audit</span>
+                        </label>
+                        <label data-search="delta group" class="flex items-center px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer text-xs text-gray-800 dark:text-gray-200">
+                            <input type="checkbox" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
+                            <span>Delta Financial Analysts</span>
+                        </label>
+                    </div>
+                </div>
+            </a2-card>
+        </div>
+    </section>
+
+    <!-- 4. Alerts & Toasts Section -->
+    <section class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Alerts & Toast Notifications</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <a2-card title="Alert Banner Variants">
+                <div class="space-y-3">
+                    <a2-alert variant="success">Operation completed successfully. Your settings have been applied.</a2-alert>
+                    <a2-alert variant="error">Authentication failed. Invalid client secret or token signature.</a2-alert>
+                    <a2-alert variant="warning">Two-factor authentication is strongly recommended for administrators.</a2-alert>
+                    <a2-alert variant="info">New tenant project configuration is ready for review.</a2-alert>
+                </div>
+            </a2-card>
+
+            <a2-card title="Toast Notification Preview">
+                <div class="space-y-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Click below to trigger a floating toast notification.</p>
+                    <button type="button" data-show-toast="demoToast" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                        Show Sample Toast
+                    </button>
+
+                    <!-- Interactive Toast Popup -->
+                    <div id="demoToast" data-toast class="hidden rounded-lg bg-gray-900 text-white p-4 shadow-xl border border-gray-700 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                            </div>
+                            <div>
+                                <span class="block text-sm font-semibold">Changes Saved</span>
+                                <span class="block text-xs text-gray-300">All configurations synchronized with database.</span>
+                            </div>
+                        </div>
+                        <button type="button" data-close-toast class="text-gray-400 hover:text-white font-bold px-2 py-1 text-base">&times;</button>
+                    </div>
+                </div>
+            </a2-card>
+        </div>
+    </section>
+
+    <!-- 5. Table with Sorting, Filtering & Pagination -->
+    <section class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Data Table with Search & Pagination</h2>
+        <a2-card>
+            <div class="space-y-4">
+                <!-- Search and Filters Bar -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div class="relative max-w-xs w-full">
+                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                            <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <input type="text" data-table-search="showcaseTable" placeholder="Search table rows..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-1.5 pl-9 pr-3 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 dark:text-gray-400">Status:</span>
+                        <select class="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs px-2 py-1 text-gray-700 dark:text-gray-200">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="suspended">Suspended</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                    <table id="showcaseTable" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900/60">
+                            <tr>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    <div class="flex items-center gap-1">
+                                        <span>User</span>
+                                        <svg class="h-3.5 w-3.5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Email</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Role</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                                <th class="px-6 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td class="px-6 py-3.5 font-medium text-gray-900 dark:text-gray-100">admin</td>
+                                <td class="px-6 py-3.5 text-gray-500 dark:text-gray-400">admin@systemx.internal</td>
+                                <td class="px-6 py-3.5"><a2-badge variant="info">GlobalAdmin</a2-badge></td>
+                                <td class="px-6 py-3.5"><a2-badge variant="success">Active</a2-badge></td>
+                                <td class="px-6 py-3.5 text-right"><button type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Edit</button></td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td class="px-6 py-3.5 font-medium text-gray-900 dark:text-gray-100">developer1</td>
+                                <td class="px-6 py-3.5 text-gray-500 dark:text-gray-400">dev1@systemx.internal</td>
+                                <td class="px-6 py-3.5"><a2-badge variant="neutral">Developer</a2-badge></td>
+                                <td class="px-6 py-3.5"><a2-badge variant="success">Active</a2-badge></td>
+                                <td class="px-6 py-3.5 text-right"><button type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Edit</button></td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td class="px-6 py-3.5 font-medium text-gray-900 dark:text-gray-100">operator_beta</td>
+                                <td class="px-6 py-3.5 text-gray-500 dark:text-gray-400">ops@partner.org</td>
+                                <td class="px-6 py-3.5"><a2-badge variant="neutral">Operator</a2-badge></td>
+                                <td class="px-6 py-3.5"><a2-badge variant="warning">Suspended</a2-badge></td>
+                                <td class="px-6 py-3.5 text-right"><button type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Edit</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Component -->
+                <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                        Showing <span class="font-medium text-gray-900 dark:text-gray-100">1</span> to <span class="font-medium text-gray-900 dark:text-gray-100">3</span> of <span class="font-medium text-gray-900 dark:text-gray-100">48</span> results
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <button type="button" disabled class="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-400 cursor-not-allowed">Previous</button>
+                        <button type="button" class="px-3 py-1 text-xs rounded border border-blue-600 bg-blue-600 text-white font-semibold">1</button>
+                        <button type="button" class="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">2</button>
+                        <button type="button" class="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">3</button>
+                        <button type="button" class="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">Next</button>
+                    </div>
+                </div>
+            </div>
+        </a2-card>
+    </section>
+
+    <!-- 6. Charts Section: Bar Chart, Line Graph, Area Graph -->
+    <section class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Charts & Data Visualizations</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 1. Bar Chart -->
+            <a2-card title="Bar Chart: Daily Sign-Ins">
+                <div class="space-y-2">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Authentications grouped across the last 6 days.</p>
+                    <svg viewBox="0 0 320 160" class="w-full h-44 text-blue-600 dark:text-blue-500">
+                        <!-- Horizontal Grid Lines -->
+                        <line x1="20" y1="20" x2="310" y2="20" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="60" x2="310" y2="60" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="100" x2="310" y2="100" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="140" x2="310" y2="140" stroke="currentColor" class="opacity-40" />
+
+                        <!-- Bars -->
+                        <rect x="35" y="70" width="28" height="70" rx="4" fill="currentColor" opacity="0.85" />
+                        <rect x="85" y="45" width="28" height="95" rx="4" fill="currentColor" opacity="0.85" />
+                        <rect x="135" y="90" width="28" height="50" rx="4" fill="currentColor" opacity="0.85" />
+                        <rect x="185" y="30" width="28" height="110" rx="4" fill="currentColor" opacity="0.95" />
+                        <rect x="235" y="55" width="28" height="85" rx="4" fill="currentColor" opacity="0.85" />
+                        <rect x="280" y="40" width="28" height="100" rx="4" fill="currentColor" opacity="0.9" />
+
+                        <!-- Labels -->
+                        <text x="49" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">Mon</text>
+                        <text x="99" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">Tue</text>
+                        <text x="149" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">Wed</text>
+                        <text x="199" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">Thu</text>
+                        <text x="249" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">Fri</text>
+                        <text x="294" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">Sat</text>
+                    </svg>
+                </div>
+            </a2-card>
+
+            <!-- 2. Line Chart -->
+            <a2-card title="Line Chart: Token Issuance">
+                <div class="space-y-2">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Rate of access tokens issued per hour.</p>
+                    <svg viewBox="0 0 320 160" class="w-full h-44 text-emerald-600 dark:text-emerald-400">
+                        <!-- Horizontal Grid Lines -->
+                        <line x1="20" y1="20" x2="310" y2="20" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="60" x2="310" y2="60" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="100" x2="310" y2="100" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="140" x2="310" y2="140" stroke="currentColor" class="opacity-40" />
+
+                        <!-- Trend Polyline -->
+                        <polyline fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="35,115 85,85 135,95 185,45 235,65 295,30" />
+
+                        <!-- Data Points -->
+                        <circle cx="35" cy="115" r="4" fill="currentColor" />
+                        <circle cx="85" cy="85" r="4" fill="currentColor" />
+                        <circle cx="135" cy="95" r="4" fill="currentColor" />
+                        <circle cx="185" cy="45" r="4" fill="currentColor" />
+                        <circle cx="235" cy="65" r="4" fill="currentColor" />
+                        <circle cx="295" cy="30" r="4" fill="currentColor" />
+
+                        <!-- Labels -->
+                        <text x="35" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">00h</text>
+                        <text x="85" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">04h</text>
+                        <text x="135" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">08h</text>
+                        <text x="185" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">12h</text>
+                        <text x="235" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">16h</text>
+                        <text x="295" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">20h</text>
+                    </svg>
+                </div>
+            </a2-card>
+
+            <!-- 3. Area Graph -->
+            <a2-card title="Area Graph: Active Sessions">
+                <div class="space-y-2">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Concurrent user sessions across cluster.</p>
+                    <svg viewBox="0 0 320 160" class="w-full h-44 text-purple-600 dark:text-purple-400">
+                        <defs>
+                            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="currentColor" stop-opacity="0.4" />
+                                <stop offset="100%" stop-color="currentColor" stop-opacity="0.0" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Horizontal Grid Lines -->
+                        <line x1="20" y1="20" x2="310" y2="20" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="60" x2="310" y2="60" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="100" x2="310" y2="100" stroke="currentColor" stroke-dasharray="2,2" class="opacity-20" />
+                        <line x1="20" y1="140" x2="310" y2="140" stroke="currentColor" class="opacity-40" />
+
+                        <!-- Area Fill -->
+                        <path fill="url(#areaGradient)" d="M35,140 L35,110 Q85,40 135,70 T235,50 L295,25 L295,140 Z" />
+
+                        <!-- Area Border Line -->
+                        <path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" d="M35,110 Q85,40 135,70 T235,50 L295,25" />
+
+                        <!-- Labels -->
+                        <text x="35" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">W1</text>
+                        <text x="100" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">W2</text>
+                        <text x="165" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">W3</text>
+                        <text x="230" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">W4</text>
+                        <text x="295" y="155" font-size="10" text-anchor="middle" fill="#9ca3af">W5</text>
+                    </svg>
+                </div>
+            </a2-card>
+        </div>
+    </section>
+
+    <!-- 7. Loading States, Spinners & Skeletons -->
+    <section class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Loading States, Spinners & Skeletons</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 1. Loading Buttons -->
+            <a2-card title="Loading Buttons">
+                <div class="space-y-3">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Buttons with animated spinners and loading state indicators.</p>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <!-- Primary Loading -->
+                        <button type="button" disabled class="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 opacity-80 cursor-wait">
+                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>Saving Changes...</span>
+                        </button>
+                        <!-- Danger Loading -->
+                        <button type="button" disabled class="inline-flex items-center gap-2 px-3 py-1.5 border border-transparent rounded-md text-xs font-medium text-white bg-red-600 opacity-80 cursor-wait">
+                            <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>Deleting User...</span>
+                        </button>
+                    </div>
+                    <!-- Interactive Toggle Button -->
+                    <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <button type="button" data-toggle-loading data-is-loading="false" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-blue-600 dark:border-blue-500 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
+                            <svg data-btn-spinner class="hidden animate-spin h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span data-btn-text>Click to Toggle Loading State</span>
+                        </button>
+                    </div>
+                </div>
+            </a2-card>
+
+            <!-- 2. Spinners & Progress Loaders -->
+            <a2-card title="Spinners & Progress Bars">
+                <div class="space-y-4">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Various spinner dimensions and indeterminate progress bar.</p>
+                    <div class="flex items-center gap-4 py-2">
+                        <!-- xs -->
+                        <svg class="animate-spin h-3.5 w-3.5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <!-- sm -->
+                        <svg class="animate-spin h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <!-- md -->
+                        <svg class="animate-spin h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <!-- lg -->
+                        <svg class="animate-spin h-8 w-8 text-amber-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <!-- xl -->
+                        <svg class="animate-spin h-10 w-10 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </div>
+                    <!-- Indeterminate Progress -->
+                    <div>
+                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            <span>Indeterminate Progress Bar</span>
+                            <span>Syncing...</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-600 dark:bg-blue-500 rounded-full animate-pulse w-3/4"></div>
+                        </div>
+                    </div>
+                </div>
+            </a2-card>
+
+            <!-- 3. Overlays with Cancel Button (Full-Screen & Partial) -->
+            <a2-card title="Loading Overlays (Cancelable)">
+                <div class="space-y-4">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Modal overlays with user-cancellation support.</p>
+                    <div class="flex flex-col gap-2">
+                        <button type="button" data-trigger-loader="fullscreen" class="inline-flex items-center justify-center gap-2 px-3.5 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+                            <span>Trigger Full-Screen Loader</span>
+                        </button>
+                        <button type="button" data-trigger-loader="partial" class="inline-flex items-center justify-center gap-2 px-3.5 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+                            <span>Trigger Partial Card Loader</span>
+                        </button>
+                    </div>
+
+                    <!-- Partial Loader Container Preview -->
+                    <div class="relative border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/40 min-h-24">
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-1">
+                            <div class="font-semibold text-gray-900 dark:text-gray-100">Card Content Container</div>
+                            <div>Dynamic tenant data stream is active.</div>
+                        </div>
+                        <div id="demoPartialLoader" class="hidden absolute inset-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xs flex flex-col items-center justify-center rounded-lg z-10 space-y-2 p-2">
+                            <svg class="animate-spin h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span class="text-xs font-semibold text-gray-800 dark:text-gray-200">Updating card metrics...</span>
+                            <button type="button" data-partial-loader-cancel class="px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 shadow-xs">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </a2-card>
+
+            <!-- 4. Skeleton Card & Content -->
+            <a2-card title="Skeleton Loading: Profile & Card">
+                <div class="animate-pulse space-y-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="rounded-full bg-gray-300 dark:bg-gray-700 h-10 w-10"></div>
+                        <div class="space-y-2 flex-1">
+                            <div class="h-3.5 bg-gray-300 dark:bg-gray-700 rounded w-1/3"></div>
+                            <div class="h-2.5 bg-gray-200 dark:bg-gray-800 rounded w-1/2"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="h-2.5 bg-gray-200 dark:bg-gray-800 rounded"></div>
+                        <div class="h-2.5 bg-gray-200 dark:bg-gray-800 rounded w-5/6"></div>
+                        <div class="h-2.5 bg-gray-200 dark:bg-gray-800 rounded w-4/6"></div>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <div class="h-8 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
+                        <div class="h-8 bg-gray-200 dark:bg-gray-800 rounded w-16"></div>
+                    </div>
+                </div>
+            </a2-card>
+
+            <!-- 5. Skeleton Table Rows -->
+            <a2-card title="Skeleton Loading: Table Placeholder" class="md:col-span-2">
+                <div class="animate-pulse space-y-3">
+                    <div class="h-8 bg-gray-200 dark:bg-gray-800 rounded-md w-full mb-4"></div>
+                    <div class="space-y-2.5 divide-y divide-gray-100 dark:divide-gray-800">
+                        <div class="flex items-center justify-between pt-2">
+                            <div class="flex items-center space-x-3 w-1/3">
+                                <div class="h-6 w-6 rounded-full bg-gray-300 dark:bg-gray-700"></div>
+                                <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+                            </div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-800 rounded w-1/4"></div>
+                            <div class="h-5 bg-gray-300 dark:bg-gray-700 rounded-full w-16"></div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-800 rounded w-12"></div>
+                        </div>
+                        <div class="flex items-center justify-between pt-2">
+                            <div class="flex items-center space-x-3 w-1/3">
+                                <div class="h-6 w-6 rounded-full bg-gray-300 dark:bg-gray-700"></div>
+                                <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-2/3"></div>
+                            </div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-800 rounded w-1/4"></div>
+                            <div class="h-5 bg-gray-300 dark:bg-gray-700 rounded-full w-16"></div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-800 rounded w-12"></div>
+                        </div>
+                        <div class="flex items-center justify-between pt-2">
+                            <div class="flex items-center space-x-3 w-1/3">
+                                <div class="h-6 w-6 rounded-full bg-gray-300 dark:bg-gray-700"></div>
+                                <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-4/5"></div>
+                            </div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-800 rounded w-1/4"></div>
+                            <div class="h-5 bg-gray-300 dark:bg-gray-700 rounded-full w-16"></div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-800 rounded w-12"></div>
+                        </div>
+                    </div>
+                </div>
+            </a2-card>
+        </div>
+    </section>
+</div>

@@ -9,6 +9,7 @@ using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Contracts.Users;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
+using SystemX.Auth2.Server.Domain.Settings;
 using SystemX.Auth2.Server.Persistence;
 
 namespace SystemX.Auth2.Server.Infrastructure.Auth;
@@ -238,6 +239,7 @@ internal sealed class AccessService(
         var permission = await FindPermissionAsync(permissionKey, ct);
         if (permission is null) return OperationResult.Fail(AccessKeys.NormalizePermissionKey(permissionKey) is null ? Auth2ErrorCodes.InvalidPermissionKey : Auth2ErrorCodes.NotFound);
         if (!await IsMemberAsync(user, app, ct)) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+
         if (await db.UserPermissions.AnyAsync(x => x.UserId == user.Id && x.PermissionId == permission.Id, ct)) return OperationResult.Ok;
 
         db.UserPermissions.Add(new UserPermission
@@ -290,7 +292,10 @@ internal sealed class AccessService(
     {
         var app = await flow.GetProjectAsync(ct);
         var role = await FindVisibleRoleAsync(roleName, app);
-        if (role is null || !await IsMemberAsync(user, app, ct)) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        if (role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+
+        if (role.ProjectId is not null && !await IsMemberAsync(user, app, ct)) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+
         if (await users.IsInRoleAsync(user, role.Name!)) return OperationResult.Ok;
         var result = await users.AddToRoleAsync(user, role.Name!);
         if (!result.Succeeded) return OperationResult.Fail(result.Errors);   // the user store raised the access version
@@ -342,7 +347,17 @@ internal sealed class AccessService(
     private async Task<Permission?> FindPermissionAsync(string key, CancellationToken ct)
     {
         var normalized = AccessKeys.NormalizePermissionKey(key);
-        return normalized is null ? null : await db.Permissions.FirstOrDefaultAsync(p => p.Key == normalized, ct);
+        if (normalized is null) return null;
+        var app = await flow.GetProjectAsync(ct);
+        var perm = await db.Permissions.FirstOrDefaultAsync(p => p.ProjectId == app.Id && p.Key == normalized, ct);
+        if (perm is not null) return perm;
+
+        var globalProj = await db.Projects.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(p => p.ProjectKey == ProjectKeyRules.GlobalProjectKey, ct);
+        if (globalProj is not null && globalProj.Id != app.Id)
+        {
+            perm = await db.Permissions.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.ProjectId == globalProj.Id && p.Key == normalized, ct);
+        }
+        return perm;
     }
 
     private async Task<AppRole?> FindVisibleRoleAsync(string name, Project app)
@@ -414,8 +429,10 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
         var app = await flow.GetProjectAsync(ct);
         var group = await FindAsync(groupName, ct);
         if (group is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+
         if (options.Value.Mode == ServerMode.MultiProject && !await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == app.Id, ct))
             return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+
         if (await db.UserGroups.AnyAsync(x => x.UserId == user.Id && x.GroupId == group.Id, ct)) return OperationResult.Ok;
         db.UserGroups.Add(new UserGroup { UserId = user.Id, GroupId = group.Id });
         if (!await TrySaveAsync(ct)) return OperationResult.Ok;
@@ -496,7 +513,17 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
     private async Task<Permission?> FindPermissionAsync(string key, CancellationToken ct)
     {
         var normalized = AccessKeys.NormalizePermissionKey(key);
-        return normalized is null ? null : await db.Permissions.FirstOrDefaultAsync(p => p.Key == normalized, ct);
+        if (normalized is null) return null;
+        var app = await flow.GetProjectAsync(ct);
+        var perm = await db.Permissions.FirstOrDefaultAsync(p => p.ProjectId == app.Id && p.Key == normalized, ct);
+        if (perm is not null) return perm;
+
+        var globalProj = await db.Projects.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(p => p.ProjectKey == ProjectKeyRules.GlobalProjectKey, ct);
+        if (globalProj is not null && globalProj.Id != app.Id)
+        {
+            perm = await db.Permissions.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.ProjectId == globalProj.Id && p.Key == normalized, ct);
+        }
+        return perm;
     }
 
     private async Task<AppRole?> FindRoleAsync(string name, Project app)

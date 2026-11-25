@@ -8,35 +8,37 @@
 
 <div class="space-y-6 max-w-5xl">
     <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2 text-sm text-gray-500">
+        <div class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
             <a href="/admin/p/@Model.ProjectKey/users" class="hover:underline">Users</a>
             <span>/</span>
-            <span class="text-gray-900 font-medium">@(u?.Email ?? u?.UserName)</span>
+            <span class="text-gray-900 dark:text-gray-100 font-medium">@(u?.Email ?? u?.UserName)</span>
         </div>
         <div class="flex items-center space-x-2">
             @if (u?.IsLockedOut == true)
             {
-                <form method="post" asp-page-handler="Unlock">
+                <form method="post" asp-page-handler="Unlock" asp-route-id="@Model.Id">
+                    <input type="hidden" name="id" value="@Model.Id" />
                     <a2-button type="submit" variant="secondary">Unlock User</a2-button>
                 </form>
             }
             else
             {
-                <form method="post" asp-page-handler="Lock">
-                    <a2-button type="submit" variant="secondary">Lock User</a2-button>
-                </form>
+                <button type="button" data-lock-modal-open data-user-id="@Model.Id" data-user-name="@(u?.UserName ?? u?.Email)" class="inline-flex items-center justify-center font-medium rounded-[var(--a2-radius,0.375rem)] px-4 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors cursor-pointer">
+                    Lock User
+                </button>
             }
-            <form method="post" asp-page-handler="RemoveFromProject">
+            <form method="post" asp-page-handler="RemoveFromProject" asp-route-id="@Model.Id">
+                <input type="hidden" name="id" value="@Model.Id" />
                 <a2-button type="submit" variant="danger" data-confirm="Remove user from this project?">Remove from Project</a2-button>
             </form>
         </div>
     </div>
 
     <!-- User Header Card -->
-    <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <div class="flex items-center space-x-3 mb-1">
-                <h1 class="text-2xl font-bold text-gray-900">@(string.IsNullOrWhiteSpace($"{u?.FirstName} {u?.LastName}") ? u?.Email : $"{u?.FirstName} {u?.LastName}")</h1>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">@(string.IsNullOrWhiteSpace($"{u?.FirstName} {u?.LastName}") ? (u?.Email ?? u?.UserName) : $"{u?.FirstName} {u?.LastName}")</h1>
                 @if (u?.IsLockedOut == true)
                 {
                     <a2-badge variant="danger">Locked Out</a2-badge>
@@ -50,19 +52,19 @@
                     <a2-badge variant="success">Active</a2-badge>
                 }
             </div>
-            <p class="text-sm text-gray-500 font-mono">ID: @u?.Id</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 font-mono">ID: @u?.Id</p>
         </div>
-        <div class="flex flex-wrap gap-4 text-xs text-gray-500">
+        <div class="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
             <div>
-                <span class="block font-semibold text-gray-700">Created</span>
+                <span class="block font-semibold text-gray-700 dark:text-gray-300">Created</span>
                 <span>@u?.CreatedAtUtc.ToString("g")</span>
             </div>
             <div>
-                <span class="block font-semibold text-gray-700">Last Login</span>
+                <span class="block font-semibold text-gray-700 dark:text-gray-300">Last Login</span>
                 <span>@(u?.LastLoginUtc?.ToString("g") ?? "Never")</span>
             </div>
             <div>
-                <span class="block font-semibold text-gray-700">2FA Status</span>
+                <span class="block font-semibold text-gray-700 dark:text-gray-300">2FA Status</span>
                 <span>@(u?.TwoFactorEnabled == true ? "Enabled" : "Disabled")</span>
             </div>
         </div>
@@ -72,7 +74,8 @@
         <!-- Edit Profile Form -->
         <div class="lg:col-span-2 space-y-6">
             <a2-card title="Profile & Account">
-                <form method="post" asp-page-handler="UpdateProfile" class="space-y-4">
+                <form method="post" asp-page-handler="UpdateProfile" asp-route-id="@Model.Id" class="space-y-4">
+                    <input type="hidden" name="id" value="@Model.Id" />
                     <div class="grid grid-cols-2 gap-4">
                         <a2-field label="First name">
                             <a2-input name="Input.FirstName" value="@Model.Input.FirstName" />
@@ -96,19 +99,133 @@
                 </form>
             </a2-card>
 
+            <!-- Roles Assignment -->
+            <a2-card title="Roles (@(Model.Access?.Roles.Count ?? 0))">
+                <div class="space-y-4">
+                    @if (Model.Access?.Roles.Count > 0)
+                    {
+                        <div class="flex flex-wrap gap-2">
+                            @foreach (var role in Model.Access.Roles)
+                            {
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                                    <span>@role</span>
+                                    <form method="post" asp-page-handler="RemoveRole" asp-route-id="@Model.Id" asp-route-roleName="@role" class="inline">
+                                        <input type="hidden" name="id" value="@Model.Id" />
+                                        <button type="submit" class="hover:text-red-600 dark:hover:text-red-400 font-bold focus:outline-none" title="Remove role">&times;</button>
+                                    </form>
+                                </span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No roles currently assigned to this user.</p>
+                    }
+
+                    <form method="post" asp-page-handler="AssignRole" asp-route-id="@Model.Id" class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <select name="roleName" required class="block w-full max-w-xs rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="">-- Select Role to Assign --</option>
+                            @foreach (var r in Model.AvailableRoles.Where(r => !(Model.Access?.Roles.Contains(r.Name) ?? false)))
+                            {
+                                <option value="@r.Name">@r.Name</option>
+                            }
+                        </select>
+                        <a2-button type="submit" variant="secondary">Assign Role</a2-button>
+                    </form>
+                </div>
+            </a2-card>
+
+            <!-- Direct Permissions (UserPermission) -->
+            <a2-card title="Direct Permissions (@(Model.Access?.DirectPermissions?.Count ?? 0))">
+                <div class="space-y-4">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Permissions assigned directly to this user identity (overriding or augmenting roles).</p>
+                    @if (Model.Access?.DirectPermissions?.Count > 0)
+                    {
+                        <div class="flex flex-wrap gap-2">
+                            @foreach (var perm in Model.Access.DirectPermissions)
+                            {
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                    <span>@perm</span>
+                                    <form method="post" asp-page-handler="RevokePermission" asp-route-id="@Model.Id" asp-route-permissionKey="@perm" class="inline">
+                                        <input type="hidden" name="id" value="@Model.Id" />
+                                        <button type="submit" class="hover:text-red-600 dark:hover:text-red-400 font-bold focus:outline-none" title="Revoke direct permission">&times;</button>
+                                    </form>
+                                </span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No direct permissions granted.</p>
+                    }
+
+                    <form method="post" asp-page-handler="GrantPermission" asp-route-id="@Model.Id" class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <select name="permissionKey" class="block w-full max-w-xs rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="">-- Select Permission or Type Key --</option>
+                            @foreach (var p in Model.AvailablePermissions.Where(p => !(Model.Access?.DirectPermissions?.Contains(p.Key) ?? false)))
+                            {
+                                <option value="@p.Key">@p.Key</option>
+                            }
+                        </select>
+                        <input type="text" name="permissionKeyManual" placeholder="Or enter permission key" class="block w-48 rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        <a2-button type="submit" variant="secondary">Grant Permission</a2-button>
+                    </form>
+                </div>
+            </a2-card>
+
+            <!-- Group Memberships (UserGroup) -->
+            <a2-card title="Groups (@(Model.Access?.Groups.Count ?? 0))">
+                <div class="space-y-4">
+                    @if (Model.Access?.Groups.Count > 0)
+                    {
+                        <div class="flex flex-wrap gap-2">
+                            @foreach (var grp in Model.Access.Groups)
+                            {
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-700">
+                                    <a href="/admin/p/@Model.ProjectKey/groups/detail?name=@grp" class="hover:underline">@grp</a>
+                                    <form method="post" asp-page-handler="RemoveGroup" asp-route-id="@Model.Id" asp-route-groupName="@grp" class="inline">
+                                        <input type="hidden" name="id" value="@Model.Id" />
+                                        <button type="submit" class="hover:text-red-600 dark:hover:text-red-400 font-bold focus:outline-none" title="Leave group">&times;</button>
+                                    </form>
+                                </span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-gray-500 dark:text-gray-400">User is not a member of any groups.</p>
+                    }
+
+                    <form method="post" asp-page-handler="AddGroup" asp-route-id="@Model.Id" class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <select name="groupName" required class="block w-full max-w-xs rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="">-- Select Group to Join --</option>
+                            @foreach (var g in Model.AvailableGroups.Where(g => !(Model.Access?.Groups.Contains(g.Name) ?? false)))
+                            {
+                                <option value="@g.Name">@g.Name (@(g.DisplayName ?? g.Name))</option>
+                            }
+                        </select>
+                        <a2-button type="submit" variant="secondary">Add to Group</a2-button>
+                    </form>
+                </div>
+            </a2-card>
+
             <!-- Active Sessions -->
             <a2-card title="Active Sessions">
                 @if (Model.Sessions.Count > 0)
                 {
-                    <ul class="divide-y divide-gray-200">
+                    <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach (var s in Model.Sessions)
                         {
                             <li class="py-3 flex items-center justify-between">
                                 <div>
-                                    <span class="text-sm font-semibold text-gray-800">Session @s.Id[..Math.Min(8, s.Id.Length)]...</span>
-                                    <span class="text-xs text-gray-500 block">Created: @(s.CreatedAtUtc?.ToString("g") ?? "Unknown")</span>
+                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Session @s.Id[..Math.Min(8, s.Id.Length)]...</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 block">Created: @(s.CreatedAtUtc?.ToString("g") ?? "Unknown")</span>
                                 </div>
-                                <form method="post" asp-page-handler="RevokeSession" asp-route-sessionId="@s.Id">
+                                <form method="post" asp-page-handler="RevokeSession" asp-route-id="@Model.Id" asp-route-sessionId="@s.Id">
+                                    <input type="hidden" name="id" value="@Model.Id" />
                                     <a2-button type="submit" variant="danger">Revoke</a2-button>
                                 </form>
                             </li>
@@ -117,7 +234,7 @@
                 }
                 else
                 {
-                    <p class="text-sm text-gray-500 py-3">No active sessions for this user.</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 py-3">No active sessions for this user.</p>
                 }
             </a2-card>
         </div>
@@ -127,27 +244,57 @@
             <a2-card title="Security Controls">
                 <div class="space-y-4">
                     <div>
-                        <h4 class="text-sm font-semibold text-gray-800">Two-Factor Authentication</h4>
-                        <p class="text-xs text-gray-500 mb-2">Reset TOTP keys and recovery codes if the user loses their authenticator.</p>
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Two-Factor Authentication</h4>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Reset TOTP keys and recovery codes if the user loses their authenticator.</p>
                         @if (u?.TwoFactorEnabled == true)
                         {
-                            <form method="post" asp-page-handler="Reset2Fa">
+                            <form method="post" asp-page-handler="Reset2Fa" asp-route-id="@Model.Id">
+                                <input type="hidden" name="id" value="@Model.Id" />
                                 <a2-button type="submit" variant="secondary" data-confirm="Reset 2FA for this user?">Reset 2FA</a2-button>
                             </form>
                         }
                         else
                         {
-                            <span class="text-xs text-gray-400">2FA is not enabled.</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">2FA is not enabled.</span>
                         }
                     </div>
 
-                    <div class="pt-4 border-t border-gray-100">
-                        <h4 class="text-sm font-semibold text-gray-800">Audit History</h4>
-                        <p class="text-xs text-gray-500 mb-2">View all security and administrative events for this user.</p>
-                        <a href="/admin/p/@Model.ProjectKey/audit?q=@u?.Email" class="text-xs text-blue-600 hover:underline">View User Audit Events &rarr;</a>
+                    <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Audit History</h4>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">View all security and administrative events for this user.</p>
+                        <a href="/admin/p/@Model.ProjectKey/audit?q=@(u?.Email ?? u?.UserName)" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">View User Audit Events &rarr;</a>
                     </div>
                 </div>
             </a2-card>
         </div>
+    </div>
+</div>
+
+<!-- Lockout Modal with Custom DateTime Picker -->
+<div id="lockModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Lock User Account</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Lock out <span id="lockTargetName" class="font-semibold text-gray-800 dark:text-gray-200"></span> from logging in.</p>
+        <form method="post" asp-page-handler="Lock" asp-route-id="@Model.Id">
+            <input type="hidden" name="id" id="lockUserId" value="@Model.Id" />
+            <div class="space-y-3">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Lockout Duration</label>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button type="button" data-lock-duration="30" class="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200">30 Minutes</button>
+                    <button type="button" data-lock-duration="120" class="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200">2 Hours</button>
+                    <button type="button" data-lock-duration="1440" class="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200">24 Hours</button>
+                    <button type="button" data-lock-duration="10080" class="px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200">7 Days</button>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Custom Date & Time (UTC/Local)</label>
+                    <input type="datetime-local" id="lockUntilInput" name="untilUtc" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <span class="text-xs text-gray-400 dark:text-gray-500 mt-1 block">Leave blank for permanent / indefinite lockout.</span>
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end space-x-3">
+                <button type="button" data-lock-modal-close class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-md">Lock User</button>
+            </div>
+        </form>
     </div>
 </div>

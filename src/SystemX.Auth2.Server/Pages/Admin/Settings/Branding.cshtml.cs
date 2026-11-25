@@ -19,6 +19,17 @@ public sealed class BrandingModel : AdminPageModel
 
         var brandingSvc = Svc<IAdminBrandingService>();
         Assets = await brandingSvc.ListAssetsAsync(CurrentProject!.Id, HttpContext.RequestAborted);
+
+        var projectSvc = Svc<IAdminProjectService>();
+        var settingsTuple = await projectSvc.GetSettingsAsync(CurrentProject.Id, HttpContext.RequestAborted);
+        if (settingsTuple?.Settings.Branding is { } b)
+        {
+            if (!string.IsNullOrWhiteSpace(b.PrimaryColor)) PrimaryColor = b.PrimaryColor;
+            if (!string.IsNullOrWhiteSpace(b.PrimaryTextColor)) PrimaryTextColor = b.PrimaryTextColor;
+            if (!string.IsNullOrWhiteSpace(b.BackgroundColor)) BackgroundColor = b.BackgroundColor;
+            if (!string.IsNullOrWhiteSpace(b.Radius)) Radius = b.Radius;
+        }
+
         return Page();
     }
 
@@ -60,7 +71,41 @@ public sealed class BrandingModel : AdminPageModel
     public async Task<IActionResult> OnPostSaveColorsAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
-        TempData["Success"] = "Branding color tokens saved.";
+
+        var projectSvc = Svc<IAdminProjectService>();
+        var settingsTuple = await projectSvc.GetSettingsAsync(CurrentProject!.Id, HttpContext.RequestAborted);
+        if (settingsTuple is null)
+        {
+            TempData["Error"] = "Project settings could not be loaded.";
+            return RedirectToPage(new { projectKey = ProjectKey });
+        }
+
+        var settings = settingsTuple.Value.Settings;
+        settings.Branding ??= new();
+        settings.Branding.PrimaryColor = string.IsNullOrWhiteSpace(PrimaryColor) ? "#2563eb" : PrimaryColor.Trim();
+        settings.Branding.PrimaryTextColor = string.IsNullOrWhiteSpace(PrimaryTextColor) ? "#ffffff" : PrimaryTextColor.Trim();
+        settings.Branding.BackgroundColor = string.IsNullOrWhiteSpace(BackgroundColor) ? "#f9fafb" : BackgroundColor.Trim();
+        settings.Branding.Radius = string.IsNullOrWhiteSpace(Radius) ? "0.375rem" : Radius.Trim();
+
+        var (result, _) = await projectSvc.UpdateSettingsAsync(
+            CurrentProject.Id,
+            settings,
+            IsGlobalAdmin,
+            settingsTuple.Value.Version,
+            HttpContext.RequestAborted);
+
+        if (!result.Succeeded)
+        {
+            var msg = result.Errors?.Count > 0
+                ? string.Join("; ", result.Errors.Select(e => $"{e.Code}: {e.Description}"))
+                : (result.ErrorCode ?? "Failed to save branding color tokens.");
+            TempData["Error"] = msg;
+        }
+        else
+        {
+            TempData["Success"] = "Branding color tokens saved successfully.";
+        }
+
         return RedirectToPage(new { projectKey = ProjectKey });
     }
 }

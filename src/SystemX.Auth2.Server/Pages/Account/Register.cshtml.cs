@@ -22,6 +22,12 @@ public sealed class RegisterModel(IClientIdAccessor clientId, IAuthFlowResolver 
     /// <summary>Offer "I already have an account on this server" (the join page). Shown to everybody, so it tells nothing about a person.</summary>
     public bool ShowJoinLink { get; private set; }
 
+    /// <summary>Enabled external identity providers (Google, GitHub, SAML, etc.).</summary>
+    public IReadOnlyList<Domain.Settings.ExternalProviderSettings> EnabledExternalProviders { get; private set; } = [];
+
+    /// <summary>Show passkey sign-up button.</summary>
+    public bool ShowPasskeyRegister { get; private set; }
+
     public sealed class InputModel
     {
         [StringLength(64)] public string? UserName { get; set; }
@@ -66,6 +72,8 @@ public sealed class RegisterModel(IClientIdAccessor clientId, IAuthFlowResolver 
         ShowPhoneField = m.Contains(LoginMethod.PhonePassword) || m.Contains(LoginMethod.PhoneOtp);
         RegistrationEnabled = Settings.Registration.RegistrationEnabled;
         ShowJoinLink = Settings.Registration.JoinMode == Domain.Settings.JoinMode.AutoJoin;
+        EnabledExternalProviders = Settings.ExternalProviders.Where(p => p.Enabled).ToList();
+        ShowPasskeyRegister = m.Contains(LoginMethod.Passkey) || Settings.Passkeys.AllowPasskeys;
         return true;
     }
 }
