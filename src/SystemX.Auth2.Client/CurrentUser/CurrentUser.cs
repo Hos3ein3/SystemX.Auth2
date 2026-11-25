@@ -22,7 +22,7 @@ namespace SystemX.Auth2.Client.CurrentUser;
 /// </summary>
 public interface ICurrentClient
 {
-    /// <summary>True when the request carries a valid token (user token or machine token).</summary>
+    /// <summary>True when the request is authenticated: a valid token (user or machine), or a signed-in cookie session of the hosted or Self UI.</summary>
     bool IsTokenAuthenticated { get; }
     /// <summary>OAuth client id (<c>client_id</c>) of the application that got the token.</summary>
     string? ClientId { get; }

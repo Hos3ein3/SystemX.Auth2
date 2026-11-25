@@ -125,6 +125,8 @@ builder.Services.AddAuth2Client(...)
 
 The same constants work in `[Auth2Permission(OrderPermissions.Read)]` and `.WithPermission(OrderPermissions.Read)`.
 
+An attribute **on an endpoint, class or method** also carries texts: `[Auth2Permission("orders.write", DisplayName = "Write orders", Group = "Orders")]` fills the catalog entry when the attribute names exactly one key ([client-endpoint-metadata.md](client-endpoint-metadata.md#the-texts-on-an-attribute)).
+
 **Merging.** Definitions from all sources are merged by key (ordinal, case-sensitive). The same key with the same data is ignored. The same key with different data stops the start, and the message names both sources, unless `DuplicatePolicy = FirstWins` (then the first source stays).
 
 **Validation.** Keys are checked when a source is added (static sources) or when the host starts (providers and factories). A wrong key names its source, class, field or part. Scope keys must not contain a space, a double quote or a backslash (the OAuth scope rules) and are kept apart from permission keys. A provider that throws gives a startup error that names the catalog and shows the reason.
@@ -163,3 +165,5 @@ The Client package does this for you: `EnablePermissions(...)`, `EnableRoles(...
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Machine to machine (client credentials)](machine-to-machine.md)
 - [Getting started](getting-started.md)
+- [Scope, permission, role, group: which is which](access-concepts.md)
+- [Enums reference](enums-reference.md)

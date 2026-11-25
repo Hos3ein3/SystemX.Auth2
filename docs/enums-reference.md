@@ -699,3 +699,7 @@ Server-side values for the key ring and for sending email.
 - [contracts-reference.md](contracts-reference.md)
 - [database-tables.md](database-tables.md)
 - [Documentation index](index.md)
+- [Scope, permission, role, group: which is which](access-concepts.md)
+- [Minimal API methods and attributes: when to use which](client-endpoint-metadata.md)
+- [Authorization: permissions, roles and groups](authorization.md)
+- [Concepts](concepts.md)

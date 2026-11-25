@@ -137,3 +137,6 @@ See [authentication-flows.md](authentication-flows.md).
 - [Authorization: permissions, roles and groups](authorization.md)
 - [Permission, role and group sync](permission-sync.md)
 - [Documentation index](index.md)
+- [Scope, permission, role, group: which is which](access-concepts.md)
+- [Minimal API methods and attributes: when to use which](client-endpoint-metadata.md)
+- [Enums reference](enums-reference.md)

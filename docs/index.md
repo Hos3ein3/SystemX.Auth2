@@ -55,6 +55,8 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 |---|---|
 | [client-setup.md](client-setup.md) | Add the package, options, UI modes, handshake |
 | [client-builder.md](client-builder.md) | `Auth2ClientServiceCollectionExtensions` in depth: `AddAuth2Client`, every `Enable...` and `Use...` method, every option, `UseAuth2` |
+| [access-concepts.md](access-concepts.md) | Scope, permission, role, group, direct grant, token kind: which is which and when to use each |
+| [client-endpoint-metadata.md](client-endpoint-metadata.md) | Minimal API methods and attributes: the same rules written two ways, texts, what the scanners read |
 | [client-authorization.md](client-authorization.md) | Attributes, Minimal API extensions, API authentication |
 | [client-current-user.md](client-current-user.md) | `ICurrentUser`, `ICurrentClient`, the cache and the stores |
 | [client-reference.md](client-reference.md) | Every public type, member and overload of the Client package |

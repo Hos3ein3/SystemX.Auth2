@@ -440,3 +440,53 @@ public class SyncHostedServiceTests
         strict.ExecuteTask!.IsFaulted.ShouldBeTrue();
     }
 }
+
+public class ScannedTextTests
+{
+    private static EndpointDataSource Endpoints(params object[] attributes) =>
+        new DefaultEndpointDataSource(attributes.Select((a, i) =>
+            (Endpoint)new RouteEndpoint(_ => Task.CompletedTask, RoutePatternFactory.Parse("/t" + i), 0, new EndpointMetadataCollection(a), "t" + i)));
+
+    [Fact]
+    public void APermissionAttribute_WithOneKey_GivesItsTextsToTheCatalog()
+    {
+        var source = Endpoints(new Auth2PermissionAttribute("text.one") { DisplayName = "Text one", Description = "Does one thing", Group = "Texts" },
+            new Auth2PermissionAttribute("text.many.a", "text.many.b") { DisplayName = "Ambiguous" });
+        var scanner = new PermissionScanner([source], MsOptions.Create(new Auth2PermissionOptions { ScanningPolicy = ScanningPolicy.AssemblyScan, AssembliesToScan = [] }), NullLogger<PermissionScanner>.Instance);
+        var found = scanner.Scan().ToDictionary(p => p.Key);
+        found["text.one"].ShouldBe(new PermissionDefinition("text.one", "Text one", "Does one thing", "Texts"));
+        // Several keys in one attribute: the texts would be ambiguous, so none is used.
+        found["text.many.a"].ShouldBe(new PermissionDefinition("text.many.a"));
+        found["text.many.b"].ShouldBe(new PermissionDefinition("text.many.b"));
+    }
+
+    [Fact]
+    public void ALaterAttributeWithTexts_FillsAnEarlierOneWithout()
+    {
+        var source = Endpoints(new Auth2PermissionAttribute("shared.key"), new Auth2PermissionAttribute("shared.key") { DisplayName = "Shared" });
+        var scanner = new PermissionScanner([source], MsOptions.Create(new Auth2PermissionOptions { ScanningPolicy = ScanningPolicy.AssemblyScan, AssembliesToScan = [] }), NullLogger<PermissionScanner>.Instance);
+        scanner.Scan().Single().DisplayName.ShouldBe("Shared");
+    }
+
+    [Fact]
+    public void ARoleAttribute_GivesItsTextsAndPermissions()
+    {
+        var source = Endpoints(new Auth2RoleAttribute("Texty") { DisplayName = "The texty one", Description = "Has text", Permissions = ["text.one", "Text.Two"] });
+        var scanner = new RoleScanner([source], MsOptions.Create(new Auth2RoleOptions { ScanningPolicy = ScanningPolicy.AssemblyScan, AssembliesToScan = [] }), NullLogger<RoleScanner>.Instance);
+        var role = scanner.Scan().Single();
+        role.DisplayName.ShouldBe("The texty one");
+        role.Description.ShouldBe("Has text");
+        role.Permissions.ShouldBe(["text.one", "text.two"]);   // normalized like every permission key
+    }
+
+    [Fact]
+    public void AScopeAndAGroupAttribute_GiveTheirTexts()
+    {
+        var scopes = new ScopeScanner([Endpoints(new Auth2ScopeAttribute("text.scope") { DisplayName = "Text scope", Description = "Reads text" })],
+            MsOptions.Create(new Auth2ScopeOptions { ScanningPolicy = ScanningPolicy.AssemblyScan, AssembliesToScan = [] }), NullLogger<ScopeScanner>.Instance);
+        scopes.Scan().Single().ShouldBe(new ScopeDefinition("text.scope", "Text scope", "Reads text"));
+        var groups = new GroupScanner([Endpoints(new Auth2GroupAttribute("text-group") { DisplayName = "Text group" })],
+            MsOptions.Create(new Auth2GroupOptions { ScanningPolicy = ScanningPolicy.AssemblyScan, AssembliesToScan = [] }), NullLogger<GroupScanner>.Instance);
+        groups.Scan().Single().ShouldBe(new GroupDefinition("text-group", "Text group"));
+    }
+}

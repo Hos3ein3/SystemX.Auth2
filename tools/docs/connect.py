@@ -44,6 +44,7 @@ FAMILIES = [
     ['client-reference.md', 'client-builder.md', 'client-authorization.md', 'client-current-user.md', 'machine-to-machine.md', 'contracts-reference.md'],
     ['machine-to-machine.md', 'authentication-flows.md', 'client-reference.md'],
     ['client-authorization.md', 'client-current-user.md', 'client-reference.md'],
+    ['access-concepts.md', 'client-endpoint-metadata.md', 'client-authorization.md', 'client-current-user.md', 'authorization.md', 'permission-sync.md', 'concepts.md', 'enums-reference.md'],
     ['contracts-reference.md', 'client-reference.md', 'server-reference.md', 'api-reference.md'],
     ['client-builder.md', 'client-setup.md', 'client-reference.md', 'handshake-and-startup.md', 'permission-sync.md', 'client-current-user.md', 'machine-to-machine.md', 'getting-started.md', 'server-settings.md'],
     # project

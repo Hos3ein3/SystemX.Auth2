@@ -2,6 +2,8 @@
 
 ## What this is
 
+The words (scope, permission, role, group) are explained side by side in [access-concepts.md](access-concepts.md). The Minimal API methods and the attributes, and when to use which, are in [client-endpoint-metadata.md](client-endpoint-metadata.md). This page is the reference for the rules.
+
 How your application decides **who may call what**, using the roles, permissions, groups and scopes that the Auth2 Server knows.
 It is built on normal ASP.NET Core authorization (requirements, handlers, policies). There is no separate engine.
 
@@ -64,7 +66,7 @@ Where each check reads its data:
 
 | Check | Reads | Cost |
 |---|---|---|
-| Role, scope, machine / user | The claims of the token (`ICurrentClient` for scope and machine / user) | none |
+| Role, scope, machine / user | The claims of the token (`ICurrentClient` for scope and machine / user). The `role` claim is in the token only when the `roles` scope was granted; a token without role claims makes the role rule read the access data instead (one cached call). A role given or taken after the token was issued shows only when the token is renewed | none |
 | Permission, group | The access data from the server (`/api/auth2/me`), cached | one call per cache time |
 
 ## Answers
@@ -135,6 +137,7 @@ Limits: the client checks the token's signature, issuer, audience and lifetime. 
 - [Contracts reference](contracts-reference.md)
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Enums reference](enums-reference.md)
 
 ## The same constants everywhere
 

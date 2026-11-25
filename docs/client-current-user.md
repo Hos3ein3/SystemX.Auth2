@@ -11,7 +11,7 @@ Two services tell your code **who is calling**. Both read the `ClaimsPrincipal` 
 
 A third thing sits behind them: **`CurrentUserInfo`**, the answer of `/me` (the Server's description of the person and their rights), and **`Auth2Access`**, the copy of it that the Client keeps in a cache.
 
-The one rule to remember: a **scope** is what a *client* may do; a **permission** is what a *user* may do. An endpoint can require both ([client-authorization.md](client-authorization.md)).
+The one rule to remember: a **scope** is what a *client* may do; a **permission** is what a *user* may do (all the words side by side: [access-concepts.md](access-concepts.md)). An endpoint can require both ([client-authorization.md](client-authorization.md)).
 
 ## When to use it
 
@@ -195,6 +195,7 @@ The person is in a cookie, not in a bearer token. The services work the same way
 | `Email` or `PhoneNumber` is `null` | Ask for the `email` / `phone` scope, and check that the person has one |
 | `ProjectKey` is `null` | The Server is single-project (the claim is omitted) |
 | `Scopes` is empty for a cookie user | The `scope` claim was not copied: use `AccessMode` that loads the data, or check the token's scopes |
+| A role I just gave is not seen by `[Auth2Role]` | The `role` claim is a snapshot made when the token was issued (and only when the `roles` scope was granted). Renew the token, or protect with a permission. `HasRoleAsync` reads the access data and may already be newer ([access-concepts.md](access-concepts.md#role-in-depth)) |
 | `HasRoleAsync("admin")` is `true` but `HasPermissionAsync("Orders.Read")` is also `true` | Both are normalised on purpose: roles ignore case, permission keys are lower-cased |
 
 ## How to implement or extend
@@ -224,3 +225,5 @@ The person is in a cookie, not in a bearer token. The services work the same way
 - [Database tables](database-tables.md)
 - [Credential scope](credential-scope.md)
 - [Architecture](architecture.md)
+- [Minimal API methods and attributes: when to use which](client-endpoint-metadata.md)
+- [Enums reference](enums-reference.md)

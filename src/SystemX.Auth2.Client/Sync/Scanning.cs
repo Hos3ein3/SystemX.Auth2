@@ -108,15 +108,22 @@ internal sealed class PermissionScanner(IEnumerable<EndpointDataSource> endpoint
         {
             var key = Auth2Keys.NormalizePermissionKey(d.Key);
             if (key is null) { log.LogWarning("The permission '{Key}' is not valid and is skipped. Use lowercase letters, digits and . _ : - (1 to 100 characters).", d.Key); return; }
-            if (manual || !result.ContainsKey(key)) result[key] = d with { Key = key };   // manual wins, and the first scanned one stays
+            // Manual wins. Of two scanned ones the first stays, unless it has no text and the later one has (the same key on two endpoints).
+            if (manual || !result.TryGetValue(key, out var old) || (HasNoText(old) && !HasNoText(d))) result[key] = d with { Key = key };
         }
+
+        static bool HasNoText(PermissionDefinition d) => d.DisplayName is null && d.Description is null && d.Group is null;
+
+        // The texts of an attribute belong to its key when it names exactly one key; with several keys they would be ambiguous and are not used.
+        static PermissionDefinition Of(string key, object meta) =>
+            meta is Auth2PermissionAttribute { Permissions.Count: 1 } a ? new PermissionDefinition(key, a.DisplayName, a.Description, a.Group) : new PermissionDefinition(key);
 
         if (o.ScanningPolicy is ScanningPolicy.AssemblyScan or ScanningPolicy.Both)
         {
             foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2PermissionMetadata>())
-                foreach (var key in meta.Permissions) Add(new PermissionDefinition(key), manual: false);
+                foreach (var key in meta.Permissions) Add(Of(key, meta), manual: false);
             foreach (var attribute in ScanSupport.AttributesIn<Auth2PermissionAttribute>(o.AssembliesToScan))
-                foreach (var key in attribute.Permissions) Add(new PermissionDefinition(key), manual: false);
+                foreach (var key in attribute.Permissions) Add(Of(key, attribute), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
         {
@@ -140,15 +147,20 @@ internal sealed class RoleScanner(IEnumerable<EndpointDataSource> endpoints, IOp
             var name = Auth2Keys.NormalizeRoleName(d.Name);
             if (name is null) { log.LogWarning("The role '{Name}' is not valid and is skipped.", d.Name); return; }
             var permissions = d.Permissions?.Select(Auth2Keys.NormalizePermissionKey).Where(k => k is not null).Select(k => k!).Distinct().Order(StringComparer.Ordinal).ToList();
-            if (manual || !result.ContainsKey(name)) result[name] = d with { Name = name, Permissions = permissions };
+            if (manual || !result.TryGetValue(name, out var old) || (HasNoText(old) && !HasNoText(d))) result[name] = d with { Name = name, Permissions = permissions };
         }
+
+        static bool HasNoText(RoleDefinition d) => d.DisplayName is null && d.Description is null && d.Permissions is not { Count: > 0 };
+
+        static RoleDefinition Of(string name, object meta) =>
+            meta is Auth2RoleAttribute { RoleNames.Count: 1 } a ? new RoleDefinition(name, a.DisplayName, a.Description, a.Permissions) : new RoleDefinition(name);
 
         if (o.ScanningPolicy is ScanningPolicy.AssemblyScan or ScanningPolicy.Both)
         {
             foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2RoleMetadata>())
-                foreach (var name in meta.Roles) Add(new RoleDefinition(name), manual: false);
+                foreach (var name in meta.Roles) Add(Of(name, meta), manual: false);
             foreach (var attribute in ScanSupport.AttributesIn<Auth2RoleAttribute>(o.AssembliesToScan))
-                foreach (var name in attribute.RoleNames) Add(new RoleDefinition(name), manual: false);
+                foreach (var name in attribute.RoleNames) Add(Of(name, attribute), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
         {
@@ -176,15 +188,20 @@ internal sealed class ScopeScanner(IEnumerable<EndpointDataSource> endpoints, IO
                 if (manual) log.LogWarning("The scope '{Name}' is reserved (auth2.* and the standard OpenID Connect scopes) and is skipped.", name);
                 return;   // endpoints often ask for auth2.me and similar: that is normal and silent
             }
-            if (manual || !result.ContainsKey(name)) result[name] = d with { Name = name };
+            if (manual || !result.TryGetValue(name, out var old) || (HasNoText(old) && !HasNoText(d))) result[name] = d with { Name = name };
         }
+
+        static bool HasNoText(ScopeDefinition d) => d.DisplayName is null && d.Description is null;
+
+        static ScopeDefinition Of(string name, object meta) =>
+            meta is Auth2ScopeAttribute { Scopes.Count: 1 } a ? new ScopeDefinition(name, a.DisplayName, a.Description) : new ScopeDefinition(name);
 
         if (o.ScanningPolicy is ScanningPolicy.AssemblyScan or ScanningPolicy.Both)
         {
             foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2ScopeMetadata>())
-                foreach (var name in meta.Scopes) Add(new ScopeDefinition(name), manual: false);
+                foreach (var name in meta.Scopes) Add(Of(name, meta), manual: false);
             foreach (var attribute in ScanSupport.AttributesIn<Auth2ScopeAttribute>(o.AssembliesToScan))
-                foreach (var name in attribute.Scopes) Add(new ScopeDefinition(name), manual: false);
+                foreach (var name in attribute.Scopes) Add(Of(name, attribute), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
         {
@@ -207,15 +224,18 @@ internal sealed class GroupScanner(IEnumerable<EndpointDataSource> endpoints, IO
         {
             var name = Auth2Keys.NormalizeGroupName(d.Name);
             if (name is null) { log.LogWarning("The group '{Name}' is not valid and is skipped. Use lowercase letters, digits and . _ : - (1 to 100 characters).", d.Name); return; }
-            if (manual || !result.ContainsKey(name)) result[name] = d with { Name = name };
+            if (manual || !result.TryGetValue(name, out var old) || (old.DisplayName is null && d.DisplayName is not null)) result[name] = d with { Name = name };
         }
+
+        static GroupDefinition Of(string name, object meta) =>
+            meta is Auth2GroupAttribute { Groups.Count: 1 } a ? new GroupDefinition(name, a.DisplayName) : new GroupDefinition(name);
 
         if (o.ScanningPolicy is ScanningPolicy.AssemblyScan or ScanningPolicy.Both)
         {
             foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2GroupMetadata>())
-                foreach (var name in meta.Groups) Add(new GroupDefinition(name), manual: false);
+                foreach (var name in meta.Groups) Add(Of(name, meta), manual: false);
             foreach (var attribute in ScanSupport.AttributesIn<Auth2GroupAttribute>(o.AssembliesToScan))
-                foreach (var name in attribute.Groups) Add(new GroupDefinition(name), manual: false);
+                foreach (var name in attribute.Groups) Add(Of(name, attribute), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
         {
