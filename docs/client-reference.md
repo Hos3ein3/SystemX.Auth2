@@ -208,6 +208,11 @@ Authorization for Minimal API endpoints (and route groups). Chaining means AND: 
 | `WithMachineOnly(this T)` | Only machine tokens (client credentials) are accepted. |
 | `WithUserOnly(this T)` | Only user tokens are accepted. |
 | `WithGroup(this T, string[])` | The user must be in **one** of these groups. |
+| `WithAnyOf(this T, string[], string[], string[], string[])` | "One of these is enough", across kinds: the user has any of `roles`, or any of `permissions`, or is in any of `groups`, or the token has any of `scopes`. Leave out the lists you do not need. At least one value is required. Scanned like the single-kind rules, so the roles, permissions, groups and scopes are synced. |
+| `WithRoleOrPermission(this T, string[], string[])` | The user has **any** of the roles **or any** of the permissions. Example: `.WithRoleOrPermission(["Admin"], ["orders.write"])`. |
+| `WithRoleOrGroup(this T, string[], string[])` | The user has **any** of the roles **or** is in **any** of the groups. |
+| `WithPermissionOrGroup(this T, string[], string[])` | The user has **any** of the permissions **or** is in **any** of the groups. |
+| `WithScopeOrRole(this T, string[], string[])` | The token has **any** of the scopes **or** the user has **any** of the roles. Example: a program with the scope, or an admin. |
 | `WithAuth2Policy(this T, string)` | Uses a policy you registered with `AddAuthorization`. |
 | `WithAuth2Audit(this T, string)` | Raises an audit event (see `IAuth2AuditSink`) every time this endpoint is authorized or refused. |
 
@@ -376,6 +381,32 @@ Sign-in and sign-out for apps that show their own forms (Self UI), and for the h
 Anyone may call this, even without a token.
 
 
+### Auth2AnyOfAttribute
+
+The rule passes when the user has **any** of the roles **or any** of the permissions **or** is in **any** of the groups **or** the token has **any** of the scopes. Set the lists you need: `[Auth2AnyOf(Roles = new[] { "Admin" }, Permissions = new[] { "orders.write" })]`. Two attributes are two rules (AND).
+
+| Member | What it does |
+|---|---|
+| `Roles` | Roles (any). |
+| `Permissions` | Permissions (any). |
+| `Groups` | Groups (any). |
+| `Scopes` | Scopes of the token (any). |
+
+
+### Auth2AnyOfAttributeBase
+
+Base of the "any of" attributes. It is `IAuthorizeData` itself (not `AuthorizeAttribute`) because the policy name is made from the named properties (`Roles = ...`), which are set after the constructor ran: the name is built when ASP.NET reads `Policy`.
+
+| Member | What it does |
+|---|---|
+| `RoleValues` | Roles of the rule, or empty. Used by the attributes that have roles. |
+| `PermissionValues` | Permissions of the rule, or empty. |
+| `GroupValues` | Groups of the rule, or empty. |
+| `ScopeValues` | Scopes of the rule, or empty. |
+| `Policy` | The policy of ASP.NET, made from the values. `null` when there is no value at all (then the rule means "a signed-in user"). |
+| `AuthenticationSchemes` | Not used. |
+
+
 ### Auth2AuditAttribute
 
 Raises an audit event (see `IAuth2AuditSink`) when this endpoint is authorized or refused.
@@ -460,6 +491,16 @@ On a class or method: the user needs a permission (one of the keys, or all of th
 | `RequireAll` |  |
 
 
+### Auth2PermissionOrGroupAttribute
+
+The user has any of the `Permissions` **or** is in any of the `Groups`.
+
+| Member | What it does |
+|---|---|
+| `Permissions` | Permissions (any). |
+| `Groups` | Groups (any). |
+
+
 ### Auth2PermissionSource
 
 Where a required permission must come from.
@@ -486,6 +527,26 @@ On a class or method: the user needs a role (one of the names, or all with `requ
 | `RequireAll` |  |
 
 
+### Auth2RoleOrGroupAttribute
+
+The user has any of the `Roles` **or** is in any of the `Groups`.
+
+| Member | What it does |
+|---|---|
+| `Roles` | Roles (any). |
+| `Groups` | Groups (any). |
+
+
+### Auth2RoleOrPermissionAttribute
+
+The user has any of the `Roles` **or** any of the `Permissions`. Example: an admin, or whoever may write orders.
+
+| Member | What it does |
+|---|---|
+| `Roles` | Roles (any). |
+| `Permissions` | Permissions (any). |
+
+
 ### Auth2ScopeAttribute
 
 On a class or method: the token needs one of these scopes. On a `const string` field or an enum member: no names, only the data of the scope (`DisplayName`, `Description`).
@@ -498,6 +559,16 @@ On a class or method: the token needs one of these scopes. On a `const string` f
 | `Scopes` |  |
 
 
+### Auth2ScopeOrRoleAttribute
+
+The token has any of the `Scopes` **or** the user has any of the `Roles`. Example: a program with the scope, or an admin.
+
+| Member | What it does |
+|---|---|
+| `Scopes` | Scopes of the token (any). |
+| `Roles` | Roles (any). |
+
+
 ### Auth2UserOnlyAttribute
 
 Only user tokens are accepted (not machine tokens).
@@ -506,6 +577,18 @@ Only user tokens are accepted (not machine tokens).
 |---|---|
 | `(constructor)()` | Creates the attribute. |
 | `MachineOnly` |  |
+
+
+### IAuth2AnyOfMetadata
+
+"One of these is enough" across kinds: the rule passes when the person has any of the roles, or any of the permissions, or is in any of the groups, or the token has any of the scopes. Any list may be empty. Written by `[Auth2AnyOf]`, `[Auth2RoleOrPermission]` and the other attributes of this family, and by `WithAnyOf` and its shortcuts. The scanners read it, so the roles, permissions, groups and scopes in it are synced like any other.
+
+| Member | What it does |
+|---|---|
+| `Roles` | Roles. The rule passes when the user has any of them. |
+| `Permissions` | Permissions. The rule passes when the user has any of them. |
+| `Groups` | Groups. The rule passes when the user is in any of them. |
+| `Scopes` | Scopes. The rule passes when the token has any of them. |
 
 
 ### IAuth2AuditMetadata

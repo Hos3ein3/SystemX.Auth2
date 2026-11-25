@@ -44,10 +44,15 @@ If you mix styles in one application nothing breaks. Pick one per project for re
 | `.WithGroup("g")` | `[Auth2Group("g")]` | In **any** of the groups | `auth2:group:any:g` |
 | `.WithMachineOnly()` | `[Auth2MachineOnly]` | A client-credentials token | `auth2:kind:machine:` |
 | `.WithUserOnly()` | `[Auth2UserOnly]` | A person's token | `auth2:kind:user:` |
+| `.WithAnyOf(roles:, permissions:, groups:, scopes:)` | `[Auth2AnyOf(Roles = ..., Permissions = ..., Groups = ..., Scopes = ...)]` | **Any one** of everything listed, across kinds ([below](#any-of-rules-a-role-or-a-permission)) | `auth2:any:any:r=..;p=..;g=..;s=..` |
+| `.WithRoleOrPermission(roles, permissions)` | `[Auth2RoleOrPermission(Roles = ..., Permissions = ...)]` | A role **or** a permission | (same shape) |
+| `.WithRoleOrGroup(roles, groups)` | `[Auth2RoleOrGroup(Roles = ..., Groups = ...)]` | A role **or** a group | (same shape) |
+| `.WithPermissionOrGroup(permissions, groups)` | `[Auth2PermissionOrGroup(Permissions = ..., Groups = ...)]` | A permission **or** a group | (same shape) |
+| `.WithScopeOrRole(scopes, roles)` | `[Auth2ScopeOrRole(Scopes = ..., Roles = ...)]` | A scope of the token **or** a role | (same shape) |
 | `.WithAuth2Policy("p")` | `[Authorize(Policy = "p")]` | Your own policy | yours |
 | `.WithAuth2Audit("act")` | `[Auth2Audit("act")]` | Raise an audit event | (metadata only) |
 
-**Several values in one call = OR. Several calls or attributes = AND.**
+**Several values in one call = OR. Several calls or attributes = AND.** The "any of" rules below are the way to say OR **across kinds** (a role *or* a permission), which chaining cannot do.
 
 ```csharp
 .WithPermission("orders.read", "orders.write")                 // read OR write
@@ -59,6 +64,47 @@ If you mix styles in one application nothing breaks. Pick one per project for re
 The same holds for attributes: two `[Auth2Permission]` on one action are two rules and both must pass. An attribute on the **class** and one on the **action** also both apply.
 
 How each rule is checked (data, cost, case) is in [client-authorization.md](client-authorization.md#the-rules); what the words mean is in [access-concepts.md](access-concepts.md).
+
+## Any-of rules: a role or a permission
+
+Chaining is AND, and one call of `WithRole` or `WithPermission` is OR **inside one kind**. To say "an admin, or whoever may write orders" you need OR **between kinds**. That is what the any-of family does: **one rule that passes when any one thing in it matches**.
+
+```csharp
+// Minimal API
+app.MapDelete("/orders/{id}", Delete).WithRoleOrPermission(["Admin"], ["orders.delete"]);
+app.MapGet("/finance/report", Report).WithRoleOrGroup(["Auditor"], ["finance"]);
+app.MapGet("/reports", Reports).WithScopeOrRole(["reports.api"], ["Admin"]);          // a program with the scope, or an admin person
+app.MapGet("/x", X).WithAnyOf(roles: ["Admin"], permissions: ["x.use"], groups: ["ops"], scopes: ["x.api"]);
+
+// Controllers and everything else
+[Auth2RoleOrPermission(Roles = new[] { "Admin" }, Permissions = new[] { "orders.delete" })]
+public IActionResult Delete(Guid id) => ...;
+
+[Auth2AnyOf(Roles = new[] { "Admin" }, Groups = new[] { "ops" }, Scopes = new[] { "x.api" })]
+public IActionResult Operate() => ...;
+```
+
+| Method | Attribute | Lists you give | Passes when |
+|---|---|---|---|
+| `WithAnyOf` | `Auth2AnyOf` | any of `roles`, `permissions`, `groups`, `scopes` | any one of all of them matches |
+| `WithRoleOrPermission` | `Auth2RoleOrPermission` | `roles`, `permissions` | a role **or** a permission |
+| `WithRoleOrGroup` | `Auth2RoleOrGroup` | `roles`, `groups` | a role **or** a group |
+| `WithPermissionOrGroup` | `Auth2PermissionOrGroup` | `permissions`, `groups` | a permission **or** a group |
+| `WithScopeOrRole` | `Auth2ScopeOrRole` | `scopes`, `roles` | a scope of the token **or** a role |
+
+How a rule is checked:
+
+- **Inside every list it is also OR.** `WithRoleOrPermission(["A", "B"], ["x", "y"])` passes for role `A`, role `B`, permission `x` or permission `y`. There is no "all" form: for AND, put two rules on the endpoint.
+- **The cheap checks come first.** Scopes and roles in the token need no call, so the Server is asked for permissions and groups only when none of them matched. A rule that a role or scope satisfies costs nothing.
+- **Same comparison as the single rules:** role and group names ignore case, permission keys are trimmed and lower-cased, scopes are exact. Roles come from the token, or from the access data when the token has no role claim ([access-concepts.md](access-concepts.md#role-in-depth)).
+- **When the Server cannot be asked** (and nothing is cached) the permission and group parts count as "no"; a role or scope that matched still passes (fail closed, as for the single rules).
+- **`WithOnlyRolePermission()` and `WithOnlyUserPermission()`** on the same endpoint apply to the **permission** part of the rule.
+- **A machine token** has scopes and no roles, permissions or groups: it can pass only through a scope.
+- **Chaining with another rule is AND:** `.WithRoleOrPermission(["Admin"], ["orders.delete"]).WithGroup("finance")` needs the any-of rule **and** the group.
+- **Nothing listed.** `WithAnyOf()` with no value at all throws `ArgumentException` when the endpoint is built. An attribute with no value has no policy and means "a signed-in user", like `[Auth2Permission]` without a key.
+- The attributes list the values as named properties, so write arrays with `new[] { ... }`; the Minimal API methods take `["a", "b"]`.
+
+**Scanning.** The scanners read these rules like the single ones: the **roles**, **permissions**, **groups** and **scopes** in a rule are added to the catalogs and synced ([permission-sync.md](permission-sync.md)). A rule gives names only (no texts), so a text from `[Auth2Permission(DisplayName = ...)]` or a list still wins when the same key appears twice. `auth2.*` and the standard scopes are skipped, as always.
 
 ## Minimal API in practice
 
@@ -131,7 +177,7 @@ public class AdminController : Controller
 
 ### Rules for attributes
 
-- Where they go: `Class` and `Method` for every attribute. `Auth2Permission`, `Auth2Role`, `Auth2Scope` and `Auth2Group` also go on a **field** (a `const`): there they carry the texts of the catalog and do not protect anything.
+- Where they go: `Class` and `Method` for every attribute (the any-of family too). `Auth2Permission`, `Auth2Role`, `Auth2Scope` and `Auth2Group` also go on a **field** (a `const`): there they carry the texts of the catalog and do not protect anything.
 - `Inherited = true`: a derived controller keeps the rules of its base class.
 - **Pass a key on a method or class.** An `[Auth2Permission]` with no key on an action has no policy and means "a signed-in user", which is probably not what you meant. The no-key form is for constants.
 - Names are written as you like (`"Orders.Read"`); the permission check trims and lower-cases them, role and group checks ignore case, scope checks are **exact** (case-sensitive).
@@ -156,10 +202,10 @@ The metadata is not only for authorization. The catalog sync ([permission-sync.m
 
 | Scanner | Looks at | Finds |
 |---|---|---|
-| `IPermissionScanner` | `IAuth2PermissionMetadata` on every endpoint, and `Auth2PermissionAttribute` on the classes and methods of `AssembliesToScan` | permission keys |
-| `IRoleScanner` | `IAuth2RoleMetadata`, `Auth2RoleAttribute` | role names (and `Permissions` of an attribute) |
-| `IScopeScanner` | `IAuth2ScopeMetadata`, `Auth2ScopeAttribute` | custom scopes (`auth2.*` and the standard scopes are skipped silently) |
-| `IGroupScanner` | `IAuth2GroupMetadata`, `Auth2GroupAttribute` | group names |
+| `IPermissionScanner` | `IAuth2PermissionMetadata` on every endpoint, and `Auth2PermissionAttribute` on the classes and methods of `AssembliesToScan`; the **permissions** of `IAuth2AnyOfMetadata` / `Auth2AnyOfAttributeBase` | permission keys |
+| `IRoleScanner` | `IAuth2RoleMetadata`, `Auth2RoleAttribute`; the **roles** of any-of rules | role names (and `Permissions` of an attribute) |
+| `IScopeScanner` | `IAuth2ScopeMetadata`, `Auth2ScopeAttribute`; the **scopes** of any-of rules | custom scopes (`auth2.*` and the standard scopes are skipped silently) |
+| `IGroupScanner` | `IAuth2GroupMetadata`, `Auth2GroupAttribute`; the **groups** of any-of rules | group names |
 
 - **Endpoints** are always read (Minimal API, controller actions, Razor Pages: anything that is an endpoint). This is why `.WithPermission("orders.read")` makes `orders.read` appear in the catalog without a second list.
 - **`AssembliesToScan`** is empty by default. List assemblies there to find attributes on code that is **not** an endpoint (service classes, Blazor components, shared libraries): `o.AssembliesToScan = [typeof(MyMarker).Assembly]`.
@@ -187,6 +233,7 @@ The interfaces are public so your own code can read a rule without parsing polic
 | `IAuth2RoleMetadata` | `Roles`, `RequireAll` |
 | `IAuth2ScopeMetadata` | `Scopes` |
 | `IAuth2GroupMetadata` | `Groups` |
+| `IAuth2AnyOfMetadata` | `Roles`, `Permissions`, `Groups`, `Scopes` of an any-of rule |
 | `IAuth2PermissionSourceMetadata` | `Source` (`Any`, `RoleOnly`, `UserOnly`) |
 | `IAuth2TokenKindMetadata` | `MachineOnly` |
 | `IAuth2AuditMetadata` | `Action` |
@@ -221,10 +268,12 @@ Use `OfType<>()` and not `GetMetadata<>()` when a rule can appear more than once
 | The permission is in my code but not in the admin console | `SyncPolicy` is `None` or `Pull`, or the code is not an endpoint and the assembly is not in `AssembliesToScan` |
 | `403` for a person who has the role | The role claim is a snapshot of the token: renew the token, or protect with a permission ([access-concepts.md](access-concepts.md#role-in-depth)) |
 | A group rule does nothing for a machine token | A machine token is not a person: it has no groups |
+| An any-of rule refuses everybody | Every list is empty (the attribute has no policy then) or a value is misspelled; check the log at start for the invalid keys |
 | `.WithOnlyRolePermission()` always refuses | The Server is older and does not send the source lists, or there is no permission rule on the endpoint |
 
 ## How to implement or extend
 
+- A new combination of kinds: `WithAnyOf` already takes all four lists. Name a new shortcut by calling it from an extension method of your own (`public static TBuilder WithAdminOrOwner<TBuilder>(this TBuilder b) where TBuilder : IEndpointConventionBuilder => b.WithAnyOf(roles: ["Admin"], permissions: ["orders.own"]);`).
 - A new kind of rule: write an `IAuthorizationRequirement` and a handler like any ASP.NET Core policy, register it with `AddAuthorization`, and apply it with `.WithAuth2Policy("name")` or `[Authorize(Policy = "name")]`. It combines with the Auth2 rules by AND.
 - Your own audit store: implement `IAuth2AuditSink` and register it as a singleton.
 - Your own source of catalog items: `AddProvider<T>()` or `AddFactory(...)` ([permission-sync.md](permission-sync.md#catalog-sources-client-side)).

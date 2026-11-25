@@ -68,12 +68,44 @@ public interface IAuth2AuditMetadata
     string Action { get; }
 }
 
+/// <summary>
+/// "One of these is enough" across kinds: the rule passes when the person has any of the roles, or any of the permissions, or is in any of the groups,
+/// or the token has any of the scopes. Any list may be empty. Written by <c>[Auth2AnyOf]</c>, <c>[Auth2RoleOrPermission]</c> and the other attributes of this family,
+/// and by <c>WithAnyOf</c> and its shortcuts. The scanners read it, so the roles, permissions, groups and scopes in it are synced like any other.
+/// </summary>
+public interface IAuth2AnyOfMetadata
+{
+    /// <summary>Roles. The rule passes when the user has any of them.</summary>
+    IReadOnlyList<string> Roles { get; }
+
+    /// <summary>Permissions. The rule passes when the user has any of them.</summary>
+    IReadOnlyList<string> Permissions { get; }
+
+    /// <summary>Groups. The rule passes when the user is in any of them.</summary>
+    IReadOnlyList<string> Groups { get; }
+
+    /// <summary>Scopes. The rule passes when the token has any of them.</summary>
+    IReadOnlyList<string> Scopes { get; }
+}
+
 internal static class PolicyNames
 {
     public const string Prefix = "auth2:";
     public const char Separator = '|';
 
     public static string Make(string kind, string mode, IEnumerable<string> values) => $"{Prefix}{kind}:{mode}:{string.Join(Separator, values)}";
+
+    /// <summary>
+    /// <c>auth2:any:any:r=Admin|Editor;p=orders.write;g=finance;s=reports.read</c>. The kinds are separated by <c>;</c>, the values by <c>|</c>.
+    /// None of these characters is allowed in a role name, permission key, group name or scope, so the name can be taken apart again.
+    /// </summary>
+    public static string MakeAnyOf(IEnumerable<string> roles, IEnumerable<string> permissions, IEnumerable<string> groups, IEnumerable<string> scopes)
+    {
+        var parts = new List<string>();
+        void Add(string key, IEnumerable<string> values) { var list = values.ToList(); if (list.Count > 0) parts.Add(key + "=" + string.Join(Separator, list)); }
+        Add("r", roles); Add("p", permissions); Add("g", groups); Add("s", scopes);
+        return $"{Prefix}any:any:{string.Join(';', parts)}";
+    }
 }
 
 /// <summary>The user must be signed in (a valid token). Use on controllers, Razor Page models and Blazor components.</summary>
@@ -248,4 +280,106 @@ public sealed class Auth2AuditAttribute(string action) : Attribute, IAuth2AuditM
 {
     /// <inheritdoc />
     public string Action { get; } = action;
+}
+
+/// <summary>
+/// Base of the "any of" attributes. It is <see cref="IAuthorizeData"/> itself (not <c>AuthorizeAttribute</c>) because the policy name is made from the named
+/// properties (<c>Roles = ...</c>), which are set after the constructor ran: the name is built when ASP.NET reads <see cref="Policy"/>.
+/// </summary>
+public abstract class Auth2AnyOfAttributeBase : Attribute, IAuthorizeData, IAuth2AnyOfMetadata
+{
+    private string[] _roles = [], _permissions = [], _groups = [], _scopes = [];
+
+    /// <summary>Roles of the rule, or empty. Used by the attributes that have roles.</summary>
+    protected string[] RoleValues { get => _roles; set => _roles = value ?? []; }
+
+    /// <summary>Permissions of the rule, or empty.</summary>
+    protected string[] PermissionValues { get => _permissions; set => _permissions = value ?? []; }
+
+    /// <summary>Groups of the rule, or empty.</summary>
+    protected string[] GroupValues { get => _groups; set => _groups = value ?? []; }
+
+    /// <summary>Scopes of the rule, or empty.</summary>
+    protected string[] ScopeValues { get => _scopes; set => _scopes = value ?? []; }
+
+    IReadOnlyList<string> IAuth2AnyOfMetadata.Roles => _roles;
+    IReadOnlyList<string> IAuth2AnyOfMetadata.Permissions => _permissions;
+    IReadOnlyList<string> IAuth2AnyOfMetadata.Groups => _groups;
+    IReadOnlyList<string> IAuth2AnyOfMetadata.Scopes => _scopes;
+
+    /// <summary>The policy of ASP.NET, made from the values. <c>null</c> when there is no value at all (then the rule means "a signed-in user").</summary>
+    public string? Policy
+    {
+        get => _roles.Length + _permissions.Length + _groups.Length + _scopes.Length == 0 ? null : PolicyNames.MakeAnyOf(_roles, _permissions, _groups, _scopes);
+        set { /* the name is always made from the values */ }
+    }
+
+    string? IAuthorizeData.Roles { get => null; set { } }
+
+    /// <summary>Not used.</summary>
+    public string? AuthenticationSchemes { get; set; }
+}
+
+/// <summary>
+/// The rule passes when the user has <b>any</b> of the roles <b>or any</b> of the permissions <b>or</b> is in <b>any</b> of the groups <b>or</b> the token has <b>any</b> of the scopes.
+/// Set the lists you need: <c>[Auth2AnyOf(Roles = new[] { "Admin" }, Permissions = new[] { "orders.write" })]</c>. Two attributes are two rules (AND).
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public sealed class Auth2AnyOfAttribute : Auth2AnyOfAttributeBase
+{
+    /// <summary>Roles (any).</summary>
+    public string[] Roles { get => RoleValues; set => RoleValues = value; }
+
+    /// <summary>Permissions (any).</summary>
+    public string[] Permissions { get => PermissionValues; set => PermissionValues = value; }
+
+    /// <summary>Groups (any).</summary>
+    public string[] Groups { get => GroupValues; set => GroupValues = value; }
+
+    /// <summary>Scopes of the token (any).</summary>
+    public string[] Scopes { get => ScopeValues; set => ScopeValues = value; }
+}
+
+/// <summary>The user has any of the <see cref="Roles"/> <b>or</b> any of the <see cref="Permissions"/>. Example: an admin, or whoever may write orders.</summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public sealed class Auth2RoleOrPermissionAttribute : Auth2AnyOfAttributeBase
+{
+    /// <summary>Roles (any).</summary>
+    public string[] Roles { get => RoleValues; set => RoleValues = value; }
+
+    /// <summary>Permissions (any).</summary>
+    public string[] Permissions { get => PermissionValues; set => PermissionValues = value; }
+}
+
+/// <summary>The user has any of the <see cref="Roles"/> <b>or</b> is in any of the <see cref="Groups"/>.</summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public sealed class Auth2RoleOrGroupAttribute : Auth2AnyOfAttributeBase
+{
+    /// <summary>Roles (any).</summary>
+    public string[] Roles { get => RoleValues; set => RoleValues = value; }
+
+    /// <summary>Groups (any).</summary>
+    public string[] Groups { get => GroupValues; set => GroupValues = value; }
+}
+
+/// <summary>The user has any of the <see cref="Permissions"/> <b>or</b> is in any of the <see cref="Groups"/>.</summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public sealed class Auth2PermissionOrGroupAttribute : Auth2AnyOfAttributeBase
+{
+    /// <summary>Permissions (any).</summary>
+    public string[] Permissions { get => PermissionValues; set => PermissionValues = value; }
+
+    /// <summary>Groups (any).</summary>
+    public string[] Groups { get => GroupValues; set => GroupValues = value; }
+}
+
+/// <summary>The token has any of the <see cref="Scopes"/> <b>or</b> the user has any of the <see cref="Roles"/>. Example: a program with the scope, or an admin.</summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public sealed class Auth2ScopeOrRoleAttribute : Auth2AnyOfAttributeBase
+{
+    /// <summary>Scopes of the token (any).</summary>
+    public string[] Scopes { get => ScopeValues; set => ScopeValues = value; }
+
+    /// <summary>Roles (any).</summary>
+    public string[] Roles { get => RoleValues; set => RoleValues = value; }
 }

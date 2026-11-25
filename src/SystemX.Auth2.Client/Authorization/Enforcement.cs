@@ -14,6 +14,9 @@ internal enum Auth2RequirementKind { Permission, Role, Scope, Group, MachineOnly
 /// <summary>One rule of an Auth2 policy. Several rules on one endpoint must all pass.</summary>
 internal sealed record Auth2Requirement(Auth2RequirementKind Kind, bool RequireAll, IReadOnlyList<string> Values) : IAuthorizationRequirement;
 
+/// <summary>"Any of these": roles, permissions, groups and scopes together. One match of any kind is enough.</summary>
+internal sealed record Auth2AnyOfRequirement(IReadOnlyList<string> Roles, IReadOnlyList<string> Permissions, IReadOnlyList<string> Groups, IReadOnlyList<string> Scopes) : IAuthorizationRequirement;
+
 /// <summary>
 /// Checks the Auth2 requirements. Roles, scopes and the token kind come from the claims of the token. Permissions and groups come from the
 /// access data (cached, from the server). When the server cannot be asked and nothing is cached, the answer is "no" (fail closed).
@@ -35,18 +38,7 @@ internal sealed class Auth2AuthorizationHandler(IAuth2AccessProvider access, ILo
         else context.Fail(new AuthorizationFailureReason(this, $"Auth2 requirement {requirement.Kind} not met."));
     }
 
-    /// <summary>Roles from the claims. A principal with no role claim (a cookie session that loads access lazily) gets its roles from the access data.</summary>
-    private async Task<IReadOnlyList<string>> RolesAsync(System.Security.Claims.ClaimsPrincipal user)
-    {
-        var claims = user.FindAll("role").Concat(user.FindAll(System.Security.Claims.ClaimTypes.Role)).Select(c => c.Value).Distinct().ToList();
-        if (claims.Count > 0 || user.Identity?.IsAuthenticated != true) return claims;
-        try { return (await access.GetAccessAsync(user)).Roles; }
-        catch (Auth2Exception ex)
-        {
-            log.LogWarning("The roles of the user could not be read from the Auth2 server ({Code}).", ex.ErrorCode);
-            return claims;
-        }
-    }
+    private Task<IReadOnlyList<string>> RolesAsync(System.Security.Claims.ClaimsPrincipal user) => Auth2Checks.RolesAsync(user, access, log);
 
     private async Task<bool> CheckAccessAsync(AuthorizationHandlerContext context, Auth2Requirement requirement)
     {
@@ -61,13 +53,7 @@ internal sealed class Auth2AuthorizationHandler(IAuth2AccessProvider access, ILo
         if (requirement.Kind == Auth2RequirementKind.Group) return Any(data.Groups, requirement.Values, StringComparer.OrdinalIgnoreCase);
 
         // Permission keys are lowercase on the server.
-        var source = (context.Resource as HttpContext)?.GetEndpoint()?.Metadata.GetMetadata<IAuth2PermissionSourceMetadata>()?.Source ?? Auth2PermissionSource.Any;
-        var have = source switch
-        {
-            Auth2PermissionSource.RoleOnly => data.RolePermissions,
-            Auth2PermissionSource.UserOnly => data.DirectPermissions,
-            _ => data.Permissions,
-        };
+        var have = Auth2Checks.PermissionsOf(data, context.Resource);
         return Check(have, new Auth2Requirement(requirement.Kind, requirement.RequireAll, [.. requirement.Values.Select(v => v.Trim().ToLowerInvariant())]), StringComparer.Ordinal);
     }
 
@@ -75,6 +61,71 @@ internal sealed class Auth2AuthorizationHandler(IAuth2AccessProvider access, ILo
 
     private static bool Check(IReadOnlyList<string> have, Auth2Requirement r, StringComparer comparer) =>
         r.RequireAll ? r.Values.All(v => have.Contains(v, comparer)) : r.Values.Any(v => have.Contains(v, comparer));
+}
+
+/// <summary>What the handlers share: where roles come from, and which permission list counts on this endpoint.</summary>
+internal static class Auth2Checks
+{
+    /// <summary>Roles from the claims. A principal with no role claim (a cookie session that loads access lazily, or a token without the <c>roles</c> scope) gets its roles from the access data.</summary>
+    public static async Task<IReadOnlyList<string>> RolesAsync(System.Security.Claims.ClaimsPrincipal user, IAuth2AccessProvider access, ILogger log)
+    {
+        var claims = user.FindAll("role").Concat(user.FindAll(System.Security.Claims.ClaimTypes.Role)).Select(c => c.Value).Distinct().ToList();
+        if (claims.Count > 0 || user.Identity?.IsAuthenticated != true) return claims;
+        try { return (await access.GetAccessAsync(user)).Roles; }
+        catch (Auth2Exception ex)
+        {
+            log.LogWarning("The roles of the user could not be read from the Auth2 server ({Code}).", ex.ErrorCode);
+            return claims;
+        }
+    }
+
+    /// <summary>The permission list that counts: all, only those from roles, or only direct grants, by the metadata of the endpoint.</summary>
+    public static IReadOnlyList<string> PermissionsOf(Auth2Access data, object? resource)
+    {
+        var source = (resource as HttpContext)?.GetEndpoint()?.Metadata.GetMetadata<IAuth2PermissionSourceMetadata>()?.Source ?? Auth2PermissionSource.Any;
+        return source switch
+        {
+            Auth2PermissionSource.RoleOnly => data.RolePermissions,
+            Auth2PermissionSource.UserOnly => data.DirectPermissions,
+            _ => data.Permissions,
+        };
+    }
+}
+
+/// <summary>
+/// Checks "any of" rules. The cheap checks come first (scopes and token roles need no call), so the Server is asked for permissions and groups
+/// only when nothing matched yet. When it cannot be asked and nothing is cached, those two parts count as "no" (fail closed); a scope or role that matched still passes.
+/// </summary>
+internal sealed class Auth2AnyOfHandler(IAuth2AccessProvider access, ILogger<Auth2AnyOfHandler> log) : AuthorizationHandler<Auth2AnyOfRequirement>
+{
+    protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, Auth2AnyOfRequirement r)
+    {
+        if (await PassesAsync(context, r)) context.Succeed(r);
+        else context.Fail(new AuthorizationFailureReason(this, "None of the Auth2 'any of' values matched."));
+    }
+
+    private async Task<bool> PassesAsync(AuthorizationHandlerContext context, Auth2AnyOfRequirement r)
+    {
+        var user = context.User;
+        if (r.Scopes.Count > 0 && r.Scopes.Any(s => ScopeClaims.Read(user).Contains(s, StringComparer.Ordinal))) return true;
+        if (r.Roles.Count > 0)
+        {
+            var roles = await Auth2Checks.RolesAsync(user, access, log);
+            if (r.Roles.Any(x => roles.Contains(x, StringComparer.OrdinalIgnoreCase))) return true;
+        }
+        if (r.Permissions.Count == 0 && r.Groups.Count == 0) return false;
+
+        Auth2Access data;
+        try { data = await access.GetAccessAsync(user); }
+        catch (Auth2Exception ex)
+        {
+            log.LogWarning("Access was refused because the Auth2 server could not be asked ({Code}).", ex.ErrorCode);
+            return false;
+        }
+        if (r.Groups.Any(g => data.Groups.Contains(g, StringComparer.OrdinalIgnoreCase))) return true;
+        var have = Auth2Checks.PermissionsOf(data, context.Resource);
+        return r.Permissions.Any(p => have.Contains(p.Trim().ToLowerInvariant(), StringComparer.Ordinal));
+    }
 }
 
 /// <summary>Builds policies from the names that the attributes and extensions make (<c>auth2:perm:any:orders.read|orders.write</c>). Other names go to the normal provider, so your own policies still work.</summary>
@@ -91,6 +142,7 @@ internal sealed class Auth2PolicyProvider(IOptions<AuthorizationOptions> options
     private static AuthorizationPolicy Build(string name)
     {
         var parts = name[PolicyNames.Prefix.Length..].Split(':', 3);
+        if (parts[0] == "any") return new AuthorizationPolicyBuilder().RequireAuthenticatedUser().AddRequirements(AnyOf(parts.Length > 2 ? parts[2] : "")).Build();
         var values = parts.Length > 2 && parts[2].Length > 0 ? parts[2].Split(PolicyNames.Separator) : [];
         var kind = parts[0] switch
         {
@@ -102,6 +154,18 @@ internal sealed class Auth2PolicyProvider(IOptions<AuthorizationOptions> options
             _ => throw new InvalidOperationException($"Unknown Auth2 policy '{name}'."),
         };
         return new AuthorizationPolicyBuilder().RequireAuthenticatedUser().AddRequirements(new Auth2Requirement(kind, parts[1] == "all", values)).Build();
+    }
+
+    /// <summary>Takes <c>r=Admin|Editor;p=orders.write;g=finance;s=reports.read</c> apart again.</summary>
+    private static Auth2AnyOfRequirement AnyOf(string text)
+    {
+        var lists = new Dictionary<string, string[]> { ["r"] = [], ["p"] = [], ["g"] = [], ["s"] = [] };
+        foreach (var part in text.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var at = part.IndexOf('=');
+            if (at > 0 && lists.ContainsKey(part[..at])) lists[part[..at]] = part[(at + 1)..].Split(PolicyNames.Separator, StringSplitOptions.RemoveEmptyEntries);
+        }
+        return new Auth2AnyOfRequirement(lists["r"], lists["p"], lists["g"], lists["s"]);
     }
 }
 

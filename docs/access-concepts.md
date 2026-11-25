@@ -54,7 +54,7 @@ The short version:
  endpoint runs
 ```
 
-Every rule on an endpoint must pass (**chaining is AND**). Inside one rule, several values mean **any of them** (`WithPermission("a", "b")` needs `a` or `b`). The order above is only a picture: they are separate checks, all required.
+Every rule on an endpoint must pass (**chaining is AND**). To say "a role **or** a permission" in one rule use the any-of family (`WithRoleOrPermission`, `WithAnyOf`; [client-endpoint-metadata.md](client-endpoint-metadata.md#any-of-rules-a-role-or-a-permission)). Inside one rule, several values mean **any of them** (`WithPermission("a", "b")` needs `a` or `b`). The order above is only a picture: they are separate checks, all required.
 
 A user token that went through the hosted sign-in carries both worlds: the scopes of the application and the person. A machine token carries only the first: it has scopes, a client id and a project, and **no** person, so every permission, role and group check fails for it (the lists are empty). That is the right behaviour: a program is limited by its scopes only.
 

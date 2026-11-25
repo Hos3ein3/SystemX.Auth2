@@ -173,6 +173,29 @@ public class SyncIntegrationTests : ClientAppTestBase
     }
 
     [Fact]
+    public async Task AnyOfRules_AreScannedAndSynced_RolesPermissionsGroupsAndScopes()
+    {
+        await UpdateSettingsAsync(s => s.Clients.GroupSyncAllowed = true);
+        await StartAppAsync(e =>
+        {
+            e.MapGet("/rule", () => "ok").WithAnyOf(roles: ["Auditor"], permissions: ["Reports.Read"], groups: ["finance"], scopes: ["reports.api"]);
+            e.MapGet("/rule-2", () => "ok").RequireAuthorization(new Auth2RoleOrPermissionAttribute { Roles = ["Reviewer"], Permissions = ["reviews.write"] });
+        }, b => b
+            .EnablePermissions(o => { o.SyncPolicy = PermissionSyncPolicy.Push; o.ScanningPolicy = ScanningPolicy.AssemblyScan; })
+            .EnableRoles(o => { o.SyncPolicy = RoleSyncPolicy.Push; o.ScanningPolicy = ScanningPolicy.AssemblyScan; })
+            .EnableGroups(o => { o.SyncPolicy = GroupSyncPolicy.Both; o.ScanningPolicy = ScanningPolicy.AssemblyScan; })
+            .EnableScopes(o => { o.SyncPolicy = ScopeSyncPolicy.Both; o.ScanningPolicy = ScanningPolicy.AssemblyScan; }), handshake: true);
+
+        var api = ApiClient.GetRequiredService<IAuth2ApiClientService>();
+        for (var i = 0; i < 100 && ((await api.GetScopesAsync()).Value!.Count < 1 || (await api.GetRolesAsync()).Value!.Count < 2
+            || (await api.GetGroupsAsync()).Value!.Count < 1 || (await api.GetPermissionsAsync()).Value!.Count < 2); i++) await Task.Delay(100);
+        (await api.GetPermissionsAsync()).Value!.Select(p => p.Key).ShouldBe(["reports.read", "reviews.write"]);
+        (await api.GetRolesAsync()).Value!.Select(r => r.Name).ShouldBe(["Auditor", "Reviewer"]);
+        (await api.GetGroupsAsync()).Value!.Select(g => g.Name).ShouldBe(["finance"]);
+        (await api.GetScopesAsync()).Value!.Select(s => s.Name).ShouldBe(["reports.api"]);
+    }
+
+    [Fact]
     public async Task Pull_ReadsTheGroupsAndRolesOfTheServerIntoTheCatalog()
     {
         await using (var scope = ServerScope())

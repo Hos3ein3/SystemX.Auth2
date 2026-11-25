@@ -64,6 +64,7 @@ public static class Auth2ClientServiceCollectionExtensions
         services.Replace(ServiceDescriptor.Singleton<IAuthorizationPolicyProvider, Auth2PolicyProvider>());
         services.Replace(ServiceDescriptor.Singleton<IAuthorizationMiddlewareResultHandler, Auth2AuthorizationResultHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IAuthorizationHandler, Auth2AuthorizationHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IAuthorizationHandler, Auth2AnyOfHandler>());
         services.TryAddSingleton<IAuth2AuditSink, LoggingAuditSink>();
         services.TryAddSingleton<ICurrentUserStore, MemoryCurrentUserStore>();
         services.TryAddSingleton<IAuth2AccessTokenAccessor, AccessTokenAccessor>();

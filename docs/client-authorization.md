@@ -56,6 +56,7 @@ public IActionResult Index() => View();
 | `.WithScope("s")` | `[Auth2Scope("s")]` | Any of the scopes in the token (`ICurrentClient`) |
 | `.WithGroup("g")` | `[Auth2Group("g")]` | The user is in any of the groups |
 | `.WithMachineOnly()` / `.WithUserOnly()` | `[Auth2MachineOnly]` / `[Auth2UserOnly]` | A client-credentials token / a user token (`ICurrentClient.IsMachine`) |
+| `.WithRoleOrPermission(roles, permissions)` and `.WithAnyOf(...)` | `[Auth2RoleOrPermission(Roles = ..., Permissions = ...)]`, `[Auth2AnyOf(...)]` | A role **or** a permission (also `OrGroup`, `ScopeOrRole`): OR **across kinds**. See [client-endpoint-metadata.md](client-endpoint-metadata.md#any-of-rules-a-role-or-a-permission) |
 | `.WithAuth2Policy("name")` | (use `[Authorize(Policy="name")]`) | One of your own policies |
 | `.WithAuth2Audit("action")` | `[Auth2Audit("action")]` | Raises an audit event (see below) |
 

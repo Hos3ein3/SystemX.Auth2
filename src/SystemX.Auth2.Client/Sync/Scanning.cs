@@ -124,6 +124,11 @@ internal sealed class PermissionScanner(IEnumerable<EndpointDataSource> endpoint
                 foreach (var key in meta.Permissions) Add(Of(key, meta), manual: false);
             foreach (var attribute in ScanSupport.AttributesIn<Auth2PermissionAttribute>(o.AssembliesToScan))
                 foreach (var key in attribute.Permissions) Add(Of(key, attribute), manual: false);
+            // "Any of" rules (WithAnyOf, [Auth2RoleOrPermission], ...) carry all four kinds: each scanner takes its own.
+            foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2AnyOfMetadata>())
+                foreach (var key in meta.Permissions) Add(new PermissionDefinition(key), manual: false);
+            foreach (var attribute in ScanSupport.AttributesIn<Auth2AnyOfAttributeBase>(o.AssembliesToScan))
+                foreach (var key in ((IAuth2AnyOfMetadata)attribute).Permissions) Add(new PermissionDefinition(key), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
         {
@@ -161,6 +166,11 @@ internal sealed class RoleScanner(IEnumerable<EndpointDataSource> endpoints, IOp
                 foreach (var name in meta.Roles) Add(Of(name, meta), manual: false);
             foreach (var attribute in ScanSupport.AttributesIn<Auth2RoleAttribute>(o.AssembliesToScan))
                 foreach (var name in attribute.RoleNames) Add(Of(name, attribute), manual: false);
+            // "Any of" rules (WithAnyOf, [Auth2RoleOrPermission], ...) carry all four kinds: each scanner takes its own.
+            foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2AnyOfMetadata>())
+                foreach (var key in meta.Roles) Add(new RoleDefinition(key), manual: false);
+            foreach (var attribute in ScanSupport.AttributesIn<Auth2AnyOfAttributeBase>(o.AssembliesToScan))
+                foreach (var key in ((IAuth2AnyOfMetadata)attribute).Roles) Add(new RoleDefinition(key), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
         {
@@ -202,6 +212,11 @@ internal sealed class ScopeScanner(IEnumerable<EndpointDataSource> endpoints, IO
                 foreach (var name in meta.Scopes) Add(Of(name, meta), manual: false);
             foreach (var attribute in ScanSupport.AttributesIn<Auth2ScopeAttribute>(o.AssembliesToScan))
                 foreach (var name in attribute.Scopes) Add(Of(name, attribute), manual: false);
+            // "Any of" rules (WithAnyOf, [Auth2RoleOrPermission], ...) carry all four kinds: each scanner takes its own.
+            foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2AnyOfMetadata>())
+                foreach (var key in meta.Scopes) Add(new ScopeDefinition(key), manual: false);
+            foreach (var attribute in ScanSupport.AttributesIn<Auth2AnyOfAttributeBase>(o.AssembliesToScan))
+                foreach (var key in ((IAuth2AnyOfMetadata)attribute).Scopes) Add(new ScopeDefinition(key), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
         {
@@ -236,6 +251,11 @@ internal sealed class GroupScanner(IEnumerable<EndpointDataSource> endpoints, IO
                 foreach (var name in meta.Groups) Add(Of(name, meta), manual: false);
             foreach (var attribute in ScanSupport.AttributesIn<Auth2GroupAttribute>(o.AssembliesToScan))
                 foreach (var name in attribute.Groups) Add(Of(name, attribute), manual: false);
+            // "Any of" rules (WithAnyOf, [Auth2RoleOrPermission], ...) carry all four kinds: each scanner takes its own.
+            foreach (var meta in ScanSupport.EndpointMetadata(endpoints).OfType<IAuth2AnyOfMetadata>())
+                foreach (var key in meta.Groups) Add(new GroupDefinition(key), manual: false);
+            foreach (var attribute in ScanSupport.AttributesIn<Auth2AnyOfAttributeBase>(o.AssembliesToScan))
+                foreach (var key in ((IAuth2AnyOfMetadata)attribute).Groups) Add(new GroupDefinition(key), manual: false);
         }
         if (o.ScanningPolicy is ScanningPolicy.Manual or ScanningPolicy.Both)
         {

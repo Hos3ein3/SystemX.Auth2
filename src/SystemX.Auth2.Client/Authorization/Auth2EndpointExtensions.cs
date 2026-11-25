@@ -57,6 +57,35 @@ public static class Auth2EndpointExtensions
     public static TBuilder WithGroup<TBuilder>(this TBuilder builder, params string[] groups) where TBuilder : IEndpointConventionBuilder =>
         builder.RequireAuthorization(new Auth2GroupAttribute(groups));
 
+    /// <summary>
+    /// "One of these is enough", across kinds: the user has any of <paramref name="roles"/>, or any of <paramref name="permissions"/>, or is in any of <paramref name="groups"/>,
+    /// or the token has any of <paramref name="scopes"/>. Leave out the lists you do not need. At least one value is required. Scanned like the single-kind rules, so the roles,
+    /// permissions, groups and scopes are synced.
+    /// </summary>
+    public static TBuilder WithAnyOf<TBuilder>(this TBuilder builder, string[]? roles = null, string[]? permissions = null, string[]? groups = null, string[]? scopes = null)
+        where TBuilder : IEndpointConventionBuilder
+    {
+        if ((roles?.Length ?? 0) + (permissions?.Length ?? 0) + (groups?.Length ?? 0) + (scopes?.Length ?? 0) == 0)
+            throw new ArgumentException("WithAnyOf needs at least one role, permission, group or scope.");
+        return builder.RequireAuthorization(new Auth2AnyOfAttribute { Roles = roles ?? [], Permissions = permissions ?? [], Groups = groups ?? [], Scopes = scopes ?? [] });
+    }
+
+    /// <summary>The user has <b>any</b> of the roles <b>or any</b> of the permissions. Example: <c>.WithRoleOrPermission(["Admin"], ["orders.write"])</c>.</summary>
+    public static TBuilder WithRoleOrPermission<TBuilder>(this TBuilder builder, string[] roles, string[] permissions) where TBuilder : IEndpointConventionBuilder =>
+        builder.WithAnyOf(roles: roles, permissions: permissions);
+
+    /// <summary>The user has <b>any</b> of the roles <b>or</b> is in <b>any</b> of the groups.</summary>
+    public static TBuilder WithRoleOrGroup<TBuilder>(this TBuilder builder, string[] roles, string[] groups) where TBuilder : IEndpointConventionBuilder =>
+        builder.WithAnyOf(roles: roles, groups: groups);
+
+    /// <summary>The user has <b>any</b> of the permissions <b>or</b> is in <b>any</b> of the groups.</summary>
+    public static TBuilder WithPermissionOrGroup<TBuilder>(this TBuilder builder, string[] permissions, string[] groups) where TBuilder : IEndpointConventionBuilder =>
+        builder.WithAnyOf(permissions: permissions, groups: groups);
+
+    /// <summary>The token has <b>any</b> of the scopes <b>or</b> the user has <b>any</b> of the roles. Example: a program with the scope, or an admin.</summary>
+    public static TBuilder WithScopeOrRole<TBuilder>(this TBuilder builder, string[] scopes, string[] roles) where TBuilder : IEndpointConventionBuilder =>
+        builder.WithAnyOf(roles: roles, scopes: scopes);
+
     /// <summary>Uses a policy you registered with <c>AddAuthorization</c>.</summary>
     public static TBuilder WithAuth2Policy<TBuilder>(this TBuilder builder, string policyName) where TBuilder : IEndpointConventionBuilder =>
         builder.RequireAuthorization(policyName);
