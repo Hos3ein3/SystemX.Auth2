@@ -14,6 +14,9 @@
 builder.Services.AddAuth2Client(section).EnableHealthCheck();
 
 // two-way
+builder.Services.AddAuth2Client(section).EnableHealthCheck(o => o.Mode = Auth2HealthCheckMode.TwoWay);
+
+// two-way, with the address you choose (behind a proxy, a load balancer, NAT)
 builder.Services.AddAuth2Client(section).EnableHealthCheck(o =>
 {
     o.Mode = Auth2HealthCheckMode.TwoWay;
@@ -24,32 +27,52 @@ builder.Services.AddAuth2Client(section).EnableHealthCheck(o =>
 ## When to use it
 
 - **One-way** is enough when your application's own probes (Kubernetes, a load balancer) watch it, and you only want its health to show that the Auth2 server is reachable.
-- **Two-way** when the people who run the Auth2 server want to **see, in one place, whether the applications that depend on it are up**: the dashboard shows it per project, with no extra monitoring system. It also tells them, when sign-in fails for an application, that the application itself is down.
+- **Two-way** when the people who run the Auth2 server want to **see, in one place, whether the applications that depend## Enable two-way: step by step
 
-## Enable two-way: step by step
-
-1. Choose the address of your application **as the Auth2 server reaches it**: `https://shop.example.com` on the internet, `http://sample-mvc:5001` inside docker-compose, a cluster address in Kubernetes. It is **not** what the browser uses if that is different.
-2. Set it with `PublicUrl` (here from configuration, as both samples do) and switch the mode on:
+1. Set the mode. That is all in the usual case:
 
 ```csharp
 builder.Services.AddAuth2Client(section)
     .ServerWithMultiProject("sample-project")
-    .EnableHealthCheck(o =>
-    {
-        o.Mode = Auth2HealthCheckMode.TwoWay;
-        o.PublicUrl = builder.Configuration["Auth2:PublicUrl"] ?? "http://localhost:5101";
-    });
+    .EnableHealthCheck(o => o.Mode = Auth2HealthCheckMode.TwoWay);
 ```
 
-3. Call `app.UseAuth2()` as usual: it maps the health route.
-4. Start the application. The handshake with the Server tells the Server the address (`PublicUrl` + `Path`). Within a minute (the first round starts about 15 seconds after the Server starts) the dashboard shows `Clients: Healthy`.
+2. Call `app.UseAuth2()` as usual: it maps the health route.
+3. Start the application. The handshake with the Server tells it where to ask. Within a minute (the first round starts about 15 seconds after the Server starts) the dashboard shows `Clients: Healthy`.
 
 The options (`Auth2HealthCheckOptions`):
 
 | Option | Default | Meaning |
 |---|---|---|
 | `Mode` | `OneWay` | `OneWay` or `TwoWay` |
-| `PublicUrl` | none | Address of this application as the Server reaches it. **Required for two-way**: an absolute `http` or `https` address, with no user name, query or fragment (the application does not start with a wrong one) |
+| `PublicUrl` | none | **Optional.** The address of this application as the Server reaches it. When it is set the Server calls exactly this address; when it is not, the Server works the address out ([below](#how-the-server-finds-the-client)). An absolute `http` or `https` address, with no user name, query or fragment (the application does not start with a wrong one) |
+| `Path` | `/auth2/health` | Where the application answers. Must start with `/` |
+
+## How the server finds the client
+
+The Server cannot know where a client lives by itself: the client calls the Server, not the other way round, and the Server only sees **who called**. So one of two things happens:
+
+| `PublicUrl` | What the client tells the Server | The address the Server calls |
+|---|---|---|
+| **Set** | The whole address (`PublicUrl` + `Path`) | Exactly that |
+| **Not set** | Only its **port**, scheme and path | `http://{the network address of the handshake}:{port}{Path}` |
+
+For the second way the client finds its own port in the addresses it listens on, in this order: the server addresses of the web server, `urls` / `ASPNETCORE_URLS` (for example `http://+:5001`, which is what `launchSettings.json` and docker-compose set), then `http_ports` / `ASPNETCORE_HTTP_PORTS` (the docker images of .NET). The host is the **network address of the connection** that made the handshake, so a client cannot make the Server call a host of its choice.
+
+This works:
+
+- on **one machine** (`dotnet run` of the Server and the application),
+- in a **docker network** (the container's own IP; the docker-compose of this repository uses it for both samples),
+- in a **LAN** or a Kubernetes cluster where the Server sees the pod's address.
+
+It does **not** work, and you must set `PublicUrl`:
+
+- **behind a reverse proxy, a load balancer or NAT**: the Server would see the proxy's address, not the application's;
+- when the application listens **only on https**: a certificate does not match an IP address, so the client sends nothing and logs *"The two-way health check needs PublicUrl"*;
+- when the application's port cannot be found (no `urls`, no `http_ports`): the client logs *"could not find the port"* and sends nothing;
+- when it listens on one network address only and calls the Server from another.
+
+` address, with no user name, query or fragment (the application does not start with a wrong one) |
 | `Path` | `/auth2/health` | Where the application answers. Must start with `/` |
 
 ## What the client answers
@@ -66,10 +89,10 @@ The options (`Auth2HealthCheckOptions`):
 
 ## What the Server does
 
-- **Registers** the address from the handshake. A handshake without an address (one-way) **removes** the registration, so switching back to one-way stops the calls.
+- **Registers** the address from the handshake (the one the client gave, or the one it works out from the connection and the port). A handshake without an address (one-way) **removes** the registration, so switching back to one-way stops the calls.
 - **Asks every minute** (`Auth2:Jobs:ClientHealthIntervalSeconds`, default 60, at least 10). With several Server instances only **one** asks (a database lock). A round asks at most eight clients at the same time, each with a 5 second limit.
 - **Sends a plain `GET`**: no token, no cookie, no body, no redirects, and it reads only a few kilobytes. It keeps the **state**, the time of the check, the last time the client was healthy and a short message.
-- **Accepts only plain http or https addresses**. An address with a user name or password, another scheme (`ftp:`), a fragment or no host is ignored (the handshake still works, and the log says so).
+- **Accepts only plain http or https addresses**. An address with a user name or password, another scheme (`ftp:`), a fragment or no host is ignored (the handshake still works, and the log says so). A port outside 1 to 65535, a path with a query, a space or a backslash, and the address `0.0.0.0` are refused too.
 
 | State | Meaning |
 |---|---|
@@ -91,6 +114,8 @@ The header of `/admin/p/{project-key}` shows one badge for the project's applica
 
 Hover the badge to see each application with its state, the time of the check and the message. With no two-way client the badge is not shown. Project admins see it for their project; global admins for every project.
 
+**Refresh buttons.** A tiny round arrow next to the `Clients` badge asks the two-way clients of **this project right now**, instead of waiting for the next minute, and shows the page again. The `PostgreSQL` and `Redis` badges have the same arrow; they are read every time the page opens, so their button simply reloads it ([observability.md](observability.md#health-checks)).
+
 ## Server settings
 
 In the `Auth2:Jobs` section of the Server:
@@ -106,7 +131,7 @@ The answers are kept in the table `server_values` (key `client-health:{applicati
 
 ## Docker and networks
 
-- The **Server** must be able to open a connection to `PublicUrl`. In docker-compose use the service name (`http://sample-mvc:5001`), not `localhost`: inside the Server's container `localhost` is the Server itself. The compose file of this repository sets `Auth2__PublicUrl` for both samples.
+- The **Server** must be able to open a connection to the client. Without `PublicUrl` the Server uses the container's IP address and the port of `ASPNETCORE_URLS` (the compose file of this repository sets only `ASPNETCORE_URLS`). With `PublicUrl`, use the service name (`http://sample-mvc:5001`), not `localhost`: inside the Server's container `localhost` is the Server itself.
 - The client reaches the Server for the handshake; two-way adds the opposite direction. A firewall that allows only the first makes the state `Unreachable`.
 
 ## Security notes
@@ -119,10 +144,12 @@ The answers are kept in the table `server_values` (key `client-health:{applicati
 
 | Problem | Cause |
 |---|---|
-| The application does not start: "a two-way health check needs PublicUrl" | `Mode` is `TwoWay` and `PublicUrl` is empty or not an absolute http or https address |
+| The application does not start: "the health check PublicUrl must be an absolute http or https address" | `PublicUrl` is set, but it is not a plain absolute address (no user name, query or fragment) |
+| The log says "needs PublicUrl" or "could not find the port", and there is no `Clients:` badge | The client could not work out its port (only https, or no `urls` / `http_ports`). Set `PublicUrl` |
+| `Unreachable` behind a proxy or load balancer | Without `PublicUrl` the Server called the proxy's address. Set `PublicUrl` to the address the Server can use |
 | No `Clients:` badge | No application of the project uses two-way, or the handshake has not run yet (look at the `auth2` health check), or the address was refused (see the Server log) |
 | `Clients: Unknown` | The first round has not run yet (about 15 seconds after the Server starts, then every minute), or `ClientHealthEnabled` is `false` |
-| `Unreachable` | The Server cannot reach `PublicUrl` (docker service name, firewall, wrong port), or the client is down |
+| `Unreachable` | The Server cannot reach the address (docker service name, firewall, wrong port), or the client is down |
 | `Unhealthy` with message "answered 404" | `Path` differs between what the client maps and what it told the Server: restart the client so a new handshake sends the right address, or check `UseAuth2()` is called |
 | `Unhealthy` while the site works | One of **your** health checks fails: open `/health` of the application |
 

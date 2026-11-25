@@ -80,10 +80,19 @@ internal sealed class ClientHealthService(
         return true;
     }
 
-    public async Task<int> CheckAllAsync(CancellationToken ct = default)
+    public Task<int> CheckAllAsync(CancellationToken ct = default) => CheckAsync(null, ct);
+
+    public async Task<int> CheckProjectAsync(Guid projectId, CancellationToken ct = default)
     {
         using var _ = globalScope.Begin();
-        var rows = await db.ServerValues.Where(v => v.Key.StartsWith(KeyPrefix)).ToListAsync(ct);
+        var ids = await db.Set<Auth2Application>().AsNoTracking().Where(a => a.ProjectId == projectId).Select(a => a.Id).ToListAsync(ct);
+        return ids.Count == 0 ? 0 : await CheckAsync([.. ids.Select(KeyOf)], ct);
+    }
+
+    private async Task<int> CheckAsync(IReadOnlyCollection<string>? keys, CancellationToken ct)
+    {
+        using var _ = globalScope.Begin();
+        var rows = await db.ServerValues.Where(v => v.Key.StartsWith(KeyPrefix) && (keys == null || keys.Contains(v.Key))).ToListAsync(ct);
         if (rows.Count == 0) return 0;
 
         var timeout = TimeSpan.FromSeconds(Math.Clamp(options.Value.Jobs.ClientHealthTimeoutSeconds, 1, 60));
@@ -175,6 +184,31 @@ internal sealed class ClientHealthService(
             list.Add(new ClientHealthInfo(app.Id, app.Name ?? "", state, entry.CheckedAtUtc, entry.LastHealthyAtUtc, entry.Message));
         }
         return list;
+    }
+}
+
+/// <summary>
+/// Makes the address of a client from what the handshake told: when the client did not give a whole address (it has no <c>PublicUrl</c>), the host is the network address the
+/// handshake came from, and the port, scheme and path are the ones the client said. The network address is the one of the connection, so it cannot be chosen by the client;
+/// it is the right host on one machine, in a docker network and in a LAN, and the wrong one behind a proxy, a load balancer or NAT (then the client has to set <c>PublicUrl</c>).
+/// </summary>
+public static class ClientHealthAddress
+{
+    /// <summary>The address to call, or null when something is missing or not acceptable (no address of the connection, a port outside 1 to 65535, a scheme that is not http or https, a path with a query or spaces).</summary>
+    public static string? Derive(System.Net.IPAddress? remote, int? port, string? scheme, string? path)
+    {
+        if (remote is null || port is not (> 0 and <= 65535)) return null;
+        if (scheme is not ("http" or "https")) return null;
+        path = string.IsNullOrWhiteSpace(path) ? "/auth2/health" : path.Trim();
+        if (path.Length > 200 || !path.StartsWith('/') || path.Any(c => c is '?' or '#' or '\\' || char.IsWhiteSpace(c) || char.IsControl(c))) return null;
+
+        if (remote.IsIPv4MappedToIPv6) remote = remote.MapToIPv4();
+        var host = remote.ToString();
+        var scope = host.IndexOf('%');
+        if (scope >= 0) host = host[..scope];                                    // a scope id of a link-local address means nothing to another machine
+        if (remote.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6) host = $"[{host}]";
+        if (remote.Equals(System.Net.IPAddress.Any) || remote.Equals(System.Net.IPAddress.IPv6Any)) return null;
+        return $"{scheme}://{host}:{port}{path}";
     }
 }
 

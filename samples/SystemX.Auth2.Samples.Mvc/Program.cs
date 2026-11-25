@@ -65,8 +65,8 @@ builder.Services
     .EnableHealthCheck(o =>
     {
         // Two-way: the Auth2 server also asks this application every minute whether it is healthy and ready (the answer is shown on the dashboard of the project in the admin console).
+        // No PublicUrl: the server calls the address the handshake came from, at the port this application listens on. Set o.PublicUrl behind a proxy or a load balancer.
         o.Mode = Auth2HealthCheckMode.TwoWay;
-        o.PublicUrl = builder.Configuration["Auth2:PublicUrl"] ?? "http://localhost:5101";   // this application's address as the SERVER reaches it (docker-compose sets it to the service name)
     });
 
 var app = builder.Build();

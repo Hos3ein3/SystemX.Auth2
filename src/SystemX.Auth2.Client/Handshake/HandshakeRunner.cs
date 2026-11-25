@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using SystemX.Auth2.Client.HealthChecks;
 using SystemX.Auth2.Client.Machine;
 using SystemX.Auth2.Client.Options;
 using SystemX.Auth2.Contracts.Applications;
@@ -18,7 +19,7 @@ namespace SystemX.Auth2.Client.Handshake;
 public sealed record HandshakeOutcome(HandshakeStatus Status, ClientHandshakeResponse? Response, string? Code, string? Message);
 
 /// <summary>Makes one handshake attempt and turns every possible answer into a <see cref="HandshakeStatus"/>.</summary>
-public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, IOptions<Auth2ClientOptions> options, IOptions<Auth2HealthCheckOptions>? health = null)
+public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, IOptions<Auth2ClientOptions> options, HealthAddressResolver? healthAddress = null)
 {
     /// <summary>Warning when the client has a project key but the server has a single project. The key is ignored.</summary>
     public const string SingleServerMessage = "The server has a single project. The ProjectKey is ignored. Remove ServerWithMultiProject.";
@@ -34,10 +35,11 @@ public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenP
         timeout.CancelAfter(o.HandshakeTimeout);
         try
         {
+            var address = healthAddress?.Resolve() ?? HealthAddress.None;   // the two-way health check: where the Server may ask this application
             var token = await tokens.GetTokenAsync([Auth2Scopes.ClientHandshake], timeout.Token);
             using var request = new HttpRequestMessage(HttpMethod.Post, Auth2Routes.Handshake.TrimStart('/'))
             {
-                Content = JsonContent.Create(new ClientHandshakeRequest(o.ProjectKey, o.ApplicationName, o.ClientVersion, health?.Value.HealthUrl)),
+                Content = JsonContent.Create(new ClientHandshakeRequest(o.ProjectKey, o.ApplicationName, o.ClientVersion, address.Url, address.Port, address.Scheme, address.Path)),
             };
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             using var response = await http.CreateClient(Auth2ClientDefaults.ResilientHttpClientName).SendAsync(request, timeout.Token);

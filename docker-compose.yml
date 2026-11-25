@@ -85,7 +85,6 @@ services:
       Auth2__ServerUrl: http://server:5000
       Auth2__PublicServerUrl: http://localhost:5100
       Auth2__ApplicationName: MvcSample
-      Auth2__PublicUrl: http://sample-mvc:5001
       Auth2__ClientId: mvc-sample
       Auth2__ClientSecret: mvc-sample-secret
       Auth2__ProjectKey: sample-project
@@ -108,7 +107,6 @@ services:
       Auth2__ServerUrl: http://server:5000
       Auth2__PublicServerUrl: http://localhost:5100
       Auth2__ApplicationName: MinimalApiSample
-      Auth2__PublicUrl: http://sample-minimalapi:5002
       Auth2__ClientId: minimal-api-sample
       Auth2__ClientSecret: minimal-api-sample-secret
       Auth2__ProjectKey: sample-project

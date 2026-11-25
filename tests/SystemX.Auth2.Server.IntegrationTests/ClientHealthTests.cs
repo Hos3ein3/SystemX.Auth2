@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
@@ -30,8 +31,23 @@ public class ClientHealthTests : Phase6Base
             new(code) { Content = new StringContent($$"""{"status":"{{status}}","applicationName":"default","clientVersion":"1.0"}""", Encoding.UTF8, "application/json") };
     }
 
+    /// <summary>A test host has no network address: the header <c>X-Test-Remote-Ip</c> sets the one the Server sees for the connection.</summary>
+    private sealed class RemoteIpFilter : Microsoft.AspNetCore.Hosting.IStartupFilter
+    {
+        public Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> Configure(Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> next) => app =>
+        {
+            app.Use(async (context, pipeline) =>
+            {
+                if (context.Request.Headers.TryGetValue("X-Test-Remote-Ip", out var ip)) context.Connection.RemoteIpAddress = IPAddress.Parse(ip.ToString());
+                await pipeline();
+            });
+            next(app);
+        };
+    }
+
     protected override void Customize(IServiceCollection services)
     {
+        services.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, RemoteIpFilter>();
         services.AddSingleton<FakeClients>();
         services.AddHttpClient("auth2-client-health").ConfigurePrimaryHttpMessageHandler(sp => sp.GetRequiredService<FakeClients>());
     }
@@ -42,6 +58,15 @@ public class ClientHealthTests : Phase6Base
     {
         var token = await ClientTokenAsync(client, "auth2.client.handshake");
         var response = await new Browser(Factory).PostJsonAsync(Auth2Routes.Handshake, new ClientHandshakeRequest(client, "default", "1.0", healthUrl), token);
+        return response.StatusCode;
+    }
+
+    /// <summary>A handshake of a client without a PublicUrl: only a port, a scheme and a path, from the network address <paramref name="from"/>.</summary>
+    private async Task<HttpStatusCode> PortHandshakeAsync(string? from, int? port = 5001, string? scheme = "http", string? path = "/auth2/health")
+    {
+        var token = await ClientTokenAsync("appa", "auth2.client.handshake");
+        var headers = from is null ? Array.Empty<(string, string)>() : [("X-Test-Remote-Ip", from)];
+        var response = await new Browser(Factory).SendJsonAsync(HttpMethod.Post, Auth2Routes.Handshake, new ClientHandshakeRequest("appa", "default", "1.0", null, port, scheme, path), token, headers);
         return response.StatusCode;
     }
 
@@ -192,5 +217,101 @@ public class ClientHealthTests : Phase6Base
         Clients.Answers[Url] = () => FakeClients.Json(HttpStatusCode.ServiceUnavailable, "Unhealthy");
         await CheckAllAsync();
         (await (await b.GetAsync("/admin/p/appa?ClientId=_global")).Content.ReadAsStringAsync()).ShouldContain("Clients: 1 of 1 not healthy");
+    }
+
+    // ---- no PublicUrl: the host is the network address of the handshake
+
+    [Fact]
+    public async Task WithoutAWholeAddress_TheServerUsesTheNetworkAddressOfTheHandshake_AndThePortOfTheClient()
+    {
+        await PrepareAppsAsync();
+        (await PortHandshakeAsync("10.1.2.3")).ShouldBe(HttpStatusCode.OK);
+        Clients.Answers["http://10.1.2.3:5001/auth2/health"] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+        (await CheckAllAsync()).ShouldBe(1);
+        Clients.Asked.ShouldBe(["GET http://10.1.2.3:5001/auth2/health"]);
+        (await HealthAsync()).Single().State.ShouldBe(ClientHealthState.Healthy);
+    }
+
+    [Fact]
+    public async Task AnIpv6AddressGetsBrackets_AndAnIpv4MappedOneBecomesIpv4()
+    {
+        await PrepareAppsAsync();
+        await PortHandshakeAsync("fd00::5", 8080, "http", "/ops/ready");
+        Clients.Answers["http://[fd00::5]:8080/ops/ready"] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+        await CheckAllAsync();
+        Clients.Asked.ShouldContain("GET http://[fd00::5]:8080/ops/ready");
+
+        Clients.Asked.Clear();
+        await PortHandshakeAsync("::ffff:172.18.0.5");
+        Clients.Answers["http://172.18.0.5:5001/auth2/health"] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+        await CheckAllAsync();
+        Clients.Asked.ShouldBe(["GET http://172.18.0.5:5001/auth2/health"]);
+    }
+
+    [Fact]
+    public async Task AWholeAddress_WinsOverTheNetworkAddress()
+    {
+        await PrepareAppsAsync();
+        var token = await ClientTokenAsync("appa", "auth2.client.handshake");
+        await new Browser(Factory).SendJsonAsync(HttpMethod.Post, Auth2Routes.Handshake, new ClientHandshakeRequest("appa", "default", "1.0", Url, 5001, "http", "/auth2/health"), token, [("X-Test-Remote-Ip", "10.1.2.3")]);
+        Clients.Answers[Url] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+        await CheckAllAsync();
+        Clients.Asked.ShouldBe([$"GET {Url}"]);
+    }
+
+    [Theory]
+    [InlineData(null, 5001, "http", "/auth2/health")]        // no network address
+    [InlineData("10.1.2.3", null, "http", "/auth2/health")]  // no port
+    [InlineData("10.1.2.3", 0, "http", "/auth2/health")]
+    [InlineData("10.1.2.3", 70000, "http", "/auth2/health")]
+    [InlineData("10.1.2.3", 5001, "ftp", "/auth2/health")]
+    [InlineData("10.1.2.3", 5001, "http", "/a?b=1")]
+    [InlineData("10.1.2.3", 5001, "http", "relative")]
+    [InlineData("0.0.0.0", 5001, "http", "/auth2/health")]
+    public async Task AnIncompleteOrWrongAnswer_RegistersNothing(string? from, int? port, string? scheme, string? path)
+    {
+        await PrepareAppsAsync();
+        (await PortHandshakeAsync(from, port, scheme, path)).ShouldBe(HttpStatusCode.OK);   // the handshake itself still works
+        (await HealthAsync()).ShouldBeEmpty();
+    }
+
+    // ---- the refresh buttons of the dashboard
+
+    [Fact]
+    public async Task TheRefreshButtonOfTheClientsBadge_AsksTheClientsNow()
+    {
+        await PrepareAppsAsync();
+        var b = new Browser(Factory);
+        (await b.PostPageAsync("/Account/Login?ClientId=_global", new Dictionary<string, string> { ["Input.Login"] = "globaladmin", ["Input.Password"] = "Admin@12345!ChangeMe" })).StatusCode
+            .ShouldBeOneOf(HttpStatusCode.Redirect, HttpStatusCode.OK);
+        await HandshakeAsync(Url);
+        Clients.Answers[Url] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+        (await HealthAsync()).Single().State.ShouldBe(ClientHealthState.Unknown);   // nobody has asked yet
+
+        var page = await (await b.GetAsync("/admin/p/appa?ClientId=_global")).Content.ReadAsStringAsync();
+        page.ShouldContain("aria-label=\"Refresh Clients\"");
+        page.ShouldContain("aria-label=\"Refresh PostgreSQL\"");
+        page.ShouldContain("aria-label=\"Refresh Redis\"");
+
+        var refresh = await b.PostPageAsync("/admin/p/appa?handler=RefreshClients&ClientId=_global", new Dictionary<string, string>());
+        refresh.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        (await HealthAsync()).Single().State.ShouldBe(ClientHealthState.Healthy);
+        Clients.Asked.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TheRefreshButton_AsksOnlyTheClientsOfThatProject()
+    {
+        await PrepareAppsAsync();
+        await HandshakeAsync(Url, "appa");
+        await HandshakeAsync("http://client-b.test/auth2/health", "appb");
+        Clients.Answers[Url] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+        Clients.Answers["http://client-b.test/auth2/health"] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+
+        await using var scope = NewScope();
+        var appa = (await FindProjectAsync("appa"))!;
+        (await scope.ServiceProvider.GetRequiredService<IClientHealthService>().CheckProjectAsync(appa.Id)).ShouldBe(1);
+        Clients.Asked.ShouldBe([$"GET {Url}"]);
+        (await HealthAsync("appb")).Single().State.ShouldBe(ClientHealthState.Unknown);
     }
 }

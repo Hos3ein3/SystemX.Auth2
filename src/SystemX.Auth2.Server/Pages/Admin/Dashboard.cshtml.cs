@@ -27,6 +27,14 @@ public sealed class DashboardModel : AdminPageModel
         : ClientHealth.Any(c => c.State == ClientHealthState.Unknown) ? ClientHealthState.Unknown
         : ClientHealthState.Healthy;
 
+    /// <summary>The refresh button of the <c>Clients</c> badge: asks the two-way clients of this project now, then shows the page again. (The PostgreSQL and Redis badges are read every time the page opens, so their button only reloads it.)</summary>
+    public async Task<IActionResult> OnPostRefreshClientsAsync()
+    {
+        if (!await AuthorizeAdminAsync()) return Page();
+        await Svc<IClientHealthService>().CheckProjectAsync(CurrentProject!.Id, HttpContext.RequestAborted);
+        return RedirectToPage(new { projectKey = ProjectKey });
+    }
+
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();

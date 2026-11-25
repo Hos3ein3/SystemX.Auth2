@@ -190,6 +190,7 @@ public static class Auth2ClientServiceCollectionExtensions
         builder.Services.AddHealthChecks().AddCheck<Auth2ClientHealthCheck>("auth2");
         builder.Services.TryAddSingleton<Auth2ClientHealthCheck>();
         builder.Services.TryAddSingleton<ClientHealthReporter>();
+        builder.Services.TryAddSingleton<HealthAddressResolver>();
         return builder;
     }
 

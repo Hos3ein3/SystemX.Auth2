@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -19,7 +20,7 @@ public class ClientHealthCheckTests : ClientAppTestBase
         await StartAppAsync(_ => { }, b => b.EnableHealthCheck(o =>
         {
             o.Mode = Auth2HealthCheckMode.TwoWay;
-            o.PublicUrl = "http://client-app.test";
+            o.PublicUrl = "http://client-app.test";   // the whole address: a test host has no network address for the Server to use
             options?.Invoke(o);
         }), s => s.AddHealthChecks().AddCheck("database", () => _databaseUp ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy("down")), handshake: true);
         Server.Clients.Target = App.GetTestServer().CreateHandler();   // the Server's questions reach the application under test
@@ -150,12 +151,16 @@ public class HealthCheckOptionsTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
+    public void TwoWay_DoesNotNeedAPublicUrl(string? url) =>
+        Errors(new Auth2HealthCheckOptions { Mode = Auth2HealthCheckMode.TwoWay, PublicUrl = url }).ShouldBeEmpty();
+
+    [Theory]
     [InlineData("shop.example.com")]
     [InlineData("ftp://shop.example.com")]
     [InlineData("https://user:pw@shop.example.com")]
     [InlineData("https://shop.example.com/?a=1")]
     [InlineData("https://shop.example.com/#top")]
-    public void TwoWay_NeedsAGoodPublicUrl(string? url) =>
+    public void APublicUrlThatIsSet_MustBeAGoodAddress(string url) =>
         Errors(new Auth2HealthCheckOptions { Mode = Auth2HealthCheckMode.TwoWay, PublicUrl = url }).ShouldNotBeEmpty();
 
     [Theory]
@@ -169,4 +174,59 @@ public class HealthCheckOptionsTests
     [Fact]
     public void AGoodTwoWayConfiguration_HasNoError() =>
         Errors(new Auth2HealthCheckOptions { Mode = Auth2HealthCheckMode.TwoWay, PublicUrl = "https://shop.example.com", Path = "/ops/ready" }).ShouldBeEmpty();
+}
+
+public class HealthAddressResolverTests
+{
+    private static SystemX.Auth2.Client.HealthChecks.HealthAddress Resolve(Dictionary<string, string?> config, Action<Auth2HealthCheckOptions>? options = null)
+    {
+        var o = new Auth2HealthCheckOptions { Mode = Auth2HealthCheckMode.TwoWay };
+        options?.Invoke(o);
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(config).Build();
+        var resolver = new SystemX.Auth2.Client.HealthChecks.HealthAddressResolver(Microsoft.Extensions.Options.Options.Create(o), configuration,
+            new ServiceCollection().BuildServiceProvider(), Microsoft.Extensions.Logging.Abstractions.NullLogger<SystemX.Auth2.Client.HealthChecks.HealthAddressResolver>.Instance);
+        return resolver.Resolve();
+    }
+
+    [Fact]
+    public void OneWay_SendsNothing()
+    {
+        var resolver = new SystemX.Auth2.Client.HealthChecks.HealthAddressResolver(Microsoft.Extensions.Options.Options.Create(new Auth2HealthCheckOptions()),
+            new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["urls"] = "http://+:5001" }).Build(),
+            new ServiceCollection().BuildServiceProvider(), Microsoft.Extensions.Logging.Abstractions.NullLogger<SystemX.Auth2.Client.HealthChecks.HealthAddressResolver>.Instance);
+        resolver.Resolve().ShouldBe(SystemX.Auth2.Client.HealthChecks.HealthAddress.None);
+    }
+
+    [Fact]
+    public void WithAPublicUrl_TheWholeAddressIsSent_AndTheUrlsAreNotLookedAt() =>
+        Resolve(new() { ["urls"] = "http://+:5001" }, o => o.PublicUrl = "https://shop.example.com").ShouldBe(new SystemX.Auth2.Client.HealthChecks.HealthAddress("https://shop.example.com/auth2/health", null, null, null));
+
+    [Theory]
+    [InlineData("http://+:5001", 5001)]
+    [InlineData("http://*:8080", 8080)]
+    [InlineData("http://0.0.0.0:80", 80)]
+    [InlineData("http://localhost:5101", 5101)]
+    [InlineData("https://localhost:7143;http://localhost:5089", 5089)]   // the http one: a certificate does not match an IP address
+    [InlineData("http://[::]:5002", 5002)]
+    public void WithoutAPublicUrl_ThePortComesFromTheUrls(string urls, int port) =>
+        Resolve(new() { ["urls"] = urls }).ShouldBe(new SystemX.Auth2.Client.HealthChecks.HealthAddress(null, port, "http", "/auth2/health"));
+
+    [Fact]
+    public void ThePathOption_IsSentWithThePort() =>
+        Resolve(new() { ["ASPNETCORE_URLS"] = "http://+:5001" }, o => o.Path = "/ops/ready").ShouldBe(new SystemX.Auth2.Client.HealthChecks.HealthAddress(null, 5001, "http", "/ops/ready"));
+
+    [Theory]
+    [InlineData("http_ports", "8080")]
+    [InlineData("HTTP_PORTS", "8080;8081")]
+    [InlineData("ASPNETCORE_HTTP_PORTS", "8080")]
+    public void TheHttpPortsOfTheDockerImages_AreUsedToo(string key, string value) =>
+        Resolve(new() { [key] = value }).Port.ShouldBe(8080);
+
+    [Fact]
+    public void OnlyHttps_OrNothingAtAll_SendsNothing()
+    {
+        Resolve(new() { ["urls"] = "https://+:443" }).ShouldBe(SystemX.Auth2.Client.HealthChecks.HealthAddress.None);
+        Resolve(new() { ["https_ports"] = "8443" }).ShouldBe(SystemX.Auth2.Client.HealthChecks.HealthAddress.None);
+        Resolve([]).ShouldBe(SystemX.Auth2.Client.HealthChecks.HealthAddress.None);
+    }
 }

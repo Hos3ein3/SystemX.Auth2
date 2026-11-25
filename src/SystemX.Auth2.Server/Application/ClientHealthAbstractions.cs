@@ -39,6 +39,9 @@ public interface IClientHealthService
     /// <summary>Asks every registered client now and keeps the answers. Returns how many clients were asked.</summary>
     Task<int> CheckAllAsync(CancellationToken ct = default);
 
+    /// <summary>Asks the clients of one project now (the refresh button of the dashboard). Returns how many clients were asked.</summary>
+    Task<int> CheckProjectAsync(Guid projectId, CancellationToken ct = default);
+
     /// <summary>The health of the applications of a project that have a two-way check, ordered by name. Empty when none has.</summary>
     Task<IReadOnlyList<ClientHealthInfo>> GetProjectAsync(Guid projectId, CancellationToken ct = default);
 }

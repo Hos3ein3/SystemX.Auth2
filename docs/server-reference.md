@@ -792,6 +792,7 @@ The two-way health check: a client that sent a `HealthUrl` in its handshake is a
 |---|---|
 | `RegisterAsync(Guid, string, CancellationToken)` | Remembers (or forgets, when `healthUrl` is null or not a plain http or https address) where an application answers the health question. Called by the handshake. Returns true when a check is registered. |
 | `CheckAllAsync(CancellationToken)` | Asks every registered client now and keeps the answers. Returns how many clients were asked. |
+| `CheckProjectAsync(Guid, CancellationToken)` | Asks the clients of one project now (the refresh button of the dashboard). Returns how many clients were asked. |
 | `GetProjectAsync(Guid, CancellationToken)` | The health of the applications of a project that have a two-way check, ordered by name. Empty when none has. |
 
 

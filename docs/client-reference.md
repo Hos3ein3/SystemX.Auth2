@@ -853,7 +853,7 @@ Makes one handshake attempt and turns every possible answer into a `HandshakeSta
 
 | Member | What it does |
 |---|---|
-| `(constructor)(IHttpClientFactory, IAuth2MachineTokenProvider, IOptions<Auth2ClientOptions>, IOptions<Auth2HealthCheckOptions>)` | Makes one handshake attempt and turns every possible answer into a `HandshakeStatus`. |
+| `(constructor)(IHttpClientFactory, IAuth2MachineTokenProvider, IOptions<Auth2ClientOptions>, HealthAddressResolver)` | Makes one handshake attempt and turns every possible answer into a `HandshakeStatus`. |
 | `SingleServerMessage` | Warning when the client has a project key but the server has a single project. The key is ignored. |
 | `MultiServerMessage` | Message when the client has no project key but the server serves many projects. |
 | `RunAsync(CancellationToken)` | Makes one attempt. Never throws (except when `ct` is cancelled). |
@@ -870,6 +870,30 @@ Makes one handshake attempt and turns every possible answer into a `HandshakeSta
 |---|---|
 | `(constructor)(Auth2ClientState)` | `Healthy` when the last handshake worked, `Degraded` otherwise (the application still runs). |
 | `CheckHealthAsync(HealthCheckContext, CancellationToken)` |  |
+
+
+### HealthAddress
+
+What the handshake tells the Server about the two-way health check.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, Nullable<int>, string, string)` | What the handshake tells the Server about the two-way health check. |
+| `Url` | The whole address (when `PublicUrl` is set), or null. |
+| `Port` | The port this application listens on (when there is no `PublicUrl`), or null. |
+| `Scheme` | The scheme that goes with `Port`, or null. |
+| `Path` | The path where this application answers (with `Port`), or null. |
+| `None` | One-way, or two-way that could not find an address: the handshake carries nothing. |
+
+
+### HealthAddressResolver
+
+Finds what to tell the Server for a two-way health check. With `PublicUrl`: the whole address. Without it: only the **port** (and the scheme and path) this application listens on, found, in this order, in the server addresses of the web server (known once it runs), `urls` / `ASPNETCORE_URLS`, and `http_ports` / `ASPNETCORE_HTTP_PORTS`. The Server then takes the host from the network address of the handshake. Only **http** is used for this: a certificate does not match an IP address.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(IOptions<Auth2HealthCheckOptions>, IConfiguration, IServiceProvider, ILogger<HealthAddressResolver>)` | Finds what to tell the Server for a two-way health check. With `PublicUrl`: the whole address. Without it: only the **port** (and the scheme and path) this application listens on, found, in this order, in the server addresses of the web server (known once it runs), `urls` / `ASPNETCORE_URLS`, and `http_ports` / `ASPNETCORE_HTTP_PORTS`. The Server then takes the host from the network address of the handshake. Only **http** is used for this: a certificate does not match an IP address. |
+| `Resolve()` | The address for the next handshake. |
 
 
 ## `SystemX.Auth2.Client.Machine`
@@ -1030,7 +1054,7 @@ Who asks whom in the health check ([EnableHealthCheck]).
 | Member | What it does |
 |---|---|
 | `OneWay` | The client checks the server: the health check `auth2` is `Healthy` after a good handshake and `Degraded` otherwise. The server never calls the client. |
-| `TwoWay` | `OneWay`, and the server also checks the client: the client tells the server where it answers (`PublicUrl` and `Path`) and the server asks every minute whether the client is healthy and ready. The answer is shown in the admin console. |
+| `TwoWay` | `OneWay`, and the server also checks the client: the client tells the server where it answers and the server asks every minute whether the client is healthy and ready. The answer is shown in the admin console. Where the client answers: `PublicUrl` when you set it, otherwise the client says only its port and path and the server takes the host from the network address of the client's handshake. |
 
 
 ### Auth2HealthCheckOptions
@@ -1040,9 +1064,9 @@ Options of `EnableHealthCheck`.
 | Member | What it does |
 |---|---|
 | `Mode` | Who asks whom. Default `OneWay`. |
-| `PublicUrl` | The address of **this application** as the Server reaches it (for example `https://shop.example.com`, or `http://sample-mvc:5001` inside docker). Required for `TwoWay`: an absolute http or https address without a user name, a query or a fragment. |
+| `PublicUrl` | **Optional.** The address of **this application** as the Server reaches it (for example `https://shop.example.com`, or `http://sample-mvc:5001` inside docker): an absolute http or https address without a user name, a query or a fragment. When it is set, the Server calls exactly this address. When it is not set, the client tells the Server only the **port** it listens on (found in `ASPNETCORE_URLS`, `urls` or the server addresses) and the Server calls `http://{address of the handshake}:{port}{Path}`: this works on one machine, in a docker network and in a LAN, but **not** behind a proxy, a load balancer or NAT (the Server would see the proxy's address) and not when the application listens only on https. Then set `PublicUrl`. |
 | `Path` | The path where this application answers the health question. Default `/auth2/health`. Used by `TwoWay`. |
-| `HealthUrl` | The full address the Server is told to call, or null for a one-way check. |
+| `HealthUrl` | The full address the Server is told to call (two-way with a `PublicUrl`), or null. |
 
 
 ### Auth2HealthCheckOptionsValidator

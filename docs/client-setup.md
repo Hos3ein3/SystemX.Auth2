@@ -128,7 +128,7 @@ To try again by hand: `await api.HandshakeAsync()`.
 
 ## Health check
 
-`.EnableHealthCheck()` adds a check named `auth2`: **Healthy** after a good handshake, **Degraded** otherwise. The application keeps running when it is degraded. This is the **one-way** check (the client checks the server). `.EnableHealthCheck(o => { o.Mode = Auth2HealthCheckMode.TwoWay; o.PublicUrl = "..."; })` makes it **two-way**: the server also asks the client every minute and shows the answer on the project dashboard ([client-health-check.md](client-health-check.md)).
+`.EnableHealthCheck()` adds a check named `auth2`: **Healthy** after a good handshake, **Degraded** otherwise. The application keeps running when it is degraded. This is the **one-way** check (the client checks the server). `.EnableHealthCheck(o => o.Mode = Auth2HealthCheckMode.TwoWay)` makes it **two-way** (`PublicUrl` is optional: set it behind a proxy or load balancer): the server also asks the client every minute and shows the answer on the project dashboard ([client-health-check.md](client-health-check.md)).
 
 ## The Auth2 API service
 

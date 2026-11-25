@@ -72,7 +72,7 @@ Sync (see [permission-sync.md](permission-sync.md)) starts only after a successf
 
 ## The health address (two-way health check)
 
-The handshake request has an optional `healthUrl`. A client with `EnableHealthCheck(o => o.Mode = TwoWay)` sends its own address there (`PublicUrl` + `Path`); the Server keeps it and asks the client every minute whether it is healthy and ready. A handshake without it (one-way) removes the address. A wrong address never fails the handshake: it is ignored and logged ([client-health-check.md](client-health-check.md)).
+The handshake request has optional `healthUrl`, `healthPort`, `healthScheme` and `healthPath`. A client with `EnableHealthCheck(o => o.Mode = TwoWay)` sends its whole address in `healthUrl` when it has a `PublicUrl`, and otherwise only the port, scheme and path it listens on: the Server then takes the host from the network address of the handshake. The Server keeps the address and asks the client every minute whether it is healthy and ready. A handshake without it (one-way) removes the address. A wrong address never fails the handshake: it is ignored and logged ([client-health-check.md](client-health-check.md)).
 
 ## How to implement / extend
 

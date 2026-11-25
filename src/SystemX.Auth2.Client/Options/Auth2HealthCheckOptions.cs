@@ -11,8 +11,9 @@ public enum Auth2HealthCheckMode
     OneWay,
 
     /// <summary>
-    /// <see cref="OneWay"/>, and the server also checks the client: the client tells the server where it answers (<see cref="Auth2HealthCheckOptions.PublicUrl"/> and
-    /// <see cref="Auth2HealthCheckOptions.Path"/>) and the server asks every minute whether the client is healthy and ready. The answer is shown in the admin console.
+    /// <see cref="OneWay"/>, and the server also checks the client: the client tells the server where it answers and the server asks every minute whether the client is healthy and ready.
+    /// The answer is shown in the admin console. Where the client answers: <see cref="Auth2HealthCheckOptions.PublicUrl"/> when you set it, otherwise the client says only its port
+    /// and path and the server takes the host from the network address of the client's handshake.
     /// </summary>
     TwoWay,
 }
@@ -24,15 +25,18 @@ public sealed class Auth2HealthCheckOptions
     public Auth2HealthCheckMode Mode { get; set; } = Auth2HealthCheckMode.OneWay;
 
     /// <summary>
-    /// The address of <b>this application</b> as the Server reaches it (for example <c>https://shop.example.com</c>, or <c>http://sample-mvc:5001</c> inside docker).
-    /// Required for <see cref="Auth2HealthCheckMode.TwoWay"/>: an absolute http or https address without a user name, a query or a fragment.
+    /// <b>Optional.</b> The address of <b>this application</b> as the Server reaches it (for example <c>https://shop.example.com</c>, or <c>http://sample-mvc:5001</c> inside docker): an
+    /// absolute http or https address without a user name, a query or a fragment. When it is set, the Server calls exactly this address. When it is not set, the client tells the Server
+    /// only the <b>port</b> it listens on (found in <c>ASPNETCORE_URLS</c>, <c>urls</c> or the server addresses) and the Server calls <c>http://{address of the handshake}:{port}{Path}</c>:
+    /// this works on one machine, in a docker network and in a LAN, but <b>not</b> behind a proxy, a load balancer or NAT (the Server would see the proxy's address) and not when the
+    /// application listens only on https. Then set <c>PublicUrl</c>.
     /// </summary>
     public string? PublicUrl { get; set; }
 
     /// <summary>The path where this application answers the health question. Default <c>/auth2/health</c>. Used by <see cref="Auth2HealthCheckMode.TwoWay"/>.</summary>
     public string Path { get; set; } = "/auth2/health";
 
-    /// <summary>The full address the Server is told to call, or null for a one-way check.</summary>
+    /// <summary>The full address the Server is told to call (two-way with a <see cref="PublicUrl"/>), or null.</summary>
     public string? HealthUrl => Mode == Auth2HealthCheckMode.TwoWay && !string.IsNullOrWhiteSpace(PublicUrl) ? PublicUrl.TrimEnd('/') + Path : null;
 }
 
@@ -45,13 +49,11 @@ public sealed class Auth2HealthCheckOptionsValidator : IValidateOptions<Auth2Hea
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(o.Path) || !o.Path.StartsWith('/') || o.Path.Contains('?') || o.Path.Contains('#'))
             errors.Add("Auth2: the health check Path must start with '/' and have no query or fragment (for example /auth2/health).");
-        if (o.Mode == Auth2HealthCheckMode.TwoWay)
-        {
-            if (string.IsNullOrWhiteSpace(o.PublicUrl)) errors.Add("Auth2: a two-way health check needs PublicUrl: the address of this application as the Auth2 server reaches it (for example https://shop.example.com).");
-            else if (!Uri.TryCreate(o.PublicUrl, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-                     || !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
-                errors.Add("Auth2: the health check PublicUrl must be an absolute http or https address without a user name, a query or a fragment.");
-        }
+        // PublicUrl is optional: without it the server takes the host from the handshake. A value that is set must be a good address.
+        if (!string.IsNullOrWhiteSpace(o.PublicUrl)
+            && (!Uri.TryCreate(o.PublicUrl, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)
+                || !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment)))
+            errors.Add("Auth2: the health check PublicUrl must be an absolute http or https address without a user name, a query or a fragment.");
         return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
     }
 }
