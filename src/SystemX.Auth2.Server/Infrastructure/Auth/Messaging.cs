@@ -82,6 +82,28 @@ internal sealed class UserNotifier(
             text["confirm_email.body", Brand(app), link].Value, new Dictionary<string, string> { ["token"] = token, ["link"] = link }), ct);
     }
 
+    public async Task SendEmailChangeAsync(AppUser user, string newEmail, string token, string? returnUrl, CancellationToken ct = default)
+    {
+        var app = await flow.GetProjectAsync(ct);
+        var query = new List<KeyValuePair<string, string?>>
+        {
+            new("handler", "Confirm"), new("userId", user.Id.ToString("D")), new("email", newEmail), new("token", token),
+            new("ClientId", (await flow.GetClientAsync(ct))?.ClientId), new("ReturnUrl", returnUrl),
+        };
+        var link = urls.Build("/Account/ChangeEmailAddress", query);
+        using var _ = Culture(user);
+        await email.SendAsync(new EmailMessage(newEmail, text["change_email.subject"].Value,
+            text["change_email.body", Brand(app), link].Value, new Dictionary<string, string> { ["token"] = token, ["link"] = link }), ct);
+    }
+
+    public async Task SendPhoneChangeCodeAsync(AppUser user, string newPhone, string code, CancellationToken ct = default)
+    {
+        var app = await flow.GetProjectAsync(ct);
+        using var _ = Culture(user);
+        await sms.SendAsync(new SmsMessage(newPhone, text["sms.change_phone", code, Brand(app)].Value,
+            new Dictionary<string, string> { ["code"] = code, ["purpose"] = Auth2OtpPurposes.ChangePhone }), ct);
+    }
+
     public async Task SendPasswordResetAsync(AppUser user, string token, string? returnUrl, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(user.Email)) return;

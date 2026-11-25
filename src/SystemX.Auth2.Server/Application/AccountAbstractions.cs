@@ -61,6 +61,12 @@ public interface IUserNotifier
     /// <summary>Sends the password reset link.</summary>
     Task SendPasswordResetAsync(AppUser user, string token, string? returnUrl, CancellationToken ct = default);
 
+    /// <summary>Sends the link that confirms a <b>new</b> email address. It goes to the new address, not the old one.</summary>
+    Task SendEmailChangeAsync(AppUser user, string newEmail, string token, string? returnUrl, CancellationToken ct = default);
+
+    /// <summary>Sends the code that proves a <b>new</b> phone number, by SMS to the new number.</summary>
+    Task SendPhoneChangeCodeAsync(AppUser user, string newPhone, string code, CancellationToken ct = default);
+
     /// <summary>Sends a one-time code by email or SMS.</summary>
     Task SendOtpAsync(AppUser user, string purpose, string code, NotificationChannel channel, CancellationToken ct = default);
 }

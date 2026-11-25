@@ -213,6 +213,8 @@ Every failure is `invalid_otp`, and wrong codes count as failed attempts, so too
 
 ### Forgot, reset and change password
 
+A signed-in person can also change their user name, email address and phone number on their own pages ([ui-handover.md](ui-handover.md#account-change-pages-signed-in)): a new email address and a new phone number are only used after the person proves they own them (a link in an email to the new address, a code in an SMS to the new number).
+
 - **Forgot** (`/password/forgot`, page `Account/ForgotPassword`) always answers `202`. Only **members** of the application get a message: a link by email, or a code by SMS for a person with a confirmed phone and no email. A person who is not a member must use the join flow.
 - **Reset** (`/password/reset`, page `Account/ResetPassword`) takes the token (or the SMS code) and the new password. A weak password does not use up the token. The token works once. A token made in one application does not work in another when credentials are per application (the security stamp is per application).
   After a reset the server clears the lockout, ends all sessions of that application and raises the access version.

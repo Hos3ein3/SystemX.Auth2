@@ -67,7 +67,7 @@ public class ProjectSettingsValidatorTests
     [Fact]
     public void ThePasswordHistory_IsOffByDefault_AndExpiryIsOff() =>
         new ProjectSettings().Password.ShouldSatisfyAllConditions(
-            p => p.SaveOldPasswords.ShouldBeFalse(), p => p.AllowOldPasswordReuse.ShouldBeFalse(), p => p.PasswordExpiryDays.ShouldBe(0), p => p.OldPasswordsToKeep.ShouldBe(5));
+            p => p.SaveOldPasswords.ShouldBeFalse(), p => p.AllowOldPasswordReuse.ShouldBeFalse(), p => p.PasswordExpiryDays.ShouldBe(0), p => p.OldPasswordsToKeep.ShouldBe(5), p => p.SignOutAfterChangePassword.ShouldBeFalse());
 
     private static List<SettingsError> CheckUris(params string[] uris)
     {

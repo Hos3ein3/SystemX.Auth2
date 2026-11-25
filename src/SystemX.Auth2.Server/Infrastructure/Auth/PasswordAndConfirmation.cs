@@ -71,6 +71,8 @@ internal sealed class PasswordService(
     public async Task<OperationResult> ChangeAsync(AppUser user, string currentPassword, string newPassword, string? keepAuthorizationId, CancellationToken ct = default)
     {
         var app = await flow.GetProjectAsync(ct);
+        // Password.SignOutAfterChangePassword: nothing stays, not even the session that made the change.
+        if ((await flow.GetSettingsAsync(ct)).Password.SignOutAfterChangePassword) keepAuthorizationId = null;
         var result = await users.ChangePasswordAsync(user, currentPassword, newPassword);
         if (!result.Succeeded)
         {

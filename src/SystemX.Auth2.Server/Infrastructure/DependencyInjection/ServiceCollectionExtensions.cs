@@ -74,6 +74,9 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddRazorPages(o =>
         {
             o.Conventions.AuthorizeFolder("/Manage", "Auth2.Session");
+            // The pages of the signed-in person that change their own account details (the rest of /Account is for people who are not signed in).
+            foreach (var page in new[] { "ChangePassword", "ChangeUserName", "ChangeEmailAddress", "ChangePhoneNumber" })
+                o.Conventions.AuthorizePage("/Account/" + page, "Auth2.Session");
             o.Conventions.AddPageRoute("/Admin/Global/Settings", "/admin/global/settings");
             o.Conventions.AddPageRoute("/Admin/Global/Jobs", "/admin/global/jobs");
             o.Conventions.AddPageRoute("/Admin/Global/Keys", "/admin/global/keys");

@@ -146,8 +146,9 @@ Password rules.
 | `OldPasswordsToKeep` | `int` | `5` | GlobalOnly | How many old passwords are remembered, not counting the current one (1 to 24). |
 | `AllowOldPasswordReuse` | `bool` | `false` | GlobalOnly | `false`: refuse the current and every remembered password. `true`: refuse only the current one and the one used right before it. |
 | `PasswordExpiryDays` | `int` | `0` | GlobalOnly | A password older than this many days is refused at sign-in (`password_expired`) until it is changed. `0` = never (up to 3650). |
+| `SignOutAfterChangePassword` | `bool` | `false` | GlobalOnly | When a person changes their own password (the API route `/password/change` or the page `/Account/ChangePassword`), end **every** token session, also the one that made the change. The page also removes the hosted-UI cookie and sends the person to the sign-in page. Off: the other sessions end and the current one stays. A reset always ends every session. |
 
-How these four work, with examples and the limits: [password-history.md](password-history.md).
+How the history and expiry settings work, with examples and the limits: [password-history.md](password-history.md). The change pages: [ui-handover.md](ui-handover.md#account-change-pages-signed-in).
 
 ### Email
 

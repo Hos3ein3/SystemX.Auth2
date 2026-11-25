@@ -70,6 +70,25 @@ Properties: `Links` (`provider`, `providerKey`, `displayName`), `AvailableProvid
 | `?handler=Link` | `Provider` | Redirect to the provider; the callback adds the link and returns to this page |
 | `?handler=Unlink` | `Provider`, `ProviderKey` | Removes the link. `cannot_remove_last_login_method` when it is the last way to sign in |
 
+## Account change pages (signed in)
+
+Four pages in `/Account` let a signed-in person change their own details. They need the hosted-UI session cookie (a person who is not signed in is sent to the sign-in page) and are protected by the same `Auth2.Session` policy as `/Manage`. **Their `.cshtml` files hold only `@page` and `@model`: the page models are finished, the HTML and CSS are still to be drawn.** The models share one base (`AccountChangePageModel`).
+
+All four expose `ErrorCode`, `ErrorMessage` and `ErrorMessages` as every page does, and `PasswordRequired`: `true` when the person has a password, so the form must show a **current password** field (`Input.CurrentPassword`). A person without a password (external account or passkey only) needs none. A wrong current password counts as a failed attempt (it can lock the account) and answers `invalid_credentials`; a locked account answers `locked_out`.
+
+Before anything is sent or saved, the new value goes through the same validators as every other change (format, the project rules `UserName.*`, `Email.AllowedDomains` / `BlockedDomains`, `Phone.PhoneNumberRegex`, and "already taken"), so the page shows the reason (`ErrorMessages`) and nothing is sent to an address or number that would be refused.
+
+| Page | Properties | Handlers and form fields | Result |
+|---|---|---|---|
+| `/Account/ChangePassword` | `Changed` | POST: `Input.CurrentPassword`, `Input.NewPassword` | The password changes; every token session of the person ends. `Changed` is `true` and the person stays signed in, **unless** `Password.SignOutAfterChangePassword` is on: then the cookie is removed and the page redirects to `/Account/Login` |
+| `/Account/ChangeUserName` | `CurrentUserName`, `Changed` | POST: `Input.NewUserName`, `Input.CurrentPassword` | The user name changes at once (audit `user.name_changed`); the cookie is renewed so the session shows the new name |
+| `/Account/ChangeEmailAddress` | `CurrentEmail`, `EmailSent`, `Changed` | POST: `Input.NewEmail`, `Input.CurrentPassword`. **Link handler** `?handler=Confirm&userId=&email=&token=` | POST sends a confirmation link **to the new address** (audit `email.change_requested`), `EmailSent` is `true` and **nothing changes yet**. Opening the link (a GET, like `ConfirmEmail`) replaces the address and marks it confirmed (audit `email.changed`). The link works once, for that person and that address only; another signed-in person gets `invalid_token`. The link of the email goes through the sign-in page when the person is not signed in |
+| `/Account/ChangePhoneNumber` | `CurrentPhoneNumber`, `CodeSent`, `Changed` | `?handler=SendCode`: `Input.NewPhoneNumber`, `Input.CurrentPassword`. POST: `Input.NewPhoneNumber`, `Input.Code` | `SendCode` sends an SMS with a code **to the new number** (audit `phone.change_requested`); `CodeSent` is `true`. POST checks the code and replaces the number and marks it confirmed (audit `phone.changed`). A second `SendCode` inside `TwoFactor.OtpResendSeconds` answers `rate_limited` (429). A wrong code answers `invalid_otp`; the attempts, the lifetime and the length follow the `TwoFactor.Otp*` settings. The code is tied to the number, so it cannot confirm another number |
+
+The email and the SMS are written in the language of the person and sent through the same email and SMS senders as every other message ([email-and-sms.md](email-and-sms.md)), so each application can use its own provider. The texts are `change_email.subject`, `change_email.body` and `sms.change_phone` in the `Emails` resource.
+
+`/Manage/ChangePassword` and `/Manage/ChangeEmail` are older pages of the signed-in area; the pages above are the complete ones.
+
 ## Passkey routes (JSON for the UI script)
 
 All routes take the application in `?client_id=` (the project follows from it) (not needed when signed in; the session knows it). Errors have the usual body `{ "code": "...", "message": "..." }`. The routes that need a session also need the anti-forgery token in the header `RequestVerificationToken` (the cookie is set by any page that renders a form; the UI gets the token the same way as for forms).

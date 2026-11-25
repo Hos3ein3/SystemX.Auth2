@@ -11,4 +11,6 @@ public static class Auth2OtpPurposes
     public const string Join = "join";
     /// <summary>Password reset by phone.</summary>
     public const string PasswordReset = "password_reset";
+    /// <summary>A code sent to a <b>new</b> phone number to prove it belongs to the person. The real purpose adds a short hash of the number, so the code works for that number only.</summary>
+    public const string ChangePhone = "change_phone";
 }

@@ -618,7 +618,7 @@ Primary key: `id`.
 
 ### otp_codes
 
-**What it is.** **One-time codes** sent by email or SMS: `purpose` (`login`, `confirm_phone`, `join`, `password_reset`), `user_id`, `project_id`, `expires_at_utc`, `attempts` (wrong tries so far; too many closes the code), `consumed_at_utc`. Only a salted **hash** of the code is stored (`code_hash`). A new code closes the older open one, and "works once" is one conditional UPDATE, so two parallel requests cannot both succeed.
+**What it is.** **One-time codes** sent by email or SMS: `purpose` (`login`, `confirm_phone`, `join`, `password_reset`, and `change_phone_` plus a short hash of the new number, for the phone change page), `user_id`, `project_id`, `expires_at_utc`, `attempts` (wrong tries so far; too many closes the code), `consumed_at_utc`. Only a salted **hash** of the code is stored (`code_hash`). A new code closes the older open one, and "works once" is one conditional UPDATE, so two parallel requests cannot both succeed.
 **Redis.** When `Auth2:Redis` is on, codes live in Redis and this table stays empty ([deployment-and-scaling.md](deployment-and-scaling.md)).
 **Cleanup.** The job `otp-cleanup` deletes codes that expired or were used more than a day ago. Filtered by project.
 <!-- columns:otp_codes:start -->

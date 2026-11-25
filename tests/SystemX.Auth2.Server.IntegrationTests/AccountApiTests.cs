@@ -432,6 +432,23 @@ public class PasswordApiTests : Phase6Base
     }
 
     [Fact]
+    public async Task Change_WithSignOutAfterChangePassword_EndsTheCallersSessionToo()
+    {
+        await RegisteredAsync();
+        await UpdateSettingsAsync(A, s => s.Project.Password.SignOutAfterChangePassword = true);
+        var thisSession = await UserTokensAsync("sara", PassA);
+        var otherSession = await UserTokensAsync("sara", PassA);
+
+        (await CallAsync(new Browser(Factory), Auth2Routes.PasswordChange, new ChangePasswordRequest(PassA, "New-Pass-12345!"), thisSession.Str("access_token"))).Status.ShouldBe(HttpStatusCode.NoContent);
+
+        async Task<HttpStatusCode> Refresh(JsonElement s) => (await new Browser(Factory).PostFormAsync("/connect/token", new Dictionary<string, string>
+        { ["grant_type"] = "refresh_token", ["refresh_token"] = s.Str("refresh_token"), ["client_id"] = "appa", ["client_secret"] = ASecret })).StatusCode;
+        (await Refresh(otherSession)).ShouldBe(HttpStatusCode.BadRequest);
+        (await Refresh(thisSession)).ShouldBe(HttpStatusCode.BadRequest);   // the caller does not stay
+        (await UserTokensAsync("sara", "New-Pass-12345!")).Str("token_type").ShouldBe("Bearer");
+    }
+
+    [Fact]
     public async Task Change_NeedsAUserToken_WithTheMeScope()
     {
         await RegisteredAsync();

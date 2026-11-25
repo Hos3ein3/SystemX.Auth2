@@ -26,4 +26,12 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="confirm_email.subject" xml:space="preserve"><value>نشانی ایمیل خود را تأیید کنید</value></data>
+  <data name="change_email.subject" xml:space="preserve"><value>نشانی ایمیل جدید خود را تأیید کنید</value></data>
+  <data name="change_email.body" xml:space="preserve"><value>سلام،
+
+شما خواسته‌اید از این نشانی ایمیل برای حساب خود در {0} استفاده کنید. آن را با این پیوند تأیید کنید:
+{1}
+
+اگر این درخواست از شما نبود، این پیام را نادیده بگیرید. ایمیل حساب شما تغییر نمی‌کند.</value></data>
+  <data name="sms.change_phone" xml:space="preserve"><value>{1}: کد تأیید این شماره تلفن {0} است. آن را به کسی نگویید.</value></data>
 </root>

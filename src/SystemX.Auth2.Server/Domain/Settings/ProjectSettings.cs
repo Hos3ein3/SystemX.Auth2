@@ -151,6 +151,11 @@ public sealed class PasswordSettings
     /// chooses a new password (the forgot-password flow). A password without a date counts from the day the person joined.
     /// </summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public int PasswordExpiryDays { get; set; }
+    /// <summary>
+    /// When a person changes their own password, end <b>every</b> session, also the one that made the change (the hosted-UI cookie is removed and the person is sent to the sign-in page).
+    /// Off (default): the other sessions end and the current one stays.
+    /// </summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public bool SignOutAfterChangePassword { get; set; }
 }
 
 /// <summary>Email rules.</summary>

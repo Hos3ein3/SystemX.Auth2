@@ -51,4 +51,12 @@ If you did not ask for this, you can ignore this message. Your password stays th
 
 It works once and only for a short time. Do not share it with anyone.</value></data>
   <data name="sms.otp" xml:space="preserve"><value>{1}: your code is {0}. Do not share it.</value></data>
+  <data name="change_email.subject" xml:space="preserve"><value>Confirm your new email address</value></data>
+  <data name="change_email.body" xml:space="preserve"><value>Hello,
+
+You asked to use this email address for your {0} account. Confirm it with this link:
+{1}
+
+If you did not ask for this, you can ignore this message. The email address of the account stays the same.</value></data>
+  <data name="sms.change_phone" xml:space="preserve"><value>{1}: your code to confirm this phone number is {0}. Do not share it.</value></data>
 </root>
