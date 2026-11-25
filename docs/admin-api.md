@@ -207,3 +207,6 @@ Authorization: Bearer <admin user token>
 - [Identity stores and managers (`SystemX.Auth2.Server.Persistence.Identity`)](identity-stores.md)
 - [Error codes](error-codes.md)
 - [Security](security.md)
+- [Scopes and their resources](scopes.md)
+- [Scope, permission, role, group: which is which](access-concepts.md)
+- [Database tables](database-tables.md)

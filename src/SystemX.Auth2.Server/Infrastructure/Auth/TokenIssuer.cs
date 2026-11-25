@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -19,8 +20,23 @@ namespace SystemX.Auth2.Server.Infrastructure.Auth;
 /// Roles in the token are the effective roles: own roles plus roles of the user's groups.
 /// </summary>
 public sealed class TokenIssuer(
-    IAccessService accessService, IAuthFlowResolver flow) : ITokenIssuer
+    IAccessService accessService, IAuthFlowResolver flow, IOpenIddictScopeManager scopeManager) : ITokenIssuer
 {
+    /// <summary>
+    /// The audiences (<c>aud</c>) of an access token: the <b>client id of the application first</b>, then the resources of the granted scopes (the field
+    /// "Associated Resources" of a scope), without duplicates. The client id stays first because the Server finds the application of an API call from the
+    /// first audience, and the Client package accepts a token when any audience is the one it expects.
+    /// </summary>
+    internal async Task<IReadOnlyList<string>> AudiencesAsync(string clientId, IEnumerable<string> scopes, CancellationToken ct)
+    {
+        var audiences = new List<string> { clientId };
+        var granted = scopes.Distinct(StringComparer.Ordinal).ToImmutableArray();
+        if (granted.Length == 0) return audiences;
+        await foreach (var resource in scopeManager.ListResourcesAsync(granted, ct))
+            if (!string.IsNullOrWhiteSpace(resource) && !audiences.Contains(resource, StringComparer.Ordinal)) audiences.Add(resource);
+        return audiences;
+    }
+
     /// <inheritdoc />
     public async Task<ClaimsPrincipal> CreateUserPrincipalAsync(AppUser user, IEnumerable<string> scopes, IEnumerable<string> amr, string? sessionId, CancellationToken ct = default, string? identityProvider = null)
     {
@@ -48,7 +64,7 @@ public sealed class TokenIssuer(
 
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(scopes);
-        principal.SetResources(client.ClientId);
+        principal.SetResources(await AudiencesAsync(client.ClientId, scopes, ct));
         principal.SetAccessTokenLifetime(TimeSpan.FromMinutes(settings.AccessTokenMinutes));
         principal.SetRefreshTokenLifetime(TimeSpan.FromDays(settings.RefreshTokenDays));
         principal.SetIdentityTokenLifetime(TimeSpan.FromMinutes(settings.IdentityTokenMinutes));
@@ -75,7 +91,7 @@ public sealed class TokenIssuer(
 
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(scopes);
-        principal.SetResources(client.ClientId);
+        principal.SetResources(await AudiencesAsync(client.ClientId, scopes, ct));
         principal.SetAccessTokenLifetime(TimeSpan.FromMinutes(settings.AccessTokenMinutes));
         ApplyDestinations(principal);
         return principal;
@@ -86,6 +102,9 @@ public sealed class TokenIssuer(
     {
         var app = await flow.GetProjectAsync(ct);
         await WriteAccessClaimsAsync(principal, user, app, ct);
+        // A change of the resources of a scope reaches the token at its next refresh.
+        if (principal.GetClaim(Auth2Claims.ClientId) is { Length: > 0 } clientId)
+            principal.SetResources(await AudiencesAsync(clientId, principal.GetScopes(), ct));
         principal.SetClaim(Claims.Email, user.Email);
         principal.SetClaim(Claims.PhoneNumber, user.PhoneNumber);
         principal.SetClaim(Claims.Name, FullName(user));

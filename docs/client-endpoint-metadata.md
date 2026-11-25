@@ -286,3 +286,8 @@ Use `OfType<>()` and not `GetMetadata<>()` when a rule can appear more than once
 - [Concepts](concepts.md)
 - [Enums reference](enums-reference.md)
 - [Documentation index](index.md)
+- [The MVC sample: one action for every kind of rule](sample-mvc.md)
+- [Seeding (first admin)](seeding.md)
+- [Scopes and their resources](scopes.md)
+- [Client setup](client-setup.md)
+- [Getting started](getting-started.md)

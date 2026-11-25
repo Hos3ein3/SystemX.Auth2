@@ -135,6 +135,7 @@ Server options. Section `Auth2`.
 | `AllowCredentialScopeOverride` | When true, an application may override the credential scope in its settings. |
 | `Issuer` | Public issuer URL. Needed in Production (HTTPS). |
 | `AutoSeed` | Run the seeder at startup outside Development. |
+| `SeedDemoData` | Adds the demo people, roles, permissions and groups to the sample project (`sample-project`) when the seed runs, so the sample applications work at once (see `DemoDataSeeder`). The sample project is not a real project, and its people have a public password. Default `false`: switch it on only where you try things out (the development settings and the docker-compose file of this repository do). |
 | `AutoMigrate` | Run migrations at startup in Production. |
 | `ProjectStatusCacheSeconds` | How long the "is this project / application enabled" answer is cached where tokens are validated, in seconds. A disabled project is refused at the next validation after this window (at once on the instance that made the change). 0 turns the cache off. |
 | `SingleProject` | Single-project options. |
@@ -164,6 +165,34 @@ Rejects unsafe or broken application (client) settings.
 | Member | What it does |
 |---|---|
 | `Validate(ClientApplicationSettings, Action<string, string>)` | Validates the settings of one application and reports every problem. |
+
+
+### ClientHealthInfo
+
+What the Server knows about the health of one client application.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(Guid, string, ClientHealthState, Nullable<DateTimeOffset>, Nullable<DateTimeOffset>, string)` | What the Server knows about the health of one client application. |
+| `ApplicationId` | The application. |
+| `ApplicationName` | Its name. |
+| `State` | The result of the last check (`Unknown` when it is too old). |
+| `CheckedAtUtc` | When the client was asked last, or null. |
+| `LastHealthyAtUtc` | The last time the answer was `Healthy`, or null. |
+| `Message` | A short explanation of a bad state (never holds secrets), or null. |
+
+
+### ClientHealthState
+
+The health of a client application, as the Server saw it at its last check (two-way health check).
+
+| Member | What it does |
+|---|---|
+| `Unknown` | Not checked yet, or the last check is too old (the checker is not running). |
+| `Healthy` | The client answered that it is healthy and ready. |
+| `Degraded` | The client answered, and says that something works only in part. |
+| `Unhealthy` | The client answered that it is not healthy, or answered with an error. |
+| `Unreachable` | The Server could not reach the client (no answer, refused, too slow). |
 
 
 ### ClientProvisionResult
@@ -235,6 +264,7 @@ The value that counts for one request: the project value, overridden by the appl
 | `AllowSelfUiLogin` | True when this client may use the password grant and the two-factor grants (Self UI). |
 | `AllowedRedirectUris` | Redirect URIs of the application (OpenIddict field). Empty when the request has no client. |
 | `SendConfirmationEmail` | True when the confirmation email is sent right after registration: application, else project; always true when a confirmed email is required. |
+| `SendConfirmationSMS` | True when the confirmation SMS is sent right after registration: application, else project; always true when a confirmed phone is required. |
 | `EmailProvider` | The email provider chosen for this request: application, else project. Null means "use the server default". |
 | `SmsProvider` | The SMS provider chosen for this request: application, else project. Null means "use the server default". |
 | `FilterProviders(IEnumerable<T>, Func<T, string>)` | The external providers this client shows: a subset of the project's providers (all when the application lists none). |
@@ -752,6 +782,17 @@ The startup check a client makes. The application comes from the token; the requ
 | Member | What it does |
 |---|---|
 | `CheckAsync(ClientHandshakeRequest, CancellationToken)` | Checks project key, application name and server mode against the token's application. |
+
+
+### IClientHealthService
+
+The two-way health check: a client that sent a `HealthUrl` in its handshake is asked every minute "are you healthy and ready?", and the answer is kept so the admin console can show it. A client with a one-way check (no `HealthUrl`) is never called.
+
+| Member | What it does |
+|---|---|
+| `RegisterAsync(Guid, string, CancellationToken)` | Remembers (or forgets, when `healthUrl` is null or not a plain http or https address) where an application answers the health question. Called by the handshake. Returns true when a check is registered. |
+| `CheckAllAsync(CancellationToken)` | Asks every registered client now and keeps the answers. Returns how many clients were asked. |
+| `GetProjectAsync(Guid, CancellationToken)` | The health of the applications of a project that have a two-way check, ordered by name. Empty when none has. |
 
 
 ### IClientIdAccessor
@@ -1343,6 +1384,9 @@ Background jobs. Section `Auth2:Jobs`. One instance runs each job at a time (a d
 | `Enabled` | Master switch. |
 | `IntervalMinutes` | Minutes between runs. |
 | `AuditRetentionDays` | Audit events older than this many days are deleted. 0 keeps them forever. |
+| `ClientHealthEnabled` | Ask the client applications that have a **two-way** health check whether they are healthy and ready (a client with `EnableHealthCheck(o => o.Mode = TwoWay)`). Default `true`. Needs `Enabled`. |
+| `ClientHealthIntervalSeconds` | Seconds between two rounds of asking the clients. Default 60 (every minute). At least 10. |
+| `ClientHealthTimeoutSeconds` | Seconds the Server waits for the answer of one client. Default 5 (1 to 60). |
 
 
 ### KeyInfo
@@ -1846,7 +1890,7 @@ The list definition of users: whitelists for sort, filters and search. Index pla
 
 | Member | What it does |
 |---|---|
-| `For(Auth2DbContext, Guid, bool)` | The users of one project. Every list starts from this query, so it is always under the project (tenant) filter. |
+| `For(IQueryable<AppUser>, IQueryable<UserProject>, Guid, bool)` | The users of one project. Every list starts from this query, so it is always under the project (tenant) filter. |
 | `Definition` | The definition. |
 
 
@@ -1885,6 +1929,18 @@ The keyset cursor: time and id of the last row, as one opaque text.
 ## `SystemX.Auth2.Server.Domain.Settings`
 
 
+### BrandingSettings
+
+Branding and visual tokens.
+
+| Member | What it does |
+|---|---|
+| `PrimaryColor` | Primary brand accent color (e.g. #2563eb). |
+| `PrimaryTextColor` | Text color on primary accent background (e.g. #ffffff). |
+| `BackgroundColor` | Page background color (e.g. #f9fafb). |
+| `Radius` | Border radius token (e.g. 0.375rem). |
+
+
 ### ClientApplicationSettings
 
 Settings of one application (client). Stored in `SettingsJson` next to the OpenIddict fields. It holds only what OpenIddict has no field for. A null value means "use the project value". Redirect URIs, allowed scopes, client type and consent type are OpenIddict fields and are not repeated here.
@@ -1903,6 +1959,7 @@ Settings of one application (client). Stored in `SettingsJson` next to the OpenI
 | `ExternalProviders` | Names of the project's external providers this client shows. Null: all of them. A subset only; it never adds a provider. |
 | `ConsentMode` | Consent mode. Null: the project value. |
 | `SendConfirmationEmail` | Send the confirmation email after registration through this application. Null: the project value. |
+| `SendConfirmationSMS` | Send the confirmation SMS after registration through this application. Null: the project value. |
 | `Messaging` | This application's own email / SMS providers. Null: the project's. Changed only through the messaging admin routes. |
 
 
@@ -2216,6 +2273,7 @@ All settings of one project (the project level). Applications override a few of 
 | `Redirects` | Redirect rules. |
 | `Clients` | Client behaviour. |
 | `Localization` | Localization and branding. |
+| `Branding` | Branding and visual tokens. |
 | `ExternalProviders` | External identity providers (social login, OIDC, SAML, LDAP). Changed only through the provider admin routes (they check each field): the generic settings route ignores this list. |
 | `Messaging` | How emails and SMS are sent for this project. Changed only through the messaging admin routes (they hold a secret). |
 | `Passkeys` | Passkey rules. |
@@ -2246,6 +2304,7 @@ Registration rules.
 | `AssignedRoles` | Role names every new member of the project gets (by self registration, joining with proof, or the first external sign-in). The roles must exist in the project. A missing one is skipped and written to the audit log. The built-in admin roles are refused. |
 | `AssignedGroups` | Group names every new member gets (keys: lowercase letters, digits and `. _ : -`). The groups must exist. A missing one is skipped and audited. |
 | `AssignedPermissions` | Permission keys every new member gets directly (for example `orders.read`). The permissions must exist. A missing one is skipped and audited. |
+| `SendConfirmationSMS` | Send the confirmation SMS right after registration. |
 
 
 ### SamlBinding

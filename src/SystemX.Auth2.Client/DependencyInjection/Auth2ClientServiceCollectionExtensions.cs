@@ -170,11 +170,26 @@ public static class Auth2ClientServiceCollectionExtensions
         return builder;
     }
 
-    /// <summary>Adds a health check named <c>auth2</c>: healthy when the last handshake worked, degraded otherwise.</summary>
-    public static IAuth2ClientBuilder EnableHealthCheck(this IAuth2ClientBuilder builder)
+    /// <summary>
+    /// Adds a health check named <c>auth2</c>: healthy when the last handshake worked, degraded otherwise. By default the check is <b>one-way</b>: the client checks the server.
+    /// Use <see cref="EnableHealthCheck(IAuth2ClientBuilder, Action{Auth2HealthCheckOptions}?)"/> to make it two-way, so the server also checks the client.
+    /// </summary>
+    public static IAuth2ClientBuilder EnableHealthCheck(this IAuth2ClientBuilder builder) => builder.EnableHealthCheck(null);
+
+    /// <summary>
+    /// Adds the health check <c>auth2</c> and chooses who asks whom. <b>One-way</b> (default): only the client checks the server. <b>Two-way</b> (<c>o.Mode = Auth2HealthCheckMode.TwoWay</c>):
+    /// the client also answers the server's question "are you healthy and ready?" at <c>PublicUrl + Path</c> (default <c>/auth2/health</c>), the handshake tells the server where, and the
+    /// server asks every minute and shows the answer in the admin console. Two-way needs <c>PublicUrl</c>: the address of this application as the server reaches it.
+    /// </summary>
+    public static IAuth2ClientBuilder EnableHealthCheck(this IAuth2ClientBuilder builder, Action<Auth2HealthCheckOptions>? configure)
     {
+        var options = builder.Services.AddOptions<Auth2HealthCheckOptions>();
+        if (configure is not null) options.Configure(configure);
+        options.ValidateOnStart();
+        builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<Auth2HealthCheckOptions>, Auth2HealthCheckOptionsValidator>());
         builder.Services.AddHealthChecks().AddCheck<Auth2ClientHealthCheck>("auth2");
         builder.Services.TryAddSingleton<Auth2ClientHealthCheck>();
+        builder.Services.TryAddSingleton<ClientHealthReporter>();
         return builder;
     }
 

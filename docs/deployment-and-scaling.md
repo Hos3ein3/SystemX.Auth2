@@ -101,3 +101,5 @@ Rotate keys with a `CronJob` that runs `rotate-keys`, or by hand.
 - [Client setup](client-setup.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Troubleshooting](troubleshooting.md)
+- [Health check: one-way and two-way](client-health-check.md)
+- [Handshake and startup](handshake-and-startup.md)

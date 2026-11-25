@@ -12,7 +12,7 @@ var auth2Section = builder.Configuration.GetSection("Auth2");
 builder.Services
     .AddAuth2Client(auth2Section)
     .ServerWithMultiProject(builder.Configuration["Auth2:ProjectKey"] ?? "sample-project")
-    .UseHostedUi()   // sign in and out on the Auth2 server pages (/auth2/login and /auth2/logout); use .UseSelfUi() for your own form
+    .UseHostedUi(o => o.Scopes.AddRange(["reports.read", "orders.read", "orders.write"]))   // sign in and out on the Auth2 server pages (/auth2/login and /auth2/logout); use .UseSelfUi() for your own form. The three scopes are asked for at every sign-in (the Showcase page shows what they do)
     .UseCookieAuthentication(o =>
     {
         o.AccessMode = AccessLoadMode.OnSignIn;
@@ -62,7 +62,12 @@ builder.Services
         ];
     })
     .EnableResilience()
-    .EnableHealthCheck();
+    .EnableHealthCheck(o =>
+    {
+        // Two-way: the Auth2 server also asks this application every minute whether it is healthy and ready (the answer is shown on the dashboard of the project in the admin console).
+        o.Mode = Auth2HealthCheckMode.TwoWay;
+        o.PublicUrl = builder.Configuration["Auth2:PublicUrl"] ?? "http://localhost:5101";   // this application's address as the SERVER reaches it (docker-compose sets it to the service name)
+    });
 
 var app = builder.Build();
 

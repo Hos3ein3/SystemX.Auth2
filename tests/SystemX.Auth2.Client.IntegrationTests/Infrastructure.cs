@@ -54,9 +54,26 @@ public class ServerFactory(string connectionString, bool single) : WebApplicatio
 {
     public CapturedMessages Messages { get; } = new();
 
+    /// <summary>Where the Server's health questions go (the two-way health check): set <c>Target</c> to the handler of the client application under test.</summary>
+    public ForwardingHandler Clients { get; } = new();
+
+    /// <summary>Sends every request to <see cref="Target"/>, which can be changed at any time (a handler cannot change its inner handler after its first request).</summary>
+    public sealed class ForwardingHandler : HttpMessageHandler
+    {
+        public HttpMessageHandler? Target { get; set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+            Target is null ? throw new HttpRequestException("no client") : new HttpMessageInvoker(Target, disposeHandler: false).SendAsync(request, ct);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.ConfigureTestServices(s => { s.AddSingleton<IEmailSender>(Messages); s.AddSingleton<ISmsSender>(Messages); });
+        builder.ConfigureTestServices(s =>
+        {
+            s.AddSingleton<IEmailSender>(Messages);
+            s.AddSingleton<ISmsSender>(Messages);
+            s.AddHttpClient("auth2-client-health").ConfigurePrimaryHttpMessageHandler(() => Clients);
+        });
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Auth2", connectionString);
         builder.UseSetting("Auth2:ProjectStatusCacheSeconds", "0");

@@ -46,6 +46,8 @@ public static class Auth2Routes
     public const string Me = Base + "/me";
     /// <summary>Client handshake.</summary>
     public const string Handshake = Base + "/client/handshake";
+    /// <summary>The default path where a client application answers the Server's health question (two-way health check). It is a route of the <b>client</b>, not of the Server.</summary>
+    public const string ClientHealth = "/auth2/health";
     /// <summary>Permissions (POST sync, GET pull).</summary>
     public const string Permissions = Base + "/permissions";
     /// <summary>Permission sync.</summary>

@@ -210,6 +210,8 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IClientApplicationContext, ClientApplicationContext>();
         services.AddSingleton<IProjectStatusCache, ProjectStatusCache>();
         services.AddScoped<Auth2Seeder>();
+        services.AddScoped<DemoDataSeeder>();
+        services.AddScoped<DemoDataRun>();
         services.AddScoped<DatabaseInitializer>();
         return services;
     }
@@ -245,6 +247,10 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddSingleton<IDistributedLock, PostgresDistributedLock>();
         services.AddSingleton<MaintenanceJobs>();
         services.AddHostedService<MaintenanceService>();
+        // The two-way health check: the Server asks the clients that gave a health address in their handshake. The HTTP client does not follow redirects.
+        services.AddHttpClient(ClientHealthService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false });
+        services.AddScoped<IClientHealthService, ClientHealthService>();
+        services.AddHostedService<ClientHealthMonitor>();
 
         var health = services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
         if (redisOn) health.AddCheck<RedisHealthCheck>("redis", tags: ["ready"]);

@@ -18,7 +18,7 @@ namespace SystemX.Auth2.Client.Handshake;
 public sealed record HandshakeOutcome(HandshakeStatus Status, ClientHandshakeResponse? Response, string? Code, string? Message);
 
 /// <summary>Makes one handshake attempt and turns every possible answer into a <see cref="HandshakeStatus"/>.</summary>
-public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, IOptions<Auth2ClientOptions> options)
+public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, IOptions<Auth2ClientOptions> options, IOptions<Auth2HealthCheckOptions>? health = null)
 {
     /// <summary>Warning when the client has a project key but the server has a single project. The key is ignored.</summary>
     public const string SingleServerMessage = "The server has a single project. The ProjectKey is ignored. Remove ServerWithMultiProject.";
@@ -37,7 +37,7 @@ public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenP
             var token = await tokens.GetTokenAsync([Auth2Scopes.ClientHandshake], timeout.Token);
             using var request = new HttpRequestMessage(HttpMethod.Post, Auth2Routes.Handshake.TrimStart('/'))
             {
-                Content = JsonContent.Create(new ClientHandshakeRequest(o.ProjectKey, o.ApplicationName, o.ClientVersion)),
+                Content = JsonContent.Create(new ClientHandshakeRequest(o.ProjectKey, o.ApplicationName, o.ClientVersion, health?.Value.HealthUrl)),
             };
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             using var response = await http.CreateClient(Auth2ClientDefaults.ResilientHttpClientName).SendAsync(request, timeout.Token);

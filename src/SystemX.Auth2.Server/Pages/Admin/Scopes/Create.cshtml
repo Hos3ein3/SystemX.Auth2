@@ -33,7 +33,7 @@
                 <a2-textarea name="Input.Description" value="@Model.Input.Description" rows="3" placeholder="Allows read-only access to customer orders." />
             </a2-field>
 
-            <a2-field label="Associated Resources" hint="Optional space or comma-separated resource server audiences.">
+            <a2-field label="Associated Resources" hint="Optional. APIs this scope is meant for, separated by space, comma or new line. They are added to the audience (aud) of tokens that have this scope.">
                 <a2-input name="Input.Resources" value="@Model.Input.Resources" placeholder="papertrade-api" />
             </a2-field>
 

@@ -78,9 +78,12 @@ A user token that went through the hosted sign-in carries both worlds: the scope
 
 ## Scope in depth
 
+The full guide is [scopes.md](scopes.md); here is the short version.
+
 - A scope is a word that the application asks for at sign-in (`scope=openid profile reports.read`). The scopes must be in the application's allowed scopes; asking for one that is not allowed is refused ([authentication-flows.md](authentication-flows.md#step-by-step-client-credentials-m2m)).
 - The server owns `auth2.*` (for example `auth2.me`, which the `/me` and password-change routes need) and the standard OpenID Connect scopes (`openid`, `profile`, `email`, `phone`, `roles`, `offline_access`). Your own scopes are free-form lowercase words (`reports.read`); the reserved ones are skipped by the sync.
 - Standard scopes control **claims**: `profile` gives the name claims, `email` the email, `phone` the number, `roles` the `role` claim. No `profile` scope means `ICurrentUser.UserName` is `null`.
+- A scope can also list **resources** (the APIs it is meant for). They become audiences (`aud`) of the tokens that have the scope, so an API can accept only tokens made for it: [scopes.md](scopes.md).
 - Scopes belong to the application, so registration cannot "give a person a scope". That is why `RegistrationSettings` has `AssignedRoles`, `AssignedGroups` and `AssignedPermissions`, and no scopes ([server-settings.md](server-settings.md)).
 
 ## Permission in depth
@@ -163,3 +166,7 @@ app.MapGet("/api/reports/revenue", Revenue)
 - [Concepts](concepts.md)
 - [Enums reference](enums-reference.md)
 - [Documentation index](index.md)
+- [The MVC sample: one action for every kind of rule](sample-mvc.md)
+- [Seeding (first admin)](seeding.md)
+- [Client setup](client-setup.md)
+- [Getting started](getting-started.md)

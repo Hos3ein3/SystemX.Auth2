@@ -83,3 +83,7 @@ See [troubleshooting.md](troubleshooting.md). The usual first ones: PostgreSQL i
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Server settings](server-settings.md)
+- [The MVC sample: one action for every kind of rule](sample-mvc.md)
+- [Minimal API methods and attributes: when to use which](client-endpoint-metadata.md)
+- [Scope, permission, role, group: which is which](access-concepts.md)
+- [Scopes and their resources](scopes.md)

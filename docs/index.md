@@ -58,6 +58,9 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 | [access-concepts.md](access-concepts.md) | Scope, permission, role, group, direct grant, token kind: which is which and when to use each |
 | [client-endpoint-metadata.md](client-endpoint-metadata.md) | Minimal API methods and attributes: the same rules written two ways, texts, what the scanners read |
 | [client-api-service.md](client-api-service.md) | `IAuth2ApiClientService`: every method, route, token and scope; language; why it makes no cookie |
+| [scopes.md](scopes.md) | Scopes: standard, `auth2.*` and custom; how a scope gets into a token; create, allow, ask for and check one; the resources (audiences) of a scope |
+| [sample-mvc.md](sample-mvc.md) | The MVC sample: one action for every kind of rule, who passes which one, the audiences of the token |
+| [client-health-check.md](client-health-check.md) | One-way and two-way health check: the server asks the client every minute, and the dashboard shows it |
 | [client-authorization.md](client-authorization.md) | Attributes, Minimal API extensions, API authentication |
 | [client-current-user.md](client-current-user.md) | `ICurrentUser`, `ICurrentClient`, the cache and the stores |
 | [client-reference.md](client-reference.md) | Every public type, member and overload of the Client package |

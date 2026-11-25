@@ -46,7 +46,7 @@ internal sealed class Auth2ApiFilter(string scope, TokenKind kind) : IEndpointFi
         if (!principal.HasScope(scope)) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.InsufficientScope);
 
         // The application is the audience of the token. The body of the request is never used for this.
-        http.RequestServices.GetRequiredService<IClientIdAccessor>().ClientId = principal.GetAudiences().FirstOrDefault();
+        http.RequestServices.GetRequiredService<IClientIdAccessor>().ClientId = SystemX.Auth2.Server.Infrastructure.Auth.TokenAudience.ApplicationOf(principal);
         try
         {
             var flow = http.RequestServices.GetRequiredService<IAuthFlowResolver>();

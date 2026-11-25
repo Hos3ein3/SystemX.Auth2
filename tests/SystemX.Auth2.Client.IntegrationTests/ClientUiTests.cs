@@ -384,6 +384,9 @@ public class HostedUiIntegrationTests : ClientAppTestBase
         e.MapGet("/secure", () => "secure page").WithAuth2();
         e.MapGet("/orders", () => "orders").WithPermission("orders.read");
         e.MapGet("/who", async (ICurrentUser u) => Results.Json(new { u.UserName, u.Email, Roles = await u.GetRolesAsync(), Permissions = await u.GetPermissionsAsync() })).WithAuth2();
+        e.MapGet("/by-scope", () => "scope page").WithScope("auth2.me");
+        e.MapGet("/by-other-scope", () => "other scope page").WithScope("reports.write");
+        e.MapGet("/client", (ICurrentClient c) => Results.Json(new { c.Scopes, c.ClientId })).WithAuth2();
     }
 
     private async Task<(Jar App, Jar Srv, HttpClient ServerClient)> StartAsync(Action<SystemX.Auth2.Client.Options.Auth2CookieOptions>? cookie = null)
@@ -462,6 +465,22 @@ public class HostedUiIntegrationTests : ClientAppTestBase
         var who = await (await app.GetAsync("/who", "application/json")).Content.ReadFromJsonAsync<JsonElement>();
         who.GetProperty("userName").GetString().ShouldBe("sara");
         who.GetProperty("email").GetString().ShouldBe("sara@example.com");
+    }
+
+    [Fact]
+    public async Task TheScopesOfTheAccessToken_AreInTheCookie_SoScopeRulesWorkForAHostedUiUser()
+    {
+        var (app, srv, _) = await StartAsync();
+        await SignInAsync(app, srv, "/secure");
+
+        (await app.GetAsync("/by-scope")).StatusCode.ShouldBe(HttpStatusCode.OK);                  // the token has auth2.me
+        var refused = await app.GetAsync("/by-other-scope");                                       // and not this one: a cookie user is sent to the access denied page
+        refused.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        Jar.Where(refused).ShouldContain("/auth2/denied");
+        var client = await (await app.GetAsync("/client", "application/json")).Content.ReadFromJsonAsync<JsonElement>();
+        client.GetProperty("scopes").EnumerateArray().Select(x => x.GetString()).ShouldContain("auth2.me");
+        client.GetProperty("scopes").EnumerateArray().Select(x => x.GetString()).ShouldContain("openid");
+        client.GetProperty("clientId").GetString().ShouldBe("blog");
     }
 
     [Fact]

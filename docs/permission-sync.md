@@ -167,3 +167,7 @@ The Client package does this for you: `EnablePermissions(...)`, `EnableRoles(...
 - [Getting started](getting-started.md)
 - [Scope, permission, role, group: which is which](access-concepts.md)
 - [Enums reference](enums-reference.md)
+- [Scopes and their resources](scopes.md)
+- [Database tables](database-tables.md)
+- [The MVC sample: one action for every kind of rule](sample-mvc.md)
+- [Seeding (first admin)](seeding.md)

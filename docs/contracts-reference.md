@@ -606,11 +606,11 @@ An application (a client of a project) as shown in the admin API. The secret is 
 
 ### ClientHandshakeRequest
 
-Handshake check sent by the client. `ProjectKey` is null for a single-project server. `ApplicationName` is the name of the application (the client) inside the project. The body never selects the project: the server finds it from the client id. The project key is only an identifier check, never proof of anything, and it is not a secret.
+Handshake check sent by the client. `ProjectKey` is null for a single-project server. `ApplicationName` is the name of the application (the client) inside the project. The body never selects the project: the server finds it from the client id. The project key is only an identifier check, never proof of anything, and it is not a secret. `HealthUrl` is the address where the Server may ask the client "are you healthy and ready?" (two-way health check). It is `null` for a one-way check, and then the Server does not call the client; sending `null` in a later handshake switches the check off again.
 
 | Member | What it does |
 |---|---|
-| `(constructor)(string, string, string)` | Handshake check sent by the client. `ProjectKey` is null for a single-project server. `ApplicationName` is the name of the application (the client) inside the project. The body never selects the project: the server finds it from the client id. The project key is only an identifier check, never proof of anything, and it is not a secret. |
+| `(constructor)(string, string, string, string)` | Handshake check sent by the client. `ProjectKey` is null for a single-project server. `ApplicationName` is the name of the application (the client) inside the project. The body never selects the project: the server finds it from the client id. The project key is only an identifier check, never proof of anything, and it is not a secret. `HealthUrl` is the address where the Server may ask the client "are you healthy and ready?" (two-way health check). It is `null` for a one-way check, and then the Server does not call the client; sending `null` in a later handshake switches the check off again. |
 
 
 ### ClientHandshakeResponse
@@ -620,6 +620,15 @@ Handshake answer. `ServerMode` tells the client which mode the server uses. `Pro
 | Member | What it does |
 |---|---|
 | `(constructor)(Guid, Guid, string, string, ServerMode, string, int, Nullable<TimeSpan>, bool)` | Handshake answer. `ServerMode` tells the client which mode the server uses. `ProjectKey` is null on a single-project server. |
+
+
+### ClientHealthResponse
+
+What a client answers when the Server asks for its health (`GET` on the `HealthUrl` of the handshake). `Status` is `Healthy`, `Degraded` or `Unhealthy` (the result of all the health checks of the client application). The answer holds no details on purpose.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, string, string)` | What a client answers when the Server asks for its health (`GET` on the `HealthUrl` of the handshake). `Status` is `Healthy`, `Degraded` or `Unhealthy` (the result of all the health checks of the client application). The answer holds no details on purpose. |
 
 
 ### CreateApplicationRequest
@@ -1134,6 +1143,7 @@ Every route string. Client and Server both use this class so they never disagree
 | `TwoFactorRecoveryCodes` | Recovery codes. |
 | `Me` | Current user. |
 | `Handshake` | Client handshake. |
+| `ClientHealth` | The default path where a client application answers the Server's health question (two-way health check). It is a route of the **client**, not of the Server. |
 | `Permissions` | Permissions (POST sync, GET pull). |
 | `PermissionsSync` | Permission sync. |
 | `Roles` | Roles (GET pull). |

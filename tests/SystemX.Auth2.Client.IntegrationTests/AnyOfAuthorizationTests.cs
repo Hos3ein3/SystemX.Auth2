@@ -2,7 +2,11 @@ using System.Net;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using SystemX.Auth2.Client.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using SystemX.Auth2.Client.Services;
 using SystemX.Auth2.Contracts.Access;
+using SystemX.Auth2.Contracts.Auth;
+using SystemX.Auth2.Server.Application;
 
 namespace SystemX.Auth2.Client.IntegrationTests;
 
@@ -113,5 +117,44 @@ public class AnyOfAuthorizationTests : ClientAppTestBase
             await a.AssignRoleAsync(u, "Editor");   // the permission comes from a role
         });
         (await GetAsync("/role-perm-only", await LoginAsync("dan"))).ShouldBe(HttpStatusCode.OK);
+    }
+}
+
+/// <summary>An API that expects the audience of a scope resource accepts exactly the tokens that have the scope.</summary>
+public class ScopeResourceAudienceTests : ClientAppTestBase
+{
+    private const string Scope = "orders.api";
+
+    private async Task StartAsync()
+    {
+        await StartAppAsync(e => e.MapGet("/orders", () => "ok").WithAuth2(), api: o => o.Audience = "orders-api");   // this API is the resource "orders-api"
+        await UpdateSettingsAsync(s => s.AllowedScopes.Add(Scope));
+        await using (var scope = ServerScope())
+            (await scope.ServiceProvider.GetRequiredService<IAdminScopeService>().CreateAsync(new SystemX.Auth2.Contracts.Admin.CreateScopeRequest(Scope, "Orders API", null, ["orders-api"]), true)).Result.Succeeded.ShouldBeTrue();
+        await CreateUserAsync();
+    }
+
+    private async Task<string> TokenAsync(params string[] scopes)
+    {
+        var login = await ApiClient.GetRequiredService<IAuth2ApiClientService>().LoginAsync(new LoginRequest("sara", Password, scopes));
+        login.IsSuccess.ShouldBeTrue(login.Error?.Code);
+        return login.Value!.AccessToken!;
+    }
+
+    [Fact]
+    public async Task OnlyTokensWithTheScope_HaveTheAudienceOfTheApi()
+    {
+        await StartAsync();
+        (await GetAsync("/orders", await TokenAsync("openid", "auth2.me", Scope))).ShouldBe(HttpStatusCode.OK);        // aud = blog, orders-api
+        (await GetAsync("/orders", await TokenAsync("openid", "auth2.me"))).ShouldBe(HttpStatusCode.Unauthorized);       // aud = blog only: not for this API
+        (await GetAsync("/orders")).ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task AMachineTokenWithTheScope_IsAcceptedToo()
+    {
+        await StartAsync();
+        (await GetAsync("/orders", await MachineTokenAsync(Scope))).ShouldBe(HttpStatusCode.OK);
+        (await GetAsync("/orders", await MachineTokenAsync("auth2.client.handshake"))).ShouldBe(HttpStatusCode.Unauthorized);
     }
 }

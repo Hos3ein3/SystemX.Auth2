@@ -104,7 +104,7 @@ Permission keys are lowercase letters, digits and `. _ : -`.
 
 - the signing keys come from the server's discovery document and are cached;
 - a token with an unknown key id makes the client read the keys again and wait up to 2 seconds for them, so key rotation needs no restart and the first request with the new key works. This happens at most once per `KeyRefreshInterval` (30 s), so made-up key ids cannot make your server wait;
-- the audience must be this application's client id, so a token for another application is refused;
+- the audience must be this application's client id (or the `Audience` you set, for example a resource name of a scope: [scopes.md](scopes.md)), so a token for another application or another API is refused;
 - machine tokens and user tokens are both accepted. Limit them per endpoint.
 
 Limits: the client checks the token's signature, issuer, audience and lifetime. It does **not** ask the server whether the token was revoked, so a revoked token works until it expires. Keep access token lifetimes short (the default is 15 minutes).
@@ -139,6 +139,8 @@ Limits: the client checks the token's signature, issuer, audience and lifetime. 
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Enums reference](enums-reference.md)
+- [Scopes and their resources](scopes.md)
+- [Database tables](database-tables.md)
 
 ## The same constants everywhere
 

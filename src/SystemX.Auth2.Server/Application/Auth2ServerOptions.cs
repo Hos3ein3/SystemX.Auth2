@@ -23,6 +23,12 @@ public sealed class Auth2ServerOptions
     /// <summary>Run the seeder at startup outside Development.</summary>
     public bool AutoSeed { get; set; }
 
+    /// <summary>
+    /// Adds the demo people, roles, permissions and groups to the sample project (<c>sample-project</c>) when the seed runs, so the sample applications work at once
+    /// (see <c>DemoDataSeeder</c>). The sample project is not a real project, and its people have a public password. Default <c>false</c>: switch it on only where you try things out (the development settings and the docker-compose file of this repository do).
+    /// </summary>
+    public bool SeedDemoData { get; set; }
+
     /// <summary>Run migrations at startup in Production.</summary>
     public bool AutoMigrate { get; set; }
 
@@ -183,6 +189,18 @@ public sealed class JobsOptions
 
     /// <summary>Audit events older than this many days are deleted. 0 keeps them forever.</summary>
     public int AuditRetentionDays { get; set; } = 365;
+
+    /// <summary>
+    /// Ask the client applications that have a <b>two-way</b> health check whether they are healthy and ready (a client with <c>EnableHealthCheck(o =&gt; o.Mode = TwoWay)</c>).
+    /// Default <c>true</c>. Needs <see cref="Enabled"/>.
+    /// </summary>
+    public bool ClientHealthEnabled { get; set; } = true;
+
+    /// <summary>Seconds between two rounds of asking the clients. Default 60 (every minute). At least 10.</summary>
+    public int ClientHealthIntervalSeconds { get; set; } = 60;
+
+    /// <summary>Seconds the Server waits for the answer of one client. Default 5 (1 to 60).</summary>
+    public int ClientHealthTimeoutSeconds { get; set; } = 5;
 }
 
 /// <summary>Development helpers. Section <c>Auth2:Development</c>. They are ignored outside Development.</summary>

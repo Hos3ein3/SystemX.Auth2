@@ -266,7 +266,8 @@ Registration of the SystemX.Auth2 client. Every method can be called in any orde
 | `EnableCurrentUser(this IAuth2ClientBuilder, Action<Auth2CurrentUserOptions>)` | Sets how the current user's access data is read and cached. |
 | `UseDistributedCurrentUserStore(this IAuth2ClientBuilder)` | Keeps the access data of users in `IDistributedCache` (add Redis with `AddStackExchangeRedisCache`), so all instances of your application share it. |
 | `EnableResilience(this IAuth2ClientBuilder)` | Adds retry (with jitter), timeout and circuit breaker to the calls that can safely be repeated (token, handshake, sync, reads). Register, login and password calls are never retried. |
-| `EnableHealthCheck(this IAuth2ClientBuilder)` | Adds a health check named `auth2`: healthy when the last handshake worked, degraded otherwise. |
+| `EnableHealthCheck(this IAuth2ClientBuilder)` | Adds a health check named `auth2`: healthy when the last handshake worked, degraded otherwise. By default the check is **one-way**: the client checks the server. Use `EnableHealthCheck` to make it two-way, so the server also checks the client. |
+| `EnableHealthCheck(this IAuth2ClientBuilder, Action<Auth2HealthCheckOptions>)` | Adds the health check `auth2` and chooses who asks whom. **One-way** (default): only the client checks the server. **Two-way** (`o.Mode = Auth2HealthCheckMode.TwoWay`): the client also answers the server's question "are you healthy and ready?" at `PublicUrl + Path` (default `/auth2/health`), the handshake tells the server where, and the server asks every minute and shows the answer in the admin console. Two-way needs `PublicUrl`: the address of this application as the server reaches it. |
 | `AddAuth2MachineToken(this IHttpClientBuilder, string[])` | Makes an HTTP client send a machine token with every request. Name the scopes the called API needs. |
 
 
@@ -852,7 +853,7 @@ Makes one handshake attempt and turns every possible answer into a `HandshakeSta
 
 | Member | What it does |
 |---|---|
-| `(constructor)(IHttpClientFactory, IAuth2MachineTokenProvider, IOptions<Auth2ClientOptions>)` | Makes one handshake attempt and turns every possible answer into a `HandshakeStatus`. |
+| `(constructor)(IHttpClientFactory, IAuth2MachineTokenProvider, IOptions<Auth2ClientOptions>, IOptions<Auth2HealthCheckOptions>)` | Makes one handshake attempt and turns every possible answer into a `HandshakeStatus`. |
 | `SingleServerMessage` | Warning when the client has a project key but the server has a single project. The key is ignored. |
 | `MultiServerMessage` | Message when the client has no project key but the server serves many projects. |
 | `RunAsync(CancellationToken)` | Makes one attempt. Never throws (except when `ct` is cancelled). |
@@ -1020,6 +1021,37 @@ Options of group handling. Pushing groups needs `Clients.GroupSyncAllowed` on th
 | `FromKey(string, string)` |  |
 | `FromMember(string, string, MemberInfo, string)` |  |
 | `FromConfiguration(IConfigurationSection)` |  |
+
+
+### Auth2HealthCheckMode
+
+Who asks whom in the health check ([EnableHealthCheck]).
+
+| Member | What it does |
+|---|---|
+| `OneWay` | The client checks the server: the health check `auth2` is `Healthy` after a good handshake and `Degraded` otherwise. The server never calls the client. |
+| `TwoWay` | `OneWay`, and the server also checks the client: the client tells the server where it answers (`PublicUrl` and `Path`) and the server asks every minute whether the client is healthy and ready. The answer is shown in the admin console. |
+
+
+### Auth2HealthCheckOptions
+
+Options of `EnableHealthCheck`.
+
+| Member | What it does |
+|---|---|
+| `Mode` | Who asks whom. Default `OneWay`. |
+| `PublicUrl` | The address of **this application** as the Server reaches it (for example `https://shop.example.com`, or `http://sample-mvc:5001` inside docker). Required for `TwoWay`: an absolute http or https address without a user name, a query or a fragment. |
+| `Path` | The path where this application answers the health question. Default `/auth2/health`. Used by `TwoWay`. |
+| `HealthUrl` | The full address the Server is told to call, or null for a one-way check. |
+
+
+### Auth2HealthCheckOptionsValidator
+
+Checks `Auth2HealthCheckOptions` when the application starts.
+
+| Member | What it does |
+|---|---|
+| `Validate(string, Auth2HealthCheckOptions)` |  |
 
 
 ### Auth2HostedUiOptions

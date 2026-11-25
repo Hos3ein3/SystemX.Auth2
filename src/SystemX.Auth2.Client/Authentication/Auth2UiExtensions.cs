@@ -127,6 +127,15 @@ namespace Microsoft.AspNetCore.Builder
         /// </summary>
         public static IEndpointRouteBuilder MapAuth2Endpoints(this IEndpointRouteBuilder routes)
         {
+            // The answer to the server's health question (two-way health check). It is public and says one word.
+            var health = routes.ServiceProvider.GetRequiredService<IOptions<Auth2HealthCheckOptions>>().Value;
+            if (health.Mode == Auth2HealthCheckMode.TwoWay)
+                routes.MapGet(health.Path, async (SystemX.Auth2.Client.HealthChecks.ClientHealthReporter reporter, CancellationToken ct) =>
+                {
+                    var (body, status) = await reporter.ReportAsync(ct);
+                    return Results.Json(body, statusCode: status);
+                }).AllowAnonymous().ExcludeFromDescription();
+
             var flags = routes.ServiceProvider.GetRequiredService<IOptions<Auth2AuthFlags>>().Value;
             if (!flags.HasCookie) return routes;
 

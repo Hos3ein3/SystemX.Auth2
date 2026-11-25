@@ -30,6 +30,7 @@ public sealed partial class Auth2Seeder(
     IAuditService audit,
     IProjectSelection selection,
     TimeProvider clock,
+    IServiceProvider services,
     IOpenIddictApplicationManager? appManager = null,
     IHostEnvironment? env = null)
 {
@@ -47,6 +48,7 @@ public sealed partial class Auth2Seeder(
         await EnsureDatabaseCompatibilityAsync(ct);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var seedDemo = false;
 
         var globalApp = await EnsureProjectAsync(ProjectKeyRules.GlobalProjectKey, "Global", "Built-in project for developers and global admins.", "_global", ct);
         await EnsureScopesAsync(ct);
@@ -60,9 +62,18 @@ public sealed partial class Auth2Seeder(
         {
             await EnsureGlobalPermissionsAsync(globalApp, ct);
             await EnsureSampleProjectAndApplicationsAsync(ct);
+            seedDemo = !single && options.Value.SeedDemoData;
         }
 
         await tx.CommitAsync(ct);
+
+        // The demo people of the sample project. The sample project is not a real project, so they are added wherever it is added (switch off with Auth2:SeedDemoData=false).
+        // They come after the commit and cannot fail the seed: a problem here is logged and the server starts.
+        if (seedDemo)
+        {
+            try { await services.GetRequiredService<DemoDataSeeder>().EnsureAsync(ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogError(ex, "The demo data of the sample project could not be added. The server starts without it."); }
+        }
 
         if (created)
             log.LogWarning("Default GlobalAdmin created with the default password. Change it now.");
@@ -197,10 +208,23 @@ public sealed partial class Auth2Seeder(
             ct);
 
         // Ensure custom scopes
-        foreach (var scope in new[] { "reports.read", "orders.read", "orders.write" })
+        // The sample scopes are meant for two sample APIs: their resources become audiences of the tokens that have the scopes (docs/scope-resources.md).
+        foreach (var (scope, resource) in new[] { ("reports.read", "reports-api"), ("orders.read", "orders-api"), ("orders.write", "orders-api") })
         {
-            if (await scopeManager.FindByNameAsync(scope, ct) is null)
-                await scopeManager.CreateAsync(new OpenIddictScopeDescriptor { Name = scope, DisplayName = scope }, ct);
+            var existing = await scopeManager.FindByNameAsync(scope, ct);
+            if (existing is null)
+            {
+                var descriptor = new OpenIddictScopeDescriptor { Name = scope, DisplayName = scope };
+                descriptor.Resources.Add(resource);
+                await scopeManager.CreateAsync(descriptor, ct);
+            }
+            else if ((await scopeManager.GetResourcesAsync(existing, ct)).IsDefaultOrEmpty)
+            {
+                var descriptor = new OpenIddictScopeDescriptor();
+                await scopeManager.PopulateAsync(descriptor, existing, ct);
+                descriptor.Resources.Add(resource);
+                await scopeManager.UpdateAsync(existing, descriptor, ct);
+            }
         }
 
         // Ensure globaladmin has access to the sample project with password hash

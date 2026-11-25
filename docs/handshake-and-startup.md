@@ -70,6 +70,10 @@ Messages: "The server has a single project. The ProjectKey is ignored. Remove Se
 and "The server serves many projects. Call ServerWithMultiProject(projectKey) with the key of the project of this application." (the client stops).
 Sync (see [permission-sync.md](permission-sync.md)) starts only after a successful handshake.
 
+## The health address (two-way health check)
+
+The handshake request has an optional `healthUrl`. A client with `EnableHealthCheck(o => o.Mode = TwoWay)` sends its own address there (`PublicUrl` + `Path`); the Server keeps it and asks the client every minute whether it is healthy and ready. A handshake without it (one-way) removes the address. A wrong address never fails the handshake: it is ignored and logged ([client-health-check.md](client-health-check.md)).
+
 ## How to implement / extend
 
 - The server side is `ClientHandshakeService`. It reads the project (`IAuthFlowResolver.GetProjectAsync`) and the calling application (`GetClientAsync`) and compares them with the body.
@@ -100,3 +104,7 @@ Sync (see [permission-sync.md](permission-sync.md)) starts only after a successf
 - [Documentation index](index.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Server settings](server-settings.md)
+- [Observability](observability.md)
+- [Deployment and scaling](deployment-and-scaling.md)
+- [Database tables](database-tables.md)
+- [Security](security.md)

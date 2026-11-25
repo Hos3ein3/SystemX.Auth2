@@ -62,7 +62,12 @@ builder.Services
         ];
     })
     .EnableResilience()
-    .EnableHealthCheck();
+    .EnableHealthCheck(o =>
+    {
+        // Two-way: the Auth2 server also asks this application every minute whether it is healthy and ready (the answer is shown on the dashboard of the project in the admin console).
+        o.Mode = Auth2HealthCheckMode.TwoWay;
+        o.PublicUrl = builder.Configuration["Auth2:PublicUrl"] ?? "http://localhost:5102";   // this application's address as the SERVER reaches it (docker-compose sets it to the service name)
+    });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

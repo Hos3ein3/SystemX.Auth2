@@ -1,0 +1,23 @@
+@model SystemX.Auth2.Samples.Mvc.Models.RuleViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="space-y-6 max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="border-b pb-4 mb-4">
+            <span class="inline-block bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded font-semibold mb-2">Allowed</span>
+            <h1 class="text-2xl font-bold text-gray-900">@Model.Title</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Protected by <code class="font-mono bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-xs break-all">@Model.Rule</code>
+            </p>
+        </div>
+
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-emerald-900 text-sm">
+            <p class="font-semibold mb-1">You are in@(Model.UserName is null ? "" : ", " + Model.UserName)</p>
+            <p>@Model.Explanation</p>
+        </div>
+
+        <p class="mt-4 text-sm"><a asp-action="Showcase" class="text-indigo-600 hover:underline">&larr; All the demo rules</a> · <a asp-action="Inspect" class="text-indigo-600 hover:underline">What do I have?</a></p>
+    </div>
+</div>

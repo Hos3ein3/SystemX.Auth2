@@ -1,0 +1,79 @@
+@{
+    ViewData["Title"] = "Rules showcase";
+    bool signedIn = ViewBag.IsAuthenticated ?? false;
+    IEnumerable<string> roles = (IEnumerable<string>?)ViewBag.Roles ?? Array.Empty<string>();
+    IEnumerable<string> groups = (IEnumerable<string>?)ViewBag.Groups ?? Array.Empty<string>();
+    IEnumerable<string> permissions = (IEnumerable<string>?)ViewBag.Permissions ?? Array.Empty<string>();
+    IEnumerable<string> scopes = (IEnumerable<string>?)ViewBag.Scopes ?? Array.Empty<string>();
+
+    // kind, action, what it needs
+    var demos = new (string Kind, string Action, string Rule)[]
+    {
+        ("Permission", "Orders", "orders.read"),
+        ("Permission", "OrdersWrite", "orders.write"),
+        ("Permission", "OrdersWriteOrDelete", "orders.write OR orders.delete (any)"),
+        ("Permission", "OrdersFullControl", "orders.read AND orders.write AND orders.delete (all)"),
+        ("Permission", "OrdersThroughARole", "orders.read, only from a role"),
+        ("Permission", "OrdersGrantedToYou", "orders.read, only granted to you"),
+        ("Permission", "OrdersExport", "orders.export, with the audit hook"),
+        ("Role", "AdminPanel", "role Admin"),
+        ("Role", "ManagersArea", "role Manager OR Admin (any)"),
+        ("Role", "AdminAndManager", "role Admin AND Manager (all)"),
+        ("Group", "FinanceTeam", "group finance"),
+        ("Group", "FinanceRegions", "group finance-eu OR finance-us"),
+        ("Scope (the client)", "ReportsScope", "scope reports.read"),
+        ("Scope (the client)", "OrdersScope", "scope orders.read OR orders.write"),
+        ("Scope AND permission", "ReportsScopeAndPermission", "scope reports.read AND permission reports.read"),
+        ("Token kind", "PeopleOnly", "a person's token"),
+        ("Any of (OR across kinds)", "DeleteOrders", "role Admin OR permission orders.delete"),
+        ("Any of (OR across kinds)", "BudgetReview", "role Manager OR group finance"),
+        ("Any of (OR across kinds)", "ApproveOrders", "permission orders.approve OR group finance"),
+        ("Any of (OR across kinds)", "ReportsForProgramsOrAdmins", "scope reports.read OR role Admin"),
+        ("Any of (OR across kinds)", "AnythingGoes", "role Admin OR permission orders.delete OR group support OR scope orders.write"),
+        ("In code", "Inspect", "any signed-in user: the checks written in code, and the audiences of your token"),
+    };
+}
+
+<div class="space-y-6 max-w-5xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h1 class="text-2xl font-bold text-gray-900">Rules showcase</h1>
+        <p class="text-sm text-gray-500 mt-1">One page for every kind of rule. Open them while signed in as different demo users (<code class="font-mono text-xs">alice</code>, <code class="font-mono text-xs">bob</code>, <code class="font-mono text-xs">carol</code>, <code class="font-mono text-xs">dave</code>, <code class="font-mono text-xs">erin</code>, <code class="font-mono text-xs">frank</code>; password <code class="font-mono text-xs">Demo@12345!</code>) and see who gets in. A refused page shows the access denied page.</p>
+
+        <div class="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+            @if (signedIn)
+            {
+                <p class="font-semibold">You are @ViewBag.UserName</p>
+                <p class="text-gray-600">Roles: <span class="font-mono text-xs">@(roles.Any() ? string.Join(", ", roles) : "none")</span></p>
+                <p class="text-gray-600">Groups: <span class="font-mono text-xs">@(groups.Any() ? string.Join(", ", groups) : "none")</span></p>
+                <p class="text-gray-600">Permissions: <span class="font-mono text-xs break-words">@(permissions.Any() ? string.Join(", ", permissions) : "none")</span></p>
+                <p class="text-gray-600">Scopes of this application's token: <span class="font-mono text-xs">@(scopes.Any() ? string.Join(", ", scopes) : "none")</span></p>
+            }
+            else
+            {
+                <p>You are not signed in. <a href="/auth2/login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="text-indigo-600 hover:underline">Sign in</a> to try the rules (a person who is not signed in is sent to the sign-in page).</p>
+            }
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-gray-600">
+                    <th class="py-3 px-4 font-semibold">Kind</th>
+                    <th class="py-3 px-4 font-semibold">Page</th>
+                    <th class="py-3 px-4 font-semibold">What it needs</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @foreach (var d in demos)
+                {
+                    <tr class="hover:bg-gray-50">
+                        <td class="py-2.5 px-4 text-gray-500 whitespace-nowrap">@d.Kind</td>
+                        <td class="py-2.5 px-4"><a asp-action="@d.Action" class="text-indigo-600 hover:underline font-medium">@d.Action</a></td>
+                        <td class="py-2.5 px-4 text-gray-800">@d.Rule</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -194,7 +194,7 @@ The person is in a cookie, not in a bearer token. The services work the same way
 | `UserName` is `null` | The token has no `preferred_username`: ask for the `profile` scope |
 | `Email` or `PhoneNumber` is `null` | Ask for the `email` / `phone` scope, and check that the person has one |
 | `ProjectKey` is `null` | The Server is single-project (the claim is omitted) |
-| `Scopes` is empty for a cookie user | The `scope` claim was not copied: use `AccessMode` that loads the data, or check the token's scopes |
+| `Scopes` is empty for a cookie user | Older versions: the identity token has no `scope` claim. The hosted UI now copies the scopes of the **access token** into the cookie at sign-in (the Self UI always did). Check which scopes the application asked for and is allowed |
 | A role I just gave is not seen by `[Auth2Role]` | The `role` claim is a snapshot made when the token was issued (and only when the `roles` scope was granted). Renew the token, or protect with a permission. `HasRoleAsync` reads the access data and may already be newer ([access-concepts.md](access-concepts.md#role-in-depth)) |
 | `HasRoleAsync("admin")` is `true` but `HasPermissionAsync("Orders.Read")` is also `true` | Both are normalised on purpose: roles ignore case, permission keys are lower-cased |
 

@@ -269,9 +269,10 @@ Use it in production, so that a short network problem or a Server restart does n
 
 ```csharp
 IAuth2ClientBuilder EnableHealthCheck(this IAuth2ClientBuilder builder)
+IAuth2ClientBuilder EnableHealthCheck(this IAuth2ClientBuilder builder, Action<Auth2HealthCheckOptions>? configure)
 ```
 
-Adds a health check named `auth2`: **Healthy** when the last handshake worked, **Degraded** (with the status text) when it has not finished or failed. Map your health endpoints as usual:
+Adds a health check named `auth2`: **Healthy** when the last handshake worked, **Degraded** (with the status text) when it has not finished or failed. The first overload is **one-way**: only your application checks the Server. With the second you can choose **two-way** (`o.Mode = Auth2HealthCheckMode.TwoWay`, `o.PublicUrl = "https://shop.example.com"`, optional `o.Path`, default `/auth2/health`): your application also answers the Server's question "are you healthy and ready?", and the Server asks every minute and shows the answer on the dashboard of the project in the admin console. See [client-health-check.md](client-health-check.md). Map your health endpoints as usual:
 
 ```csharp
 builder.Services.AddAuth2Client(section).EnableHealthCheck();

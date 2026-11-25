@@ -20,7 +20,7 @@ internal static class ProjectStatusCheck
         if (principal is null) return false;
         if (Guid.TryParse(principal.GetClaim(Auth2Claims.ProjectId), out var projectId) && !await status.IsProjectEnabledAsync(projectId, ct)) return true;
         // The application of a user token is the audience, the one of a machine token is its subject (and audience too).
-        var clientId = principal.GetAudiences().FirstOrDefault();
+        var clientId = SystemX.Auth2.Server.Infrastructure.Auth.TokenAudience.ApplicationOf(principal);
         return !string.IsNullOrEmpty(clientId) && !await status.IsApplicationEnabledAsync(clientId, ct);
     }
 }

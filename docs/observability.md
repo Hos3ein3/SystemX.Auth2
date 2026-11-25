@@ -53,6 +53,18 @@ OTEL_SERVICE_NAME=systemx-auth2
 
 `/health/live` and `/health/ready`. See [deployment-and-scaling.md](deployment-and-scaling.md).
 
+The server has two health checks, both tagged `ready`: **`database`** (can the server open a connection to PostgreSQL) and **`redis`** (does Redis answer a ping; only when `Auth2:Redis:ConnectionString` is set).
+
+**On the dashboard.** A **global admin** sees both on the dashboard of every project (`/admin/p/{project-key}`), as badges beside `Jobs` and `Status`:
+
+| Badge | Meaning |
+|---|---|
+| `PostgreSQL: Healthy` (green) | The database answers. `Degraded` is yellow, `Unhealthy` red (the tooltip says how long the check took, and the reason) |
+| `Redis: Healthy` | Redis answers |
+| `Redis: Off` (grey) | Redis is not configured: the server keeps one-time codes and rate-limit counters in the database instead ([redis.md](redis.md)) |
+
+The checks run when the page opens, with a limit of 3 seconds, so a dead service shows `Unhealthy` and cannot hang the page. Project admins do not see these two badges (they say something about the server, not about one project). The applications that use the two-way health check have their own badge, `Clients` ([client-health-check.md](client-health-check.md)).
+
 ## Alerts to start with
 
 - `auth2.ratelimit.rejections` rising: an attack, or a limit that is too low.
@@ -91,3 +103,6 @@ OTEL_SERVICE_NAME=systemx-auth2
 - [Redis: what it does, how to enable it, and the Client's cache](redis.md)
 - [Client setup](client-setup.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
+- [Health check: one-way and two-way](client-health-check.md)
+- [Handshake and startup](handshake-and-startup.md)
+- [Database tables](database-tables.md)

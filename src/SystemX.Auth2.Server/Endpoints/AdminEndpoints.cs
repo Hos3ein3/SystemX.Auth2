@@ -60,7 +60,7 @@ internal sealed class AdminApiFilter(AdminLevel level) : IEndpointFilter
         await using (var child = http.RequestServices.CreateAsyncScope())
         {
             var sp = child.ServiceProvider;
-            sp.GetRequiredService<IClientIdAccessor>().ClientId = principal.GetAudiences().FirstOrDefault();
+            sp.GetRequiredService<IClientIdAccessor>().ClientId = SystemX.Auth2.Server.Infrastructure.Auth.TokenAudience.ApplicationOf(principal);
             try { home = await sp.GetRequiredService<IAuthFlowResolver>().GetProjectAsync(http.RequestAborted); }
             catch (ProjectNotFoundException) { return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ProjectNotFound); }
             if (await sp.GetRequiredService<IAuthFlowResolver>().CheckGateAsync(http.RequestAborted) is not null) return ApiResults.Error(http, StatusCodes.Status403Forbidden, Auth2ErrorCodes.AccessDenied);

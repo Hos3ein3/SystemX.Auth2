@@ -680,7 +680,7 @@ Primary key: `key`.
 
 ### server_values
 
-**What it is.** A tiny server-wide key/value store for settings that an **admin changes at run time** without a deploy: `key` (primary key), `value` (text), `updated_at_utc`. Today it holds `passkeys.blocked_aaguids` (the authenticator models that cannot be registered, comma-separated; `GET` and `PUT /api/auth2/admin/passkeys/blocked-aaguids`). It is joined with `Auth2:Passkeys:BlockedAaguids` from the configuration.
+**What it is.** A tiny server-wide key/value store for settings that an **admin changes at run time** without a deploy: `key` (primary key), `value` (text), `updated_at_utc`. Today it holds `passkeys.blocked_aaguids` (the authenticator models that cannot be registered, comma-separated; `GET` and `PUT /api/auth2/admin/passkeys/blocked-aaguids`). It is joined with `Auth2:Passkeys:BlockedAaguids` from the configuration. It also holds one row **per client application with a two-way health check**: the key is `client-health:{application id}` and the value is JSON (the address the application gave in its handshake, the state of the last check, the time of the check, the last time it was healthy and a short message) ([client-health-check.md](client-health-check.md)). The row is removed when the application sends a handshake without an address.
 <!-- columns:server_values:start -->
 <details><summary>All columns</summary>
 
@@ -834,3 +834,10 @@ Primary key: `id`.
 - [Contracts reference](contracts-reference.md)
 - [Two-factor authentication and `TwoFactorService`](two-factor.md)
 - [Error codes](error-codes.md)
+- [Scopes and their resources](scopes.md)
+- [Scope, permission, role, group: which is which](access-concepts.md)
+- [Client authorization](client-authorization.md)
+- [Admin JSON API](admin-api.md)
+- [Client setup](client-setup.md)
+- [Handshake and startup](handshake-and-startup.md)
+- [Observability](observability.md)

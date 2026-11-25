@@ -140,3 +140,4 @@ See [authentication-flows.md](authentication-flows.md).
 - [Scope, permission, role, group: which is which](access-concepts.md)
 - [Minimal API methods and attributes: when to use which](client-endpoint-metadata.md)
 - [Enums reference](enums-reference.md)
+- [Scopes and their resources](scopes.md)

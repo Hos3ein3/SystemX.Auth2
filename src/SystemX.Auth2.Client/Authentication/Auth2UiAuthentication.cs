@@ -198,9 +198,30 @@ internal sealed class Auth2OidcConfigurator(IOptions<Auth2ClientOptions> client,
         {
             OnTokenValidated = async ctx =>
             {
-                if (ctx.Principal is not null) await loader.OnSignedInAsync(ctx.Principal, ctx.TokenEndpointResponse?.AccessToken, ctx.HttpContext.RequestAborted);
+                if (ctx.Principal is null) return;
+                CopyAccessTokenClaims(ctx.Principal, ctx.TokenEndpointResponse?.AccessToken);
+                await loader.OnSignedInAsync(ctx.Principal, ctx.TokenEndpointResponse?.AccessToken, ctx.HttpContext.RequestAborted);
             },
         };
+    }
+
+    /// <summary>
+    /// The identity token carries the person, but not the <b>scopes</b> and the facts about the application and the session (<c>client_id</c>, <c>application_id</c>,
+    /// <c>project_id</c>, <c>projectkey</c>, <c>sid</c>): those are in the <b>access</b> token. Without them the cookie of a hosted-UI sign-in would have no scopes,
+    /// so <c>ICurrentClient.Scopes</c>, <c>[Auth2Scope]</c> and <c>WithScope</c> would refuse everybody and <c>ICurrentClient.ClientId</c> would be empty.
+    /// They are copied into the cookie at sign-in, as the Self UI does. A claim that the identity token already has is left alone.
+    /// </summary>
+    private static void CopyAccessTokenClaims(ClaimsPrincipal principal, string? accessToken)
+    {
+        if (string.IsNullOrEmpty(accessToken) || principal.Identity is not ClaimsIdentity identity) return;
+        JsonWebToken jwt;
+        try { jwt = new JsonWebToken(accessToken); }
+        catch (ArgumentException) { return; }   // not a readable JWT (for example an encrypted token): nothing to copy
+
+        if (!identity.HasClaim(c => c.Type is "scope" or "scp"))
+            foreach (var claim in jwt.Claims.Where(c => c.Type is "scope" or "scp")) identity.AddClaim(new Claim("scope", claim.Value));
+        foreach (var type in new[] { Auth2Claims.ClientId, Auth2Claims.ApplicationId, Auth2Claims.ProjectId, Auth2Claims.ProjectKey, Auth2Claims.SessionId })
+            if (!identity.HasClaim(c => c.Type == type) && jwt.Claims.FirstOrDefault(c => c.Type == type) is { } found) identity.AddClaim(new Claim(type, found.Value));
     }
 }
 

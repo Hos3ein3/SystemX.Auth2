@@ -128,7 +128,7 @@ To try again by hand: `await api.HandshakeAsync()`.
 
 ## Health check
 
-`.EnableHealthCheck()` adds a check named `auth2`: **Healthy** after a good handshake, **Degraded** otherwise. The application keeps running when it is degraded.
+`.EnableHealthCheck()` adds a check named `auth2`: **Healthy** after a good handshake, **Degraded** otherwise. The application keeps running when it is degraded. This is the **one-way** check (the client checks the server). `.EnableHealthCheck(o => { o.Mode = Auth2HealthCheckMode.TwoWay; o.PublicUrl = "..."; })` makes it **two-way**: the server also asks the client every minute and shows the answer on the project dashboard ([client-health-check.md](client-health-check.md)).
 
 ## The Auth2 API service
 
@@ -193,6 +193,11 @@ Calls that **change something** (register, login, password calls, refresh) are *
 - [Observability](observability.md)
 - [API reference](api-reference.md)
 - [Localization](localization.md)
+- [The MVC sample: one action for every kind of rule](sample-mvc.md)
+- [Minimal API methods and attributes: when to use which](client-endpoint-metadata.md)
+- [Scope, permission, role, group: which is which](access-concepts.md)
+- [Scopes and their resources](scopes.md)
+- [Database tables](database-tables.md)
 
 ## Sign-in for browser apps (UI modes)
 

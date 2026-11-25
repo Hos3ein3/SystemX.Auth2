@@ -18,6 +18,20 @@
                     Jobs: @(Model.Metrics.JobHealth.IsHealthy ? "Healthy" : $"{Model.Metrics.JobHealth.FailedCount} Failed")
                 </span>
             }
+            @foreach (var piece in Model.Infrastructure)
+            {
+                <span title="@piece.Detail" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium @(piece.Status switch { Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy => "bg-green-100 text-green-800", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded => "bg-yellow-100 text-yellow-800", null => "bg-gray-100 text-gray-600", _ => "bg-red-100 text-red-800" })">
+                    @piece.Label: @(piece.Status?.ToString() ?? "Off")
+                </span>
+            }
+            @if (Model.ClientHealthSummary is { } clients)
+            {
+                var detail = string.Join("\n", Model.ClientHealth.Select(c => $"{c.ApplicationName}: {c.State}" + (c.CheckedAtUtc is { } at ? $" (checked {at:u})" : "") + (string.IsNullOrEmpty(c.Message) ? "" : $" - {c.Message}")));
+                var unhealthy = Model.ClientHealth.Count(c => c.State is ClientHealthState.Unhealthy or ClientHealthState.Unreachable or ClientHealthState.Degraded);
+                <span title="@detail" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium @(clients switch { ClientHealthState.Healthy => "bg-green-100 text-green-800", ClientHealthState.Degraded => "bg-yellow-100 text-yellow-800", ClientHealthState.Unknown => "bg-gray-100 text-gray-700", _ => "bg-red-100 text-red-800" })">
+                    Clients: @(clients switch { ClientHealthState.Healthy => "Healthy", ClientHealthState.Unknown => "Unknown", _ => $"{unhealthy} of {Model.ClientHealth.Count} not healthy" })
+                </span>
+            }
             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium @(Model.CurrentProject?.IsEnabled == true ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")">
                 Status: @(Model.CurrentProject?.IsEnabled == true ? "Active" : "Disabled")
             </span>

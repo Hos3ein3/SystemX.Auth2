@@ -90,7 +90,7 @@ Rotate regularly (for example every 6–12 months) and at once if you think a ke
 
 ### Background jobs
 
-Every `Auth2:Jobs:IntervalMinutes` (60) one instance runs, under a database lock: delete old one-time codes, delete audit events older than `AuditRetentionDays` (365; 0 keeps them), prune old OpenIddict tokens and authorizations, and remove retired keys. Other instances skip a job that is running.
+Every `Auth2:Jobs:ClientHealthIntervalSeconds` (60 seconds) one instance asks the clients that have a two-way health check whether they are healthy ([client-health-check.md](client-health-check.md)). Every `Auth2:Jobs:IntervalMinutes` (60) one instance runs, under a database lock: delete old one-time codes, delete audit events older than `AuditRetentionDays` (365; 0 keeps them), prune old OpenIddict tokens and authorizations, and remove retired keys. Other instances skip a job that is running.
 
 ## The default admin password is public
 
@@ -165,3 +165,4 @@ What the Server does so that a wrong or hostile provider cannot take over an acc
 - [Redis: what it does, how to enable it, and the Client's cache](redis.md)
 - [Registering the client: `Auth2ClientServiceCollectionExtensions`](client-builder.md)
 - [Troubleshooting](troubleshooting.md)
+- [Handshake and startup](handshake-and-startup.md)

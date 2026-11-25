@@ -200,7 +200,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
     private static SyncOutcome Fail(string code) => new(OperationResult.Fail(code), null);
 }
 
-internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options, IServerUrls urls, ILogger<ClientHandshakeService> log) : IClientHandshakeService
+internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options, IServerUrls urls, IClientHealthService clientHealth, ILogger<ClientHandshakeService> log) : IClientHandshakeService
 {
     public async Task<(OperationResult Result, ClientHandshakeResponse? Response)> CheckAsync(ClientHandshakeRequest request, CancellationToken ct = default)
     {
@@ -221,6 +221,7 @@ internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Au
         if (multi && !string.Equals(request!.ProjectKey!.Trim(), app.ProjectKey, StringComparison.OrdinalIgnoreCase)) return Reject(Auth2ErrorCodes.ProjectKeyOrNameMismatch);   // the application does not belong to that project
         if (!string.Equals(request?.ApplicationName?.Trim(), client.Name, StringComparison.OrdinalIgnoreCase)) return Reject(Auth2ErrorCodes.ProjectKeyOrNameMismatch);
         Operations.Auth2Metrics.Handshakes.Add(1, new KeyValuePair<string, object?>("result", "ok"));
+        await clientHealth.RegisterAsync(client.Id, request?.HealthUrl, ct);   // two-way health check: remember where to ask (or forget it, for a one-way client)
 
         var issuer = urls.Build("", []);
         TimeSpan? cookie = settings.CookieLifetimeMinutes is { } m ? TimeSpan.FromMinutes(m) : null;

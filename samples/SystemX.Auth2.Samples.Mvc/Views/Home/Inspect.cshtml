@@ -1,0 +1,47 @@
+@model SystemX.Auth2.Samples.Mvc.Models.InspectViewModel
+@{
+    ViewData["Title"] = "What do I have?";
+    string Chips(IReadOnlyList<string> items) => items.Count == 0 ? "none" : string.Join(", ", items);
+}
+
+<div class="space-y-6 max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="border-b pb-4 mb-4">
+            <h1 class="text-2xl font-bold text-gray-900">What do I have?</h1>
+            <p class="text-sm text-gray-500 mt-1">The same checks as the attributes, written in code with <code class="font-mono text-xs">ICurrentUser</code> and <code class="font-mono text-xs">ICurrentClient</code>.</p>
+        </div>
+
+        <h2 class="font-semibold text-gray-800 mb-2">You (<code class="font-mono text-xs">ICurrentUser</code>)</h2>
+        <dl class="grid grid-cols-1 sm:grid-cols-4 gap-y-2 text-sm mb-6">
+            <dt class="text-gray-500">User</dt><dd class="sm:col-span-3 font-medium">@(Model.UserName ?? "-")</dd>
+            <dt class="text-gray-500">Roles</dt><dd class="sm:col-span-3 font-mono text-xs break-words">@Chips(Model.Roles)</dd>
+            <dt class="text-gray-500">Groups</dt><dd class="sm:col-span-3 font-mono text-xs break-words">@Chips(Model.Groups)</dd>
+            <dt class="text-gray-500">Permissions</dt><dd class="sm:col-span-3 font-mono text-xs break-words">@Chips(Model.Permissions)</dd>
+        </dl>
+
+        <h2 class="font-semibold text-gray-800 mb-2">This application and its token (<code class="font-mono text-xs">ICurrentClient</code>)</h2>
+        <dl class="grid grid-cols-1 sm:grid-cols-4 gap-y-2 text-sm mb-6">
+            <dt class="text-gray-500">Client id</dt><dd class="sm:col-span-3 font-mono text-xs">@(Model.ClientId ?? "-")</dd>
+            <dt class="text-gray-500">Scopes</dt><dd class="sm:col-span-3 font-mono text-xs break-words">@Chips(Model.Scopes)</dd>
+            <dt class="text-gray-500">Audiences (aud)</dt>
+            <dd class="sm:col-span-3 font-mono text-xs break-words">@Chips(Model.Audiences) <span class="text-gray-400">(the client id first, then the resources of the scopes: <code>reports-api</code>, <code>orders-api</code>)</span></dd>
+            <dt class="text-gray-500">How you signed in</dt><dd class="sm:col-span-3 font-mono text-xs">@Chips(Model.Amr)</dd>
+        </dl>
+
+        <h2 class="font-semibold text-gray-800 mb-2">Checks in code</h2>
+        <table class="w-full text-left text-sm border-collapse">
+            <tbody class="divide-y divide-gray-100">
+                @foreach (var (check, result) in Model.Checks)
+                {
+                    <tr>
+                        <td class="py-2 pr-4 font-mono text-xs">@check</td>
+                        <td class="py-2">
+                            <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold @(result ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600")">@(result ? "true" : "false")</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <p class="mt-4 text-sm"><a asp-action="Showcase" class="text-indigo-600 hover:underline">&larr; All the demo rules</a></p>
+    </div>
+</div>
