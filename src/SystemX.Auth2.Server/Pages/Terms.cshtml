@@ -1,0 +1,108 @@
+@page "/terms"
+@model SystemX.Auth2.Server.Pages.TermsModel
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Terms of Use";
+    ViewData["Wide"] = true;
+    var clientQuery = string.IsNullOrEmpty(Model.ClientIdForLinks) ? "" : "?ClientId=" + Uri.EscapeDataString(Model.ClientIdForLinks);
+}
+
+<article class="space-y-4 text-left text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+    <header class="space-y-1">
+        <h2 class="text-2xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">Terms of Use</h2>
+        <p class="text-xs text-[var(--a2-color-muted,#6b7280)]">Last updated: 25 November 2026</p>
+    </header>
+
+    <p>
+        These terms apply when you create an account on, or sign in with, <strong>@Model.ServiceName</strong>.
+        By using this server you agree to them. If you do not agree, please do not use it.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">1. What this service is</h3>
+    <p>
+        This server lets you create one account and use it to sign in to one or more applications. It runs on <strong>SystemX.Auth2</strong>, free and open-source software.
+        The software is not a service that its authors host or support for you. The person or organisation that installed and runs this server (the <strong>operator</strong>) provides the service to you,
+        and these terms are between you and the operator. The authors of the software are not a party to them.
+    </p>
+    <p>
+        @if (Model.SupportEmail is { } email)
+        {
+            <text>You can contact the operator at <a class="text-[var(--a2-color-primary,#2563eb)] hover:underline" href="mailto:@email">@email</a>.</text>
+        }
+        else
+        {
+            <text>If you need to contact the operator, use the contact details of the organisation that gave you access to the application you were signing in to.</text>
+        }
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">2. Your account</h3>
+    <ul class="list-disc space-y-1.5 pl-5">
+        <li>Give correct information and keep it up to date.</li>
+        <li>Keep your password, one-time codes, recovery codes and passkeys secret. Do not share your account.</li>
+        <li>You are responsible for what happens under your account. If you think someone else has access to it, change your password and tell the operator without delay.</li>
+        <li>You must be old enough to agree to these terms where you live, or have the permission of a parent or guardian.</li>
+    </ul>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">3. Acceptable use</h3>
+    <p>You agree not to:</p>
+    <ul class="list-disc space-y-1.5 pl-5">
+        <li>try to get into accounts, data or systems that are not yours, or help others to do so;</li>
+        <li>guess passwords, test stolen credentials, or send automated or repeated requests that are meant to overload the server or to get around its limits;</li>
+        <li>look for or exploit weaknesses without the operator&rsquo;s written permission (if you find one, please report it to the operator);</li>
+        <li>pretend to be another person or organisation;</li>
+        <li>use the service for anything that is illegal or that harms other people.</li>
+    </ul>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">4. Applications and other services</h3>
+    <p>
+        You can use your account to sign in to applications that are run by the operator or by other parties. Each application has its own rules and its own privacy policy, and this server is not responsible for them.
+        If you sign in with an external account, such as Google or your company directory, the terms of that provider apply to that account.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">5. Privacy</h3>
+    <p>Our <a class="text-[var(--a2-color-primary,#2563eb)] hover:underline" href="/privacy@(clientQuery)">Privacy Policy</a> explains what data the server keeps and how it is used. It is part of these terms.</p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">6. Availability and changes</h3>
+    <p>
+        The operator tries to keep the service running, but it is provided <strong>&ldquo;as is&rdquo; and &ldquo;as available&rdquo;</strong>.
+        It can be slow, unavailable or changed at any time, for example for maintenance, updates or security reasons, and the operator does not promise that it will always work or be free of errors.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">7. Suspension and ending your account</h3>
+    <p>
+        You can stop using the service at any time, and you can delete your account when you are signed in.
+        The operator may limit, suspend or close an account if you break these terms, if the account is a security risk, or if the law requires it.
+        When an account is closed, the sections of these terms that are meant to continue (for example sections 8 and 9) stay in force.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">8. The open-source licence</h3>
+    <p>
+        The software that runs this server is licensed under the <strong>MIT Licence</strong>. In short, anyone may use, copy, change and share the software for free, as long as the copyright and licence notice stay with it,
+        and the software comes <strong>without any warranty</strong>. The full text is in the
+        <a class="text-[var(--a2-color-primary,#2563eb)] hover:underline" href="https://github.com/Hos3ein3/SystemX.Auth2" rel="noopener noreferrer" target="_blank">project repository</a>.
+        The licence covers the software only. It does not give you any right to the operator&rsquo;s service, name, data or other users&rsquo; accounts.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">9. No warranty and limit of liability</h3>
+    <p>
+        To the extent that the law allows, the operator and the authors of the software give no warranty of any kind, whether stated or implied, including any warranty of fitness for a particular purpose or of freedom from errors.
+        To the same extent, they are not liable for any indirect or consequential loss, or for loss of data, profit or business, that comes from your use of the service or from not being able to use it.
+        Nothing in these terms removes rights that you have by law and that cannot be removed.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">10. Changes to these terms</h3>
+    <p>The operator may change these terms. The date at the top shows the latest change. If you keep using the service after a change, you accept the new terms. If a change is important, the operator should tell you before it starts.</p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">11. Law and disputes</h3>
+    <p>The law of the place where the operator is based applies to these terms, unless the law of your country gives you stronger rights that cannot be changed by agreement.</p>
+
+    <p class="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-[var(--a2-color-muted,#6b7280)] dark:border-gray-700 dark:bg-gray-900/40">
+        <strong>For operators:</strong> this text comes with the open-source software. It is a general template and not legal advice.
+        Add your own details (who you are, your contact address, the law and courts that apply to you), check it against how you really run the service, and change or replace it if needed.
+    </p>
+
+    <nav class="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs">
+        <a class="text-[var(--a2-color-primary,#2563eb)] hover:underline" href="@Model.BackUrl">&larr; Back</a>
+        <a class="text-[var(--a2-color-primary,#2563eb)] hover:underline" href="/privacy@(clientQuery)">Read the Privacy Policy</a>
+    </nav>
+</article>

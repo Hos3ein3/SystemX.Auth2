@@ -60,6 +60,7 @@ public class ServerFactory(string connectionString, bool single) : WebApplicatio
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Auth2", connectionString);
         builder.UseSetting("Auth2:ProjectStatusCacheSeconds", "0");
+        builder.UseSetting("Auth2:Redis:ConnectionString", "");   // appsettings.json points at the Redis of docker-compose; these tests use none
         builder.ConfigureLogging(l => l.ClearProviders());
         if (single) builder.ConfigureTestServices(s => s.ServerWithSingleProject());
     }

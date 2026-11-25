@@ -45,7 +45,14 @@
     </header>
 
     <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        @{
+            // Pages with long text (privacy, terms) ask for a wide card: ViewData["Wide"] = true
+            var wide = ViewData["Wide"] is true;
+            var width = wide ? "sm:max-w-3xl" : "sm:max-w-md";
+            var linkClient = pageModel?.ClientIdForLinks;
+            var clientQuery = string.IsNullOrEmpty(linkClient) ? "" : "?ClientId=" + Uri.EscapeDataString(linkClient);
+        }
+        <div class="sm:mx-auto sm:w-full @width text-center">
             <h1 class="text-3xl font-extrabold tracking-tight text-[var(--a2-color-primary,#2563eb)]">
                 @(pageModel?.BrandName ?? "SystemX Auth2")
             </h1>
@@ -55,7 +62,7 @@
             }
         </div>
 
-        <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="mt-8 sm:mx-auto sm:w-full @width">
             <div class="bg-[var(--a2-color-surface,#ffffff)] dark:bg-gray-800 py-8 px-4 shadow-sm sm:rounded-[var(--a2-radius,0.375rem)] sm:px-10 border border-gray-200 dark:border-gray-700">
                 @if (TempData["Success"] is string success)
                 {
@@ -71,11 +78,11 @@
                 }
                 @RenderBody()
             </div>
-            
+
             <footer class="mt-6 text-center text-xs text-[var(--a2-color-muted,#6b7280)] space-x-4">
                 <span>&copy; @DateTime.UtcNow.Year SystemX</span>
-                <a href="#" class="hover:underline">Privacy</a>
-                <a href="#" class="hover:underline">Terms</a>
+                <a href="/privacy@(clientQuery)" class="hover:underline">Privacy</a>
+                <a href="/terms@(clientQuery)" class="hover:underline">Terms</a>
             </footer>
         </div>
     </div>

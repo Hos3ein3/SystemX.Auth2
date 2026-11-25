@@ -118,6 +118,7 @@ public class Auth2ServerFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Auth2", _connectionString);
         builder.UseSetting("Auth2:ProjectStatusCacheSeconds", "0");   // tests change the database directly and expect the change at once
+        builder.UseSetting("Auth2:Redis:ConnectionString", "");   // appsettings.json points at the Redis of docker-compose; tests use none unless they ask for one below
         foreach (var (key, value) in Settings) builder.UseSetting(key, value);
         builder.ConfigureLogging(l => l.AddProvider(Logs));
         builder.ConfigureTestServices(ConfigureAuth2);

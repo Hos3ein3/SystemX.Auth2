@@ -10,6 +10,14 @@ Every page of the Server is a Razor Page. The page model holds the logic and the
 - On an error the page sets the status code (usually 400) and exposes `ErrorCode` (a stable code, see [error-codes.md](error-codes.md)) and `ErrorMessage` (localized).
 - Public properties of a page model are the data the UI shows.
 
+## Privacy and Terms pages
+
+`/Privacy` and `/Terms` are public Razor Pages (no sign-in, and no application is needed). Their text is English and describes what the software itself does: what data it stores, the cookies it sets, who receives data, the user's choices, the MIT licence and the usual terms of use. Both end with a note to the **operator**: the text is a general template, not legal advice, and the operator must check it against how the server is really run (providers, log retention, the law that applies) and change or replace it.
+
+- With `?ClientId=` (or on a single-project server) the pages show the project's brand name (`Localization.BrandName`) and, when set, the support address (`Localization.SupportEmail`) as a `mailto:` link; an unknown application is not an error.
+- Both pages use the wide card of `_LayoutAuth` (`ViewData["Wide"] = true`). The footer of `_LayoutAuth` links to them and keeps the `ClientId`.
+- To change the text, edit `Pages/Privacy.cshtml` and `Pages/Terms.cshtml`. The page models (`PrivacyModel`, `TermsModel`) share `LegalPageModel`.
+
 ## External sign-in pages
 
 ### Login page: provider buttons

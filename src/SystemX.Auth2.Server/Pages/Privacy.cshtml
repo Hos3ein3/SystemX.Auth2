@@ -1,0 +1,119 @@
+@page "/privacy"
+@model SystemX.Auth2.Server.Pages.PrivacyModel
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Privacy Policy";
+    ViewData["Wide"] = true;
+    var clientQuery = string.IsNullOrEmpty(Model.ClientIdForLinks) ? "" : "?ClientId=" + Uri.EscapeDataString(Model.ClientIdForLinks);
+}
+
+<article class="space-y-4 text-left text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+    <header class="space-y-1">
+        <h2 class="text-2xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">Privacy Policy</h2>
+        <p class="text-xs text-[var(--a2-color-muted,#6b7280)]">Last updated: 25 November 2026</p>
+    </header>
+
+    <p>
+        This policy explains what personal data this sign-in server keeps about you, why it keeps it, and what you can do about it.
+        It applies to your account on <strong>@Model.ServiceName</strong> and to the applications that use this server to let you sign in.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">1. Who is responsible for your data</h3>
+    <p>
+        This server runs on <strong>SystemX.Auth2</strong>, which is free and open-source software. It is <em>not</em> a service that its authors host for you.
+        The person or organisation that installed and runs this server (the <strong>operator</strong>) decides why and how your data is used, and is responsible for it.
+        The authors of the software do not receive your data and cannot see it.
+    </p>
+    <p>
+        @if (Model.SupportEmail is { } email)
+        {
+            <text>If you have a question about your data, write to the operator at <a class="text-[var(--a2-color-primary,#2563eb)] hover:underline" href="mailto:@email">@email</a>.</text>
+        }
+        else
+        {
+            <text>If you have a question about your data, contact the organisation that gave you access to the application you were signing in to.</text>
+        }
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">2. What data we keep</h3>
+    <ul class="list-disc space-y-1.5 pl-5">
+        <li><strong>Account details:</strong> your user name, email address, phone number, first and last name, display name and preferred language. You choose which of these to give, as far as the application allows it.</li>
+        <li><strong>Sign-in details:</strong> a protected form of your password (a salted hash; the password itself is never stored), the secret of your authenticator app (stored encrypted), your recovery codes and passkeys (we keep only the public part of a passkey), and the links to any external accounts you use to sign in, such as Google or your company directory.</li>
+        <li><strong>Access details:</strong> the projects you belong to and the roles, groups and permissions you have in them.</li>
+        <li><strong>Session details:</strong> the sign-in sessions and tokens that applications received for you, and when they expire.</li>
+        <li><strong>Security records:</strong> a log of important events, such as sign-ins, failed attempts, password and email changes, and administrator actions. Each record can include the time, your IP address and your browser type. We also count failed sign-ins to lock an account that is being attacked.</li>
+        <li><strong>One-time codes:</strong> the codes we send you by email or SMS. They are stored in a hashed form, work only once and expire after a few minutes.</li>
+    </ul>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">3. Why we use it</h3>
+    <ul class="list-disc space-y-1.5 pl-5">
+        <li>To create your account and to let you sign in.</li>
+        <li>To tell the applications you use who you are and what you may do in them.</li>
+        <li>To send you the messages you ask for, such as a confirmation link, a one-time code or a password reset.</li>
+        <li>To protect accounts and the server: to detect attacks, limit repeated attempts and investigate problems.</li>
+        <li>To meet legal duties, when the law requires it.</li>
+    </ul>
+    <p>The software has no advertising and no analytics, and it does not sell or share your data for marketing.</p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">4. Cookies and local storage</h3>
+    <p>This server uses only the cookies it needs to work:</p>
+    <ul class="list-disc space-y-1.5 pl-5">
+        <li><strong>Session cookie</strong> (<code class="rounded bg-gray-100 px-1 text-xs dark:bg-gray-700">.SystemX.Auth2.Session</code>): keeps you signed in on this server. It is not readable by scripts and is removed when you sign out.</li>
+        <li><strong>Language cookie</strong> (<code class="rounded bg-gray-100 px-1 text-xs dark:bg-gray-700">.SystemX.Auth2.Culture</code>): remembers the language you chose.</li>
+        <li><strong>Security cookies:</strong> short-lived cookies that protect forms against forgery and keep the state of a sign-in that is in progress, for example with a passkey or an external account.</li>
+        <li><strong>Browser storage:</strong> your browser stores your light or dark theme choice.</li>
+    </ul>
+    <p>The applications you sign in to may use their own cookies. Please read their policies.</p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">5. Who receives your data</h3>
+    <ul class="list-disc space-y-1.5 pl-5">
+        <li><strong>The applications you sign in to</strong> receive the details they ask for and you allow, for example your name, email address, roles and permissions.</li>
+        <li><strong>Email and SMS providers</strong> chosen by the operator deliver the messages we send you, so they handle your email address or phone number and the content of those messages.</li>
+        <li><strong>External sign-in providers</strong> (for example Google, Microsoft or your company directory) know that you signed in here, when you choose to use them. Their own policies apply to the data they hold.</li>
+        <li><strong>The operator&rsquo;s hosting and database providers</strong> store the data on the operator&rsquo;s behalf.</li>
+    </ul>
+    <p>We do not give your data to anyone else, unless the law requires it.</p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">6. How long we keep it</h3>
+    <p>
+        We keep your account data for as long as your account exists. Sessions and tokens end on their own when they expire, and one-time codes expire after a few minutes.
+        Security records are kept for as long as the operator needs them for security and legal reasons; the operator decides how long.
+        When your account is deleted, your account data is removed from the server. Some security records and backups can remain for a limited time.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">7. How we protect it</h3>
+    <p>
+        Passwords are stored as salted hashes, authenticator secrets are encrypted, and one-time codes are hashed. Repeated failed sign-ins are slowed down and can lock an account.
+        You can add two-factor sign-in or a passkey to your account. The operator is responsible for the security of the server itself, for example for using HTTPS.
+        No system is completely secure, so please use a strong, unique password.
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">8. Your choices and rights</h3>
+    <p>When you are signed in, you can:</p>
+    <ul class="list-disc space-y-1.5 pl-5">
+        <li>see and update your profile, and change your user name, email address, phone number and password;</li>
+        <li>see your active sessions and end them;</li>
+        <li>turn two-factor sign-in on or off, and manage your passkeys and linked accounts;</li>
+        <li>delete your account.</li>
+    </ul>
+    <p>
+        Depending on where you live, the law may also give you the right to ask for a copy of your data, to have it corrected or erased, to object to some uses, or to complain to a data protection authority.
+        To use these rights, contact the operator (see section 1).
+    </p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">9. Children</h3>
+    <p>This server is not designed for children. The operator decides who may create an account, and must follow the rules for children&rsquo;s data that apply to them.</p>
+
+    <h3 class="pt-2 text-base font-semibold text-[var(--a2-color-text,#111827)] dark:text-gray-100">10. Changes to this policy</h3>
+    <p>The operator may update this policy. The date at the top shows the latest change. If a change is important, the operator should tell you before it starts.</p>
+
+    <p class="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-[var(--a2-color-muted,#6b7280)] dark:border-gray-700 dark:bg-gray-900/40">
+        <strong>For operators:</strong> this text comes with the open-source software and describes what the software itself does.
+        It is a general template and not legal advice. Check it against how you really run the server (your providers, how long you keep logs, the law that applies to you), and change or replace it if needed.
+    </p>
+
+    <nav class="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs">
+        <a class="text-[var(--a2-color-primary,#2563eb)] hover:underline" href="@Model.BackUrl">&larr; Back</a>
+        <a class="text-[var(--a2-color-primary,#2563eb)] hover:underline" href="/terms@(clientQuery)">Read the Terms of Use</a>
+    </nav>
+</article>
