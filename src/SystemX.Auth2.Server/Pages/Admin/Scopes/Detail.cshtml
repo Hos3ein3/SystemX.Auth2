@@ -53,8 +53,25 @@
                 <a2-textarea name="Input.Description" value="@Model.Input.Description" rows="3" />
             </a2-field>
 
-            <a2-field label="Associated Resources" hint="APIs this scope is meant for, separated by space, comma or new line. They are added to the audience (aud) of tokens that have this scope.">
-                <a2-input name="Input.Resources" value="@Model.Input.Resources" />
+            <a2-field label="Associated Resources" hint="APIs this scope is meant for. Click &times; to delete a tag, or type and press Enter to add.">
+                <div class="a2-tags-field" data-tags-input="Input_Resources">
+                    <input type="hidden" id="Input_Resources" name="Input.Resources" value="@Model.Input.Resources" />
+                    <div class="flex flex-wrap items-center gap-2 p-2 rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 min-h-[44px] focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                        <div class="a2-tags-list flex flex-wrap gap-1.5">
+                            @{
+                                var resources = (Model.Input.Resources ?? "").Split([' ', ',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+                                foreach (var res in resources)
+                                {
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700" data-tag="@res">
+                                        <span>@res</span>
+                                        <button type="button" class="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-100 font-bold ml-0.5 cursor-pointer" data-remove-tag aria-label="Remove @res">&times;</button>
+                                    </span>
+                                }
+                            }
+                        </div>
+                        <input type="text" class="a2-tags-add-input flex-1 min-w-[140px] bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-none outline-none focus:ring-0 p-1" placeholder="Type resource and press Enter..." />
+                    </div>
+                </div>
             </a2-field>
 
             <div class="pt-4 border-t border-gray-200">

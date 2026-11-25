@@ -6,7 +6,7 @@
     ViewData["Subtitle"] = Loc["two_factor.subtitle"];
 }
 
-<form method="post" class="space-y-4">
+<form method="post" class="space-y-4" novalidate>
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="ReturnUrl" />
     <input type="hidden" asp-for="ClientId" />
@@ -33,6 +33,6 @@
     </div>
 
     <div class="mt-4 text-center text-sm">
-        <a href="/Account/Login?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">@Loc["common.back_to_login"]</a>
+        <a href="@Model.GetLoginUrl()" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">@Loc["common.back_to_login"]</a>
     </div>
 </form>

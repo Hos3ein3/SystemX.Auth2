@@ -81,6 +81,9 @@ public sealed class ProjectService(
         await provisioner.ResyncProjectAsync(projectId, settings, clock.GetUtcNow(), ct);   // the consent type of every application follows the project
         await tx.CommitAsync(ct);
         settingsProvider.Invalidate(projectId);
+        // the consent type of every application followed the project: every instance reads them again
+        foreach (var clientId in await db.Set<Infrastructure.OpenIddict.Auth2Application>().AsNoTracking().Where(a => a.ProjectId == projectId).Select(a => a.ClientId!).ToListAsync(ct))
+            statusCache.InvalidateApplication(clientId);
         await externalProviders.RefreshProjectAsync(projectId, ct);
         await audit.WriteAsync(new AuditEntry("project.settings_updated", projectId, TargetType: "project",
             TargetId: projectId.ToString(), Data: new Dictionary<string, object?> { ["settingsVersion"] = project.SettingsVersion }), ct);

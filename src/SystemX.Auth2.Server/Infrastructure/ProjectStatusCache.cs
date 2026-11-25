@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Infrastructure.Caching;
 using SystemX.Auth2.Server.Infrastructure.OpenIddict;
 using SystemX.Auth2.Server.Persistence;
 
@@ -11,7 +12,7 @@ namespace SystemX.Auth2.Server.Infrastructure;
 /// See <see cref="IProjectStatusCache"/>. The values live in the shared memory cache for <c>Auth2:ProjectStatusCacheSeconds</c> seconds
 /// (0 turns the cache off). Other instances learn about a change through the Redis settings channel when Redis is on.
 /// </summary>
-public sealed class ProjectStatusCache(IServiceScopeFactory scopes, IMemoryCache cache, ISettingsInvalidationBus bus, IOptions<Auth2ServerOptions> options, ILogger<ProjectStatusCache> log) : IProjectStatusCache
+public sealed class ProjectStatusCache(IServiceScopeFactory scopes, IMemoryCache cache, ISettingsInvalidationBus bus, IOptions<Auth2ServerOptions> options, IHybridCacheService data, ILogger<ProjectStatusCache> log) : IProjectStatusCache
 {
     internal static string ProjectKey(Guid id) => $"auth2:status:{id:N}";
     private static string ApplicationKey(string clientId) => $"auth2:appstatus:{clientId}";
@@ -44,10 +45,15 @@ public sealed class ProjectStatusCache(IServiceScopeFactory scopes, IMemoryCache
     public void Invalidate(Guid projectId)
     {
         cache.Remove(ProjectKey(projectId));
+        data.InvalidateProject(projectId);   // the project row (enabled flag, name) is read again by every instance
         _ = bus.PublishAsync(projectId).ContinueWith(t => log.LogWarning(t.Exception, "Could not tell other instances about the project status change."),
             TaskContinuationOptions.OnlyOnFaulted);
     }
 
     /// <inheritdoc />
-    public void InvalidateApplication(string clientId) => cache.Remove(ApplicationKey(clientId));
+    public void InvalidateApplication(string clientId)
+    {
+        cache.Remove(ApplicationKey(clientId));
+        data.InvalidateClient(clientId);   // the application row is read again by every instance
+    }
 }

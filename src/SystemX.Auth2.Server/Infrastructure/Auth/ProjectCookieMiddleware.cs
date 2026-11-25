@@ -37,16 +37,20 @@ internal sealed class ProjectCookieMiddleware(RequestDelegate next)
         {
             var path = http.Request.Path.Value ?? "";
             var prefix = Auth2Cookie.CookieName + ".";
-            if (path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase) && http.Request.Cookies.ContainsKey(prefix + "_global"))
+            if (path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase))
             {
-                key = "_global";
-            }
-            else if (path.StartsWith("/admin/p/", StringComparison.OrdinalIgnoreCase))
-            {
-                var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                if (segments.Length >= 3)
+                if (path.StartsWith("/admin/p/", StringComparison.OrdinalIgnoreCase))
                 {
-                    key = segments[2];
+                    var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                    if (segments.Length >= 3 && http.Request.Cookies.ContainsKey(prefix + segments[2]))
+                    {
+                        key = segments[2];
+                    }
+                }
+
+                if (key is null && http.Request.Cookies.ContainsKey(prefix + "_global"))
+                {
+                    key = "_global";
                 }
             }
         }

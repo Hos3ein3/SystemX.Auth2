@@ -1,6 +1,13 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.JoinProjectModel
 @{
+    var rules = SystemX.Auth2.Server.Pages.Account.AccountFormRules.For(Model);
+    var idField = SystemX.Auth2.Server.Pages.Account.AccountFormRules.FieldFor(rules.LookupKinds());
+    var idRule = rules.Identifier(idField, Loc["forgot_password.login_field"].Value);
+    var codeRule = rules.RequiredOnly(Loc["two_factor.code"].Value);
+    var newRule = rules.NewPassword(Loc["reset_password.new_password"].Value);
+}
+@{
     Layout = "_LayoutAuth";
     ViewData["Title"] = Loc["join_project.title"];
 }
@@ -24,7 +31,7 @@
 
     @if (Model.CodeSent)
     {
-        <form method="post" class="space-y-4">
+        <form method="post" class="space-y-4" novalidate>
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="ReturnUrl" />
             <input type="hidden" asp-for="ClientId" />
@@ -35,13 +42,13 @@
             </a2-alert>
 
             <a2-field label="@Loc["two_factor.code"]" required="true" for="Input_Code">
-                <a2-input id="Input_Code" name="Input.Code" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" class="text-center tracking-widest text-lg font-mono" />
+                <a2-input id="Input_Code" name="Input.Code" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" data-a2-rule="@codeRule" class="text-center tracking-widest text-lg font-mono" />
             </a2-field>
 
             @if (Model.AskNewPassword)
             {
                 <a2-field label="@Loc["reset_password.new_password"]" required="true" for="Input_NewPassword" hint="Set a password for this project.">
-                    <a2-password id="Input_NewPassword" name="Input.NewPassword" required="true" autocomplete="new-password" placeholder="••••••••••••" />
+                    <a2-password id="Input_NewPassword" name="Input.NewPassword" required="true" autocomplete="new-password" placeholder="••••••••••••" data-a2-rule="@newRule" />
                 </a2-field>
             }
 
@@ -64,13 +71,13 @@
     }
     else
     {
-        <form method="post" asp-page-handler="Send" class="space-y-4">
+        <form method="post" asp-page-handler="Send" class="space-y-4" novalidate>
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="ReturnUrl" />
             <input type="hidden" asp-for="ClientId" />
 
             <a2-field label="@Loc["forgot_password.login_field"]" required="true" for="Input_Login">
-                <a2-input id="Input_Login" name="Input.Login" value="@Model.Input.Login" required="true" placeholder="you@example.com" autocomplete="username" />
+                <a2-input id="Input_Login" name="Input.Login" type="@idField.Type" inputmode="@idField.InputMode" value="@Model.Input.Login" required="true" placeholder="@idField.Placeholder" autocomplete="@idField.Autocomplete" data-a2-rule="@idRule" />
             </a2-field>
 
             <div class="pt-2">
@@ -81,7 +88,7 @@
         </form>
 
         <div class="text-center">
-            <a href="/Account/Login?returnUrl=@Model.ReturnUrl" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
+            <a href="@Model.GetLoginUrl()" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
                 @Loc["common.back_to_login"]
             </a>
         </div>

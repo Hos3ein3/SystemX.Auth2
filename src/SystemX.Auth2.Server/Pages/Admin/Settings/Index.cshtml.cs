@@ -34,6 +34,9 @@ public sealed class IndexModel : AdminPageModel
     public IReadOnlyList<string> AvailableGroups { get; private set; } = [];
     public IReadOnlyList<string> AvailablePermissions { get; private set; } = [];
 
+    public bool CanEditGlobalOnly => IsGlobalAdmin || User.IsInRole("GlobalAdmin") || User.IsInRole("Developer");
+    public bool CanEditProjectAdmin => CanEditGlobalOnly || User.IsInRole("ProjectAdmin") || User.IsInRole("Admin");
+
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
@@ -89,7 +92,13 @@ public sealed class IndexModel : AdminPageModel
         }
         InputSettings.Localization.SupportedCultures = cultures;
 
-        if (IsGlobalAdmin)
+        if (!CanEditProjectAdmin)
+        {
+            TempData["Error"] = "You do not have permission to modify settings.";
+            return RedirectToPage(new { projectKey = ProjectKey });
+        }
+
+        if (CanEditGlobalOnly)
         {
             InputSettings.Registration.AssignedRoles = [.. SelectedAssignedRoles.Distinct(StringComparer.OrdinalIgnoreCase)];
             InputSettings.Registration.AssignedGroups = [.. SelectedAssignedGroups.Distinct(StringComparer.OrdinalIgnoreCase)];
@@ -103,13 +112,25 @@ public sealed class IndexModel : AdminPageModel
             InputSettings.Registration.AssignedRoles = CurrentSettings.Registration.AssignedRoles;
             InputSettings.Registration.AssignedGroups = CurrentSettings.Registration.AssignedGroups;
             InputSettings.Registration.AssignedPermissions = CurrentSettings.Registration.AssignedPermissions;
+            InputSettings.Methods = CurrentSettings.Methods;
+            InputSettings.UserName.AllowedCharacters = CurrentSettings.UserName.AllowedCharacters;
+            InputSettings.UserName.RequireUnique = CurrentSettings.UserName.RequireUnique;
             InputSettings.Password = CurrentSettings.Password;
+            InputSettings.Email.AllowedDomains = CurrentSettings.Email.AllowedDomains;
+            InputSettings.Email.BlockedDomains = CurrentSettings.Email.BlockedDomains;
+            InputSettings.Email.RequireConfirmedEmail = CurrentSettings.Email.RequireConfirmedEmail;
+            InputSettings.Sessions = CurrentSettings.Sessions;
+            InputSettings.Passkeys = CurrentSettings.Passkeys;
+            InputSettings.TwoFactor = CurrentSettings.TwoFactor;
+            InputSettings.Clients = CurrentSettings.Clients;
+            InputSettings.Lockout = CurrentSettings.Lockout;
+            InputSettings.Phone = CurrentSettings.Phone;
         }
 
         var (result, newVersion) = await projectSvc.UpdateSettingsAsync(
             CurrentProject!.Id,
             InputSettings,
-            IsGlobalAdmin,
+            CanEditGlobalOnly,
             FormVersion,
             HttpContext.RequestAborted);
 

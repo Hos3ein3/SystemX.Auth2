@@ -19,7 +19,7 @@ namespace SystemX.Auth2.Client.Handshake;
 public sealed record HandshakeOutcome(HandshakeStatus Status, ClientHandshakeResponse? Response, string? Code, string? Message);
 
 /// <summary>Makes one handshake attempt and turns every possible answer into a <see cref="HandshakeStatus"/>.</summary>
-public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, IOptions<Auth2ClientOptions> options, HealthAddressResolver? healthAddress = null)
+public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, IOptions<Auth2ClientOptions> options, HealthAddressResolver? healthAddress = null, IServiceProvider? services = null)
 {
     /// <summary>Warning when the client has a project key but the server has a single project. The key is ignored.</summary>
     public const string SingleServerMessage = "The server has a single project. The ProjectKey is ignored. Remove ServerWithMultiProject.";
@@ -39,7 +39,7 @@ public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenP
             var token = await tokens.GetTokenAsync([Auth2Scopes.ClientHandshake], timeout.Token);
             using var request = new HttpRequestMessage(HttpMethod.Post, Auth2Routes.Handshake.TrimStart('/'))
             {
-                Content = JsonContent.Create(new ClientHandshakeRequest(o.ProjectKey, o.ApplicationName, o.ClientVersion, address.Url, address.Port, address.Scheme, address.Path)),
+                Content = JsonContent.Create(new ClientHandshakeRequest(o.ProjectKey, o.ApplicationName, o.ClientVersion, address.Url, address.Port, address.Scheme, address.Path, WebServerUrl(o), ApplicationTypeOf(o))),
             };
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             using var response = await http.CreateClient(Auth2ClientDefaults.ResilientHttpClientName).SendAsync(request, timeout.Token);
@@ -59,6 +59,23 @@ public sealed class HandshakeRunner(IHttpClientFactory http, IAuth2MachineTokenP
         {
             return new HandshakeOutcome(HandshakeStatus.ServerUnavailable, null, Auth2ClientErrorCodes.ServerUnavailable, "The server could not be reached or was too slow.");
         }
+    }
+
+    /// <summary>The web server address to announce: <c>WebServerUrl</c>, otherwise the <c>PublicUrl</c> of the health check, otherwise nothing.</summary>
+    private string? WebServerUrl(Auth2ClientOptions o)
+    {
+        if (!string.IsNullOrWhiteSpace(o.WebServerUrl)) return o.WebServerUrl.Trim().TrimEnd('/');
+        var publicUrl = (services?.GetService(typeof(IOptions<Auth2HealthCheckOptions>)) as IOptions<Auth2HealthCheckOptions>)?.Value.PublicUrl;
+        return string.IsNullOrWhiteSpace(publicUrl) ? null : publicUrl.Trim().TrimEnd('/');
+    }
+
+    /// <summary>The type to announce: the one in the options, otherwise worked out from how the application signs people in.</summary>
+    private ApplicationType ApplicationTypeOf(Auth2ClientOptions o)
+    {
+        if (o.ApplicationType is { } set) return set;
+        var flags = (services?.GetService(typeof(IOptions<Authentication.Auth2AuthFlags>)) as IOptions<Authentication.Auth2AuthFlags>)?.Value;
+        if (flags is null) return ApplicationType.Other;
+        return flags.HasCookie ? ApplicationType.Web : flags.HasBearer ? ApplicationType.Api : ApplicationType.Service;
     }
 
     private static async Task<HandshakeOutcome> MapAsync(HttpResponseMessage response, Auth2ClientOptions o, CancellationToken ct)

@@ -16,9 +16,11 @@ public sealed class IndexModel(IAdminProjectService projectService) : PageModel
     [BindProperty(SupportsGet = true)] public string? Sort { get; set; }
     [BindProperty(SupportsGet = true)] public bool Desc { get; set; }
 
+    private bool CanManageProjects => User.IsInRole("GlobalAdmin") || User.IsInRole("Developer") || User.HasClaim("scope", "auth2.admin.global") || User.HasClaim("role", "GlobalAdmin") || User.HasClaim("role", "Developer");
+
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
+        if (!CanManageProjects)
             return NotFound();
 
         Projects = await projectService.ListAsync(new PageQuery(PageNumber, PageSize, Q, Sort, Desc), HttpContext.RequestAborted);

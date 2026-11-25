@@ -46,4 +46,5 @@
   <data name="alphanumeric" xml:space="preserve"><value>{0} solo debe contener letras y números.</value></data>
   <data name="digits_only" xml:space="preserve"><value>{0} solo debe contener dígitos.</value></data>
   <data name="invalid_code" xml:space="preserve"><value>{0} es un código no válido.</value></data>
+  <data name="passwords_do_not_match" xml:space="preserve"><value>La contraseña y la confirmación no coinciden.</value></data>
 </root>

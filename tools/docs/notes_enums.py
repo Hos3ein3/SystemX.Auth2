@@ -51,6 +51,9 @@ n('PermissionSource', '**Stored in** `permissions.source`.',
 n('ClientType', '**Used by** `Clients.AllowedClientTypes` of the project settings.',
   'It lists the kinds of applications a project is meant to have. **No code reads it today**: it is stored and shown in the admin settings page only.',
   {'Api': 'A web API.', 'Mvc': 'An MVC application.', 'RazorPages': 'A Razor Pages application.', 'Blazor': 'A Blazor application.', 'Machine': 'A background program or service.'})
+n('ApplicationType', '**Used by** the application (`applications.kind`), the admin pages and API, the handshake (`Auth2ClientOptions.ApplicationType`).',
+  'It says what kind of program an application is. It is a **description only**: nothing is allowed or denied because of it. The client works it out when you do not set it: cookie sign-in means Web, bearer-token API protection means Api, neither means Service.',
+  {'Other': 'Not said (the default for older applications).', 'Web': 'A web application with pages and a browser sign-in.', 'Api': 'A web API that checks bearer tokens.', 'Service': 'A background job or worker that only uses machine-to-machine tokens.'})
 n('UiMode', '**Used by** `Clients.DefaultUiMode` (project) and `UiMode` (application). **The Server does not enforce it**: the Client package decides with `UseHostedUi()` / `UseSelfUi()`.',
   'It records how an application is meant to show its sign-in screens. What is enforced is `AllowSelfUiLogin` on the application (the password grant).',
   {'None': 'An API: only 401 / 403 answers.', 'Hosted': 'Recommended: the Server shows the sign-in pages and your application never sees a password.', 'Self': 'Your application shows its own form (and `AllowSelfUiLogin` must be on).'},
@@ -161,7 +164,7 @@ GROUPS = [
  ('Sign-in and accounts', 'The values you choose in the project and server settings that decide who can sign in and how.',
   ['LoginMethod', 'TwoFactorMode', 'JoinMode', 'ConsentMode', 'CredentialScope', 'ServerMode', 'UserProjectStatus', 'NotificationChannel', 'OtpVerifyResult']),
  ('Settings and administration', 'Values that describe settings themselves and what an application is meant to be.',
-  ['SettingEditor', 'PermissionSource', 'ClientType', 'UiMode']),
+  ['SettingEditor', 'PermissionSource', 'ClientType', 'ApplicationType', 'UiMode']),
  ('The Client package', 'The options of `AddAuth2Client` and the `Enable...` / `Use...` methods ([client-builder.md](client-builder.md)).',
   ['StartupFailureBehavior', 'HandshakeStatus', 'AccessLoadMode', 'CurrentUserSource', 'PermissionSyncPolicy', 'RoleSyncPolicy', 'ScopeSyncPolicy', 'GroupSyncPolicy', 'ScanningPolicy', 'DuplicatePolicy', 'KeyStyle', 'Auth2PermissionSource']),
  ('External identity', 'The settings of external providers ([external-identity.md](external-identity.md)).',

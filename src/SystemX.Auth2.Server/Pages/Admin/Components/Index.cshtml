@@ -137,100 +137,154 @@
 
     <!-- 3. Checkboxes, Radios & Selects -->
     <section class="space-y-4">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Selects, Checkboxes & Radios</h2>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Custom Selects, Checkboxes & Radios</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <a2-card title="Checkboxes & Radios">
-                <div class="space-y-3">
-                    <div class="flex items-start">
-                        <input id="demo_cb1" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1" />
-                        <label for="demo_cb1" class="ml-2 block text-sm text-gray-700 dark:text-gray-300 font-medium">Checked Checkbox</label>
-                    </div>
-                    <div class="flex items-start">
-                        <input id="demo_cb2" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1" />
-                        <label for="demo_cb2" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Unchecked with helper description</label>
-                    </div>
-                    <div class="flex items-start">
-                        <input id="demo_cb3" type="checkbox" disabled class="h-4 w-4 rounded border-gray-300 text-gray-400 focus:ring-0 mt-1 cursor-not-allowed" />
-                        <label for="demo_cb3" class="ml-2 block text-sm text-gray-400 dark:text-gray-500 cursor-not-allowed">Disabled Checkbox</label>
-                    </div>
-                    <div class="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
-                        <span class="block text-xs font-semibold text-gray-500 uppercase">Radio Group</span>
-                        <div class="flex items-center">
-                            <input id="radio1" name="demo_radio" type="radio" checked class="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500" />
-                            <label for="radio1" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Option A (Selected)</label>
+            <a2-card title="Custom Checkboxes & Radios">
+                <div class="space-y-4">
+                    <!-- Custom Checkboxes via TagHelper -->
+                    <div>
+                        <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Custom Checkboxes (&lt;a2-checkbox&gt;)</span>
+                        <div class="space-y-2">
+                            <a2-checkbox id="chk_tag_1" name="demo_chk1" checked="true" label="Checked Custom Box" description="Accessible custom checkmark box with SVG tick" />
+                            <a2-checkbox id="chk_tag_2" name="demo_chk2" label="Unchecked Custom Box" description="Click to check with custom SVG tick" />
+                            <a2-checkbox id="chk_tag_3" name="demo_chk3" disabled="true" label="Disabled State" description="Non-interactive disabled checkbox" />
                         </div>
-                        <div class="flex items-center">
-                            <input id="radio2" name="demo_radio" type="radio" class="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500" />
-                            <label for="radio2" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Option B</label>
+                    </div>
+
+                    <!-- Custom Standalone Radios via TagHelper -->
+                    <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Custom Radio Buttons (&lt;a2-radio&gt;)</span>
+                        <div class="space-y-2">
+                            <a2-radio id="rad_tag_1" name="custom_radio_tag" value="primary" checked="true" label="Primary Option (Selected)" />
+                            <a2-radio id="rad_tag_2" name="custom_radio_tag" value="secondary" label="Secondary Option" />
+                            <a2-radio id="rad_tag_3" name="custom_radio_tag" value="disabled" disabled="true" label="Disabled Option" />
                         </div>
+                    </div>
+
+                    <!-- Toggle Switch via TagHelper -->
+                    <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Toggle Switch (&lt;a2-toggle&gt;)</span>
+                        <a2-toggle id="sw_demo_1" name="sw_demo" checked="true" label="Toggle Switch" description="Smooth animated state switch" />
                     </div>
                 </div>
             </a2-card>
 
-            <a2-card title="Select & Select with Live Search">
+            <a2-card title="Searchable Combobox (&lt;a2-combobox&gt;)">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Standard Select</label>
-                        <select class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                            <option value="1">Option 1 - Development</option>
-                            <option value="2">Option 2 - Staging</option>
-                            <option value="3">Option 3 - Production</option>
-                        </select>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Role with Search</label>
+                        <a2-combobox id="demoRoleSelect" name="role" value="administrator" placeholder="Choose a role..." search-placeholder="Search roles or permissions...">
+                            <option value="administrator" selected>Administrator (Global Access)</option>
+                            <option value="developer">Developer (Full APIs)</option>
+                            <option value="auditor">Compliance Auditor</option>
+                            <option value="support">Customer Support Lead</option>
+                            <option value="operator">Operations Specialist</option>
+                        </a2-combobox>
                     </div>
-
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select with Live Search</label>
-                        <div class="space-y-2">
-                            <input type="text" data-filter-select="demoFilterSelect" placeholder="Type to search options..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            <select id="demoFilterSelect" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                <option value="">-- Choose Role or Permission --</option>
-                                <option value="admin">Administrator (Global Access)</option>
-                                <option value="developer">Developer (Full APIs)</option>
-                                <option value="auditor">Compliance Auditor (Read Only)</option>
-                                <option value="orders.read">Permission: orders.read</option>
-                                <option value="orders.write">Permission: orders.write</option>
-                                <option value="users.manage">Permission: users.manage</option>
-                            </select>
-                        </div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Environment</label>
+                        <a2-combobox id="demoEnvSelect" name="environment" value="production" placeholder="Choose environment..." search-placeholder="Filter environments...">
+                            <option value="development">Development (Local)</option>
+                            <option value="staging">Staging (Pre-Release)</option>
+                            <option value="production" selected>Production (Live Cloud)</option>
+                            <option value="sandbox">Sandbox / Isolation</option>
+                        </a2-combobox>
                     </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 pt-1">
+                        Accessible single-select dropdown with real-time text filter and keyboard focus management.
+                    </p>
                 </div>
             </a2-card>
 
-            <a2-card title="Select with Multi-Select & Search">
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Multi-Select List</label>
-                        <span id="demoMultiCount" class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">2</span>
+            <a2-card title="Searchable Multi-Select (&lt;a2-multiselect&gt;)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Groups (Multi-Select Tags)</label>
+                        <a2-multiselect id="demoGroupsInput" name="groups" values="Alpha Engineering Group,Beta Support Operations" placeholder="Search or add group...">
+                            <option value="Alpha Engineering Group">Alpha Engineering Group</option>
+                            <option value="Beta Support Operations">Beta Support Operations</option>
+                            <option value="Gamma Security Audit">Gamma Security Audit</option>
+                            <option value="Delta Financial Analysts">Delta Financial Analysts</option>
+                            <option value="Epsilon QA Team">Epsilon QA Team</option>
+                        </a2-multiselect>
                     </div>
-                    <input type="text" data-multiselect-search="demoMultiList" placeholder="Search items..." class="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2" />
-                    <div id="demoMultiList" data-multiselect-list data-count-target="demoMultiCount" class="max-h-40 overflow-y-auto rounded-md border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/50 p-1 bg-white dark:bg-gray-800">
-                        <label data-search="alpha group" class="flex items-center px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer text-xs text-gray-800 dark:text-gray-200">
-                            <input type="checkbox" checked class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
-                            <span>Alpha Engineering Group</span>
-                        </label>
-                        <label data-search="beta group" class="flex items-center px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer text-xs text-gray-800 dark:text-gray-200">
-                            <input type="checkbox" checked class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
-                            <span>Beta Support Operations</span>
-                        </label>
-                        <label data-search="gamma group" class="flex items-center px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer text-xs text-gray-800 dark:text-gray-200">
-                            <input type="checkbox" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
-                            <span>Gamma Security Audit</span>
-                        </label>
-                        <label data-search="delta group" class="flex items-center px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer text-xs text-gray-800 dark:text-gray-200">
-                            <input type="checkbox" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
-                            <span>Delta Financial Analysts</span>
-                        </label>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign Permissions</label>
+                        <a2-multiselect id="demoPermsInput" name="permissions" values="users.read,roles.manage" placeholder="Search permissions...">
+                            <option value="users.read">users.read</option>
+                            <option value="users.write">users.write</option>
+                            <option value="roles.manage">roles.manage</option>
+                            <option value="audit.export">audit.export</option>
+                            <option value="keys.rotate">keys.rotate</option>
+                        </a2-multiselect>
                     </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 pt-1">
+                        Interactive multi-tag input with inline removal, option selection, and comma-separated value sync.
+                    </p>
                 </div>
             </a2-card>
         </div>
     </section>
 
-    <!-- 4. Alerts & Toasts Section -->
+    <!-- 4. Date Picker & Clock Picker -->
+    <section class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Custom Date Picker & Clock Picker</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <a2-card title="Calendar Date Picker (&lt;a2-datepicker&gt;)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pre-selected Date</label>
+                        <a2-datepicker id="demo_date_1" name="event_date" value="2026-11-25" placeholder="Pick a date..." />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Empty Date Picker (Interactive)</label>
+                        <a2-datepicker id="demo_date_2" name="audit_date" placeholder="Choose inspection date..." />
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 pt-1">
+                        Interactive popup calendar with month/year navigation, quick 'Today' selection, and clear button.
+                    </p>
+                </div>
+            </a2-card>
+
+            <a2-card title="Clock / Time Picker 12h (&lt;a2-timepicker&gt;)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Expiry Time (12h)</label>
+                        <a2-timepicker id="demo_time_1" name="expiry_time" value="02:30 PM" placeholder="Select time..." />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Empty Time Picker</label>
+                        <a2-timepicker id="demo_time_2" name="meeting_time" placeholder="HH:MM AM/PM" />
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 pt-1">
+                        Interactive clock picker with hour and minute selectors, AM/PM toggle, and current time shortcut.
+                    </p>
+                </div>
+            </a2-card>
+
+            <a2-card title="Clock / Time Picker 24h & Combined">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Maintenance Window (24h)</label>
+                        <a2-timepicker id="demo_time_24h" name="maint_time" value="18:45" use-24-hours="true" placeholder="HH:MM (24h)" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Audit Start Time (24h)</label>
+                        <a2-timepicker id="demo_time_audit" name="audit_time" value="09:00" use-24-hours="true" placeholder="HH:MM (24h)" />
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 pt-1">
+                        Full 24-hour military format selector with quick application and clear buttons.
+                    </p>
+                </div>
+            </a2-card>
+        </div>
+    </section>
+
+    <!-- 5. Alerts & Toast Notifications -->
     <section class="space-y-4">
         <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Alerts & Toast Notifications</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <a2-card title="Alert Banner Variants">
+            <a2-card title="Alert Banner Variants (<a2-alert>)">
                 <div class="space-y-3">
                     <a2-alert variant="success">Operation completed successfully. Your settings have been applied.</a2-alert>
                     <a2-alert variant="error">Authentication failed. Invalid client secret or token signature.</a2-alert>
@@ -239,26 +293,17 @@
                 </div>
             </a2-card>
 
-            <a2-card title="Toast Notification Preview">
-                <div class="space-y-4">
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Click below to trigger a floating toast notification.</p>
-                    <button type="button" data-show-toast="demoToast" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
-                        Show Sample Toast
-                    </button>
-
-                    <!-- Interactive Toast Popup -->
-                    <div id="demoToast" data-toast class="hidden rounded-lg bg-gray-900 text-white p-4 shadow-xl border border-gray-700 flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-                            </div>
-                            <div>
-                                <span class="block text-sm font-semibold">Changes Saved</span>
-                                <span class="block text-xs text-gray-300">All configurations synchronized with database.</span>
-                            </div>
-                        </div>
-                        <button type="button" data-close-toast class="text-gray-400 hover:text-white font-bold px-2 py-1 text-base">&times;</button>
-                    </div>
+            <a2-card title="Toast Notifications (<a2-toast>)">
+                <div class="space-y-3">
+                    <a2-toast variant="success" title="Success Notification">
+                        <span>Project keys rotated and synchronized across nodes.</span>
+                    </a2-toast>
+                    <a2-toast variant="error" title="Validation Alert">
+                        <span>Missing required client redirect URI for PKCE flow.</span>
+                    </a2-toast>
+                    <a2-toast variant="info" title="System Notice">
+                        <span>Automatic database maintenance scheduled for 02:00 UTC.</span>
+                    </a2-toast>
                 </div>
             </a2-card>
         </div>
@@ -482,20 +527,14 @@
             </a2-card>
 
             <!-- 2. Spinners & Progress Loaders -->
-            <a2-card title="Spinners & Progress Bars">
+            <a2-card title="Spinners (<a2-spinner>) & Progress">
                 <div class="space-y-4">
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Various spinner dimensions and indeterminate progress bar.</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Reusable spinner TagHelper in various dimensions and colors.</p>
                     <div class="flex items-center gap-4 py-2">
-                        <!-- xs -->
-                        <svg class="animate-spin h-3.5 w-3.5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <!-- sm -->
-                        <svg class="animate-spin h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <!-- md -->
-                        <svg class="animate-spin h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <!-- lg -->
-                        <svg class="animate-spin h-8 w-8 text-amber-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <!-- xl -->
-                        <svg class="animate-spin h-10 w-10 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <a2-spinner size="sm" variant="primary" />
+                        <a2-spinner size="md" variant="primary" />
+                        <a2-spinner size="lg" variant="gray" />
+                        <a2-spinner size="xl" variant="primary" />
                     </div>
                     <!-- Indeterminate Progress -->
                     <div>
@@ -532,7 +571,7 @@
                             <div>Dynamic tenant data stream is active.</div>
                         </div>
                         <div id="demoPartialLoader" class="hidden absolute inset-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xs flex flex-col items-center justify-center rounded-lg z-10 space-y-2 p-2">
-                            <svg class="animate-spin h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <a2-spinner size="md" variant="primary" />
                             <span class="text-xs font-semibold text-gray-800 dark:text-gray-200">Updating card metrics...</span>
                             <button type="button" data-partial-loader-cancel class="px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 shadow-xs">
                                 Cancel
@@ -543,23 +582,23 @@
             </a2-card>
 
             <!-- 4. Skeleton Card & Content -->
-            <a2-card title="Skeleton Loading: Profile & Card">
-                <div class="animate-pulse space-y-4">
+            <a2-card title="Skeleton Loading (&lt;a2-skeleton&gt;)">
+                <div class="space-y-4">
                     <div class="flex items-center space-x-3">
-                        <div class="rounded-full bg-gray-300 dark:bg-gray-700 h-10 w-10"></div>
+                        <a2-skeleton type="circle" />
                         <div class="space-y-2 flex-1">
-                            <div class="h-3.5 bg-gray-300 dark:bg-gray-700 rounded w-1/3"></div>
-                            <div class="h-2.5 bg-gray-200 dark:bg-gray-800 rounded w-1/2"></div>
+                            <a2-skeleton type="text" width="40%" />
+                            <a2-skeleton type="text" width="60%" />
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <div class="h-2.5 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                        <div class="h-2.5 bg-gray-200 dark:bg-gray-800 rounded w-5/6"></div>
-                        <div class="h-2.5 bg-gray-200 dark:bg-gray-800 rounded w-4/6"></div>
+                        <a2-skeleton type="text" />
+                        <a2-skeleton type="text" width="85%" />
+                        <a2-skeleton type="text" width="70%" />
                     </div>
                     <div class="flex gap-2 pt-2">
-                        <div class="h-8 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-                        <div class="h-8 bg-gray-200 dark:bg-gray-800 rounded w-16"></div>
+                        <a2-skeleton type="button" />
+                        <a2-skeleton type="button" width="70px" />
                     </div>
                 </div>
             </a2-card>

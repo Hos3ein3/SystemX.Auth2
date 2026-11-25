@@ -16,6 +16,13 @@ public class Auth2Application : OpenIddictEntityFrameworkCoreApplication<Guid, A
     public bool IsEnabled { get; set; } = true;
     /// <summary>Name, unique inside the project.</summary>
     public string Name { get; set; } = "";
+    /// <summary>What kind of program this application is (web, API, service). A description; set by an admin or, when the project allows it, by the client in its handshake.</summary>
+    public Contracts.Enums.ApplicationType Kind { get; set; } = Contracts.Enums.ApplicationType.Other;
+    /// <summary>
+    /// The address of the application's web server as the Server reaches it (for example <c>https://shop.example.com</c>): the base of the health check and of other calls to the application.
+    /// Null when nobody said. Set by an admin or, when the project allows it, by the client in its handshake.
+    /// </summary>
+    public string? WebServerUrl { get; set; }
     /// <summary>Client overrides (stored as jsonb).</summary>
     public ClientApplicationSettings ClientSettings { get; set; } = new();
     /// <summary>Raised on every change of the application.</summary>

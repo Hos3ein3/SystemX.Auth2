@@ -19,7 +19,7 @@
     </p>
 
     <div class="pt-4">
-        <a2-link-button href="@Url.Page("/Account/Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" variant="primary" class="w-full">
+        <a2-link-button href="@Model.GetLoginUrl()" variant="primary" class="w-full">
             Back to Sign In
         </a2-link-button>
     </div>

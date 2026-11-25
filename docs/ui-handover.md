@@ -10,6 +10,24 @@ Every page of the Server is a Razor Page. The page model holds the logic and the
 - On an error the page sets the status code (usually 400) and exposes `ErrorCode` (a stable code, see [error-codes.md](error-codes.md)) and `ErrorMessage` (localized).
 - Public properties of a page model are the data the UI shows.
 
+## Inputs and rules come from the project settings
+
+The sign-in and sign-up pages do **not** have fixed inputs. What they draw and check comes from the settings saved in the database (`Methods`, `UserName`, `Email`, `Phone`, `Password`), through `AccountFormRules` (`Pages/Account/AccountFormRules.cs`):
+
+| Page | What follows the settings |
+|---|---|
+| **Login** | The one identifier input: its label, type, keyboard and `autocomplete` come from `Methods.AllowedLoginMethods` (password methods only): user name -> "Username" (text), email -> "Email" (`type=email`), phone -> "Phone number" (`type=tel`), and the combinations ("Username or email", "Email or phone number", "Username, email or phone number"). The value must fit **one** accepted kind while typing: a user name follows `UserName.MinLength`, `MaxLength` and `AllowedCharacters` (every account has such a user name, an email or a phone number is the user name when none was chosen), an email needs an email format, a phone number must match `Phone.PhoneNumberRegex`. When it fits none, the message is the one of the kind it looks like (`@` is an email, digits with an optional `+` a phone number, anything else a user name), for example "Username or email must be at least 3 characters." The email domain lists are not checked on sign-in (they apply when an address is added). The password follows the same saved rules as when it is chosen (`Password.MinLength`, `MaxLength`, `RequireDigit`, `RequireLower`, `RequireUpper`, `RequireNonAlphanumeric`, `UniqueChars`), told one message at a time without the checklist. A person whose password was chosen under older, weaker rules cannot send the form from this page until it follows the current rules (they can still use the forgot-password flow). |
+| **Register** | The email, user name and phone inputs that `Methods.AllowedRegisterMethods` allows. When there is only one way to register that input is required; with several, one is enough, so none is marked required alone. User name: `UserName.MinLength`, `MaxLength`, `AllowedCharacters`. Email: format and `Email.AllowedDomains` / `BlockedDomains`. Phone: `Phone.PhoneNumberRegex`. Password: a live list of the password rules that turns green as the person types (`Password.MinLength`, `MaxLength`, `RequireDigit`, `RequireLower`, `RequireUpper`, `RequireNonAlphanumeric`, `UniqueChars`); the repeat field must equal it. |
+| **Forgot password, Join** | The same identifier input and the same rules, built from the password **and** one-time-code methods. |
+| **Change password, Reset password, Join** | The password rule list and the required fields. |
+| **Change user name, email, phone** | The user name, email (with domains) and phone rules above. |
+
+**How it reaches the browser.** The page writes the rules on the input as `data-a2-rule` (JSON), with the messages already in the language of the page (the same texts as the server errors: `Errors` and `Validation` resources). `wwwroot/js/a2.js` reads them and shows a message under the input when the person leaves it (and while typing once it has been touched), blocks the submit with the first message, and updates the password list on every key. The layout needs nothing extra: every page already loads `a2.js`.
+
+**The browser is a convenience, not the check.** The Server checks every rule again when the form is sent (`ILoginService`, `IRegisterService`, the Identity validators). A browser without JavaScript works as before, with the messages after the click. A regular expression that JavaScript cannot read is skipped in the browser and still checked by the Server. The rules of the banned password list and the password history are checked only by the Server, so the list is never sent to a browser.
+
+**Own pages.** A page of your own (a custom UI) can copy this: read the settings through `GET` of the project settings and write the same `data-a2-rule` JSON, or only set the HTML attributes (`required`, `minlength`, `pattern`) yourself.
+
 ## Privacy and Terms pages
 
 `/Privacy` and `/Terms` are public Razor Pages (no sign-in, and no application is needed). Their text is English and describes what the software itself does: what data it stores, the cookies it sets, who receives data, the user's choices, the MIT licence and the usual terms of use. Both end with a note to the **operator**: the text is a general template, not legal advice, and the operator must check it against how the server is really run (providers, log retention, the law that applies) and change or replace it.

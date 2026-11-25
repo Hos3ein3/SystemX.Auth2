@@ -34,6 +34,7 @@ public sealed class RegisterModel(IClientIdAccessor clientId, IAuthFlowResolver 
         [EmailAddress, StringLength(256)] public string? Email { get; set; }
         [StringLength(32)] public string? PhoneNumber { get; set; }
         [DataType(DataType.Password), StringLength(1024)] public string? Password { get; set; }
+        [DataType(DataType.Password), StringLength(1024), Compare("Password", ErrorMessage = "passwords_do_not_match")] public string? ConfirmPassword { get; set; }
         [StringLength(100)] public string? FirstName { get; set; }
         [StringLength(100)] public string? LastName { get; set; }
     }
@@ -48,6 +49,12 @@ public sealed class RegisterModel(IClientIdAccessor clientId, IAuthFlowResolver 
     {
         if (!await PrepareAsync()) return Page();
         if (!RegistrationEnabled) { Fail(Auth2ErrorCodes.RegistrationDisabled, StatusCodes.Status403Forbidden); return Page(); }
+        if (!string.Equals(Input.Password, Input.ConfirmPassword, StringComparison.Ordinal))
+        {
+            ModelState.AddModelError("Input.ConfirmPassword", Text.Validation("passwords_do_not_match"));
+            Fail(Auth2ErrorCodes.ValidationFailed);
+            return Page();
+        }
         if (!ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
 
         var outcome = await Svc<IRegisterService>().RegisterAsync(new RegisterRequest(Input.UserName, Input.Email, Input.PhoneNumber,

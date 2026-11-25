@@ -107,11 +107,11 @@ A new application and its client secret (plain text, shown once).
 
 ### ApplicationSpec
 
-What an admin gives to create an application.
+What an admin gives to create an application. For an update, `null` leaves a field as it is; for `WebServerUrl` an empty text clears it.
 
 | Member | What it does |
 |---|---|
-| `(constructor)(string, string, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, ClientApplicationSettings)` | What an admin gives to create an application. |
+| `(constructor)(string, string, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, ClientApplicationSettings, Nullable<ApplicationType>, string)` | What an admin gives to create an application. For an update, `null` leaves a field as it is; for `WebServerUrl` an empty text clears it. |
 
 
 ### AuditEntry
@@ -155,7 +155,7 @@ A client application as the rest of the server sees it. It is a copy of the Open
 
 | Member | What it does |
 |---|---|
-| `(constructor)(Guid, Guid, string, string, bool, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, string, ClientApplicationSettings, int, DateTimeOffset)` | A client application as the rest of the server sees it. It is a copy of the OpenIddict application row (client id, redirect URIs, scopes, consent type) and of the extra fields, so OpenIddict types stay inside the infrastructure folder. |
+| `(constructor)(Guid, Guid, string, string, bool, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, string, ClientApplicationSettings, int, DateTimeOffset, ApplicationType, string)` | A client application as the rest of the server sees it. It is a copy of the OpenIddict application row (client id, redirect URIs, scopes, consent type) and of the extra fields, so OpenIddict types stay inside the infrastructure folder. |
 
 
 ### ClientApplicationSettingsValidator
@@ -193,6 +193,18 @@ The health of a client application, as the Server saw it at its last check (two-
 | `Degraded` | The client answered, and says that something works only in part. |
 | `Unhealthy` | The client answered that it is not healthy, or answered with an error. |
 | `Unreachable` | The Server could not reach the client (no answer, refused, too slow). |
+
+
+### ClientHealthSummary
+
+One word for the clients of a project (the badge of the project list and of the dashboard).
+
+| Member | What it does |
+|---|---|
+| `Of(IReadOnlyList<ClientHealthInfo>)` | The worst state of the clients; null when no client has a two-way check. Unreachable counts as Unhealthy. |
+| `NotHealthy(IReadOnlyList<ClientHealthInfo>)` | The number of clients that are Degraded, Unhealthy or Unreachable. |
+| `Text(IReadOnlyList<ClientHealthInfo>)` | The text of the badge: `Healthy`, `Unknown` or `1 of 2 not healthy`; null when there is no client. |
+| `Details(IReadOnlyList<ClientHealthInfo>)` | One line per client for a tooltip. |
 
 
 ### ClientProvisionResult
@@ -481,6 +493,15 @@ Input of a login that an external source already proved (social, OIDC, SAML, LDA
 | `SkipLocalTwoFactor` | The source already used several factors (trusted provider MFA, passkey with user verification). |
 | `IpAddress` | Caller IP (for the audit log). |
 | `UserAgent` | Caller user agent (for the audit log). |
+
+
+### HybridCacheEntryOptions
+
+How long and how a value is kept by `IHybridCacheService`.
+
+| Member | What it does |
+|---|---|
+| `Expiration` | How long a copy may live in the memory of one instance and in Redis. After that it is read again from the source. Default 10 minutes. |
 
 
 ### IAccessService
@@ -793,6 +814,7 @@ The two-way health check: a client that sent a `HealthUrl` in its handshake is a
 | `RegisterAsync(Guid, string, CancellationToken)` | Remembers (or forgets, when `healthUrl` is null or not a plain http or https address) where an application answers the health question. Called by the handshake. Returns true when a check is registered. |
 | `CheckAllAsync(CancellationToken)` | Asks every registered client now and keeps the answers. Returns how many clients were asked. |
 | `CheckProjectAsync(Guid, CancellationToken)` | Asks the clients of one project now (the refresh button of the dashboard). Returns how many clients were asked. |
+| `GetProjectsAsync(IReadOnlyCollection<Guid>, CancellationToken)` | The same as `GetProjectAsync` for many projects at once (the list of projects). A project without a two-way client is in the answer with an empty list. |
 | `GetProjectAsync(Guid, CancellationToken)` | The health of the applications of a project that have a two-way check, ordered by name. Empty when none has. |
 
 
@@ -994,6 +1016,26 @@ Idempotent add of the groups a client sends (current application). Needs `Client
 | Member | What it does |
 |---|---|
 | `SyncAsync(GroupSyncRequest, CancellationToken)` | Syncs a list. Group names follow the rules of permission keys (lowercase, 1–100 characters). |
+
+
+### IHybridCacheService
+
+A two-level cache for values that are read all the time and changed rarely (the settings of a project, for example). **Level one** is the memory of the instance; **level two** is Redis (when `Auth2:Redis:ConnectionString` is set), shared by every instance. Every key has a small **version** in Redis. A read asks Redis only for that number: when it equals the version of the copy in memory the copy is returned (no database, no value sent over the network). When it differs, the value is read from Redis; when Redis has no value for the current version, the factory (the database) is called once and its result is written to Redis for every other instance. `Invalidate` raises the version, so every instance reloads on its next read, at once, without a message to each of them. Without Redis the cache is the memory of the instance only. When Redis fails, the cache does not: it logs and works from memory and the factory.
+
+| Member | What it does |
+|---|---|
+| `GetOrCreateAsync(string, Func<CancellationToken, Task<T>>, HybridCacheEntryOptions, CancellationToken)` | The value for `key`: from memory, else from Redis, else from `factory` (which is then stored). An exception of the factory is not cached. |
+| `Invalidate(string)` | The value changed: drops the copy of this instance and raises the version in Redis, so every instance reads it again. Returns after Redis has the new version. |
+| `InvalidateAsync(string, CancellationToken)` | `Invalidate` for asynchronous callers. |
+
+
+### IInfrastructureStatusService
+
+Runs the health checks of PostgreSQL (`database`) and Redis (`redis`) now, for the admin console.
+
+| Member | What it does |
+|---|---|
+| `ReadAsync(CancellationToken)` | PostgreSQL first, then Redis. A check that does not answer in 3 seconds is `Unhealthy` (PostgreSQL) so a dead service cannot hang the page. |
 
 
 ### IJoinService
@@ -1365,6 +1407,18 @@ Builds the localized messages and sends them.
 | `SendEmailChangeAsync(AppUser, string, string, string, CancellationToken)` | Sends the link that confirms a **new** email address. It goes to the new address, not the old one. |
 | `SendPhoneChangeCodeAsync(AppUser, string, string, CancellationToken)` | Sends the code that proves a **new** phone number, by SMS to the new number. |
 | `SendOtpAsync(AppUser, string, string, NotificationChannel, CancellationToken)` | Sends a one-time code by email or SMS. |
+
+
+### InfrastructureStatus
+
+One piece of infrastructure the server depends on, as a badge of the admin console shows it.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, Nullable<HealthStatus>, string)` | One piece of infrastructure the server depends on, as a badge of the admin console shows it. |
+| `Label` | The name shown to the admin (`PostgreSQL`, `Redis`). |
+| `Status` | The result of its health check, or null when the piece is not used (Redis that is not configured). |
+| `Detail` | A short text for the tooltip. |
 
 
 ### JobHealthStatus
@@ -1780,6 +1834,16 @@ Result of a sync call.
 | `Response` | The counts when it worked. |
 
 
+### WebServerUrls
+
+The address of the web server of an application (see `Auth2Application.WebServerUrl`).
+
+| Member | What it does |
+|---|---|
+| `MaxLength` | The longest address that is kept. |
+| `Normalize(string)` | A plain absolute http or https address without a user name, password, query or fragment, written without a trailing slash (`https://shop.example.com/app`), or null when the text is empty or not such an address. |
+
+
 ## `SystemX.Auth2.Server.Application.Lists`
 
 
@@ -1957,6 +2021,7 @@ Settings of one application (client). Stored in `SettingsJson` next to the OpenI
 | `IdentityTokenMinutes` | Identity token lifetime in minutes. Null: the project value. |
 | `AllowedCorsOrigins` | Allowed CORS origins of this client. CORS is off when empty. |
 | `AllowSelfUiLogin` | Enables the password grant and the two-factor grants for this client (Self UI). |
+| `AllowClientToSetWebServerUrl` | This application's client may tell the Server the address of its web server and its application type in the handshake (`Auth2ClientOptions.WebServerUrl`, `ApplicationType`), and the Server stores them on the application. On (default): the client's value replaces the stored one. Off: only a global admin sets them, and the client's value is ignored (the handshake answer says `webServerLocked`). |
 | `ExternalProviders` | Names of the project's external providers this client shows. Null: all of them. A subset only; it never adds a provider. |
 | `ConsentMode` | Consent mode. Null: the project value. |
 | `SendConfirmationEmail` | Send the confirmation email after registration through this application. Null: the project value. |

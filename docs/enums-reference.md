@@ -227,6 +227,21 @@ Values that describe settings themselves and what an application is meant to be.
 
 **Why it exists.** It lists the kinds of applications a project is meant to have. **No code reads it today**: it is stored and shown in the admin settings page only.
 
+### ApplicationType
+
+`SystemX.Auth2.Contracts.Enums` · What kind of program an application (a client of a project) is. It is a description for admins and tools: it does not change what the application may do (the scopes, roles and permissions do that). A client tells it in the handshake (the Client package works it out from what you configured), and an admin can set it.
+
+**Used by** the application (`applications.kind`), the admin pages and API, the handshake (`Auth2ClientOptions.ApplicationType`).
+
+| Value | Meaning | Choose it when |
+|---|---|---|
+| `Other` | Not said. The value of an application that nobody has described. | Not said (the default for older applications). |
+| `Web` | A web application with pages for people: MVC, Razor Pages, Blazor. It has a web server and a cookie sign-in. | A web application with pages and a browser sign-in. |
+| `Api` | A web API: it answers requests with a bearer token and shows no pages. | A web API that checks bearer tokens. |
+| `Service` | A service or background job (a worker): no web server, no person. It works as a program (machine to machine). | A background job or worker that only uses machine-to-machine tokens. |
+
+**Why it exists.** It says what kind of program an application is. It is a **description only**: nothing is allowed or denied because of it. The client works it out when you do not set it: cookie sign-in means Web, bearer-token API protection means Api, neither means Service.
+
 ### UiMode
 
 `SystemX.Auth2.Contracts.Enums` · Who shows the login screens.

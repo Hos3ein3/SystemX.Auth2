@@ -232,6 +232,8 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IProjectSc
         {
             e.ToTable("applications");
             e.Property(a => a.Name).HasMaxLength(200).IsRequired();
+            e.Property(a => a.Kind).HasColumnName("kind").HasConversion<string>().HasMaxLength(16).HasDefaultValue(Contracts.Enums.ApplicationType.Other);
+            e.Property(a => a.WebServerUrl).HasColumnName("web_server_url").HasMaxLength(500);
             e.HasIndex(a => new { a.ProjectId, a.Name }).IsUnique();
             e.HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Cascade);
             e.Property(a => a.ClientSettings).HasColumnName("settings_json").HasColumnType("jsonb")

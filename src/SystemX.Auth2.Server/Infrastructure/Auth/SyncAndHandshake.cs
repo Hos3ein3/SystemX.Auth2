@@ -1,3 +1,4 @@
+using SystemX.Auth2.Server.Infrastructure.OpenIddict;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -7,6 +8,7 @@ using SystemX.Auth2.Contracts.Constants;
 using OpenIddict.Abstractions;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Infrastructure.Caching;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Persistence;
 
@@ -200,7 +202,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
     private static SyncOutcome Fail(string code) => new(OperationResult.Fail(code), null);
 }
 
-internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options, IServerUrls urls, IClientHealthService clientHealth, IHttpContextAccessor http, ILogger<ClientHandshakeService> log) : IClientHandshakeService
+internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Auth2ServerOptions> options, IServerUrls urls, IClientHealthService clientHealth, IHttpContextAccessor http, Auth2DbContext db, IHybridCacheService cache, ILogger<ClientHandshakeService> log) : IClientHandshakeService
 {
     public async Task<(OperationResult Result, ClientHandshakeResponse? Response)> CheckAsync(ClientHandshakeRequest request, CancellationToken ct = default)
     {
@@ -223,14 +225,39 @@ internal sealed class ClientHandshakeService(IAuthFlowResolver flow, IOptions<Au
         Operations.Auth2Metrics.Handshakes.Add(1, new KeyValuePair<string, object?>("result", "ok"));
         // Two-way health check: remember where to ask (or forget it, for a one-way client). The client gave a whole address (it has a PublicUrl), or only a port:
         // then the host is the network address of this handshake.
-        var healthUrl = !string.IsNullOrWhiteSpace(request?.HealthUrl) ? request.HealthUrl
-            : Operations.ClientHealthAddress.Derive(http.HttpContext?.Connection.RemoteIpAddress, request?.HealthPort, request?.HealthScheme, request?.HealthPath);
+        // Web server address and type: the client may set them (only when the project allows it); an admin's value stays otherwise.
+        var webServerUrl = client.WebServerUrl;
+        var appType = client.ApplicationType;
+        var locked = !client.Settings.AllowClientToSetWebServerUrl;
+        var announced = WebServerUrls.Normalize(request?.WebServerUrl);
+        if (!string.IsNullOrWhiteSpace(request?.WebServerUrl) && announced is null)
+            log.LogWarning("The client {ClientId} sent a WebServerUrl that is not an absolute http or https address. It is ignored.", client.ClientId);
+        if (!locked)
+        {
+            var newUrl = announced ?? webServerUrl;
+            var newType = request?.ApplicationType is { } t && Enum.IsDefined(t) ? t : appType;
+            if (newUrl != webServerUrl || newType != appType)
+            {
+                await db.Set<Auth2Application>().Where(a => a.Id == client.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.WebServerUrl, newUrl).SetProperty(a => a.Kind, newType), ct);
+                cache.InvalidateClient(client.ClientId);   // every instance reads the new address and type
+                webServerUrl = newUrl; appType = newType;
+            }
+        }
+        else if (announced is not null && announced != webServerUrl || request?.ApplicationType is { } rt && rt != appType)
+            log.LogInformation("The client {ClientId} announced a web server address or type, but this application does not let its client set them (AllowClientToSetWebServerUrl of the application). The stored values stay.", client.ClientId);
+
+        var twoWay = !string.IsNullOrWhiteSpace(request?.HealthUrl) || request?.HealthPort is not null || !string.IsNullOrWhiteSpace(request?.HealthPath);   // a one-way client sends nothing of it
+        var healthUrl = !twoWay ? null
+            : Operations.ClientHealthAddress.FromBase(webServerUrl, request?.HealthPath)
+            ?? (!string.IsNullOrWhiteSpace(request?.HealthUrl) ? request.HealthUrl : null)
+            ?? Operations.ClientHealthAddress.Derive(http.HttpContext?.Connection.RemoteIpAddress, request?.HealthPort, request?.HealthScheme, request?.HealthPath);
         await clientHealth.RegisterAsync(client.Id, healthUrl, ct);
 
         var issuer = urls.Build("", []);
         TimeSpan? cookie = settings.CookieLifetimeMinutes is { } m ? TimeSpan.FromMinutes(m) : null;
         return (OperationResult.Ok, new ClientHandshakeResponse(app.Id, client.Id, multi ? app.ProjectKey : null, client.Name, options.Value.Mode,
-            issuer, app.SettingsVersion, cookie, settings.Project.Sessions.SingleActiveSession));
+            issuer, app.SettingsVersion, cookie, settings.Project.Sessions.SingleActiveSession, webServerUrl, appType, locked));
     }
 }
 

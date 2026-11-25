@@ -128,6 +128,8 @@ To try again by hand: `await api.HandshakeAsync()`.
 
 ## Health check
 
+**Web server address and type (optional).** `o.WebServerUrl = "https://shop.example.com"` and `o.ApplicationType = ApplicationType.Web` in `AddAuth2Client(...)` are sent in the handshake and stored on the application (when the application allows it: its setting `AllowClientToSetWebServerUrl`, on the application page, default on; the samples set `WebServerUrl` in their `appsettings.json`). The type is worked out when you do not set it: cookie sign-in = `Web`, bearer-token API = `Api`, neither = `Service`. An admin can also set both on the application page.
+
 `.EnableHealthCheck()` adds a check named `auth2`: **Healthy** after a good handshake, **Degraded** otherwise. The application keeps running when it is degraded. This is the **one-way** check (the client checks the server). `.EnableHealthCheck(o => o.Mode = Auth2HealthCheckMode.TwoWay)` makes it **two-way** (`PublicUrl` is optional: set it behind a proxy or load balancer): the server also asks the client every minute and shows the answer on the project dashboard ([client-health-check.md](client-health-check.md)).
 
 ## The Auth2 API service
@@ -323,7 +325,7 @@ Set the policies:
 - **Scanning** finds `WithPermission` / `WithRole` on your endpoints (Minimal API, controllers, Razor Pages) and `[Auth2Permission]` / `[Auth2Role]` on types and methods of `AssembliesToScan`. With `Both` the lists are merged and **your manual entries win** (they have names and descriptions). Invalid keys are skipped with a warning.
 - **Sync runs after the application started** (all endpoints are mapped) and after a good handshake. With `HandshakeOnStartup = false` it waits until you call `HandshakeAsync()`.
 - **Push** sends scopes, permissions, roles, then groups. The list is hashed: it is sent again only when it changed since the last success. A failure is retried with growing waits (`SyncMaxRetries`, default 5). By default a failure is only logged (`FailOnSyncError = false`).
-- **Pull** reads the catalogs at start and every `CatalogRefreshInterval` (10 minutes) into `IAuth2Catalog` (`Permissions`, `Roles`, `Groups`, `LastReadUtc`).
+- **Pull** reads the catalogs at start and every `CatalogRefreshInterval` (10 minutes; set it in the `AddAuth2Client` options or as `Auth2:CatalogRefreshInterval` in configuration, for example `"01:00:00"`, and `-00:00:00.001` reads them only once) into `IAuth2Catalog` (`Permissions`, `Roles`, `Groups`, `LastReadUtc`).
 - **Both** pushes first, then pulls.
 - **Scopes** (custom ones such as `reports.read`) are found in `.WithScope(...)` / `[Auth2Scope]` and your `ScopeList`. `auth2.*` and the standard scopes are never sent. The server registers them and allows them for your application, so the client can ask for them at once.
 - **Groups** are found in `.WithGroup(...)` / `[Auth2Group]` and your `GroupList`. Pushing groups needs `Clients.GroupSyncAllowed` on the server (off by default), and only adds **missing** groups; admins keep control of display names, members, roles and permissions.

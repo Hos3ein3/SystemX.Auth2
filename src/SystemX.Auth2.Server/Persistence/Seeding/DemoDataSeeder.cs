@@ -274,7 +274,7 @@ internal sealed class DemoDataRun(
 
         var project = await projects.FindByProjectKeyAsync(DemoDataSeeder.ProjectKey, ct);
         if (project is null) return;
-        foreach (var application in await applications.ListAsync(project.Id, ct))
+        foreach (var application in (await applications.ListAsync(project.Id, ct)).Where(a => a.ClientId is "mvc-sample" or "minimal-api-sample"))   // the two sample web applications, not the worker
         {
             var missing = DemoDataSeeder.ScopeNames.Where(n => !application.AllowedScopes.Contains(n, StringComparer.Ordinal)).ToList();
             if (missing.Count > 0) await applications.UpdateAsync(application.Id, new ApplicationSpec("", AllowedScopes: [.. application.AllowedScopes, .. missing]), ct);

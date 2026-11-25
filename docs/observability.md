@@ -63,7 +63,7 @@ The server has two health checks, both tagged `ready`: **`database`** (can the s
 | `Redis: Healthy` | Redis answers |
 | `Redis: Off` (grey) | Redis is not configured: the server keeps one-time codes and rate-limit counters in the database instead ([redis.md](redis.md)) |
 
-Each badge has a tiny refresh arrow: the one of `PostgreSQL` and `Redis` reloads the page (the checks run when the page opens); the one of `Clients` asks the two-way clients of the project at once. The checks run when the page opens, with a limit of 3 seconds, so a dead service shows `Unhealthy` and cannot hang the page. Project admins do not see these two badges (they say something about the server, not about one project). The applications that use the two-way health check have their own badge, `Clients` ([client-health-check.md](client-health-check.md)).
+Each badge has a tiny refresh arrow: the one of `PostgreSQL` and `Redis` reloads the page (the checks run when the page opens); the one of `Clients` asks the two-way clients of the project at once. The checks run when the page opens, with a limit of 3 seconds, so a dead service shows `Unhealthy` and cannot hang the page. Project admins do not see these two badges (they say something about the server, not about one project). The same two rows (`PostgreSQL Store`, `Redis Cache`) are in **Subsystem & Job Status** on the home page of the console (`/`). The applications that use the two-way health check have their own badge, `Clients` ([client-health-check.md](client-health-check.md)).
 
 ## Alerts to start with
 

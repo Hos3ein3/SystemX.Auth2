@@ -63,7 +63,7 @@ See [error-codes.md](error-codes.md).
 
 | Method + route | Token | Scope | Body | Answer |
 |---|---|---|---|---|
-| `POST /api/auth2/client/handshake` | client | `auth2.client.handshake` | `ClientHandshakeRequest` (the optional `healthUrl`, or `healthPort` + `healthScheme` + `healthPath`, registers the address for the two-way health check, [client-health-check.md](client-health-check.md#how-the-server-finds-the-client); none of them removes it) | `200 ClientHandshakeResponse`, `409` on mismatch |
+| `POST /api/auth2/client/handshake` | client | `auth2.client.handshake` | `ClientHandshakeRequest` (the optional `healthUrl`, or `healthPort` + `healthScheme` + `healthPath`, registers the address for the two-way health check, [client-health-check.md](client-health-check.md#how-the-server-finds-the-client); none of them removes it; the optional `webServerUrl` and `applicationType` are stored when the application allows it, [handshake-and-startup.md](handshake-and-startup.md#the-web-server-address-and-the-application-type)) | `200 ClientHandshakeResponse`, `409` on mismatch |
 | `POST /api/auth2/permissions/sync` | client | `auth2.permissions.sync` | `PermissionSyncRequest` | `200 SyncResponse` |
 | `POST /api/auth2/roles/sync` | client | `auth2.roles.sync` | `RoleSyncRequest` | `200 SyncResponse` |
 | `GET /api/auth2/permissions` | client | `auth2.permissions.sync` | none | `200 PermissionDto[]` |

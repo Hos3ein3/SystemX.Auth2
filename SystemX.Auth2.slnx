@@ -2,6 +2,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/SystemX.Auth2.Samples.MinimalApi/SystemX.Auth2.Samples.MinimalApi.csproj" />
     <Project Path="samples/SystemX.Auth2.Samples.Mvc/SystemX.Auth2.Samples.Mvc.csproj" />
+    <Project Path="samples/SystemX.Auth2.Samples.Worker/SystemX.Auth2.Samples.Worker.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/SystemX.Auth2.Client/SystemX.Auth2.Client.csproj" />

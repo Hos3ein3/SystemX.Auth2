@@ -23,6 +23,8 @@ public sealed class CreateModel : AdminPageModel
         public string? RedirectUris { get; set; }
         public string? PostLogoutUris { get; set; }
         public string? AllowedScopes { get; set; } = "openid profile email";
+        public SystemX.Auth2.Contracts.Enums.ApplicationType ApplicationType { get; set; }
+        [StringLength(500)] public string? WebServerUrl { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -48,7 +50,9 @@ public sealed class CreateModel : AdminPageModel
             string.IsNullOrWhiteSpace(Input.ClientId) ? null : Input.ClientId,
             redirectList,
             postLogoutList,
-            scopeList
+            scopeList,
+            IsGlobalAdmin ? Input.ApplicationType : null,
+            IsGlobalAdmin ? Input.WebServerUrl : null
         ), serverUrl, HttpContext.RequestAborted);
 
         if (!result.Succeeded)

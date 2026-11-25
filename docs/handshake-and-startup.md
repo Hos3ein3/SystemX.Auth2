@@ -16,11 +16,13 @@ Call it once at startup (and again later if you want). It does not log anyone in
 `POST /api/auth2/client/handshake`
 
 ```json
-{ "projectKey": "papertrade", "applicationName": "papertrade-api", "clientVersion": "1.0.0" }
+{ "projectKey": "papertrade", "applicationName": "papertrade-api", "clientVersion": "1.0.0",
+  "webServerUrl": "https://api.papertrade.example.com", "applicationType": "Api" }
 ```
 
 - `projectKey` is the key of the **project**. Send it only to a multi-project server (the client does this with `.ServerWithMultiProject("papertrade")`).
 - `applicationName` is the `Name` of the **application** (the client) inside the project.
+- `webServerUrl` and `applicationType` are optional: where the Server reaches the application and what kind of program it is ([below](#the-web-server-address-and-the-application-type)).
 
 The body is only a **check**. The server finds the project from the application of the token (the client id). Nothing in the body can select another project.
 The key is an identifier, not a secret and not proof of anything.
@@ -56,6 +58,7 @@ an unknown application is `404 project_not_found`; a disabled **project or appli
 - `issuer` is `Auth2:Issuer`, or the address of the request when that is not set.
 - `cookieLifetime` is the **effective** value (the application value, else the project value, else `null`). The client then uses its own default.
 - `settingsVersion` goes up when the project settings change.
+- `webServerUrl` and `applicationType` are the values stored for the application after this handshake; `webServerLocked` is `true` when this application does not let its client set them (`AllowClientToSetWebServerUrl` of the application is off).
 
 ### What the client does with the answer
 
@@ -70,9 +73,29 @@ Messages: "The server has a single project. The ProjectKey is ignored. Remove Se
 and "The server serves many projects. Call ServerWithMultiProject(projectKey) with the key of the project of this application." (the client stops).
 Sync (see [permission-sync.md](permission-sync.md)) starts only after a successful handshake.
 
+## The web server address and the application type
+
+Every application has two optional fields (table `applications`, columns `web_server_url` and `kind`):
+
+| Field | Meaning |
+|---|---|
+| **Web server address** (`WebServerUrl`) | Where the Server reaches the application, for example `https://shop.example.com` (an absolute http or https address, no user name, query or fragment; stored without a trailing slash). The Server uses it as the base of the **two-way health check** (`{WebServerUrl}{HealthPath}`, default `/auth2/health`) and for other calls to the application. |
+| **Application type** (`ApplicationType`) | `Web`, `Api`, `Service` or `Other` (default). A description only: nothing is allowed or denied because of it ([enums-reference.md](enums-reference.md#applicationtype)). |
+
+**Who sets them.** A **global admin** (admin console, application page, or `POST` / `PUT` of the admin API with `applicationType` and `webServerUrl`; an empty `webServerUrl` clears it), or the **client** in its handshake: the request has optional `webServerUrl` and `applicationType` (the Client sends them from `Auth2ClientOptions.WebServerUrl` and `ApplicationType`). When the client sets none of them, the stored values stay.
+
+**The switch.** The application setting `AllowClientToSetWebServerUrl` (on the application page of the admin console, global admin only, default **on**; it belongs to the application, not to the project) decides whether the client may replace the stored values:
+
+| Setting | What the handshake does | The answer |
+|---|---|---|
+| **On** | A good `webServerUrl` and a known `applicationType` replace the stored values. A bad address (not absolute, not http or https, with user name, query or fragment) is ignored and logged, and never fails the handshake. | `webServerUrl`, `applicationType`, `webServerLocked: false` |
+| **Off** | The client's values are ignored (and logged). The values an admin set stay. | the stored values, `webServerLocked: true` |
+
+**The health check address.** For a client that asked for the two-way check (it sent `healthUrl`, `healthPort` or `healthPath`) the Server calls, in this order: `{WebServerUrl}{healthPath}` when the application has a web server address; else the whole `healthUrl` the client sent; else `http://{network address of the handshake}:{healthPort}{healthPath}`. So an address an admin set wins over the one worked out from the connection (use it behind a proxy). A one-way client is never called, even when its address is known.
+
 ## The health address (two-way health check)
 
-The handshake request has optional `healthUrl`, `healthPort`, `healthScheme` and `healthPath`. A client with `EnableHealthCheck(o => o.Mode = TwoWay)` sends its whole address in `healthUrl` when it has a `PublicUrl`, and otherwise only the port, scheme and path it listens on: the Server then takes the host from the network address of the handshake. The Server keeps the address and asks the client every minute whether it is healthy and ready. A handshake without it (one-way) removes the address. A wrong address never fails the handshake: it is ignored and logged ([client-health-check.md](client-health-check.md)).
+The handshake request has optional `healthUrl`, `healthPort`, `healthScheme` and `healthPath` (and, since the Server knows the web server address of the application, only `healthPath` is needed: see [above](#the-web-server-address-and-the-application-type)). A client with `EnableHealthCheck(o => o.Mode = TwoWay)` sends its whole address in `healthUrl` when it has a `PublicUrl`, and otherwise only the port, scheme and path it listens on: the Server then takes the host from the network address of the handshake. The Server keeps the address and asks the client every minute whether it is healthy and ready. A handshake without it (one-way) removes the address. A wrong address never fails the handshake: it is ignored and logged ([client-health-check.md](client-health-check.md)).
 
 ## How to implement / extend
 

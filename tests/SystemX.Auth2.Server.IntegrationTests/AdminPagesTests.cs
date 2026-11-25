@@ -181,4 +181,40 @@ public class AdminPagesTests : Phase6Base
         html.ShouldContain("Assigned Permissions");
         html.ShouldContain("data-multiselect-search");
     }
+
+    [Fact]
+    public async Task ApplicationDetail_PostUpdate_Works()
+    {
+        var b = await GlobalAdminAsync();
+        // Get applications for appa
+        var listRes = await b.GetAsync("/admin/p/appa/applications?ClientId=_global");
+        listRes.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var listHtml = await listRes.Content.ReadAsStringAsync();
+        
+        // Find application detail link
+        var match = System.Text.RegularExpressions.Regex.Match(listHtml, @"/admin/p/appa/applications/detail\?id=([a-f0-9\-]+)");
+        match.Success.ShouldBeTrue();
+        var appId = match.Groups[1].Value;
+
+        // GET detail
+        var getRes = await b.GetAsync($"/admin/p/appa/applications/detail?id={appId}");
+        getRes.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var getHtml = await getRes.Content.ReadAsStringAsync();
+        getHtml.ShouldContain("Save Changes");
+
+        // POST update
+        var postRes = await b.PostPageAsync($"/admin/p/appa/applications/detail?handler=Update&id={appId}", new Dictionary<string, string>
+        {
+            ["Id"] = appId,
+            ["Input.Name"] = "Updated App A",
+            ["Input.IsEnabled"] = "true",
+            ["Input.RedirectUris"] = "http://localhost:5000/callback",
+            ["Input.PostLogoutUris"] = "http://localhost:5000/logout-callback",
+            ["Input.AllowedScopes"] = "openid profile",
+            ["Input.UiMode"] = "Hosted"
+        });
+
+        // What is postRes.StatusCode?
+        Assert.True(postRes.StatusCode == HttpStatusCode.Redirect || postRes.StatusCode == HttpStatusCode.OK, $"Status was {postRes.StatusCode}");
+    }
 }

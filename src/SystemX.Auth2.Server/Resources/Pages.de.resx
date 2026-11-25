@@ -37,6 +37,12 @@
   <data name="login.title" xml:space="preserve"><value>Anmelden</value></data>
   <data name="login.subtitle" xml:space="preserve"><value>Geben Sie Ihre Zugangsdaten ein, um sich anzumelden</value></data>
   <data name="login.username_or_email" xml:space="preserve"><value>Benutzername oder E-Mail</value></data>
+  <data name="login.identifier_username" xml:space="preserve"><value>Benutzername</value></data>
+  <data name="login.identifier_email" xml:space="preserve"><value>E-Mail</value></data>
+  <data name="login.identifier_phone" xml:space="preserve"><value>Telefonnummer</value></data>
+  <data name="login.identifier_username_phone" xml:space="preserve"><value>Benutzername oder Telefonnummer</value></data>
+  <data name="login.identifier_email_phone" xml:space="preserve"><value>E-Mail oder Telefonnummer</value></data>
+  <data name="login.identifier_all" xml:space="preserve"><value>Benutzername, E-Mail oder Telefonnummer</value></data>
   <data name="login.password" xml:space="preserve"><value>Passwort</value></data>
   <data name="login.remember_me" xml:space="preserve"><value>Angemeldet bleiben</value></data>
   <data name="login.forgot_password" xml:space="preserve"><value>Passwort vergessen?</value></data>
@@ -125,4 +131,8 @@
   <data name="consent.deny" xml:space="preserve"><value>Ablehnen</value></data>
   <data name="join_project.title" xml:space="preserve"><value>Projekt beitreten</value></data>
   <data name="join_project.confirm" xml:space="preserve"><value>Diesem Projekt beitreten</value></data>
+  <data name="auth_not_supported.title" xml:space="preserve"><value>Direkte Authentifizierung wird nicht unterstützt</value></data>
+  <data name="auth_not_supported.description" xml:space="preserve"><value>Dieser Authentifizierungsdienst erfordert einen Anwendungskontext. Eine direkte Anmeldung oder Registrierung ohne eine gültige Client-Anwendung wird nicht unterstützt. Bitte greifen Sie über Ihre vorgesehene Anwendung auf diesen Dienst zu.</value></data>
+  <data name="auth_not_supported.hint" xml:space="preserve"><value>Wenn Sie glauben, dass es sich um einen Fehler handelt, überprüfen Sie den Anwendungslink oder wenden Sie sich an Ihren Systemadministrator.</value></data>
+  <data name="register.confirm_password" xml:space="preserve"><value>Passwort bestätigen</value></data>
 </root>

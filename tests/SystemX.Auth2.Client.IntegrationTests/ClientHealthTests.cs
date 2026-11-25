@@ -199,7 +199,7 @@ public class HealthAddressResolverTests
 
     [Fact]
     public void WithAPublicUrl_TheWholeAddressIsSent_AndTheUrlsAreNotLookedAt() =>
-        Resolve(new() { ["urls"] = "http://+:5001" }, o => o.PublicUrl = "https://shop.example.com").ShouldBe(new SystemX.Auth2.Client.HealthChecks.HealthAddress("https://shop.example.com/auth2/health", null, null, null));
+        Resolve(new() { ["urls"] = "http://+:5001" }, o => o.PublicUrl = "https://shop.example.com").ShouldBe(new SystemX.Auth2.Client.HealthChecks.HealthAddress("https://shop.example.com/auth2/health", null, null, "/auth2/health"));
 
     [Theory]
     [InlineData("http://+:5001", 5001)]

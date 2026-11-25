@@ -25,7 +25,7 @@ public class HostedAccountTests : Phase6Base
         await PrepareAppsAsync();
         var b = new Browser(Factory);
         var r = await b.PostPageAsync($"/Account/Register?ClientId=appa&ReturnUrl={Uri.EscapeDataString(Redirect)}",
-            Form(("Input.Email", Email), ("Input.UserName", "sara"), ("Input.Password", PassA)));
+            Form(("Input.Email", Email), ("Input.UserName", "sara"), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)));
         r.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         r.Location()!.ShouldStartWith("/Account/Login");
         Uri.UnescapeDataString(r.Location()!).ShouldContain($"ReturnUrl={Redirect}");
@@ -43,8 +43,8 @@ public class HostedAccountTests : Phase6Base
     {
         await PrepareAppsAsync();
         var b = new Browser(Factory);
-        var first = await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA)));
-        var again = await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", "Other-Pass-12345!")));
+        var first = await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)));
+        var again = await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", "Other-Pass-12345!"), ("Input.ConfirmPassword", "Other-Pass-12345!")));
         again.StatusCode.ShouldBe(first.StatusCode);
         again.Location().ShouldBe(first.Location());
         (await CountsAsync(Email)).ShouldBe((1, 1));
@@ -55,9 +55,9 @@ public class HostedAccountTests : Phase6Base
     {
         await PrepareAppsAsync();
         var b = new Browser(Factory);
-        (await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", "short")))).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", "short"), ("Input.ConfirmPassword", "short")))).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         await UpdateSettingsAsync(A, s => s.Registration.RegistrationEnabled = false);
-        (await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA)))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await CountsAsync(Email)).ShouldBe((0, 0));
     }
 
@@ -66,12 +66,12 @@ public class HostedAccountTests : Phase6Base
     {
         await PrepareAppsAsync(both: s => { s.Registration.LoginRequiredAfterRegister = false; s.Redirects.RedirectAfterRegister = "/welcome"; });
         var b = new Browser(Factory);
-        var r = await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA)));
+        var r = await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)));
         r.Location().ShouldBe("/welcome");
         b.HasCookie(".SystemX.Auth2.Session").ShouldBeTrue();
 
         var b2 = new Browser(Factory);   // a valid return URL wins over RedirectAfterRegister
-        var r2 = await b2.PostPageAsync("/Account/Register?ClientId=appa&ReturnUrl=%2Fpage-b", Form(("Input.Email", "two@example.com"), ("Input.Password", PassA)));
+        var r2 = await b2.PostPageAsync("/Account/Register?ClientId=appa&ReturnUrl=%2Fpage-b", Form(("Input.Email", "two@example.com"), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)));
         r2.Location().ShouldBe("/page-b");
     }
 
@@ -80,7 +80,7 @@ public class HostedAccountTests : Phase6Base
     {
         await PrepareAppsAsync(both: s => { s.Registration.LoginRequiredAfterRegister = false; s.Email.RequireConfirmedEmail = true; });
         var b = new Browser(Factory);
-        var r = await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA)));
+        var r = await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)));
         r.Location()!.ShouldStartWith("/Account/Login");
         b.HasCookie(".SystemX.Auth2.Session").ShouldBeFalse();
     }
@@ -92,7 +92,7 @@ public class HostedAccountTests : Phase6Base
     {
         await PrepareAppsAsync();
         var b = new Browser(Factory);
-        await b.PostPageAsync($"/Account/Register?ClientId=appa&ReturnUrl={Uri.EscapeDataString(Redirect)}", Form(("Input.Email", Email), ("Input.Password", PassA)));
+        await b.PostPageAsync($"/Account/Register?ClientId=appa&ReturnUrl={Uri.EscapeDataString(Redirect)}", Form(("Input.Email", Email), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)));
         (await UserAsync(Email)).EmailConfirmed.ShouldBeFalse();
 
         var link = PathAndQuery(Factory.Messages.LastEmailTo(Email)!["link"]);
@@ -106,7 +106,7 @@ public class HostedAccountTests : Phase6Base
     {
         await PrepareAppsAsync();
         var b = new Browser(Factory);
-        await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA)));
+        await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)));
         var user = await UserAsync(Email);
         (await b.GetAsync($"/Account/ConfirmEmail?ClientId=appa&userId={user.Id}&token=garbage")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await b.GetAsync($"/Account/ConfirmEmail?ClientId=appa&userId={Guid.NewGuid()}&token=garbage")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -119,7 +119,7 @@ public class HostedAccountTests : Phase6Base
     {
         await PrepareAppsAsync();
         var b = new Browser(Factory);
-        await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA)));
+        await b.PostPageAsync("/Account/Register?ClientId=appa", Form(("Input.Email", Email), ("Input.Password", PassA), ("Input.ConfirmPassword", PassA)));
         var before = Factory.Messages.CountTo(Email);
         (await b.PostPageAsync("/Account/ConfirmEmail?handler=Resend&ClientId=appa", Form(("Input.Login", Email)))).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await b.PostPageAsync("/Account/ConfirmEmail?handler=Resend&ClientId=appa", Form(("Input.Login", "nobody@example.com")))).StatusCode.ShouldBe(HttpStatusCode.OK);

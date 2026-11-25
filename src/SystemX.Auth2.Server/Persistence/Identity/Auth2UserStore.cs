@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
@@ -219,17 +220,16 @@ public class Auth2UserStore(
     }
 
     /// <summary>
-    /// Roles of the user in the current application. Global roles (for example <c>GlobalAdmin</c>) are included only
-    /// in the <c>_global</c> project, and in single-project mode.
+    /// Roles of the user in the current application. Global roles (for example <c>GlobalAdmin</c> and <c>Developer</c>)
+    /// apply server-wide and are included regardless of the application context.
     /// </summary>
     public override async Task<IList<string>> GetRolesAsync(AppUser user, CancellationToken ct = default)
     {
         ThrowIfDisposed();
         var app = await applications.GetRequiredAsync(ct);
-        var includeGlobal = app.IsGlobalProject || options.Value.Mode == ServerMode.SingleProject;
         return await (from ur in Context.UserRoles
                       join r in Context.Roles on ur.RoleId equals r.Id
-                      where ur.UserId == user.Id && (r.ProjectId == app.Id || (includeGlobal && r.ProjectId == null))
+                      where ur.UserId == user.Id && (r.ProjectId == app.Id || r.ProjectId == null || r.Name == Auth2Roles.GlobalAdmin || r.Name == Auth2Roles.Developer)
                       select r.Name!).ToListAsync(ct);
     }
 }

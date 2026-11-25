@@ -43,6 +43,42 @@ public class HandshakeRunnerTests
     }
 
     [Fact]
+    public async Task TheWebServerAddressAndTheType_AreSent_AndWithoutAnyThePlainAppIsAService()
+    {
+        var (runner, server) = Start(() => FakeServer.Json(HttpStatusCode.OK, Ok), options: o => o.WebServerUrl = "https://shop.example.com/");
+        (await runner.RunAsync()).Status.ShouldBe(HandshakeStatus.Ok);
+        var body = server.Calls.Single(c => c.Path == Auth2Routes.Handshake).Body;
+        body.ShouldContain("\"webServerUrl\":\"https://shop.example.com\"");   // no trailing slash
+        body.ShouldContain("\"applicationType\":\"Service\"");                  // no cookie sign-in and no bearer API: a background job
+    }
+
+    [Fact]
+    public async Task AnExplicitApplicationType_WinsOverTheGuess()
+    {
+        var (runner, server) = Start(() => FakeServer.Json(HttpStatusCode.OK, Ok), options: o => o.ApplicationType = ApplicationType.Api);
+        await runner.RunAsync();
+        server.Calls.Single(c => c.Path == Auth2Routes.Handshake).Body.ShouldContain("\"applicationType\":\"Api\"");
+    }
+
+    [Fact]
+    public async Task WithoutAWebServerAddress_NoneIsSent()
+    {
+        var (runner, server) = Start(() => FakeServer.Json(HttpStatusCode.OK, Ok));
+        await runner.RunAsync();
+        server.Calls.Single(c => c.Path == Auth2Routes.Handshake).Body.ShouldContain("\"webServerUrl\":null");
+    }
+
+    [Theory]
+    [InlineData("shop")]
+    [InlineData("ftp://shop.example.com")]
+    [InlineData("https://shop.example.com/?x=1")]
+    public void ABadWebServerAddress_IsRefusedAtStart(string url)
+    {
+        var o = new Client.Options.Auth2ClientOptions { ServerUrl = "https://auth.test", ApplicationName = "a", ClientId = "c", ClientSecret = "s", WebServerUrl = url };
+        new Client.Options.Auth2ClientOptionsValidator().Validate(null, o).Failed.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task NoProjectKey_AgainstASingleServer_IsOk() =>
         (await Start(() => FakeServer.Json(HttpStatusCode.OK, OkSingle), projectKey: null).Runner.RunAsync()).Status.ShouldBe(HandshakeStatus.Ok);
 

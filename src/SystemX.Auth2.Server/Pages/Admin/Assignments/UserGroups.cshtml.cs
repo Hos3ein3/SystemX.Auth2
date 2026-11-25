@@ -15,12 +15,26 @@ public sealed class UserGroupsModel : AdminPageModel
     public IReadOnlyList<AppUser> AvailableUsers { get; private set; } = [];
     public IReadOnlyList<Group> AvailableGroups { get; private set; } = [];
 
-    [BindProperty(SupportsGet = true)]
-    public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? UserFilter { get; set; }
+    [BindProperty(SupportsGet = true)] public string? GroupName { get; set; }
+    [BindProperty(SupportsGet = true, Name = "page")] public int PageNumber { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 25;
+    public int TotalCount { get; private set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / Math.Max(1, PageSize));
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
+
+        if (Request.Query.TryGetValue("pageNumber", out var pnVal) && int.TryParse(pnVal, out var pn) && pn > 0)
+        {
+            PageNumber = pn;
+        }
+        else if (Request.Query.TryGetValue("page", out var pVal) && int.TryParse(pVal, out var p) && p > 0)
+        {
+            PageNumber = p;
+        }
 
         var db = Svc<Auth2DbContext>();
         var projectId = CurrentProject!.Id;
@@ -43,8 +57,20 @@ public sealed class UserGroupsModel : AdminPageModel
         var query = from ug in db.UserGroups.AsNoTracking()
                     join u in db.Users.AsNoTracking() on ug.UserId equals u.Id
                     join g in db.Groups.AsNoTracking() on ug.GroupId equals g.Id
-                    where g.ProjectId == projectId && (CurrentProject.IsGlobalProject || db.UserProjects.Any(x => x.UserId == u.Id && x.ProjectId == projectId))
+                    where g.ProjectId == projectId
                     select new { ug.UserId, UserName = u.UserName ?? u.Email ?? "", u.DisplayName, ug.GroupId, GroupName = g.Name, GroupDisplayName = g.DisplayName };
+
+        if (!string.IsNullOrWhiteSpace(UserFilter))
+        {
+            var uFilter = UserFilter.Trim().ToUpperInvariant();
+            query = query.Where(x => x.UserName.ToUpper().Contains(uFilter) || (x.DisplayName != null && x.DisplayName.ToUpper().Contains(uFilter)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(GroupName))
+        {
+            var gFilter = GroupName.Trim();
+            query = query.Where(x => x.GroupName == gFilter);
+        }
 
         if (!string.IsNullOrWhiteSpace(Q))
         {
@@ -52,7 +78,9 @@ public sealed class UserGroupsModel : AdminPageModel
             query = query.Where(x => x.UserName.ToUpper().Contains(filter) || x.GroupName.ToUpper().Contains(filter));
         }
 
-        var rows = await query.OrderBy(x => x.UserName).ThenBy(x => x.GroupName).ToListAsync(HttpContext.RequestAborted);
+        TotalCount = await query.CountAsync(HttpContext.RequestAborted);
+        var rows = await query.OrderBy(x => x.UserName).ThenBy(x => x.GroupName)
+            .Skip((PageNumber - 1) * PageSize).Take(PageSize).ToListAsync(HttpContext.RequestAborted);
         Items = [.. rows.Select(x => new UserGroupItem(x.UserId, x.UserName.Length > 0 ? x.UserName : x.UserId.ToString(), x.DisplayName, x.GroupId, x.GroupName, x.GroupDisplayName))];
         return Page();
     }

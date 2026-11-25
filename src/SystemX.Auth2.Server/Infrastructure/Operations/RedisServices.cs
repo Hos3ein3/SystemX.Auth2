@@ -99,7 +99,6 @@ internal sealed class SettingsInvalidationListener(RedisConnection redis, IMemor
         {
             if (Guid.TryParseExact((string?)value, "N", out var id))
             {
-                cache.Remove(ProjectSettingsProvider.CacheKey(id));
                 cache.Remove(ProjectStatusCache.ProjectKey(id));
             }
         });

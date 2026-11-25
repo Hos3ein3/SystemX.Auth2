@@ -10,13 +10,22 @@ public sealed class IndexModel : AdminPageModel
     public PagedResult<AdminScopeDto> Scopes { get; private set; } = new([], 1, 25, 0);
 
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
-    [BindProperty(SupportsGet = true)] public int PageNumber { get; set; } = 1;
+    [BindProperty(SupportsGet = true, Name = "page")] public int PageNumber { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 25;
     [BindProperty(SupportsGet = true)] public string? Owner { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
+
+        if (Request.Query.TryGetValue("pageNumber", out var pnVal) && int.TryParse(pnVal, out var pn) && pn > 0)
+        {
+            PageNumber = pn;
+        }
+        else if (Request.Query.TryGetValue("page", out var pVal) && int.TryParse(pVal, out var p) && p > 0)
+        {
+            PageNumber = p;
+        }
 
         var scopeSvc = Svc<IAdminScopeService>();
         Scopes = await scopeSvc.ListAsync(new PageQuery(PageNumber, PageSize, Q), Owner, HttpContext.RequestAborted);

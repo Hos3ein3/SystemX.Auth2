@@ -128,6 +128,9 @@ public sealed class ApplicationService(
         ProjectSettingsValidator.CheckUris("RedirectUris", spec.RedirectUris ?? [], (p, m) => errors.Add(new SettingsError(p, m)));
         ProjectSettingsValidator.CheckUris("PostLogoutRedirectUris", spec.PostLogoutRedirectUris ?? [], (p, m) => errors.Add(new SettingsError(p, m)));
         if (spec.Settings is { } s) ClientApplicationSettingsValidator.Validate(s, (p, m) => errors.Add(new SettingsError(p, m)));
+        if (!string.IsNullOrWhiteSpace(spec.WebServerUrl) && WebServerUrls.Normalize(spec.WebServerUrl) is null)
+            errors.Add(new SettingsError("WebServerUrl", "Must be an absolute http or https address without a user name, a query or a fragment (at most 500 characters)."));
+        if (spec.ApplicationType is { } type && !Enum.IsDefined(type)) errors.Add(new SettingsError("ApplicationType", "Unknown application type."));
         if (errors.Count > 0) throw new SettingsValidationException(errors);
     }
 }

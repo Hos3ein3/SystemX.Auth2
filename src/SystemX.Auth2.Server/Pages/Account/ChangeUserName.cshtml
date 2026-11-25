@@ -1,6 +1,11 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.ChangeUserNameModel
 @{
+    var rules = SystemX.Auth2.Server.Pages.Account.AccountFormRules.For(Model);
+    var nameRule = rules.UserName(Loc["change_username.new_username"].Value, true);
+    var currentRule = rules.RequiredOnly(Loc["change_username.password_confirm"].Value);
+}
+@{
     Layout = "_LayoutAuth";
     ViewData["Title"] = Loc["change_username.title"];
     ViewData["Subtitle"] = Loc["change_username.subtitle"];
@@ -27,7 +32,7 @@
 }
 else
 {
-    <form method="post" class="space-y-4">
+    <form method="post" class="space-y-4" novalidate>
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="ReturnUrl" />
         <input type="hidden" asp-for="ClientId" />
@@ -48,13 +53,13 @@ else
         }
 
         <a2-field label="@Loc["change_username.new_username"]" required="true" for="Input_NewUserName">
-            <a2-input id="Input_NewUserName" name="Input.NewUserName" value="@Model.Input.NewUserName" required="true" autocomplete="username" placeholder="john.doe" />
+            <a2-input id="Input_NewUserName" name="Input.NewUserName" value="@Model.Input.NewUserName" required="true" autocomplete="username" placeholder="john.doe" data-a2-rule="@nameRule" />
         </a2-field>
 
         @if (Model.PasswordRequired)
         {
             <a2-field label="@Loc["change_username.password_confirm"]" required="true" for="Input_CurrentPassword" hint="Confirm your password to authorize this change.">
-                <a2-password id="Input_CurrentPassword" name="Input.CurrentPassword" required="true" autocomplete="current-password" placeholder="••••••••••••" />
+                <a2-password id="Input_CurrentPassword" name="Input.CurrentPassword" required="true" autocomplete="current-password" placeholder="••••••••••••" data-a2-rule="@currentRule" />
             </a2-field>
         }
 

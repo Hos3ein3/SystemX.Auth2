@@ -8,10 +8,11 @@ Redis is **optional**. Without it everything works on one Server instance. With 
 |---|---|---|
 | Server | Rate-limit counters (`{prefix}:rl:...`) | Each instance counts alone (`MemoryRateLimiter`) |
 | Server | One-time codes of email and SMS (`{prefix}:otp:...`) | They are rows of the table `otp_codes` |
+| Server | The **settings of every project**: a version number and the value, shared by all instances ([the hybrid cache](#the-hybrid-cache-settings-without-asking-the-database)) | Each instance keeps them in its own memory for 10 minutes |
 | Server | The channel `{prefix}:settings-changed` (publish / subscribe) | Each instance learns from the database: a cache that expires, and a poll every `Auth2:ExternalProviders:PollSeconds` for providers |
 | Client | The access data of signed-in users (roles, permissions, groups) | In the memory of each application instance |
 
-What Redis does **not** hold, on purpose ([ADR-068](decisions.md)): the Data Protection keys and the key ring. Redis may lose data, and without those keys nobody could sign in. They stay in PostgreSQL ([key-ring.md](key-ring.md)). No password, token or secret is stored in Redis; one-time codes are stored **hashed**.
+What Redis does **not** hold, on purpose ([ADR-068](decisions.md)): the Data Protection keys and the key ring. Redis may lose data, and without those keys nobody could sign in. They stay in PostgreSQL ([key-ring.md](key-ring.md)). No plain password, token or secret is stored in Redis; one-time codes are stored **hashed**, and the settings cache holds provider secrets only **encrypted** ([the hybrid cache](#the-hybrid-cache-settings-without-asking-the-database)).
 
 ## When to use it
 
@@ -77,13 +78,75 @@ That is all: the switch is only the connection string. At start the Server regis
 
 The Server **still starts** (`AbortOnConnectFail = false`), reconnects by itself, and `/health/ready` says not ready. But the rate limiter **does not fail open**: it does not catch a Redis error, so every request that is rate limited (the sign-in pages, `/connect/token`, register, one-time codes, password reset, external sign-in, passkeys, the admin API, the handshake and sync routes) fails with a server error while Redis is unreachable, and so does requesting or checking a one-time code. Routes that are not limited keep working. So treat Redis as a **hard dependency** once you turn it on: run it highly available, watch `/health/ready`, and if you cannot, do not enable it.
 
+## The hybrid cache: settings without asking the database
+
+`IHybridCacheService` (`HybridCacheService`, registered by `AddAuth2Caching()` in the `DependencyInjection` folder) is a two-level cache for values that are read on every request and change rarely. The settings of a project use it: before this, every instance asked PostgreSQL for the settings again every 10 minutes and after every change.
+
+| Level | Where | What it holds |
+|---|---|---|
+| 1 | The memory of the instance | The value and the **version** it was read under |
+| 2 | Redis (only when `Auth2:Redis:ConnectionString` is set) | A small **version number** per key, and the value (JSON) with the version it belongs to |
+
+**A read asks Redis only for the version number** (one `GET` of a few bytes):
+
+1. The version equals the one of the copy in memory: the copy is returned. No database, no value over the network.
+2. The version differs (an instance changed the value): the value is read from Redis (one `HMGET`).
+3. Redis has no value for the current version: the database is read **once** and the value is written to Redis for every other instance.
+
+**A change** (`IProjectSettingsProvider.Invalidate`, called when an admin saves settings) raises the version in Redis. Every instance sees the new number on its next read and loads the new value: no message to each instance, and no waiting for a cache to expire. The new value is stored **only if the version is still the one it was read under** (one Lua script), so a value that was read from the database before a change can never overwrite the newer one.
+
+| Redis key | Content | Lifetime |
+|---|---|---|
+| `{prefix}:hc:{key}:ver` | The version (an integer, raised on every change) | none (a few bytes per key) |
+| `{prefix}:hc:{key}:data` | A hash: `ver` and `json` (the value, written like the settings in the database) | `HybridCacheEntryOptions.Expiration` (10 minutes for settings) |
+
+What uses it (every request starts with these three, so none of them reads PostgreSQL on every request any more):
+
+| Key | Holds | Dropped (version raised) when |
+|---|---|---|
+| `settings:{projectId}` | The settings of the project | the settings are saved, the project is deleted, the Server seeds |
+| `project:{projectId}` | The project row (key, name, enabled flag, settings version) | the settings are saved, the project is renamed, enabled or disabled, deleted |
+| `client:{clientId}` | The calling application (`ClientApplicationInfo`: enabled flag, scopes, redirect URIs, settings, web server address, type) | the application is created, changed, deleted, its settings change, a handshake changes its address or type, the project settings change (the consent type follows the project) |
+| `project-ref:key:{key}`, `project-ref:client:{clientId}`, `project-ref:single:{name}` | Only the id of the project that a key, a client id or the single-project name belongs to | the project or application is deleted, or the single project is renamed |
+
+`Effective` settings (the project settings with the overrides of the application) are not stored: they are put together in memory from the first two for each request.
+
+**Where it is used in the code.** `Auth2PageModel` (and every page, endpoint and service) gets the project, the settings and the application through `IAuthFlowResolver`: `GetProjectAsync`, `GetSettingsAsync`, `GetClientAsync`. The resolver is thin; the reading is in `IProjectContext` (`SingleProjectContext`, `MultiProjectContext`), `IClientApplicationContext` (`ClientApplicationContext`) and `IProjectSettingsProvider`, which all read through `IHybridCacheService`. So these three calls come from Redis when it is on, and from the memory of the instance when it is not. The key names are in `AuthFlowCache` (`Infrastructure/Caching/AuthFlowCache.cs`).
+
+### Check that it works
+
+1. Start the Server with `Auth2:Redis:ConnectionString` set (without it the cache is memory only) and open a sign-in page once.
+2. In `redis-cli`: `SCAN 0 MATCH auth2:hc:* COUNT 100` (use your `KeyPrefix`; never `KEYS` on a big Redis). You should see, for a client `mvc-sample`:
+   - `auth2:hc:project:{projectId}:ver` and `...:data`
+   - `auth2:hc:settings:{projectId}:ver` and `...:data`
+   - `auth2:hc:client:mvc-sample:ver` and `...:data`
+   - `auth2:hc:project-ref:client:mvc-sample:ver` and `...:data`
+3. `HGETALL auth2:hc:client:mvc-sample:data` shows `ver` (the version the value belongs to) and `json` (the value). `GET auth2:hc:client:mvc-sample:ver` is the number every request compares.
+4. Change something in the admin console (for example a project setting): the `...:ver` number goes up and the next request reloads the value. `MONITOR` on a test Redis shows a request doing only `GET ...:ver` while nothing changed.
+
+The test `AuthFlowCacheRedisTests` does the same against a real Redis: the keys exist, a row changed directly in PostgreSQL is **not** seen until the entry is invalidated, and saving the settings or changing an application is seen by the next request.
+
+| Problem | Likely cause |
+|---|---|
+| No `hc:` keys in Redis | `Auth2:Redis:ConnectionString` is not set, or the Server was not restarted after setting it. The hybrid cache then uses memory only |
+| A change made directly in PostgreSQL does not appear | By design: the cache is dropped by the Server's own write paths (admin console, API, handshake, seed). Entries also expire after 10 minutes. Change data through the Server, or drop the keys of the project (`SCAN` and `DEL` its `hc:` keys) |
+| A change appears on one instance only | The instances use different `Auth2:Redis:KeyPrefix` values, or one of them has no Redis |
+| Warnings "Redis did not answer the version of the cache key" in the log | Redis is down or too slow. The cache keeps working from memory and the database (slower); fix Redis |
+
+**What this means for Redis.** The settings JSON holds the external-provider secrets and the SMTP password **in the form they have in the database: encrypted** with the Data Protection keys (fields ending in `Protected`). They are not readable without those keys, which stay in PostgreSQL (see the start of this page). Still, Redis now holds data that is more sensitive than counters, so protect it as the page says: a password, TLS and a private network. `project.AccessVersion` of the cached project row is **not** kept fresh (nothing reads it from there; the access version is read from the database where it matters).
+
+**Without Redis** the cache is the memory of the instance only, as before (a change on another instance is seen when the copy expires). **When Redis fails** the cache does not: it logs a warning and works from memory and the database (a Redis outage costs speed, not availability, unlike the rate limiter above).
+
+To use it for something else: inject `IHybridCacheService` and call `GetOrCreateAsync(key, factory)`; call `Invalidate(key)` when the value changes.
+
 ## What is in Redis (keys)
 
 | Key or channel | Content | Lifetime |
 |---|---|---|
 | `{prefix}:rl:{policy key}` | A counter for one rate-limit window | The window of the policy (default 60 s) |
 | `{prefix}:otp:{projectId}:{userId}:{purpose}` | A hash: `h` (hash of the code), `a` (wrong attempts), `c` (created), `e` (expires) | `TwoFactor.OtpLifetimeSeconds` (default 120 s) |
-| channel `{prefix}:settings-changed` | The project id (a message, not stored) | none |
+| `{prefix}:hc:{key}:ver`, `{prefix}:hc:{key}:data` | The version and the value of a hybrid cache entry (the settings of a project) | `ver`: none, `data`: 10 minutes |
+| channel `{prefix}:settings-changed` | The project id (a message, not stored). Still used to drop the project status cache of the other instances | none |
 
 The rate-limit key names the address, the client id and the login, never a raw token (a bearer token is hashed).
 

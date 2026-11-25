@@ -30,12 +30,28 @@ public sealed class DetailModel(IAdminProjectService projectService) : PageModel
         public string ConfirmationKey { get; set; } = "";
     }
 
+    private bool CanManageProjects => User.IsInRole("GlobalAdmin") || User.IsInRole("Developer") || User.HasClaim("scope", "auth2.admin.global") || User.HasClaim("role", "GlobalAdmin") || User.HasClaim("role", "Developer");
+
+    private void EnsureIdResolved()
+    {
+        if (Id != Guid.Empty) return;
+        if (Guid.TryParse(Request.Query["id"], out var qId) && qId != Guid.Empty) Id = qId;
+        else if (Guid.TryParse(Request.Form["Id"], out var fId) && fId != Guid.Empty) Id = fId;
+        else if (Guid.TryParse(Request.Form["id"], out var fId2) && fId2 != Guid.Empty) Id = fId2;
+    }
+
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return NotFound();
+        if (!CanManageProjects) return NotFound();
 
+        EnsureIdResolved();
         Project = await projectService.GetAsync(Id, HttpContext.RequestAborted);
+        if (Project is null && Request.Query.TryGetValue("key", out var pKey))
+        {
+            var proj = await projectService.ListAsync(new PageQuery(1, 100), HttpContext.RequestAborted);
+            Project = proj.Items.FirstOrDefault(p => string.Equals(p.ProjectKey, pKey.ToString(), StringComparison.OrdinalIgnoreCase));
+            if (Project != null) Id = Project.Id;
+        }
         if (Project is null) return NotFound();
 
         Input = new UpdateInputModel
@@ -49,9 +65,9 @@ public sealed class DetailModel(IAdminProjectService projectService) : PageModel
 
     public async Task<IActionResult> OnPostUpdateAsync()
     {
-        if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return NotFound();
+        if (!CanManageProjects) return NotFound();
 
+        EnsureIdResolved();
         Project = await projectService.GetAsync(Id, HttpContext.RequestAborted);
         if (Project is null) return NotFound();
 
@@ -63,14 +79,14 @@ public sealed class DetailModel(IAdminProjectService projectService) : PageModel
         }
 
         TempData["Success"] = "Project details updated.";
-        return RedirectToPage(new { id = Id });
+        return Redirect($"/admin/projects/detail?id={Id}");
     }
 
     public async Task<IActionResult> OnPostDeleteAsync()
     {
-        if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
-            return NotFound();
+        if (!CanManageProjects) return NotFound();
 
+        EnsureIdResolved();
         Project = await projectService.GetAsync(Id, HttpContext.RequestAborted);
         if (Project is null) return NotFound();
 

@@ -12,38 +12,9 @@
     <title>@ViewData["Title"] - @(pageModel?.BrandName ?? "SystemX Auth2")</title>
     <partial name="_Branding" model="Model" />
     <link rel="stylesheet" href="/css/site.css" />
-    <script src="/js/a2.js" defer></script>
+    <script src="/js/a2.js" asp-append-version="true" defer></script>
 </head>
 <body class="h-full font-[var(--a2-font-family,system-ui)] text-[var(--a2-color-text,#111827)] dark:text-gray-100 bg-gray-50 dark:bg-gray-900 antialiased">
-    <!-- Top Bar with Language Selector & Dark Mode Toggle -->
-    <header class="absolute top-0 inset-x-0 p-4 flex justify-end items-center space-x-3 z-10">
-        <!-- Culture Selector Dropdown -->
-        <div class="inline-flex items-center space-x-1.5">
-            <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-            </svg>
-            <select aria-label="Select culture / language" data-culture-select class="text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors shadow-sm">
-                <!option value="en" @(currentCulture == "en" ? "selected" : "")>English (EN)</!option>
-                <!option value="fa" @(currentCulture == "fa" ? "selected" : "")>فارسی (FA)</!option>
-                <!option value="nl" @(currentCulture == "nl" ? "selected" : "")>Nederlands (NL)</!option>
-                <!option value="it" @(currentCulture == "it" ? "selected" : "")>Italiano (IT)</!option>
-                <!option value="de" @(currentCulture == "de" ? "selected" : "")>Deutsch (DE)</!option>
-                <!option value="es" @(currentCulture == "es" ? "selected" : "")>Español (ES)</!option>
-                <!option value="fr" @(currentCulture == "fr" ? "selected" : "")>Français (FR)</!option>
-            </select>
-        </div>
-
-        <!-- Dark Mode Toggle Button -->
-        <button type="button" data-toggle-theme aria-label="Toggle dark mode" class="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors cursor-pointer">
-            <svg class="hidden dark:block w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
-            </svg>
-            <svg class="block dark:hidden w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-            </svg>
-        </button>
-    </header>
-
     <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         @{
             // Pages with long text (privacy, terms) ask for a wide card: ViewData["Wide"] = true
@@ -64,6 +35,48 @@
 
         <div class="mt-8 sm:mx-auto sm:w-full @width">
             <div class="bg-[var(--a2-color-surface,#ffffff)] dark:bg-gray-800 py-8 px-4 shadow-sm sm:rounded-[var(--a2-radius,0.375rem)] sm:px-10 border border-gray-200 dark:border-gray-700">
+                <!-- Language Selector & Dark Mode Toggle inside card box (matching screenshot) -->
+                <div class="flex justify-end items-center gap-3 mb-6 pb-3 border-b border-gray-100 dark:border-gray-700/60">
+                    <div class="inline-flex items-center gap-2">
+                        <!-- 文A Translate Icon -->
+                        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 5h7" />
+                            <path d="M9 3v2c0 4.418-2.239 8-5 8" />
+                            <path d="M5 9c0 2.144 2.952 3.908 6.7 4" />
+                            <path d="M12 20l4-9 4 9" />
+                            <path d="M13.5 17h5" />
+                        </svg>
+
+                        <!-- Culture Selector Dropdown Pill with Chevron -->
+                        <div class="relative inline-flex items-center">
+                            <select aria-label="Select culture / language" data-culture-select class="appearance-none text-xs font-semibold rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 pl-3.5 pr-8 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors shadow-xs cursor-pointer">
+                                <!option value="en" @(currentCulture == "en" ? "selected" : "")>English (EN)</!option>
+                                <!option value="fa" @(currentCulture == "fa" ? "selected" : "")>فارسی (FA)</!option>
+                                <!option value="nl" @(currentCulture == "nl" ? "selected" : "")>Nederlands (NL)</!option>
+                                <!option value="it" @(currentCulture == "it" ? "selected" : "")>Italiano (IT)</!option>
+                                <!option value="de" @(currentCulture == "de" ? "selected" : "")>Deutsch (DE)</!option>
+                                <!option value="es" @(currentCulture == "es" ? "selected" : "")>Español (ES)</!option>
+                                <!option value="fr" @(currentCulture == "fr" ? "selected" : "")>Français (FR)</!option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-600 dark:text-gray-400">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dark Mode Toggle Button -->
+                    <button type="button" data-toggle-theme aria-label="Toggle dark mode" class="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors cursor-pointer">
+                        <svg class="hidden dark:block w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
+                        </svg>
+                        <svg class="block dark:hidden w-5 h-5 text-slate-700" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                        </svg>
+                    </button>
+                </div>
+
                 @if (TempData["Success"] is string success)
                 {
                     <a2-alert variant="success">@success</a2-alert>
@@ -72,7 +85,7 @@
                 {
                     <a2-alert variant="error">@error</a2-alert>
                 }
-                @if (pageModel != null && !string.IsNullOrEmpty(pageModel.ErrorMessage))
+                @if (pageModel != null && !string.IsNullOrEmpty(pageModel.ErrorMessage) && pageModel.ProjectFound && !(ViewContext.ActionDescriptor.DisplayName?.Contains("Logout", StringComparison.OrdinalIgnoreCase) ?? false))
                 {
                     <a2-alert variant="error">@pageModel.ErrorMessage</a2-alert>
                 }

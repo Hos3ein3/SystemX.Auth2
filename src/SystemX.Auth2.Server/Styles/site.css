@@ -29,3 +29,61 @@
   --color-a2-error: var(--a2-color-error);
   --color-a2-success: var(--a2-color-success);
 }
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:lang(fa), [lang="fa"], [dir="rtl"] {
+  --a2-font-family: 'Vazirmatn', 'Vazir', 'Shabnam', 'Sahel', 'Tahoma', system-ui, -apple-system, sans-serif;
+  font-family: var(--a2-font-family);
+}
+
+/* Form Validation States matching Components Showcase */
+.input-validation-error,
+input.a2-invalid,
+select.a2-invalid,
+textarea.a2-invalid {
+  border-color: #ef4444 !important;
+  color: #b91c1c !important;
+}
+
+.input-validation-error:focus,
+input.a2-invalid:focus,
+select.a2-invalid:focus,
+textarea.a2-invalid:focus {
+  outline: none !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px #ef4444 !important;
+}
+
+.field-validation-error,
+.a2-validation-error {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #dc2626;
+  display: block;
+}
+
+.dark .field-validation-error,
+.dark .a2-validation-error {
+  color: #f87171;
+}
+
+.field-validation-valid {
+  display: none;
+}
+

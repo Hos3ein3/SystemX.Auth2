@@ -1,5 +1,6 @@
 namespace SystemX.Auth2.Contracts.Applications;
 
-/// <summary>Create an application in a project. The client id is <c>{projectkey}.{name}</c> unless one is given. It must be unique on the server.</summary>
+/// <summary>Create an application in a project. The client id is <c>{projectkey}.{name}</c> unless one is given. It must be unique on the server. <c>ApplicationType</c> and <c>WebServerUrl</c> are optional.</summary>
 public sealed record CreateApplicationRequest(string Name, string? ClientId = null,
-    IReadOnlyList<string>? RedirectUris = null, IReadOnlyList<string>? PostLogoutRedirectUris = null, IReadOnlyList<string>? AllowedScopes = null);
+    IReadOnlyList<string>? RedirectUris = null, IReadOnlyList<string>? PostLogoutRedirectUris = null, IReadOnlyList<string>? AllowedScopes = null,
+    Enums.ApplicationType? ApplicationType = null, string? WebServerUrl = null);

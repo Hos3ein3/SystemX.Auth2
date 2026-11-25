@@ -1277,6 +1277,14 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("json_web_key_set");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Other")
+                        .HasColumnName("kind");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1318,6 +1326,11 @@ namespace SystemX.Auth2.Server.Persistence.Migrations
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("WebServerUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("web_server_url");
 
                     b.HasKey("Id")
                         .HasName("pk_applications");

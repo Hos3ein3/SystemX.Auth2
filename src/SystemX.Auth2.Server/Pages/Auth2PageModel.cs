@@ -36,10 +36,25 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
     public bool ProjectFound => Project is not null;
 
     /// <summary>The client id to put into redirects to the next page (so the next page finds the same application).</summary>
-    public string? ClientIdForLinks => Client?.ClientId ?? ClientId;
+    public string? ClientIdForLinks => Client?.ClientId ?? ClientId ?? ReturnUrlQuery.Get(ReturnUrl, "client_id") ?? ReturnUrlQuery.Get(ReturnUrl, "ClientId");
+
+    /// <summary>Builds a sign-in URL that preserves ReturnUrl, ClientId, and Culture.</summary>
+    public string GetLoginUrl()
+    {
+        var q = new List<string>();
+        if (!string.IsNullOrEmpty(ReturnUrl)) q.Add($"ReturnUrl={Uri.EscapeDataString(ReturnUrl)}");
+        var cid = ClientIdForLinks;
+        if (!string.IsNullOrEmpty(cid)) q.Add($"ClientId={Uri.EscapeDataString(cid)}");
+        var culture = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+        if (!string.IsNullOrEmpty(culture) && culture != "en") q.Add($"culture={Uri.EscapeDataString(culture)}");
+        return "/Account/Login" + (q.Count > 0 ? "?" + string.Join("&", q) : "");
+    }
 
     /// <summary>Localized error message for the UI, or null.</summary>
     public string? ErrorMessage { get; protected set; }
+
+    /// <summary>Localizer service.</summary>
+    public IAuth2Localizer Text => text;
 
     /// <summary>Stable error code for the UI, or null.</summary>
     public string? ErrorCode { get; protected set; }

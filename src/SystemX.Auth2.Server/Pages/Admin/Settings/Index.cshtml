@@ -3,7 +3,7 @@
 @{
     Layout = "_LayoutAdmin";
     ViewData["Title"] = $"Settings - {Model.CurrentProject?.Name}";
-    var isGlobal = Model.IsGlobalAdmin;
+    var isGlobal = Model.CanEditGlobalOnly;
 }
 
 <div class="max-w-5xl mx-auto space-y-6">
@@ -165,7 +165,7 @@
                                     {
                                         var isChecked = Model.SelectedAssignedRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
                                         <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 p-1 rounded cursor-pointer multi-select-item" data-search="@role">
-                                            <input type="checkbox" name="SelectedAssignedRoles" value="@role" checked="@(isChecked ? "checked" : null)" disabled="@(!Model.IsGlobalAdmin ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                            <input type="checkbox" name="SelectedAssignedRoles" value="@role" checked="@(isChecked ? "checked" : null)" disabled="@(!isGlobal ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
                                             <span class="font-medium font-mono truncate">@role</span>
                                         </label>
                                     }
@@ -191,7 +191,7 @@
                                     {
                                         var isChecked = Model.SelectedAssignedGroups.Contains(group, StringComparer.OrdinalIgnoreCase);
                                         <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 p-1 rounded cursor-pointer multi-select-item" data-search="@group">
-                                            <input type="checkbox" name="SelectedAssignedGroups" value="@group" checked="@(isChecked ? "checked" : null)" disabled="@(!Model.IsGlobalAdmin ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                            <input type="checkbox" name="SelectedAssignedGroups" value="@group" checked="@(isChecked ? "checked" : null)" disabled="@(!isGlobal ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
                                             <span class="font-medium font-mono truncate">@group</span>
                                         </label>
                                     }
@@ -217,7 +217,7 @@
                                     {
                                         var isChecked = Model.SelectedAssignedPermissions.Contains(perm, StringComparer.OrdinalIgnoreCase);
                                         <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 p-1 rounded cursor-pointer multi-select-item" data-search="@perm">
-                                            <input type="checkbox" name="SelectedAssignedPermissions" value="@perm" checked="@(isChecked ? "checked" : null)" disabled="@(!Model.IsGlobalAdmin ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                                            <input type="checkbox" name="SelectedAssignedPermissions" value="@perm" checked="@(isChecked ? "checked" : null)" disabled="@(!isGlobal ? "disabled" : null)" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
                                             <span class="font-medium font-mono truncate text-[11px]">@perm</span>
                                         </label>
                                     }

@@ -37,6 +37,12 @@
   <data name="login.title" xml:space="preserve"><value>ورود به حساب</value></data>
   <data name="login.subtitle" xml:space="preserve"><value>برای دسترسی به حساب کاربری خود مشخصات خود را وارد کنید</value></data>
   <data name="login.username_or_email" xml:space="preserve"><value>نام کاربری یا ایمیل</value></data>
+  <data name="login.identifier_username" xml:space="preserve"><value>نام کاربری</value></data>
+  <data name="login.identifier_email" xml:space="preserve"><value>ایمیل</value></data>
+  <data name="login.identifier_phone" xml:space="preserve"><value>شماره تلفن</value></data>
+  <data name="login.identifier_username_phone" xml:space="preserve"><value>نام کاربری یا شماره تلفن</value></data>
+  <data name="login.identifier_email_phone" xml:space="preserve"><value>ایمیل یا شماره تلفن</value></data>
+  <data name="login.identifier_all" xml:space="preserve"><value>نام کاربری، ایمیل یا شماره تلفن</value></data>
   <data name="login.password" xml:space="preserve"><value>رمز عبور</value></data>
   <data name="login.remember_me" xml:space="preserve"><value>مرا به خاطر بسپار</value></data>
   <data name="login.forgot_password" xml:space="preserve"><value>رمز عبور خود را فراموش کرده‌اید؟</value></data>
@@ -125,4 +131,8 @@
   <data name="consent.deny" xml:space="preserve"><value>رد درخواست</value></data>
   <data name="join_project.title" xml:space="preserve"><value>عضویت در پروژه</value></data>
   <data name="join_project.confirm" xml:space="preserve"><value>عضویت در این پروژه</value></data>
+  <data name="auth_not_supported.title" xml:space="preserve"><value>احراز هویت مستقیم پشتیبانی نمی‌شود</value></data>
+  <data name="auth_not_supported.description" xml:space="preserve"><value>این سرویس احراز هویت نیازمند مشخص بودن برنامه مبدأ است. ورود یا ثبت‌نام مستقیم بدون کلاینت معتبر پشتیبانی نمی‌شود. لطفاً از طریق برنامه مربوطه وارد شوید.</value></data>
+  <data name="auth_not_supported.hint" xml:space="preserve"><value>اگر فکر می‌کنید این یک خطاست، پیوند برنامه را بررسی کرده یا با مدیر سیستم تماس بگیرید.</value></data>
+  <data name="register.confirm_password" xml:space="preserve"><value>تکرار رمز عبور</value></data>
 </root>

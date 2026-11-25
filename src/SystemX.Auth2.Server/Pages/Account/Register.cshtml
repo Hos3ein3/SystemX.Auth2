@@ -1,36 +1,65 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.RegisterModel
 @{
+    var rules = SystemX.Auth2.Server.Pages.Account.AccountFormRules.For(Model);
+    var identifierCount = (Model.ShowEmailField ? 1 : 0) + (Model.ShowUserNameField ? 1 : 0) + (Model.ShowPhoneField ? 1 : 0);
+    var onlyOne = identifierCount == 1;   // with several ways to register one of them is enough, so none is required alone
+    var emailRule = rules.Email(Loc["register.email"].Value, onlyOne);
+    var userRule = rules.UserName(Loc["register.username"].Value, onlyOne);
+    var phoneRule = rules.Phone(Loc["register.phone"].Value, onlyOne);
+    var passwordRule = rules.NewPassword(Loc["register.password"].Value);
+    var confirmRule = rules.ConfirmPassword(Loc["register.confirm_password"].Value, "Input_Password");
+}
+@{
     Layout = "_LayoutAuth";
     ViewData["Title"] = Loc["register.title"];
     ViewData["Subtitle"] = Loc["register.subtitle"];
 }
 
-@if (!Model.RegistrationEnabled)
+@if (!Model.ProjectFound)
+{
+    <div class="text-center space-y-4 py-4">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">@Loc["auth_not_supported.title"]</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            @Loc["auth_not_supported.description"]
+        </p>
+        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                @Loc["auth_not_supported.hint"]
+            </p>
+        </div>
+    </div>
+}
+else if (!Model.RegistrationEnabled)
 {
     <a2-alert variant="warning">Registration is currently not available for this project.</a2-alert>
     <div class="mt-4 text-center">
-        <a2-link-button href="/Account/Login?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" variant="secondary">@Loc["common.back_to_login"]</a2-link-button>
+        <a2-link-button href="@Model.GetLoginUrl()" variant="secondary">@Loc["common.back_to_login"]</a2-link-button>
     </div>
 }
 else
 {
-    <form method="post" class="space-y-4">
+    <form method="post" class="space-y-4" novalidate>
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="ReturnUrl" />
         <input type="hidden" asp-for="ClientId" />
 
         @if (Model.ShowEmailField)
         {
-            <a2-field label="@Loc["register.email"]" required="true" for="Input_Email">
-                <a2-input id="Input_Email" name="Input.Email" type="email" value="@Model.Input?.Email" placeholder="you@example.com" autocomplete="email" required="true" />
+            <a2-field label="@Loc["register.email"]" required="@onlyOne" for="Input_Email">
+                <a2-input id="Input_Email" name="Input.Email" type="email" value="@Model.Input?.Email" placeholder="you@example.com" autocomplete="email" required="@onlyOne" data-a2-rule="@emailRule" />
             </a2-field>
         }
 
         @if (Model.ShowUserNameField)
         {
-            <a2-field label="@Loc["register.username"]" for="Input_UserName">
-                <a2-input id="Input_UserName" name="Input.UserName" value="@Model.Input?.UserName" placeholder="username" autocomplete="username" />
+            <a2-field label="@Loc["register.username"]" required="@onlyOne" for="Input_UserName">
+                <a2-input id="Input_UserName" name="Input.UserName" value="@Model.Input?.UserName" placeholder="username" autocomplete="username" required="@onlyOne" data-a2-rule="@userRule" />
             </a2-field>
         }
 
@@ -45,13 +74,17 @@ else
 
         @if (Model.ShowPhoneField)
         {
-            <a2-field label="@Loc["register.phone"]" for="Input_PhoneNumber">
-                <a2-input id="Input_PhoneNumber" name="Input.PhoneNumber" type="tel" value="@Model.Input?.PhoneNumber" placeholder="+1234567890" autocomplete="tel" />
+            <a2-field label="@Loc["register.phone"]" required="@onlyOne" for="Input_PhoneNumber">
+                <a2-input id="Input_PhoneNumber" name="Input.PhoneNumber" type="tel" value="@Model.Input?.PhoneNumber" placeholder="+14155552671" autocomplete="tel" required="@onlyOne" data-a2-rule="@phoneRule" />
             </a2-field>
         }
 
-        <a2-field label="@Loc["register.password"]" required="true" hint="At least 12 characters recommended" for="Input_Password">
-            <a2-password id="Input_Password" name="Input.Password" placeholder="••••••••••••" required="true" autocomplete="new-password" />
+        <a2-field label="@Loc["register.password"]" required="true" for="Input_Password">
+            <a2-password id="Input_Password" name="Input.Password" placeholder="••••••••••••" required="true" autocomplete="new-password" data-a2-rule="@passwordRule" />
+        </a2-field>
+
+        <a2-field label="@Loc["register.confirm_password"]" required="true" for="Input_ConfirmPassword">
+            <a2-password id="Input_ConfirmPassword" name="Input.ConfirmPassword" placeholder="••••••••••••" required="true" autocomplete="new-password" data-a2-rule="@confirmRule" />
         </a2-field>
 
         <div class="pt-2">
@@ -127,20 +160,7 @@ else
 
         <div class="mt-6 text-center text-sm">
             <span class="text-[var(--a2-color-muted,#6b7280)] dark:text-gray-400">@Loc["register.already_have_account"]</span>
-            <a href="/Account/Login?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline ml-1">@Loc["register.sign_in_link"]</a>
-        </div>
-
-        <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>Language / زبان:</span>
-            <select data-culture-select class="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 py-1 px-2 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-                <!option value="en" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "en" ? "selected" : "")>English (EN)</!option>
-                <!option value="fa" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "fa" ? "selected" : "")>فارسی (FA)</!option>
-                <!option value="nl" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "nl" ? "selected" : "")>Nederlands (NL)</!option>
-                <!option value="it" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "it" ? "selected" : "")>Italiano (IT)</!option>
-                <!option value="de" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de" ? "selected" : "")>Deutsch (DE)</!option>
-                <!option value="es" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "es" ? "selected" : "")>Español (ES)</!option>
-                <!option value="fr" @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "fr" ? "selected" : "")>Français (FR)</!option>
-            </select>
+            <a href="@Model.GetLoginUrl()" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline ml-1">@Loc["register.sign_in_link"]</a>
         </div>
     </form>
 }

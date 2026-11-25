@@ -41,7 +41,7 @@
             </a2-alert>
         }
 
-        <form method="post" asp-page-handler="Resend" class="space-y-4">
+        <form method="post" asp-page-handler="Resend" class="space-y-4" novalidate>
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
             <a2-field label="@Loc["register.email"]" required="true">
                 <a2-input name="Input.Login" type="email" value="@Model.Input.Login" required="true" placeholder="you@example.com" autocomplete="email" />
@@ -53,7 +53,7 @@
         </form>
 
         <div class="text-center">
-            <a href="/Account/Login?returnUrl=@Model.ReturnUrl" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
+            <a href="@Model.GetLoginUrl()" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
                 @Loc["common.back_to_login"]
             </a>
         </div>

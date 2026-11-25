@@ -9,6 +9,7 @@ using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Contracts.Users;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Infrastructure.Caching;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Domain.Settings;
 using SystemX.Auth2.Server.Infrastructure.Auth;
@@ -283,7 +284,7 @@ internal static class AdminItems
 
 internal sealed class AdminProjectService(
     Auth2DbContext db, IGlobalScope globalScope, IProjectService projects, IClientProvisioner provisioner,
-    IProjectSettingsProvider settingsProvider, IAuditService audit, IOptions<Auth2ServerOptions> options, TimeProvider clock) : IAdminProjectService
+    IProjectSettingsProvider settingsProvider, IAuditService audit, IOptions<Auth2ServerOptions> options, TimeProvider clock, IHybridCacheService cache) : IAdminProjectService
 {
     private bool Single => options.Value.Mode == ServerMode.SingleProject;
 
@@ -337,10 +338,13 @@ internal sealed class AdminProjectService(
         var project = await db.Projects.FirstOrDefaultAsync(a => a.Id == id, ct);
         if (project is null) return (OperationResult.Fail(Auth2ErrorCodes.NotFound), null);
         if (project.IsGlobalProject && !request.IsEnabled) return (OperationResult.Fail(Auth2ErrorCodes.Forbidden), null);   // never lock out the admins
+        var oldName = project.Name;
         project.Name = request.Name.Trim();
         project.Description = request.Description;
         project.UpdatedAtUtc = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
+        cache.InvalidateProject(id);
+        cache.Invalidate(AuthFlowCache.Single(oldName)); cache.Invalidate(AuthFlowCache.Single(project.Name));   // single-project mode finds its project by name
         if (project.IsEnabled != request.IsEnabled) await projects.SetEnabledAsync(id, request.IsEnabled, request.Reason, actorUserId, ct);
         await audit.WriteAsync(new AuditEntry("project.updated", project.Id, ActorUserId: actorUserId, TargetType: "project", TargetId: project.Id.ToString()), ct);
         var fresh = await db.Projects.AsNoTracking().FirstAsync(a => a.Id == id, ct);
@@ -372,6 +376,7 @@ internal sealed class AdminProjectService(
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         settingsProvider.Invalidate(id);
+        cache.InvalidateProjectCompletely(id, project.ProjectKey);
         await audit.WriteAsync(new AuditEntry("project.deleted", null, TargetType: "project", TargetId: id.ToString(),
             Data: new Dictionary<string, object?> { ["projectKey"] = project.ProjectKey }), ct);
         return OperationResult.Ok;
@@ -445,7 +450,8 @@ internal sealed class AdminApplicationService(
         try
         {
             var created = await applications.CreateAsync(projectId,
-                new ApplicationSpec(request.Name, request.ClientId, request.RedirectUris, request.PostLogoutRedirectUris, request.AllowedScopes), ct);
+                new ApplicationSpec(request.Name, request.ClientId, request.RedirectUris, request.PostLogoutRedirectUris, request.AllowedScopes,
+                    ApplicationType: request.ApplicationType, WebServerUrl: request.WebServerUrl), ct);
             return (OperationResult.Ok, new CreateApplicationResponse(ToDto(created.Application), created.ClientSecret,
                 ClientSetup.Build(serverUrl, Single ? null : projectKey, created.Application, created.ClientSecret)));
         }
@@ -460,7 +466,8 @@ internal sealed class AdminApplicationService(
         try
         {
             var info = await applications.UpdateAsync(applicationId,
-                new ApplicationSpec(request.Name, null, request.RedirectUris, request.PostLogoutRedirectUris, request.AllowedScopes), ct);
+                new ApplicationSpec(request.Name, null, request.RedirectUris, request.PostLogoutRedirectUris, request.AllowedScopes,
+                    ApplicationType: request.ApplicationType, WebServerUrl: request.WebServerUrl), ct);
             if (current.IsEnabled != request.IsEnabled)
             {
                 await applications.SetEnabledAsync(applicationId, request.IsEnabled, request.Reason, actorUserId, ct);
@@ -539,7 +546,7 @@ internal sealed class AdminApplicationService(
     }
 
     internal static ApplicationDto ToDto(ClientApplicationInfo a) =>
-        new(a.Id, a.ProjectId, a.Name, a.ClientId, a.IsEnabled, a.RedirectUris, a.PostLogoutRedirectUris, a.AllowedScopes, a.SettingsVersion, a.CreatedAtUtc);
+        new(a.Id, a.ProjectId, a.Name, a.ClientId, a.IsEnabled, a.RedirectUris, a.PostLogoutRedirectUris, a.AllowedScopes, a.SettingsVersion, a.CreatedAtUtc, a.ApplicationType, a.WebServerUrl);
 }
 
 /// <summary>Builds the copy-paste configuration of a client.</summary>
@@ -573,7 +580,30 @@ internal sealed class AuditReader(Auth2DbContext db, IAuthFlowResolver flow, IGl
             if (!string.IsNullOrWhiteSpace(targetType)) q = q.Where(e => e.TargetType == targetType);
             if (from is { } f) q = q.Where(e => e.OccurredAtUtc >= f);
             if (to is { } t) q = q.Where(e => e.OccurredAtUtc <= t);
-            if (query.SafeSearch is { } s) q = q.Where(e => e.TargetId == s || e.Action.Contains(s));
+            if (query.SafeSearch is { } s)
+            {
+                var sTrim = s.Trim();
+                var norm = sTrim.ToUpperInvariant();
+                var userMatches = await db.Users.IgnoreQueryFilters().AsNoTracking()
+                    .Where(u => u.NormalizedUserName == norm || u.NormalizedEmail == norm || (u.UserName != null && u.UserName.Contains(sTrim)) || (u.Email != null && u.Email.Contains(sTrim)))
+                    .Select(u => u.Id)
+                    .Take(50)
+                    .ToListAsync(ct);
+
+                if (userMatches.Count > 0)
+                {
+                    var userMatchStrs = userMatches.Select(id => id.ToString()).ToList();
+                    q = q.Where(e => e.TargetId == sTrim 
+                                  || e.Action.Contains(sTrim)
+                                  || (e.ActorUserId != null && userMatches.Contains(e.ActorUserId.Value))
+                                  || (e.TargetId != null && userMatchStrs.Contains(e.TargetId))
+                                  || (e.DataJson != null && e.DataJson.Contains(sTrim)));
+                }
+                else
+                {
+                    q = q.Where(e => e.TargetId == sTrim || e.Action.Contains(sTrim) || (e.DataJson != null && e.DataJson.Contains(sTrim)));
+                }
+            }
             q = query.Descending && query.Sort is "time" ? q.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id) : q.OrderByDescending(e => e.OccurredAtUtc).ThenByDescending(e => e.Id);
             var total = await q.CountAsync(ct);
             var items = await q.Skip(query.Skip).Take(query.SafePageSize).ToListAsync(ct);

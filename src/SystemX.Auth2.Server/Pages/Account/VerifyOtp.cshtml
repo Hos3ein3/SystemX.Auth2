@@ -17,7 +17,7 @@
 
     @if (Model.CodeSent)
     {
-        <form method="post" class="space-y-4">
+        <form method="post" class="space-y-4" novalidate>
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
             <input type="hidden" name="Input.Login" value="@Model.Input.Login" />
 
@@ -44,7 +44,7 @@
     }
     else
     {
-        <form method="post" asp-page-handler="Send" class="space-y-4">
+        <form method="post" asp-page-handler="Send" class="space-y-4" novalidate>
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
 
             <a2-field label="@Loc["forgot_password.login_field"]" required="true">
@@ -57,7 +57,7 @@
         </form>
 
         <div class="text-center">
-            <a href="/Account/Login?returnUrl=@Model.ReturnUrl" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
+            <a href="@Model.GetLoginUrl()" class="text-sm text-[var(--a2-color-primary,#2563eb)] hover:underline">
                 @Loc["common.back_to_login"]
             </a>
         </div>

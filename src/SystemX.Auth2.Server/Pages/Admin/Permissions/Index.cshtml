@@ -81,4 +81,9 @@
             </tbody>
         </table>
     </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <a2-pager page="@Model.PageNumber" page-size="@Model.PageSize" total-count="@Model.TotalCount" total-pages="@Model.TotalPages"></a2-pager>
+    }
 </div>

@@ -37,6 +37,12 @@
   <data name="login.title" xml:space="preserve"><value>Inloggen</value></data>
   <data name="login.subtitle" xml:space="preserve"><value>Voer uw gegevens in om toegang te krijgen tot uw account</value></data>
   <data name="login.username_or_email" xml:space="preserve"><value>Gebruikersnaam of e-mailadres</value></data>
+  <data name="login.identifier_username" xml:space="preserve"><value>Gebruikersnaam</value></data>
+  <data name="login.identifier_email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="login.identifier_phone" xml:space="preserve"><value>Telefoonnummer</value></data>
+  <data name="login.identifier_username_phone" xml:space="preserve"><value>Gebruikersnaam of telefoonnummer</value></data>
+  <data name="login.identifier_email_phone" xml:space="preserve"><value>E-mail of telefoonnummer</value></data>
+  <data name="login.identifier_all" xml:space="preserve"><value>Gebruikersnaam, e-mail of telefoonnummer</value></data>
   <data name="login.password" xml:space="preserve"><value>Wachtwoord</value></data>
   <data name="login.remember_me" xml:space="preserve"><value>Onthoud mij</value></data>
   <data name="login.forgot_password" xml:space="preserve"><value>Wachtwoord vergeten?</value></data>
@@ -125,4 +131,8 @@
   <data name="consent.deny" xml:space="preserve"><value>Weigeren</value></data>
   <data name="join_project.title" xml:space="preserve"><value>Deelnemen aan project</value></data>
   <data name="join_project.confirm" xml:space="preserve"><value>Deelnemen aan dit project</value></data>
+  <data name="auth_not_supported.title" xml:space="preserve"><value>Directe authenticatie niet ondersteund</value></data>
+  <data name="auth_not_supported.description" xml:space="preserve"><value>Deze authenticatieservice vereist een applicatiecontext. Direct inloggen of registreren zonder een geldige clientapplicatie wordt niet ondersteund. Open deze service via uw aangewezen applicatie.</value></data>
+  <data name="auth_not_supported.hint" xml:space="preserve"><value>Als u denkt dat dit een fout is, controleer dan de applicatielink of neem contact op met uw systeembeheerder.</value></data>
+  <data name="register.confirm_password" xml:space="preserve"><value>Wachtwoord bevestigen</value></data>
 </root>

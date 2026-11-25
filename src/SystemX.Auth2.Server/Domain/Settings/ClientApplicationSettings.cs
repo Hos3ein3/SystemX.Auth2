@@ -28,6 +28,11 @@ public sealed class ClientApplicationSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public List<string> AllowedCorsOrigins { get; set; } = [];
     /// <summary>Enables the password grant and the two-factor grants for this client (Self UI).</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool AllowSelfUiLogin { get; set; }
+    /// <summary>
+    /// This application's client may tell the Server the address of its web server and its application type in the handshake (<c>Auth2ClientOptions.WebServerUrl</c>, <c>ApplicationType</c>),
+    /// and the Server stores them on the application. On (default): the client's value replaces the stored one. Off: only a global admin sets them, and the client's value is ignored (the handshake answer says <c>webServerLocked</c>).
+    /// </summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public bool AllowClientToSetWebServerUrl { get; set; } = true;
     /// <summary>Names of the project's external providers this client shows. Null: all of them. A subset only; it never adds a provider.</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public List<string>? ExternalProviders { get; set; }
     /// <summary>Consent mode. Null: the project value.</summary>

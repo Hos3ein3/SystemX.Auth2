@@ -27,7 +27,7 @@
         <div class="space-y-4">
             <h2 class="text-lg font-bold text-gray-900">Sign In with Provider</h2>
             <p class="text-sm text-gray-600">An error occurred while preparing external sign-in.</p>
-            <a2-link-button href="@Url.Page("/Account/Login", new { ReturnUrl = Model.ReturnUrl, ClientId = Model.ClientIdForLinks })" variant="primary">
+            <a2-link-button href="@Model.GetLoginUrl()" variant="primary">
                 Return to Sign In
             </a2-link-button>
         </div>

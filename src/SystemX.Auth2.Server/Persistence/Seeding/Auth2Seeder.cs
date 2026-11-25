@@ -7,6 +7,7 @@ using OpenIddict.Abstractions;
 using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Infrastructure.Caching;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Domain.Settings;
 using SystemX.Auth2.Server.Infrastructure;
@@ -66,6 +67,7 @@ public sealed partial class Auth2Seeder(
         }
 
         await tx.CommitAsync(ct);
+        await ForgetCachedDataAsync(ct);
 
         // The demo people of the sample project. The sample project is not a real project, so they are added wherever it is added (switch off with Auth2:SeedDemoData=false).
         // They come after the commit and cannot fail the seed: a problem here is logged and the server starts.
@@ -180,7 +182,7 @@ public sealed partial class Auth2Seeder(
                 RefreshTokenDays = 30,
                 AllowedCorsOrigins = ["http://localhost:5101", "http://sample-mvc:5001", "http://localhost:5001"]
             },
-            ct);
+            ct, type: Contracts.Enums.ApplicationType.Web);
 
         // Minimal API Application
         await EnsureApplicationAsync(
@@ -205,11 +207,29 @@ public sealed partial class Auth2Seeder(
                 RefreshTokenDays = 30,
                 AllowedCorsOrigins = ["http://localhost:5102", "http://sample-minimalapi:5002", "http://localhost:5002"]
             },
-            ct);
+            ct, type: Contracts.Enums.ApplicationType.Api);
+
+        // Worker application (background job, machine to machine): no UI, no redirect addresses, only the scopes the job needs.
+        await EnsureApplicationAsync(
+            project,
+            name: "WorkerSample",
+            clientId: "worker-sample",
+            secret: "worker-sample-secret",
+            redirectUris: [],
+            postLogoutRedirectUris: [],
+            allowedScopes: ["auth2.client.handshake", "auth2.permissions.sync", "auth2.roles.sync", "reports.read", "jobs.run"],
+            settings: new ClientApplicationSettings
+            {
+                UiMode = UiMode.None,
+                AllowSelfUiLogin = false,
+                AccessTokenMinutes = 60,
+            },
+            ct, type: Contracts.Enums.ApplicationType.Service);
 
         // Ensure custom scopes
         // The sample scopes are meant for two sample APIs: their resources become audiences of the tokens that have the scopes (docs/scope-resources.md).
-        foreach (var (scope, resource) in new[] { ("reports.read", "reports-api"), ("orders.read", "orders-api"), ("orders.write", "orders-api") })
+        // jobs.run is for the Worker sample (machine to machine): its resource is the client id of the MinimalApi sample, so a token with this scope is accepted by that API.
+        foreach (var (scope, resource) in new[] { ("reports.read", "reports-api"), ("orders.read", "orders-api"), ("orders.write", "orders-api"), ("jobs.run", "minimal-api-sample") })
         {
             var existing = await scopeManager.FindByNameAsync(scope, ct);
             if (existing is null)
@@ -308,6 +328,23 @@ public sealed partial class Auth2Seeder(
         }
     }
 
+    /// <summary>
+    /// The seed changes projects and applications directly. The copies in the cache (memory and Redis, which outlives a restart) are dropped, so the next request reads what the seed wrote.
+    /// </summary>
+    private async Task ForgetCachedDataAsync(CancellationToken ct)
+    {
+        var cache = services.GetService<IHybridCacheService>();
+        if (cache is null) return;
+        foreach (var p in await db.Projects.AsNoTracking().Select(p => new { p.Id, p.ProjectKey, p.Name }).ToListAsync(ct))
+        {
+            cache.Invalidate($"settings:{p.Id:N}");
+            cache.InvalidateProjectCompletely(p.Id, p.ProjectKey);
+            cache.Invalidate(AuthFlowCache.Single(p.Name));
+        }
+        foreach (var clientId in await db.Set<Auth2Application>().AsNoTracking().Select(a => a.ClientId!).ToListAsync(ct))
+            cache.InvalidateClientCompletely(clientId);
+    }
+
     private async Task EnsureApplicationAsync(
         Project project,
         string name,
@@ -317,12 +354,13 @@ public sealed partial class Auth2Seeder(
         IReadOnlyList<string>? postLogoutRedirectUris,
         IReadOnlyList<string>? allowedScopes,
         ClientApplicationSettings settings,
-        CancellationToken ct)
+        CancellationToken ct,
+        Contracts.Enums.ApplicationType type = Contracts.Enums.ApplicationType.Other)
     {
         var existing = await db.Set<Auth2Application>().FirstOrDefaultAsync(a => a.ClientId == clientId, ct);
         if (existing is null)
         {
-            var spec = new ApplicationSpec(name, clientId, redirectUris, postLogoutRedirectUris, allowedScopes, settings);
+            var spec = new ApplicationSpec(name, clientId, redirectUris, postLogoutRedirectUris, allowedScopes, settings, type);
             await provisioner.CreateAsync(project, spec, clock.GetUtcNow(), ct);
         }
         else
@@ -336,6 +374,11 @@ public sealed partial class Auth2Seeder(
             if (existing.Name != name)
             {
                 existing.Name = name;
+                modified = true;
+            }
+            if (existing.Kind == Contracts.Enums.ApplicationType.Other && type != Contracts.Enums.ApplicationType.Other)
+            {
+                existing.Kind = type;   // a type an admin or the client already set is not touched
                 modified = true;
             }
             if (!existing.IsEnabled)

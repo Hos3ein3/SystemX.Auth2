@@ -1,6 +1,11 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.ChangeEmailAddressModel
 @{
+    var rules = SystemX.Auth2.Server.Pages.Account.AccountFormRules.For(Model);
+    var emailRule = rules.Email(Loc["change_email.new_email"].Value, true);
+    var currentRule = rules.RequiredOnly(Loc["change_email.password_confirm"].Value);
+}
+@{
     Layout = "_LayoutAuth";
     ViewData["Title"] = Loc["change_email.title"];
     ViewData["Subtitle"] = Loc["change_email.subtitle"];
@@ -46,7 +51,7 @@ else if (Model.EmailSent)
 }
 else
 {
-    <form method="post" class="space-y-4">
+    <form method="post" class="space-y-4" novalidate>
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="ReturnUrl" />
         <input type="hidden" asp-for="ClientId" />
@@ -67,13 +72,13 @@ else
         }
 
         <a2-field label="@Loc["change_email.new_email"]" required="true" for="Input_NewEmail">
-            <a2-input id="Input_NewEmail" name="Input.NewEmail" type="email" value="@Model.Input.NewEmail" required="true" autocomplete="email" placeholder="new.email@example.com" />
+            <a2-input id="Input_NewEmail" name="Input.NewEmail" type="email" value="@Model.Input.NewEmail" required="true" autocomplete="email" placeholder="new.email@example.com" data-a2-rule="@emailRule" />
         </a2-field>
 
         @if (Model.PasswordRequired)
         {
             <a2-field label="@Loc["change_email.password_confirm"]" required="true" for="Input_CurrentPassword" hint="Confirm your password to authorize sending the confirmation link.">
-                <a2-password id="Input_CurrentPassword" name="Input.CurrentPassword" required="true" autocomplete="current-password" placeholder="••••••••••••" />
+                <a2-password id="Input_CurrentPassword" name="Input.CurrentPassword" required="true" autocomplete="current-password" placeholder="••••••••••••" data-a2-rule="@currentRule" />
             </a2-field>
         }
 

@@ -124,16 +124,20 @@ public sealed record ClientApplicationInfo(
     string? ConsentType,
     ClientApplicationSettings Settings,
     int SettingsVersion,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc,
+    SystemX.Auth2.Contracts.Enums.ApplicationType ApplicationType = SystemX.Auth2.Contracts.Enums.ApplicationType.Other,
+    string? WebServerUrl = null);
 
-/// <summary>What an admin gives to create an application.</summary>
+/// <summary>What an admin gives to create an application. For an update, <c>null</c> leaves a field as it is; for <c>WebServerUrl</c> an empty text clears it.</summary>
 public sealed record ApplicationSpec(
     string Name,
     string? ClientId = null,
     IReadOnlyList<string>? RedirectUris = null,
     IReadOnlyList<string>? PostLogoutRedirectUris = null,
     IReadOnlyList<string>? AllowedScopes = null,
-    ClientApplicationSettings? Settings = null);
+    ClientApplicationSettings? Settings = null,
+    SystemX.Auth2.Contracts.Enums.ApplicationType? ApplicationType = null,
+    string? WebServerUrl = null);
 
 /// <summary>A new application and its client secret (plain text, shown once).</summary>
 public sealed record ApplicationCreationResult(ClientApplicationInfo Application, string ClientSecret);

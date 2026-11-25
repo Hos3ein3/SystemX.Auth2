@@ -43,8 +43,21 @@ public sealed class DeveloperMetrics
 /// Root Developer Dashboard for SystemX.Auth2 Server.
 /// Shows project activity, fail audits, system logs, health metrics, and visual status bars.
 /// </summary>
-public sealed class IndexModel(Auth2DbContext db, IAdminJobService jobService, TimeProvider clock, IGlobalScope globalScope) : PageModel
+public sealed class IndexModel(Auth2DbContext db, IAdminJobService jobService, TimeProvider clock, IGlobalScope globalScope,
+    IClientHealthService clientHealth, IInfrastructureStatusService infrastructureStatus) : PageModel
 {
+    /// <summary>PostgreSQL and Redis, as the health checks of the server see them right now.</summary>
+    public IReadOnlyList<InfrastructureStatus> Infrastructure { get; private set; } = [];
+
+    /// <summary>For every project: its applications with a two-way health check and their last answers (empty when none has one).</summary>
+    public IReadOnlyDictionary<Guid, IReadOnlyList<ClientHealthInfo>> ClientHealth { get; private set; } = new Dictionary<Guid, IReadOnlyList<ClientHealthInfo>>();
+
+    /// <summary>Projects whose two-way clients are all healthy.</summary>
+    public int HealthyProjects => ClientHealth.Count(p => ClientHealthSummary.Of(p.Value) == ClientHealthState.Healthy);
+
+    /// <summary>Projects that have at least one two-way client (the ones that can be healthy or not).</summary>
+    public int CheckedProjects => ClientHealth.Count(p => p.Value.Count > 0);
+
     public DeveloperMetrics Metrics { get; private set; } = new();
     public List<ProjectOverviewItem> Projects { get; private set; } = [];
     public List<AuditEvent> FailedAudits { get; private set; } = [];
@@ -131,6 +144,9 @@ public sealed class IndexModel(Auth2DbContext db, IAdminJobService jobService, T
             ApplicationsCount = appCounts.GetValueOrDefault(p.Id, 0),
             UsersCount = userCounts.GetValueOrDefault(p.Id, 0),
         }).ToList();
+
+        ClientHealth = await clientHealth.GetProjectsAsync([.. Projects.Select(p => p.Id)], HttpContext.RequestAborted);
+        Infrastructure = await infrastructureStatus.ReadAsync(HttpContext.RequestAborted);
 
         // Failed audit events
         FailedAudits = await db.AuditEvents.AsNoTracking()

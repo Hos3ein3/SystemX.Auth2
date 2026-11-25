@@ -32,7 +32,7 @@ public sealed class HealthAddressResolver(IOptions<Auth2HealthCheckOptions> opti
     {
         var o = options.Value;
         if (o.Mode != Auth2HealthCheckMode.TwoWay) return HealthAddress.None;
-        if (o.HealthUrl is { } url) return new HealthAddress(url, null, null, null);
+        if (o.HealthUrl is { } url) return new HealthAddress(url, null, null, o.Path);   // the path also tells the Server where to ask when it knows the web server address
 
         var port = FindHttpPort(out var onlyHttps);
         if (port is not null) return new HealthAddress(null, port, Uri.UriSchemeHttp, o.Path);

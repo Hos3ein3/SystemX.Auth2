@@ -10,13 +10,18 @@ namespace SystemX.Auth2.Server.Pages.Admin;
 public sealed class IndexModel : PageModel
 {
     private readonly IAdminProjectService _projectService;
+    private readonly IClientHealthService _clientHealth;
 
-    public IndexModel(IAdminProjectService projectService)
+    public IndexModel(IAdminProjectService projectService, IClientHealthService clientHealth)
     {
         _projectService = projectService;
+        _clientHealth = clientHealth;
     }
 
     public PagedResult<ProjectDto>? Projects { get; private set; }
+
+    /// <summary>For every project of the page: its applications with a two-way health check and their last answers (empty when none has one).</summary>
+    public IReadOnlyDictionary<Guid, IReadOnlyList<ClientHealthInfo>> ClientHealth { get; private set; } = new Dictionary<Guid, IReadOnlyList<ClientHealthInfo>>();
     public bool IsGlobalAdmin => User.IsInRole("GlobalAdmin") || User.IsInRole("Developer") || User.HasClaim("scope", "auth2.admin.global");
 
     public async Task<IActionResult> OnGetAsync(int page = 1, string? q = null)
@@ -32,6 +37,7 @@ public sealed class IndexModel : PageModel
         }
 
         Projects = await _projectService.ListAsync(new PageQuery(page, 20, q), HttpContext.RequestAborted);
+        ClientHealth = await _clientHealth.GetProjectsAsync([.. Projects.Items.Select(p => p.Id)], HttpContext.RequestAborted);
         return Page();
     }
 }

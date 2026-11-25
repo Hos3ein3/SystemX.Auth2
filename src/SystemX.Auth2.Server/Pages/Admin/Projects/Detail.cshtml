@@ -18,7 +18,9 @@
     </div>
 
     <a2-card title="Project Details">
-        <form method="post" asp-page-handler="Update" class="space-y-4">
+        <form method="post" action="/admin/projects/detail?handler=Update&id=@Model.Id" class="space-y-4">
+            <input type="hidden" name="Id" value="@Model.Id" />
+            <input type="hidden" asp-for="Id" />
             <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -59,7 +61,9 @@
                     To confirm, please type <strong class="font-mono">@Model.Project?.ProjectKey</strong> below:
                 </p>
 
-                <form method="post" asp-page-handler="Delete" class="mt-4 space-y-3">
+                <form method="post" action="/admin/projects/detail?handler=Delete&id=@Model.Id" class="mt-4 space-y-3">
+                    <input type="hidden" name="Id" value="@Model.Id" />
+                    <input type="hidden" asp-for="Id" />
                     <a2-field label="Confirm Project Key">
                         <a2-input name="DeleteInput.ConfirmationKey" placeholder="@Model.Project?.ProjectKey" />
                     </a2-field>

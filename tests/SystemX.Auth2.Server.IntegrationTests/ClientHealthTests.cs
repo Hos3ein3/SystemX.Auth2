@@ -278,6 +278,64 @@ public class ClientHealthTests : Phase6Base
     // ---- the refresh buttons of the dashboard
 
     [Fact]
+    public async Task TheProjectList_ShowsTheHealthOfEveryProject_NextToActive()
+    {
+        await PrepareAppsAsync();
+        var b = new Browser(Factory);
+        (await b.PostPageAsync("/Account/Login?ClientId=_global", new Dictionary<string, string> { ["Input.Login"] = "globaladmin", ["Input.Password"] = "Admin@12345!ChangeMe" })).StatusCode
+            .ShouldBeOneOf(HttpStatusCode.Redirect, HttpStatusCode.OK);
+
+        var none = await (await b.GetAsync("/admin?ClientId=_global")).Content.ReadAsStringAsync();
+        none.ShouldContain("No health check");
+        none.ShouldContain("Active");
+        none.ShouldNotContain("not healthy");
+
+        await HandshakeAsync(Url);                                  // appa has a two-way client, appb has none
+        Clients.Answers[Url] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+        (await (await b.GetAsync("/admin?ClientId=_global")).Content.ReadAsStringAsync()).ShouldContain(">Unknown<");   // registered, not asked yet
+        await CheckAllAsync();
+        var healthy = await (await b.GetAsync("/admin?ClientId=_global")).Content.ReadAsStringAsync();
+        healthy.ShouldContain(">Healthy<");
+        healthy.ShouldContain("No health check");                   // the project without a two-way client is still listed
+        healthy.ShouldContain("default: Healthy");                  // the tooltip
+
+        Clients.Answers[Url] = () => FakeClients.Json(HttpStatusCode.ServiceUnavailable, "Unhealthy");
+        await CheckAllAsync();
+        (await (await b.GetAsync("/admin?ClientId=_global")).Content.ReadAsStringAsync()).ShouldContain(">1 of 1 not healthy<");
+    }
+
+    [Fact]
+    public async Task TheHomePage_ShowsPostgreSqlAndRedis_TheCountOfHealthyProjects_AndTheHealthOfEveryProject()
+    {
+        await PrepareAppsAsync();
+        var b = new Browser(Factory);
+        (await b.PostPageAsync("/Account/Login?ClientId=_global", new Dictionary<string, string> { ["Input.Login"] = "globaladmin", ["Input.Password"] = "Admin@12345!ChangeMe" })).StatusCode
+            .ShouldBeOneOf(HttpStatusCode.Redirect, HttpStatusCode.OK);
+
+        var before = await (await b.GetAsync("/")).Content.ReadAsStringAsync();
+        before.ShouldContain("PostgreSQL Store");
+        before.ShouldContain(">Connected<");                  // a real check now, not a fixed text
+        before.ShouldContain("Redis Cache");
+        before.ShouldContain(">Off<");                        // Redis is not configured in this test
+        before.ShouldContain("0 healthy");                    // no project has a two-way client yet
+        before.ShouldContain("No health check");
+
+        await HandshakeAsync(Url);
+        Clients.Answers[Url] = () => FakeClients.Json(HttpStatusCode.OK, "Healthy");
+        await CheckAllAsync();
+        var healthy = await (await b.GetAsync("/")).Content.ReadAsStringAsync();
+        healthy.ShouldContain("1 healthy");
+        healthy.ShouldContain(">Healthy<");                   // on the card of the project
+        healthy.ShouldContain("1 of 3 projects have a two-way client");   // _global, appa, appb
+
+        Clients.Answers[Url] = () => FakeClients.Json(HttpStatusCode.ServiceUnavailable, "Unhealthy");
+        await CheckAllAsync();
+        var bad = await (await b.GetAsync("/")).Content.ReadAsStringAsync();
+        bad.ShouldContain("0 healthy");
+        bad.ShouldContain(">1 of 1 not healthy<");
+    }
+
+    [Fact]
     public async Task TheRefreshButtonOfTheClientsBadge_AsksTheClientsNow()
     {
         await PrepareAppsAsync();

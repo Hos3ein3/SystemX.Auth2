@@ -16,12 +16,26 @@ public sealed class GroupPermissionsModel : AdminPageModel
     public IReadOnlyList<Group> AvailableGroups { get; private set; } = [];
     public IReadOnlyList<Permission> AvailablePermissions { get; private set; } = [];
 
-    [BindProperty(SupportsGet = true)]
-    public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? GroupName { get; set; }
+    [BindProperty(SupportsGet = true)] public string? PermissionKey { get; set; }
+    [BindProperty(SupportsGet = true, Name = "page")] public int PageNumber { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 25;
+    public int TotalCount { get; private set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / Math.Max(1, PageSize));
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
+
+        if (Request.Query.TryGetValue("pageNumber", out var pnVal) && int.TryParse(pnVal, out var pn) && pn > 0)
+        {
+            PageNumber = pn;
+        }
+        else if (Request.Query.TryGetValue("page", out var pVal) && int.TryParse(pVal, out var p) && p > 0)
+        {
+            PageNumber = p;
+        }
 
         var db = Svc<Auth2DbContext>();
         var projectId = CurrentProject!.Id;
@@ -44,8 +58,20 @@ public sealed class GroupPermissionsModel : AdminPageModel
         var query = from gp in db.GroupPermissions.AsNoTracking()
                     join g in db.Groups.AsNoTracking() on gp.GroupId equals g.Id
                     join p in db.Permissions.IgnoreQueryFilters().AsNoTracking() on gp.PermissionId equals p.Id
-                    where g.ProjectId == projectId && (CurrentProject.IsGlobalProject || p.ProjectId == projectId)
+                    where g.ProjectId == projectId
                     select new { gp.GroupId, GroupName = g.Name, GroupDisplayName = g.DisplayName, gp.PermissionId, PermissionKey = p.Key };
+
+        if (!string.IsNullOrWhiteSpace(GroupName))
+        {
+            var gFilter = GroupName.Trim();
+            query = query.Where(x => x.GroupName == gFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(PermissionKey))
+        {
+            var pFilter = PermissionKey.Trim();
+            query = query.Where(x => x.PermissionKey == pFilter);
+        }
 
         if (!string.IsNullOrWhiteSpace(Q))
         {
@@ -53,7 +79,12 @@ public sealed class GroupPermissionsModel : AdminPageModel
             query = query.Where(x => x.GroupName.ToUpper().Contains(filter) || x.PermissionKey.ToUpper().Contains(filter));
         }
 
-        var rows = await query.OrderBy(x => x.GroupName).ThenBy(x => x.PermissionKey).ToListAsync(HttpContext.RequestAborted);
+        TotalCount = await query.CountAsync(HttpContext.RequestAborted);
+        var skip = Math.Max(0, (PageNumber - 1) * PageSize);
+        var rows = await query.OrderBy(x => x.GroupName).ThenBy(x => x.PermissionKey)
+            .Skip(skip)
+            .Take(PageSize)
+            .ToListAsync(HttpContext.RequestAborted);
         Items = [.. rows.Select(x => new GroupPermItem(x.GroupId, x.GroupName, x.GroupDisplayName, x.PermissionId, x.PermissionKey))];
         return Page();
     }

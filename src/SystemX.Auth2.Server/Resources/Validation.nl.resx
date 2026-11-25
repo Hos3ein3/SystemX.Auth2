@@ -46,4 +46,5 @@
   <data name="alphanumeric" xml:space="preserve"><value>{0} mag alleen letters en cijfers bevatten.</value></data>
   <data name="digits_only" xml:space="preserve"><value>{0} mag alleen cijfers bevatten.</value></data>
   <data name="invalid_code" xml:space="preserve"><value>{0} is een ongeldige code.</value></data>
+  <data name="passwords_do_not_match" xml:space="preserve"><value>Het wachtwoord en de bevestiging komen niet overeen.</value></data>
 </root>

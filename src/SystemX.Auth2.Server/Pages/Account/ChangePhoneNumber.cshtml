@@ -1,6 +1,12 @@
 @page
 @model SystemX.Auth2.Server.Pages.Account.ChangePhoneNumberModel
 @{
+    var rules = SystemX.Auth2.Server.Pages.Account.AccountFormRules.For(Model);
+    var phoneRule = rules.Phone(Loc["change_phone.new_phone"].Value, true);
+    var codeRule = rules.RequiredOnly(Loc["change_phone.verification_code"].Value);
+    var currentRule = rules.RequiredOnly(Loc["change_phone.password_confirm"].Value);
+}
+@{
     Layout = "_LayoutAuth";
     ViewData["Title"] = Loc["change_phone.title"];
     ViewData["Subtitle"] = Loc["change_phone.subtitle"];
@@ -27,7 +33,7 @@
 }
 else if (Model.CodeSent)
 {
-    <form method="post" class="space-y-4">
+    <form method="post" class="space-y-4" novalidate>
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="ReturnUrl" />
         <input type="hidden" asp-for="ClientId" />
@@ -48,7 +54,7 @@ else if (Model.CodeSent)
         }
 
         <a2-field label="@Loc["change_phone.verification_code"]" required="true" for="Input_Code">
-            <a2-input id="Input_Code" name="Input.Code" value="@Model.Input.Code" required="true" autocomplete="one-time-code" placeholder="123456" class="text-center tracking-widest text-lg font-mono" />
+            <a2-input id="Input_Code" name="Input.Code" value="@Model.Input.Code" required="true" autocomplete="one-time-code" placeholder="123456" data-a2-rule="@codeRule" class="text-center tracking-widest text-lg font-mono" />
         </a2-field>
 
         <div class="pt-2">
@@ -69,7 +75,7 @@ else if (Model.CodeSent)
 }
 else
 {
-    <form method="post" asp-page-handler="SendCode" class="space-y-4">
+    <form method="post" asp-page-handler="SendCode" class="space-y-4" novalidate>
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="ReturnUrl" />
         <input type="hidden" asp-for="ClientId" />
@@ -90,13 +96,13 @@ else
         }
 
         <a2-field label="@Loc["change_phone.new_phone"]" required="true" for="Input_NewPhoneNumber" hint="Include country code (e.g. +14155552671).">
-            <a2-input id="Input_NewPhoneNumber" name="Input.NewPhoneNumber" type="tel" value="@Model.Input.NewPhoneNumber" required="true" autocomplete="tel" placeholder="+14155552671" />
+            <a2-input id="Input_NewPhoneNumber" name="Input.NewPhoneNumber" type="tel" value="@Model.Input.NewPhoneNumber" required="true" autocomplete="tel" placeholder="+14155552671" data-a2-rule="@phoneRule" />
         </a2-field>
 
         @if (Model.PasswordRequired)
         {
             <a2-field label="@Loc["change_phone.password_confirm"]" required="true" for="Input_CurrentPassword" hint="Confirm your password to authorize this request.">
-                <a2-password id="Input_CurrentPassword" name="Input.CurrentPassword" required="true" autocomplete="current-password" placeholder="••••••••••••" />
+                <a2-password id="Input_CurrentPassword" name="Input.CurrentPassword" required="true" autocomplete="current-password" placeholder="••••••••••••" data-a2-rule="@currentRule" />
             </a2-field>
         }
 

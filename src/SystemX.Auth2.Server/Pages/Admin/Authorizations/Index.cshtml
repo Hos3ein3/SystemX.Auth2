@@ -30,7 +30,7 @@
             <thead class="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Authorization ID</th>
-                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Subject (User ID)</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">User</th>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Granted Scopes</th>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Created</th>
@@ -44,10 +44,18 @@
                     {
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                             <td class="px-6 py-4 font-mono text-xs text-gray-700 dark:text-gray-300">@a.Id[..Math.Min(12, a.Id.Length)]...</td>
-                            <td class="px-6 py-4 font-mono text-xs text-blue-600 dark:text-blue-400">
-                                <a href="/admin/p/@Model.ProjectKey/users/detail?id=@a.Subject" class="hover:underline">
-                                    @(a.Subject ?? "-")
-                                </a>
+                            <td class="px-6 py-4 text-xs font-medium text-blue-600 dark:text-blue-400">
+                                @if (!string.IsNullOrEmpty(a.Subject))
+                                {
+                                    var display = Model.Usernames.TryGetValue(a.Subject, out var uName) ? uName : a.Subject;
+                                    <a href="/admin/p/@Model.ProjectKey/users/detail?id=@a.Subject" class="hover:underline">
+                                        @display
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-gray-400">-</span>
+                                }
                             </td>
                             <td class="px-6 py-4">
                                 @if (a.Status == "valid")

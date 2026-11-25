@@ -29,6 +29,10 @@ Errors (`Auth2Exception`):
 
 The message never contains the secret.
 
+## A complete example: a background job
+
+`samples/SystemX.Auth2.Samples.Worker` is a worker (a `BackgroundService`, no web server) that gets a machine token, calls the MinimalApi sample with it, and reads the permission catalog from the Server. Its `README.md` explains how to configure it, how to register an application for your own job, and the usual errors.
+
 ## Scopes the client needs
 
 | Scope | Used for |

@@ -48,6 +48,19 @@ public sealed class Auth2ClientOptions
     /// <summary>Longest wait between two retries. Default 60 seconds.</summary>
     public TimeSpan HandshakeMaxDelay { get; set; } = TimeSpan.FromSeconds(60);
 
+    /// <summary>
+    /// <b>Optional.</b> The address of this application's web server as the Server reaches it (for example <c>https://shop.example.com</c>). Sent in the handshake; the Server stores it on the
+    /// application and uses it for the two-way health check and other calls to the application. When it is not set, <c>EnableHealthCheck(o => o.PublicUrl)</c> is used. The Server may refuse to
+    /// change it (<c>AllowClientToSetWebServerUrl</c> of the application is off): then the address an admin set stays, and the client only logs it.
+    /// </summary>
+    public string? WebServerUrl { get; set; }
+
+    /// <summary>
+    /// <b>Optional.</b> What kind of application this is (<see cref="SystemX.Auth2.Contracts.Enums.ApplicationType"/>: Web, Api, Service, Other). When it is not set, the client works it out:
+    /// a cookie sign-in (<c>AddAuth2Cookie</c> style UI) means Web, bearer-token API protection means Api, and nothing of both (a background job) means Service. Sent in the handshake.
+    /// </summary>
+    public SystemX.Auth2.Contracts.Enums.ApplicationType? ApplicationType { get; set; }
+
     /// <summary>Version text sent in the handshake. Default: the version of this package.</summary>
     public string ClientVersion { get; set; } = typeof(Auth2ClientOptions).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
@@ -61,7 +74,10 @@ public sealed class Auth2ClientOptions
     /// <summary>Time limit of one call to the server (not the handshake). Default 30 seconds.</summary>
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
-    /// <summary>How often permissions, roles and groups are read again from the server when their policy is <c>Pull</c> or <c>Both</c>. Default 10 minutes.</summary>
+    /// <summary>
+    /// How often permissions, roles, scopes and groups are read again from the server when their policy is <c>Pull</c> or <c>Both</c>. Default 10 minutes. From 30 seconds to 40 days;
+    /// <c>Timeout.InfiniteTimeSpan</c> (<c>-00:00:00.001</c> in configuration) reads them <b>once</b>, when the application starts.
+    /// </summary>
     public TimeSpan CatalogRefreshInterval { get; set; } = TimeSpan.FromMinutes(10);
 
     /// <summary>How many times a failed sync is tried again (waits grow like the handshake retries). Default 5.</summary>

@@ -27,14 +27,17 @@
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-0.5 rounded">@p.ProjectKey</span>
-                            @if (p.IsEnabled)
-                            {
-                                <a2-badge variant="success">Active</a2-badge>
-                            }
-                            else
-                            {
-                                <a2-badge variant="danger">Disabled</a2-badge>
-                            }
+                            <div class="flex items-center gap-1.5">
+                                <partial name="_ClientHealthBadge" model="Model.ClientHealth.GetValueOrDefault(p.Id) ?? []" />
+                                @if (p.IsEnabled)
+                                {
+                                    <a2-badge variant="success">Active</a2-badge>
+                                }
+                                else
+                                {
+                                    <a2-badge variant="danger">Disabled</a2-badge>
+                                }
+                            </div>
                         </div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">@p.Name</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">@(p.Description ?? "No description")</p>

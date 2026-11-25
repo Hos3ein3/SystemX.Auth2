@@ -26,6 +26,25 @@ if (isCommand) return await Auth2Commands.RunAsync(args, app.Services);
 var server = app.Services.GetRequiredService<IOptions<Auth2ServerOptions>>().Value;
 if (server.Security.UseForwardedHeaders) app.UseForwardedHeaders();   // first: the client address and scheme come from the proxy
 app.UseAuth2RequestLogging();
+app.UseExceptionHandler("/Error");
+app.UseStatusCodePages(async context =>
+{
+    var path = context.HttpContext.Request.Path.Value ?? "";
+    if (!path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) &&
+        !path.StartsWith("/connect/", StringComparison.OrdinalIgnoreCase) &&
+        !path.StartsWith("/.well-known/", StringComparison.OrdinalIgnoreCase) &&
+        !path.StartsWith("/health/", StringComparison.OrdinalIgnoreCase))
+    {
+        if (context.HttpContext.Response.StatusCode == StatusCodes.Status404NotFound)
+        {
+            context.HttpContext.Response.Redirect("/NotFound?code=404");
+        }
+        else if (context.HttpContext.Response.StatusCode == StatusCodes.Status403Forbidden)
+        {
+            context.HttpContext.Response.Redirect("/NotAllowed?code=403");
+        }
+    }
+});
 if (HardeningSetup.RequireHttps(app.Environment, server))
 {
     app.UseHsts();
@@ -55,6 +74,7 @@ app.MapAuth2Client();
 app.MapAuth2Admin();
 app.MapRazorPages();
 await app.RunAsync();
+
 return 0;
 
 /// <summary>Entry point type. Public so integration tests can use <c>WebApplicationFactory&lt;Program&gt;</c>.</summary>

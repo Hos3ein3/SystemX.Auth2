@@ -58,6 +58,22 @@ public class OptionsValidationTests
         Check(o).Failures!.Count().ShouldBe(3);
     }
 
+    [Theory]
+    [InlineData("00:00:30", true)]
+    [InlineData("01:00:00", true)]
+    [InlineData("1.00:00:00", true)]
+    [InlineData("40.00:00:00", true)]
+    [InlineData("-00:00:00.001", true)]   // Timeout.InfiniteTimeSpan: read once at start
+    [InlineData("00:00:00", false)]       // would ask the server again and again
+    [InlineData("00:00:10", false)]
+    [InlineData("-00:00:05", false)]
+    [InlineData("41.00:00:00", false)]
+    public void TheCatalogRefreshInterval_IsChecked(string interval, bool valid)
+    {
+        var o = Good(); o.CatalogRefreshInterval = TimeSpan.Parse(interval);
+        Check(o).Succeeded.ShouldBe(valid);
+    }
+
     [Fact]
     public async Task InvalidOptions_StopTheHost_AtStartup()
     {

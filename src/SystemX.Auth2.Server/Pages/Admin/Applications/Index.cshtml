@@ -28,6 +28,8 @@
                 <tr>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Name</th>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Client ID</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Type</th>
+                    <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Web server</th>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Redirect URIs</th>
                     <th scope="col" class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Allowed Scopes</th>
@@ -46,6 +48,8 @@
                                 </a>
                             </td>
                             <td class="px-6 py-4 font-mono text-xs text-gray-700 dark:text-gray-300">@app.ClientId</td>
+                            <td class="px-6 py-4 text-gray-700 dark:text-gray-300">@app.ApplicationType</td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-600 dark:text-gray-400">@(app.WebServerUrl ?? "-")</td>
                             <td class="px-6 py-4">
                                 @if (app.IsEnabled)
                                 {
@@ -69,6 +73,10 @@
                                 <span class="text-gray-300 dark:text-gray-600">|</span>
                                 <a href="/admin/p/@Model.ProjectKey/applications/detail?id=@app.Id" class="text-blue-600 dark:text-blue-400 hover:underline text-xs font-semibold">Settings</a>
                                 <span class="text-gray-300 dark:text-gray-600">|</span>
+                                <form method="post" asp-page-handler="RotateSecret" asp-route-id="@app.Id" class="inline" data-confirm="Revoke and rotate client secret for '@app.Name'? Applications using the old secret will need to be updated.">
+                                    <button type="submit" class="text-xs text-amber-600 dark:text-amber-400 hover:underline font-medium">Revoke Key</button>
+                                </form>
+                                <span class="text-gray-300 dark:text-gray-600">|</span>
                                 <form method="post" asp-page-handler="Delete" asp-route-id="@app.Id" class="inline" data-confirm="Delete application @app.Name?">
                                     <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Delete</button>
                                 </form>
@@ -79,7 +87,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                        <td colspan="8" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                             No applications registered for this project.
                         </td>
                     </tr>

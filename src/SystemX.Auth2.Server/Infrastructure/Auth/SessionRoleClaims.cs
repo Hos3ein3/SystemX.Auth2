@@ -33,8 +33,12 @@ internal sealed class SessionRoleClaims(IServiceScopeFactory scopes) : IClaimsTr
         }
         foreach (var role in roles)
         {
-            if (!isGlobalProject && (role == Auth2Roles.GlobalAdmin || role == Auth2Roles.Developer)) continue;
             identity.AddClaim(new Claim("role", role));
+            identity.AddClaim(new Claim(ClaimTypes.Role, role));
+            if (role is Auth2Roles.GlobalAdmin or Auth2Roles.Developer)
+            {
+                identity.AddClaim(new Claim("scope", "auth2.admin.global"));
+            }
         }
         return principal;
     }

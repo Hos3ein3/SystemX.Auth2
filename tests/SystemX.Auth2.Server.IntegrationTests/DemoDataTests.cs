@@ -101,8 +101,10 @@ public class DemoDataTests : Phase6Base
 
         // the scopes are registered and allowed for both sample applications
         var applications = await scope.ServiceProvider.GetRequiredService<IApplicationService>().ListAsync(project.Id);
-        applications.Count.ShouldBe(2);
-        foreach (var application in applications) DemoDataSeeder.ScopeNames.Except(application.AllowedScopes).ShouldBeEmpty();
+        applications.Select(a => a.ClientId).ShouldBe(["minimal-api-sample", "mvc-sample", "worker-sample"], ignoreOrder: true);
+        applications.ToDictionary(x => x.ClientId, x => x.ApplicationType).ShouldBe(new Dictionary<string, SystemX.Auth2.Contracts.Enums.ApplicationType> { ["mvc-sample"] = SystemX.Auth2.Contracts.Enums.ApplicationType.Web, ["minimal-api-sample"] = SystemX.Auth2.Contracts.Enums.ApplicationType.Api, ["worker-sample"] = SystemX.Auth2.Contracts.Enums.ApplicationType.Service }, ignoreOrder: true);
+        foreach (var application in applications.Where(a => a.ClientId != "worker-sample")) DemoDataSeeder.ScopeNames.Except(application.AllowedScopes).ShouldBeEmpty();
+        applications.Single(a => a.ClientId == "worker-sample").AllowedScopes.ShouldBe(["auth2.client.handshake", "auth2.permissions.sync", "auth2.roles.sync", "reports.read", "jobs.run"], ignoreOrder: true);   // the worker keeps only what it needs
 
         // the assignments: every demo role has permissions, every group has a role or a permission, every person has a way to get access
         foreach (var role in db.Roles.Where(r => r.ProjectId == project.Id && DemoDataSeeder.RoleNames.Contains(r.Name!)).Select(r => new { r.Name, Count = db.RolePermissions.Count(rp => rp.RoleId == r.Id) }))
@@ -161,6 +163,35 @@ public class DemoDataTests : Phase6Base
         (await CountsAsync((db, id) => db.Roles.Where(r => r.ProjectId == id && r.Name == "OrdersViewer").Select(r => r.Id))).ShouldBe((1, 0));
         (await CountsAsync((db, id) => db.UserProjects.Where(x => x.ProjectId == id && db.Users.First(u => u.Id == x.UserId).UserName == "alice").Select(x => x.UserId))).ShouldBe((1, 0));
         Names(await MeAsync("alice"), "roles").ShouldBe(["Admin"]);
+    }
+
+    [Fact]
+    public async Task TheWorkerSampleApplication_GetsAMachineTokenThatTheMinimalApiSampleAccepts()
+    {
+        await MigrateAndSeedAsync();
+        await SeedAsync();
+
+        async Task<Microsoft.IdentityModel.JsonWebTokens.JsonWebToken> TokenAsync(string scope)
+        {
+            var response = await new Browser(Factory).PostFormAsync("/connect/token", new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials", ["client_id"] = "worker-sample", ["client_secret"] = "worker-sample-secret", ["scope"] = scope,
+            });
+            var body = await response.JsonAsync();
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, body.ToString());
+            return new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(body.Str("access_token"));
+        }
+
+        var token = await TokenAsync("reports.read jobs.run");
+        token.Audiences.ShouldBe(["worker-sample", "reports-api", "minimal-api-sample"]);   // the MinimalApi sample accepts a token whose audience is its client id
+        token.GetClaim("machine").Value.ShouldBe("true");
+
+        // the worker may not ask for what it does not need
+        var refused = await new Browser(Factory).PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials", ["client_id"] = "worker-sample", ["client_secret"] = "worker-sample-secret", ["scope"] = "auth2.admin",
+        });
+        refused.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
     [Fact]

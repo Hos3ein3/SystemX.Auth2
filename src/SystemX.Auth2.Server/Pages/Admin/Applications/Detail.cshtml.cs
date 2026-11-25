@@ -16,6 +16,9 @@ public sealed class DetailModel : AdminPageModel
     public string? RotatedSecret { get; private set; }
     public IReadOnlyList<ExternalProviderAdminDto> AvailableProviders { get; private set; } = [];
 
+    public bool CanEditGlobalOnly => IsGlobalAdmin || User.IsInRole("GlobalAdmin") || User.IsInRole("Developer");
+    public bool CanEditProjectAdmin => CanEditGlobalOnly || User.IsInRole("ProjectAdmin") || User.IsInRole("Admin");
+
     [BindProperty] public UpdateInputModel Input { get; set; } = new();
 
     public sealed class UpdateInputModel
@@ -26,10 +29,13 @@ public sealed class DetailModel : AdminPageModel
         public string? RedirectUris { get; set; }
         public string? PostLogoutUris { get; set; }
         public string? AllowedScopes { get; set; }
+        public SystemX.Auth2.Contracts.Enums.ApplicationType ApplicationType { get; set; }
+        [StringLength(500)] public string? WebServerUrl { get; set; }
 
         // ClientApplicationSettings overrides:
         public UiMode? UiMode { get; set; }
         public bool AllowSelfUiLogin { get; set; }
+        public bool AllowClientToSetWebServerUrl { get; set; } = true;
         public int? AccessTokenMinutes { get; set; }
         public int? RefreshTokenDays { get; set; }
         public int? IdentityTokenMinutes { get; set; }
@@ -41,10 +47,20 @@ public sealed class DetailModel : AdminPageModel
         public string? ExternalProviders { get; set; }
     }
 
+    private void EnsureIdResolved()
+    {
+        if (Id != Guid.Empty) return;
+        if (Guid.TryParse(Request.Query["id"], out var qId) && qId != Guid.Empty) Id = qId;
+        else if (Guid.TryParse(Request.Form["Id"], out var fId) && fId != Guid.Empty) Id = fId;
+        else if (Guid.TryParse(Request.Form["id"], out var fId2) && fId2 != Guid.Empty) Id = fId2;
+    }
+
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!await AuthorizeAdminAsync()) return Page();
+        if (!await AuthorizeAdminAsync()) return NotFound();
 
+        EnsureIdResolved();
+        if (Id == Guid.Empty) return NotFound();
         var appSvc = Svc<IAdminApplicationService>();
         App = await appSvc.GetAsync(CurrentProject!.Id, Id, HttpContext.RequestAborted);
         if (App is null) return NotFound();
@@ -62,8 +78,11 @@ public sealed class DetailModel : AdminPageModel
             RedirectUris = string.Join("\n", App.RedirectUris),
             PostLogoutUris = string.Join("\n", App.PostLogoutRedirectUris),
             AllowedScopes = string.Join(" ", App.AllowedScopes),
+            ApplicationType = App.ApplicationType,
+            WebServerUrl = App.WebServerUrl,
             UiMode = settings?.UiMode,
             AllowSelfUiLogin = settings?.AllowSelfUiLogin ?? false,
+            AllowClientToSetWebServerUrl = settings?.AllowClientToSetWebServerUrl ?? true,
             AccessTokenMinutes = settings?.AccessTokenMinutes,
             RefreshTokenDays = settings?.RefreshTokenDays,
             IdentityTokenMinutes = settings?.IdentityTokenMinutes,
@@ -79,7 +98,9 @@ public sealed class DetailModel : AdminPageModel
 
     public async Task<IActionResult> OnPostUpdateAsync()
     {
-        if (!await AuthorizeAdminAsync()) return Page();
+        if (!await AuthorizeAdminAsync()) return NotFound();
+        EnsureIdResolved();
+        if (Id == Guid.Empty) return NotFound();
 
         var redirectList = (Input.RedirectUris ?? "").Split(['\r', '\n', ' '], StringSplitOptions.RemoveEmptyEntries);
         var postLogoutList = (Input.PostLogoutUris ?? "").Split(['\r', '\n', ' '], StringSplitOptions.RemoveEmptyEntries);
@@ -91,13 +112,15 @@ public sealed class DetailModel : AdminPageModel
             Input.IsEnabled,
             redirectList,
             postLogoutList,
-            scopeList
+            scopeList,
+            ApplicationType: IsGlobalAdmin ? Input.ApplicationType : null,
+            WebServerUrl: IsGlobalAdmin ? Input.WebServerUrl ?? "" : null
         ), null, HttpContext.RequestAborted);
 
         if (!result.Succeeded)
         {
             TempData["Error"] = "Failed to update application.";
-            return RedirectToPage(new { projectKey = ProjectKey, id = Id });
+            return Redirect($"/admin/p/{ProjectKey}/applications/detail?id={Id}");
         }
 
         var corsOrigins = (Input.AllowedCorsOrigins ?? "")
@@ -116,6 +139,7 @@ public sealed class DetailModel : AdminPageModel
         {
             UiMode = Input.UiMode,
             AllowSelfUiLogin = Input.AllowSelfUiLogin,
+            AllowClientToSetWebServerUrl = Input.AllowClientToSetWebServerUrl,
             AccessTokenMinutes = Input.AccessTokenMinutes,
             RefreshTokenDays = Input.RefreshTokenDays,
             IdentityTokenMinutes = Input.IdentityTokenMinutes,
@@ -127,7 +151,7 @@ public sealed class DetailModel : AdminPageModel
             ExternalProviders = extProviders
         };
 
-        if (!IsGlobalAdmin)
+        if (!CanEditGlobalOnly)
         {
             var (_, currentSettings, _) = await appSvc.GetSettingsAsync(CurrentProject!.Id, Id, HttpContext.RequestAborted);
             if (currentSettings is not null)
@@ -140,6 +164,7 @@ public sealed class DetailModel : AdminPageModel
                 clientSettings.IdentityTokenMinutes = currentSettings.IdentityTokenMinutes;
                 clientSettings.AllowedCorsOrigins = currentSettings.AllowedCorsOrigins;
                 clientSettings.AllowSelfUiLogin = currentSettings.AllowSelfUiLogin;
+                clientSettings.AllowClientToSetWebServerUrl = currentSettings.AllowClientToSetWebServerUrl;
                 clientSettings.ConsentMode = currentSettings.ConsentMode;
             }
         }
@@ -148,7 +173,7 @@ public sealed class DetailModel : AdminPageModel
             CurrentProject!.Id,
             Id,
             clientSettings,
-            IsGlobalAdmin,
+            CanEditGlobalOnly,
             null,
             HttpContext.RequestAborted);
 
@@ -158,16 +183,18 @@ public sealed class DetailModel : AdminPageModel
                 ? string.Join("; ", settingsResult.Errors.Select(e => $"{e.Code}: {e.Description}"))
                 : (settingsResult.ErrorCode ?? "Failed to update application settings.");
             TempData["Error"] = msg;
-            return RedirectToPage(new { projectKey = ProjectKey, id = Id });
+            return Redirect($"/admin/p/{ProjectKey}/applications/detail?id={Id}");
         }
 
         TempData["Success"] = "Application settings saved.";
-        return RedirectToPage(new { projectKey = ProjectKey, id = Id });
+        return Redirect($"/admin/p/{ProjectKey}/applications/detail?id={Id}");
     }
 
     public async Task<IActionResult> OnPostRotateSecretAsync()
     {
-        if (!await AuthorizeAdminAsync()) return Page();
+        if (!await AuthorizeAdminAsync()) return NotFound();
+        EnsureIdResolved();
+        if (Id == Guid.Empty) return NotFound();
 
         var appSvc = Svc<IAdminApplicationService>();
         var serverUrl = $"{Request.Scheme}://{Request.Host}";
@@ -176,7 +203,7 @@ public sealed class DetailModel : AdminPageModel
         if (!result.Succeeded)
         {
             TempData["Error"] = result.ErrorCode ?? "Could not rotate secret.";
-            return RedirectToPage(new { projectKey = ProjectKey, id = Id });
+            return Redirect($"/admin/p/{ProjectKey}/applications/detail?id={Id}");
         }
 
         TempData["Success"] = "Client secret rotated.";
@@ -193,8 +220,11 @@ public sealed class DetailModel : AdminPageModel
             RedirectUris = string.Join("\n", App.RedirectUris),
             PostLogoutUris = string.Join("\n", App.PostLogoutRedirectUris),
             AllowedScopes = string.Join(" ", App.AllowedScopes),
+            ApplicationType = App.ApplicationType,
+            WebServerUrl = App.WebServerUrl,
             UiMode = settings?.UiMode,
             AllowSelfUiLogin = settings?.AllowSelfUiLogin ?? false,
+            AllowClientToSetWebServerUrl = settings?.AllowClientToSetWebServerUrl ?? true,
             AccessTokenMinutes = settings?.AccessTokenMinutes,
             RefreshTokenDays = settings?.RefreshTokenDays,
             IdentityTokenMinutes = settings?.IdentityTokenMinutes,
@@ -210,7 +240,9 @@ public sealed class DetailModel : AdminPageModel
 
     public async Task<IActionResult> OnPostDeleteAsync()
     {
-        if (!await AuthorizeAdminAsync()) return Page();
+        if (!await AuthorizeAdminAsync()) return NotFound();
+        EnsureIdResolved();
+        if (Id == Guid.Empty) return NotFound();
 
         var appSvc = Svc<IAdminApplicationService>();
         var result = await appSvc.DeleteAsync(CurrentProject!.Id, Id, HttpContext.RequestAborted);

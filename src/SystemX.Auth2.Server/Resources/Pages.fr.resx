@@ -37,6 +37,12 @@
   <data name="login.title" xml:space="preserve"><value>Connexion</value></data>
   <data name="login.subtitle" xml:space="preserve"><value>Entrez vos identifiants pour accéder à votre compte</value></data>
   <data name="login.username_or_email" xml:space="preserve"><value>Nom d'utilisateur ou e-mail</value></data>
+  <data name="login.identifier_username" xml:space="preserve"><value>Nom d'utilisateur</value></data>
+  <data name="login.identifier_email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="login.identifier_phone" xml:space="preserve"><value>Numéro de téléphone</value></data>
+  <data name="login.identifier_username_phone" xml:space="preserve"><value>Nom d'utilisateur ou téléphone</value></data>
+  <data name="login.identifier_email_phone" xml:space="preserve"><value>E-mail ou téléphone</value></data>
+  <data name="login.identifier_all" xml:space="preserve"><value>Nom d'utilisateur, e-mail ou téléphone</value></data>
   <data name="login.password" xml:space="preserve"><value>Mot de passe</value></data>
   <data name="login.remember_me" xml:space="preserve"><value>Se souvenir de moi</value></data>
   <data name="login.forgot_password" xml:space="preserve"><value>Mot de passe oublié ?</value></data>
@@ -125,4 +131,8 @@
   <data name="consent.deny" xml:space="preserve"><value>Refuser</value></data>
   <data name="join_project.title" xml:space="preserve"><value>Rejoindre le projet</value></data>
   <data name="join_project.confirm" xml:space="preserve"><value>Rejoindre ce projet</value></data>
+  <data name="auth_not_supported.title" xml:space="preserve"><value>Authentification directe non prise en charge</value></data>
+  <data name="auth_not_supported.description" xml:space="preserve"><value>Ce service d'authentification nécessite un contexte d'application. La connexion ou l'inscription directe sans application cliente valide n'est pas prise en charge. Veuillez accéder à ce service via votre application désignée.</value></data>
+  <data name="auth_not_supported.hint" xml:space="preserve"><value>Si vous pensez qu'il s'agit d'une erreur, vérifiez le lien de l'application ou contactez votre administrateur système.</value></data>
+  <data name="register.confirm_password" xml:space="preserve"><value>Confirmer le mot de passe</value></data>
 </root>

@@ -95,6 +95,8 @@ Each of the 50 generated people (the list is `DemoDataSeeder.UserNames`) gets on
 
 The first start with the demo data takes some seconds longer (it hashes 56 passwords and makes about 700 assignments). A finished seed is recognised at the next start (the first and the last person exist) and skipped at once.
 
+The seed also creates the **sample applications** of the project (with their types: `mvc-sample` is `Web`, `minimal-api-sample` is `Api`, `worker-sample` is `Service`; no web server address is seeded, the samples announce it themselves): `mvc-sample`, `minimal-api-sample` and `worker-sample` (the background job of `samples/SystemX.Auth2.Samples.Worker`, which has only the scopes it needs), and the custom scopes `reports.read`, `orders.read`, `orders.write` and `jobs.run` (with resources, [scopes.md](scopes.md)).
+
 Sign in to the MVC sample with any of them (user name and password `Demo@12345!`); the sample project and its two applications are created by the same seed. The docker-compose file sets `Auth2__SeedDemoData: "true"`, so the people are there at once after `docker compose up`. To remove them, delete the users, roles, groups and permissions in the admin console (and set `SeedDemoData` to `false`, or the people come back at the next start).
 
 ## After the first login

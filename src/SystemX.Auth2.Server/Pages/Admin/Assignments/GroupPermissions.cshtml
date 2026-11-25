@@ -58,16 +58,39 @@
     </a2-card>
 
     <!-- Filter & Search -->
-    <div class="flex items-center justify-between gap-4">
-        <form method="get" class="flex items-center gap-2 max-w-sm w-full">
-            <input type="text" name="q" value="@Model.Q" placeholder="Filter group or permission..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-            <a2-button type="submit" variant="secondary">Search</a2-button>
-            @if (!string.IsNullOrEmpty(Model.Q))
-            {
-                <a href="/admin/p/@Model.ProjectKey/group-permissions" class="text-xs text-gray-500 dark:text-gray-400 hover:underline">Clear</a>
-            }
+    <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+        <form method="get" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Filter by Group</label>
+                <select name="GroupName" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">All Groups</option>
+                    @foreach (var g in Model.AvailableGroups)
+                    {
+                        <option value="@g.Name" selected="@(Model.GroupName == g.Name ? "selected" : null)">@g.Name</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Filter by Permission</label>
+                <input type="text" name="PermissionKey" value="@Model.PermissionKey" placeholder="e.g. orders.read" class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">General Search</label>
+                <input type="text" name="q" value="@Model.Q" placeholder="Search group or permission..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            </div>
+            <div class="flex items-center gap-2">
+                <a2-button type="submit" variant="secondary" class="w-full">Filter</a2-button>
+                @if (!string.IsNullOrEmpty(Model.Q) || !string.IsNullOrEmpty(Model.GroupName) || !string.IsNullOrEmpty(Model.PermissionKey))
+                {
+                    <a href="/admin/p/@Model.ProjectKey/group-permissions" class="text-xs text-gray-500 dark:text-gray-400 hover:underline whitespace-nowrap">Clear</a>
+                }
+            </div>
         </form>
-        <span class="text-xs text-gray-500 dark:text-gray-400">Total: <strong>@Model.Items.Count</strong> assignments</span>
+    </div>
+
+    <div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+        <span>Showing assignments in @Model.CurrentProject?.Name</span>
+        <span>Total: <strong>@Model.TotalCount</strong> direct group permissions</span>
     </div>
 
     <!-- Table -->
@@ -112,4 +135,9 @@
             </tbody>
         </table>
     </div>
+
+    @if (Model.TotalCount > 0)
+    {
+        <a2-pager page="@Model.PageNumber" page-size="@Model.PageSize" total-count="@Model.TotalCount" total-pages="@Model.TotalPages"></a2-pager>
+    }
 </div>

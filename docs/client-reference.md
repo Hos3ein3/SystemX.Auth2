@@ -853,7 +853,7 @@ Makes one handshake attempt and turns every possible answer into a `HandshakeSta
 
 | Member | What it does |
 |---|---|
-| `(constructor)(IHttpClientFactory, IAuth2MachineTokenProvider, IOptions<Auth2ClientOptions>, HealthAddressResolver)` | Makes one handshake attempt and turns every possible answer into a `HandshakeStatus`. |
+| `(constructor)(IHttpClientFactory, IAuth2MachineTokenProvider, IOptions<Auth2ClientOptions>, HealthAddressResolver, IServiceProvider)` | Makes one handshake attempt and turns every possible answer into a `HandshakeStatus`. |
 | `SingleServerMessage` | Warning when the client has a project key but the server has a single project. The key is ignored. |
 | `MultiServerMessage` | Message when the client has no project key but the server serves many projects. |
 | `RunAsync(CancellationToken)` | Makes one attempt. Never throws (except when `ct` is cancelled). |
@@ -983,10 +983,12 @@ Main options of the client. Section name `Auth2` when you use `AddAuth2Client(IC
 | `HandshakeMaxRetries` | How many background retries after an unreachable server (only with `Continue`). Default 6. |
 | `HandshakeInitialDelay` | Wait before the first retry. It doubles each time. Default 2 seconds. |
 | `HandshakeMaxDelay` | Longest wait between two retries. Default 60 seconds. |
+| `WebServerUrl` | **Optional.** The address of this application's web server as the Server reaches it (for example `https://shop.example.com`). Sent in the handshake; the Server stores it on the application and uses it for the two-way health check and other calls to the application. When it is not set, `EnableHealthCheck(o => o.PublicUrl)` is used. The Server may refuse to change it (`AllowClientToSetWebServerUrl` of the application is off): then the address an admin set stays, and the client only logs it. |
+| `ApplicationType` | **Optional.** What kind of application this is (`ApplicationType`: Web, Api, Service, Other). When it is not set, the client works it out: a cookie sign-in (`AddAuth2Cookie` style UI) means Web, bearer-token API protection means Api, and nothing of both (a background job) means Service. Sent in the handshake. |
 | `ClientVersion` | Version text sent in the handshake. Default: the version of this package. |
 | `SendRequestCulture` | Send the language of the current request to the server (header `Accept-Language`, taken from `CultureInfo.CurrentUICulture`), so error messages, emails and SMS written for the call are in the language of your user. Default `true`. A culture chosen with `IAuth2ApiClientService.WithCulture` is always sent. The invariant culture sends nothing. |
 | `RequestTimeout` | Time limit of one call to the server (not the handshake). Default 30 seconds. |
-| `CatalogRefreshInterval` | How often permissions, roles and groups are read again from the server when their policy is `Pull` or `Both`. Default 10 minutes. |
+| `CatalogRefreshInterval` | How often permissions, roles, scopes and groups are read again from the server when their policy is `Pull` or `Both`. Default 10 minutes. From 30 seconds to 40 days; `Timeout.InfiniteTimeSpan` (`-00:00:00.001` in configuration) reads them **once**, when the application starts. |
 | `SyncMaxRetries` | How many times a failed sync is tried again (waits grow like the handshake retries). Default 5. |
 | `FailOnSyncError` | When true, a sync that still fails after the retries stops the application. Default false: log it and carry on. |
 

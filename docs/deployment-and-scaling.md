@@ -17,7 +17,7 @@ You run more than one instance (for load or for rolling updates), or you deploy 
 | Signing and encryption keys | key ring in the database (or the same certificate files) | A token from one instance is valid on the others |
 | Rate-limit counters | **Redis** | Without Redis each instance counts alone |
 | One-time codes | Redis when on, else the `otp_codes` table | Both are shared |
-| Settings cache | memory per instance + Redis pub/sub | A change on one instance clears the others at once. Without Redis the cache expires in 10 minutes |
+| Settings cache | memory per instance + the shared version and value in Redis ([hybrid cache](redis.md#the-hybrid-cache-settings-without-asking-the-database)) | A change on one instance clears the others at once. Without Redis the cache expires in 10 minutes |
 | Access cache | memory per instance | Correct on every instance, because the key contains the access version that is read from the database each time |
 | Background jobs | database lock | One instance runs each job |
 
@@ -56,7 +56,7 @@ Both are anonymous and never rate limited. The Server stops gracefully: in-fligh
 | Key ring cannot be read (log: "A key of the key ring could not be read") | Data Protection keys differ from those that protected the key ring | Restore the database table, or rotate keys on a clean instance |
 | `429` from the first request | All clients share the proxy address | Turn on forwarded headers and list the proxy |
 | Rate limits seem 3× too weak | Three instances, counters in memory | Turn on Redis |
-| Settings change appears after 10 minutes on some instances | No Redis pub/sub | Turn on Redis, or accept the delay |
+| Settings change appears after 10 minutes on some instances | No Redis (no shared version) | Turn on Redis, or accept the delay |
 | A new key is not used by an instance | It checks every 30 s | Wait `Auth2:Keys:RefreshSeconds`, or restart it |
 | Instances fight over migrations | Auto-migrate on in several instances | It is safe (database lock), but prefer the separate `migrate` step |
 | Cookies not set behind the proxy | The server thinks the request is HTTP | `UseForwardedHeaders=true`, proxy sends `X-Forwarded-Proto` |

@@ -99,6 +99,7 @@ Primary key: `id`.
 | `display_names` | `text` | yes |
 | `is_enabled` | `boolean` | no |
 | `json_web_key_set` | `text` | yes |
+| `kind` | `character varying(16)` | no |
 | `name` | `character varying(200)` | no |
 | `permissions` | `text` | yes |
 | `post_logout_redirect_uris` | `text` | yes |
@@ -109,6 +110,7 @@ Primary key: `id`.
 | `settings` | `text` | yes |
 | `settings_version` | `integer` | no |
 | `updated_at_utc` | `timestamptz` | no |
+| `web_server_url` | `character varying(500)` | yes |
 
 Primary key: `id`.
 

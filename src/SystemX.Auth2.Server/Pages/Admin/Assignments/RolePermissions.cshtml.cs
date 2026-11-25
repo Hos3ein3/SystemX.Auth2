@@ -16,12 +16,26 @@ public sealed class RolePermissionsModel : AdminPageModel
     public IReadOnlyList<AppRole> AvailableRoles { get; private set; } = [];
     public IReadOnlyList<Permission> AvailablePermissions { get; private set; } = [];
 
-    [BindProperty(SupportsGet = true)]
-    public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Role { get; set; }
+    [BindProperty(SupportsGet = true)] public string? PermissionKey { get; set; }
+    [BindProperty(SupportsGet = true, Name = "page")] public int PageNumber { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 25;
+    public int TotalCount { get; private set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / Math.Max(1, PageSize));
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
+
+        if (Request.Query.TryGetValue("pageNumber", out var pnVal) && int.TryParse(pnVal, out var pn) && pn > 0)
+        {
+            PageNumber = pn;
+        }
+        else if (Request.Query.TryGetValue("page", out var pVal) && int.TryParse(pVal, out var p) && p > 0)
+        {
+            PageNumber = p;
+        }
 
         var db = Svc<Auth2DbContext>();
         var projectId = CurrentProject!.Id;
@@ -47,13 +61,27 @@ public sealed class RolePermissionsModel : AdminPageModel
                     where CurrentProject.IsGlobalProject ? (r.ProjectId == projectId || r.ProjectId == null) : r.ProjectId == projectId
                     select new { rp.RoleId, RoleName = r.Name ?? "", rp.PermissionId, PermissionKey = p.Key };
 
+        if (!string.IsNullOrWhiteSpace(Role))
+        {
+            var rFilter = Role.Trim();
+            query = query.Where(x => x.RoleName == rFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(PermissionKey))
+        {
+            var pFilter = PermissionKey.Trim();
+            query = query.Where(x => x.PermissionKey == pFilter);
+        }
+
         if (!string.IsNullOrWhiteSpace(Q))
         {
             var filter = Q.Trim().ToUpperInvariant();
             query = query.Where(x => x.RoleName.ToUpper().Contains(filter) || x.PermissionKey.ToUpper().Contains(filter));
         }
 
-        var rows = await query.OrderBy(x => x.RoleName).ThenBy(x => x.PermissionKey).ToListAsync(HttpContext.RequestAborted);
+        TotalCount = await query.CountAsync(HttpContext.RequestAborted);
+        var rows = await query.OrderBy(x => x.RoleName).ThenBy(x => x.PermissionKey)
+            .Skip((PageNumber - 1) * PageSize).Take(PageSize).ToListAsync(HttpContext.RequestAborted);
         Items = [.. rows.Select(x => new RolePermItem(x.RoleId, x.RoleName.Length > 0 ? x.RoleName : x.RoleId.ToString(), x.PermissionId, x.PermissionKey))];
         return Page();
     }

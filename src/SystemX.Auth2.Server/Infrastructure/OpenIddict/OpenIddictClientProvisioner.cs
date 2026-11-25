@@ -6,6 +6,7 @@ using OpenIddict.Abstractions;
 using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Infrastructure.Caching;
 using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Domain.Settings;
 using SystemX.Auth2.Server.Persistence;
@@ -22,7 +23,8 @@ public sealed class OpenIddictClientProvisioner(
     IOpenIddictApplicationManager manager,
     IOpenIddictAuthorizationManager authorizations,
     IOpenIddictTokenManager tokens,
-    Auth2DbContext db) : IClientProvisioner
+    Auth2DbContext db,
+    IHybridCacheService cache) : IClientProvisioner
 {
     /// <summary>Scopes the seeder creates (standard OIDC scopes and all <c>auth2.*</c> scopes).</summary>
     public static IReadOnlyList<string> StandardScopes { get; } =
@@ -44,6 +46,8 @@ public sealed class OpenIddictClientProvisioner(
             Name = name,
             IsEnabled = true,
             ClientSettings = spec.Settings ?? new ClientApplicationSettings(),
+            Kind = spec.ApplicationType ?? SystemX.Auth2.Contracts.Enums.ApplicationType.Other,
+            WebServerUrl = WebServerUrls.Normalize(spec.WebServerUrl),
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         };
@@ -84,11 +88,14 @@ public sealed class OpenIddictClientProvisioner(
 
         entity.Name = name;
         entity.ClientSettings = settings;
+        if (spec.ApplicationType is { } type) entity.Kind = type;
+        if (spec.WebServerUrl is { } url) entity.WebServerUrl = WebServerUrls.Normalize(url);   // "" clears it
         if (isEnabled is { } enabled) entity.IsEnabled = enabled;
         entity.SettingsVersion++;
         entity.UpdatedAtUtc = now;
         db.Entry(entity).Property(a => a.ClientSettings).IsModified = true;
         await manager.UpdateAsync(entity, ct);
+        cache.InvalidateClient(entity.ClientId!);   // every instance reads the application again (the caller also does it after its own commit)
         return ToInfo(entity);
     }
 
@@ -115,6 +122,7 @@ public sealed class OpenIddictClientProvisioner(
         var entity = await FindEntityAsync(applicationId, ct);
         if (entity is null) return;
         await manager.DeleteAsync(entity, ct);
+        cache.InvalidateClientCompletely(entity.ClientId!);
     }
 
     /// <inheritdoc />
@@ -191,7 +199,7 @@ public sealed class OpenIddictClientProvisioner(
         a.Id, a.ProjectId, a.ClientId ?? "", a.Name, a.IsEnabled,
         ReadArray(a.RedirectUris), ReadArray(a.PostLogoutRedirectUris),
         ReadArray(a.Permissions).Where(p => p.StartsWith(Permissions.Prefixes.Scope, StringComparison.Ordinal)).Select(p => p[Permissions.Prefixes.Scope.Length..]).ToList(),
-        a.ConsentType, a.ClientSettings, a.SettingsVersion, a.CreatedAtUtc);
+        a.ConsentType, a.ClientSettings, a.SettingsVersion, a.CreatedAtUtc, a.Kind, a.WebServerUrl);
 
     private static List<string> ReadArray(string? json)
     {

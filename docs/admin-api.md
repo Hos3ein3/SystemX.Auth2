@@ -57,8 +57,8 @@ In single-project mode the only project id is the one of the single project.
 |---|---|---|
 | `GET /projects/{projectId}/applications` | project (own) / global | The applications of the project |
 | `GET /projects/{projectId}/applications/{applicationId}` | project (own) / global | One application. An application of another project is `404` |
-| `POST /projects/{projectId}/applications` | global | `{ name, clientId?, redirectUris?, postLogoutRedirectUris?, allowedScopes? }`. The client id is `{projectkey}.{name}` unless given (it must be unique on the server). The answer holds `clientSecret` (**shown once**) and `setup`, a copy-paste client configuration |
-| `PUT /projects/{projectId}/applications/{applicationId}` | global | Name, `isEnabled` (+ `reason`), redirect URIs, scopes. Disabling revokes only the tokens of that client |
+| `POST /projects/{projectId}/applications` | global | `{ name, clientId?, redirectUris?, postLogoutRedirectUris?, allowedScopes?, applicationType?, webServerUrl? }`. The client id is `{projectkey}.{name}` unless given (it must be unique on the server). The answer holds `clientSecret` (**shown once**) and `setup`, a copy-paste client configuration |
+| `PUT /projects/{projectId}/applications/{applicationId}` | global | Name, `isEnabled` (+ `reason`), redirect URIs, scopes, `applicationType` and `webServerUrl` (null leaves them, an empty `webServerUrl` clears it; a bad address is refused as a validation error). Disabling revokes only the tokens of that client |
 | `DELETE /projects/{projectId}/applications/{applicationId}` | global | Delete with its tokens and authorizations. The `_global` application cannot be deleted |
 | `GET .../{applicationId}/setup` | project (own) / global | The client setup (server URL, `ProjectKey`, `ApplicationName`, client id and a C# snippet). The secret is **not** part of it |
 | `POST .../{applicationId}/secret/rotate` | global; project admin only if `Clients.AllowProjectAdminRotateSecret` | New client secret, **shown once** (also in `setup.clientSecret`) |

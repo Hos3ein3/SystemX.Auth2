@@ -46,4 +46,5 @@
   <data name="alphanumeric" xml:space="preserve"><value>{0} فقط باید شامل حروف و اعداد باشد.</value></data>
   <data name="digits_only" xml:space="preserve"><value>{0} فقط باید شامل ارقام باشد.</value></data>
   <data name="invalid_code" xml:space="preserve"><value>{0} کد نامعتبر است.</value></data>
+  <data name="passwords_do_not_match" xml:space="preserve"><value>رمز عبور و تکرار آن یکسان نیستند.</value></data>
 </root>

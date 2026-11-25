@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using SystemX.Auth2.Client.Authentication;
 using SystemX.Auth2.Client.Authorization;
 using SystemX.Auth2.Client.CurrentUser;
+using SystemX.Auth2.Client.Services;
 using SystemX.Auth2.Samples.Mvc.Models;
 
 namespace SystemX.Auth2.Samples.Mvc.Controllers;
@@ -224,6 +225,30 @@ public class HomeController(ICurrentUser currentUser, ICurrentClient currentClie
     public IActionResult Error()
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+    }
+
+    [Auth2Authorize]
+    public async Task<IActionResult> AfterLoginRegisterRedirect(
+        [FromServices] IAuth2ApiClientService auth,
+        [FromServices] IAuth2AccessTokenAccessor tokens,
+        CancellationToken ct)
+    {
+        var token = await tokens.GetAccessTokenAsync(ct);        // the token the cookie keeps
+        if (token is null) return Challenge();                   // not signed in: go to the login
+
+        var me = await auth.GetMeAsync(token, ct);               // GET /api/auth2/me with that token
+        if (!me.IsSuccess)
+        {
+            // me.Error.Code, for example "invalid_token" (the token expired) or "server_unavailable"
+            return me.Error!.Code == "invalid_token" ? Challenge() : StatusCode(502);
+        }
+
+        var user = me.Value!;                                    // CurrentUserInfo
+        ViewBag.UserName = user.UserName;
+        ViewBag.Roles = user.Roles;
+        ViewBag.Permissions = user.Permissions;
+        ViewBag.Groups = user.Groups;
+        return View();
     }
 
 

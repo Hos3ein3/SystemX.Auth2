@@ -70,6 +70,22 @@
                     <a2-input name="Input.AllowedScopes" value="@Model.Input.AllowedScopes" placeholder="openid profile email" />
                 </a2-field>
 
+                @if (Model.IsGlobalAdmin)
+                {
+                    <a2-field label="Application type" hint="Describes the program: Web (browser app), Api, Service (background job) or Other.">
+                        <select name="Input.ApplicationType" class="block w-full rounded-md border-gray-300 text-sm">
+                            @foreach (var t in Enum.GetValues<SystemX.Auth2.Contracts.Enums.ApplicationType>())
+                            {
+                                <option value="@t" selected="@(t == Model.Input.ApplicationType)">@t</option>
+                            }
+                        </select>
+                    </a2-field>
+
+                    <a2-field label="Web server address" hint="Where the Server reaches this application (for example https://shop.example.com). Used for health checks. A client may also announce it from Program.cs when the project allows it.">
+                        <a2-input name="Input.WebServerUrl" value="@Model.Input.WebServerUrl" placeholder="https://shop.example.com" />
+                    </a2-field>
+                }
+
                 <div class="pt-4 border-t border-gray-200 flex items-center justify-end space-x-3">
                     <a2-link-button href="/admin/p/@Model.ProjectKey/applications" variant="secondary">
                         Cancel

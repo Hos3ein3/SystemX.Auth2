@@ -320,6 +320,7 @@ Stored in `applications.settings_json`. A null value means "use the project valu
 | `RefreshTokenDays` | `int?` | `null` | GlobalOnly | Refresh token lifetime (1 to 365). |
 | `IdentityTokenMinutes` | `int?` | `null` | GlobalOnly | Identity token lifetime (1 to 1440). |
 | `AllowedCorsOrigins` | `List<string>` | `empty list` | GlobalOnly | Allowed CORS origins of this client. Exact origins, no wildcards. CORS is off when empty. |
+| `AllowClientToSetWebServerUrl` | `bool` | `true` | GlobalOnly | The client of this application may announce its web server address and application type in the handshake and the Server stores them. Off: only a global admin sets them ([handshake-and-startup.md](handshake-and-startup.md#the-web-server-address-and-the-application-type)). |
 | `AllowSelfUiLogin` | `bool` | `false` | GlobalOnly | Enables the password grant and the two-factor grants for this client (Self UI). |
 | `ExternalProviders` | `List<string>?` | `null` | ProjectAdminEditable | Names of the project's providers this client shows. Null: all. It only chooses; it never adds a provider. |
 | `ConsentMode` | `ConsentMode?` | `null` | GlobalOnly | Consent mode. Null: the project value. |

@@ -14,12 +14,26 @@ public sealed class GroupRolesModel : AdminPageModel
     public IReadOnlyList<Group> AvailableGroups { get; private set; } = [];
     public IReadOnlyList<AppRole> AvailableRoles { get; private set; } = [];
 
-    [BindProperty(SupportsGet = true)]
-    public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? GroupName { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Role { get; set; }
+    [BindProperty(SupportsGet = true, Name = "page")] public int PageNumber { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 25;
+    public int TotalCount { get; private set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / Math.Max(1, PageSize));
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
+
+        if (Request.Query.TryGetValue("pageNumber", out var pnVal) && int.TryParse(pnVal, out var pn) && pn > 0)
+        {
+            PageNumber = pn;
+        }
+        else if (Request.Query.TryGetValue("page", out var pVal) && int.TryParse(pVal, out var p) && p > 0)
+        {
+            PageNumber = p;
+        }
 
         var db = Svc<Auth2DbContext>();
         var projectId = CurrentProject!.Id;
@@ -42,13 +56,30 @@ public sealed class GroupRolesModel : AdminPageModel
                     where g.ProjectId == projectId && (CurrentProject.IsGlobalProject ? (r.ProjectId == projectId || r.ProjectId == null) : r.ProjectId == projectId)
                     select new { gr.GroupId, GroupName = g.Name, GroupDisplayName = g.DisplayName, gr.RoleId, RoleName = r.Name ?? "" };
 
+        if (!string.IsNullOrWhiteSpace(GroupName))
+        {
+            var gFilter = GroupName.Trim();
+            query = query.Where(x => x.GroupName == gFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(Role))
+        {
+            var rFilter = Role.Trim().ToUpperInvariant();
+            query = query.Where(x => x.RoleName.ToUpper() == rFilter);
+        }
+
         if (!string.IsNullOrWhiteSpace(Q))
         {
             var filter = Q.Trim().ToUpperInvariant();
             query = query.Where(x => x.GroupName.ToUpper().Contains(filter) || x.RoleName.ToUpper().Contains(filter));
         }
 
-        var rows = await query.OrderBy(x => x.GroupName).ThenBy(x => x.RoleName).ToListAsync(HttpContext.RequestAborted);
+        TotalCount = await query.CountAsync(HttpContext.RequestAborted);
+        var skip = Math.Max(0, (PageNumber - 1) * PageSize);
+        var rows = await query.OrderBy(x => x.GroupName).ThenBy(x => x.RoleName)
+            .Skip(skip)
+            .Take(PageSize)
+            .ToListAsync(HttpContext.RequestAborted);
         Items = [.. rows.Select(x => new GroupRoleItem(x.GroupId, x.GroupName, x.GroupDisplayName, x.RoleId, x.RoleName.Length > 0 ? x.RoleName : x.RoleId.ToString()))];
         return Page();
     }

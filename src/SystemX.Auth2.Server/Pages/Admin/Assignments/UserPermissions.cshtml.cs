@@ -17,12 +17,26 @@ public sealed class UserPermissionsModel : AdminPageModel
     public IReadOnlyList<AppUser> AvailableUsers { get; private set; } = [];
     public IReadOnlyList<Permission> AvailablePermissions { get; private set; } = [];
 
-    [BindProperty(SupportsGet = true)]
-    public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Q { get; set; }
+    [BindProperty(SupportsGet = true)] public string? UserFilter { get; set; }
+    [BindProperty(SupportsGet = true)] public string? PermissionKey { get; set; }
+    [BindProperty(SupportsGet = true, Name = "page")] public int PageNumber { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 25;
+    public int TotalCount { get; private set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / Math.Max(1, PageSize));
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
+
+        if (Request.Query.TryGetValue("pageNumber", out var pnVal) && int.TryParse(pnVal, out var pn) && pn > 0)
+        {
+            PageNumber = pn;
+        }
+        else if (Request.Query.TryGetValue("page", out var pVal) && int.TryParse(pVal, out var p) && p > 0)
+        {
+            PageNumber = p;
+        }
 
         var db = Svc<Auth2DbContext>();
         var projectId = CurrentProject!.Id;
@@ -48,8 +62,20 @@ public sealed class UserPermissionsModel : AdminPageModel
         var query = from up in db.UserPermissions.AsNoTracking()
                     join u in db.Users.AsNoTracking() on up.UserId equals u.Id
                     join p in db.Permissions.IgnoreQueryFilters().AsNoTracking() on up.PermissionId equals p.Id
-                    where up.ProjectId == projectId && (CurrentProject.IsGlobalProject || p.ProjectId == projectId)
+                    where up.ProjectId == projectId
                     select new { up.UserId, UserName = u.UserName ?? u.Email ?? "", u.DisplayName, up.PermissionId, PermissionKey = p.Key, up.GrantedAtUtc };
+
+        if (!string.IsNullOrWhiteSpace(UserFilter))
+        {
+            var uFilter = UserFilter.Trim().ToUpperInvariant();
+            query = query.Where(x => x.UserName.ToUpper().Contains(uFilter) || (x.DisplayName != null && x.DisplayName.ToUpper().Contains(uFilter)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(PermissionKey))
+        {
+            var pFilter = PermissionKey.Trim();
+            query = query.Where(x => x.PermissionKey == pFilter);
+        }
 
         if (!string.IsNullOrWhiteSpace(Q))
         {
@@ -57,7 +83,9 @@ public sealed class UserPermissionsModel : AdminPageModel
             query = query.Where(x => x.UserName.ToUpper().Contains(filter) || x.PermissionKey.ToUpper().Contains(filter));
         }
 
-        var rows = await query.OrderBy(x => x.UserName).ThenBy(x => x.PermissionKey).ToListAsync(HttpContext.RequestAborted);
+        TotalCount = await query.CountAsync(HttpContext.RequestAborted);
+        var rows = await query.OrderBy(x => x.UserName).ThenBy(x => x.PermissionKey)
+            .Skip((PageNumber - 1) * PageSize).Take(PageSize).ToListAsync(HttpContext.RequestAborted);
         Items = [.. rows.Select(x => new UserPermItem(x.UserId, x.UserName.Length > 0 ? x.UserName : x.UserId.ToString(), x.DisplayName, x.PermissionId, x.PermissionKey, x.GrantedAtUtc))];
         return Page();
     }

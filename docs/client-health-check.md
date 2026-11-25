@@ -50,6 +50,8 @@ The options (`Auth2HealthCheckOptions`):
 
 ## How the server finds the client
 
+**First choice: the web server address of the application.** When the application has a *web server address* (an admin set it, or the client announced it with `Auth2ClientOptions.WebServerUrl`, or with `PublicUrl` which is used when `WebServerUrl` is not set), the Server calls `{web server address}{Path}`. The client then only tells the Server the `Path`. See [handshake-and-startup.md](handshake-and-startup.md#the-web-server-address-and-the-application-type); an application can forbid its client to set it (`AllowClientToSetWebServerUrl` on the application page), then an admin sets it on the application page. The rest of this section is for an application that has none.
+
 The Server cannot know where a client lives by itself: the client calls the Server, not the other way round, and the Server only sees **who called**. So one of two things happens:
 
 | `PublicUrl` | What the client tells the Server | The address the Server calls |
@@ -113,6 +115,13 @@ The header of `/admin/p/{project-key}` shows one badge for the project's applica
 | `Clients: Unknown` (grey) | Not asked yet, or the checker is off |
 
 Hover the badge to see each application with its state, the time of the check and the message. With no two-way client the badge is not shown. Project admins see it for their project; global admins for every project.
+
+**In the list of projects** (`/admin`, global admins) every project card has the same kind of badge beside `Active` (or `Disabled`): `Healthy` (green), `1 of 2 not healthy` (yellow or red), `Unknown` (grey), or a quiet grey `No health check` when no application of the project uses two-way. It is the worst state of the project's two-way clients; hover it for the list, as on the dashboard.
+
+**On the home page of the console** (`/`, the developer dashboard of a global admin):
+- the **Projects** card shows `n active` and `n healthy`: the number of projects whose two-way clients are **all** healthy (hover it: how many projects have a two-way client at all);
+- every card under **Configured Projects** has the same health badge beside `Active`;
+- **Subsystem & Job Status** shows `PostgreSQL Store` and `Redis Cache` from the server's real health checks (`Connected`, `Degraded`, `Unhealthy`, or a grey `Off` when Redis is not configured).
 
 **Refresh buttons.** A tiny round arrow next to the `Clients` badge asks the two-way clients of **this project right now**, instead of waiting for the next minute, and shows the page again. The `PostgreSQL` and `Redis` badges have the same arrow; they are read every time the page opens, so their button simply reloads it ([observability.md](observability.md#health-checks)).
 

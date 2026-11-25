@@ -163,27 +163,35 @@ internal sealed class ClientHealthService(
         catch (JsonException) { return null; }
     }
 
-    public async Task<IReadOnlyList<ClientHealthInfo>> GetProjectAsync(Guid projectId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ClientHealthInfo>> GetProjectAsync(Guid projectId, CancellationToken ct = default) =>
+        (await GetProjectsAsync([projectId], ct)).GetValueOrDefault(projectId) ?? [];
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<ClientHealthInfo>>> GetProjectsAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken ct = default)
     {
         using var _ = globalScope.Begin();
-        var applications = await db.Set<Auth2Application>().AsNoTracking().Where(a => a.ProjectId == projectId).Select(a => new { a.Id, a.Name }).ToListAsync(ct);
-        if (applications.Count == 0) return [];
-        var keys = applications.Select(a => KeyOf(a.Id)).ToList();
-        var rows = await db.ServerValues.AsNoTracking().Where(v => keys.Contains(v.Key)).ToListAsync(ct);
+        var result = projectIds.ToDictionary(id => id, _ => (IReadOnlyList<ClientHealthInfo>)[]);
+        if (projectIds.Count == 0) return result;
+        var applications = await db.Set<Auth2Application>().AsNoTracking().Where(a => projectIds.Contains(a.ProjectId)).Select(a => new { a.Id, a.ProjectId, a.Name }).ToListAsync(ct);
+        if (applications.Count == 0) return result;
+        // The rows are all the registrations of the server (one small row per two-way client): one query, then the match in memory.
+        var rows = (await db.ServerValues.AsNoTracking().Where(v => v.Key.StartsWith(KeyPrefix)).ToListAsync(ct)).ToDictionary(r => r.Key);
 
         // An answer older than three rounds means that the checker is not running: say "unknown" instead of a state that may be wrong.
         var stale = TimeSpan.FromSeconds(Math.Max(10, options.Value.Jobs.ClientHealthIntervalSeconds) * 3 + options.Value.Jobs.ClientHealthTimeoutSeconds);
         var now = clock.GetUtcNow();
-        var list = new List<ClientHealthInfo>();
-        foreach (var app in applications.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+        foreach (var group in applications.GroupBy(a => a.ProjectId))
         {
-            var row = rows.FirstOrDefault(r => r.Key == KeyOf(app.Id));
-            if (row is null || Read(row.Value) is not { } entry) continue;
-            var state = Enum.TryParse<ClientHealthState>(entry.State, out var parsed) ? parsed : ClientHealthState.Unknown;
-            if (entry.CheckedAtUtc is null || now - entry.CheckedAtUtc > stale) state = ClientHealthState.Unknown;
-            list.Add(new ClientHealthInfo(app.Id, app.Name ?? "", state, entry.CheckedAtUtc, entry.LastHealthyAtUtc, entry.Message));
+            var list = new List<ClientHealthInfo>();
+            foreach (var app in group.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                if (!rows.TryGetValue(KeyOf(app.Id), out var row) || Read(row.Value) is not { } entry) continue;
+                var state = Enum.TryParse<ClientHealthState>(entry.State, out var parsed) ? parsed : ClientHealthState.Unknown;
+                if (entry.CheckedAtUtc is null || now - entry.CheckedAtUtc > stale) state = ClientHealthState.Unknown;
+                list.Add(new ClientHealthInfo(app.Id, app.Name ?? "", state, entry.CheckedAtUtc, entry.LastHealthyAtUtc, entry.Message));
+            }
+            result[group.Key] = list;
         }
-        return list;
+        return result;
     }
 }
 
@@ -194,6 +202,16 @@ internal sealed class ClientHealthService(
 /// </summary>
 public static class ClientHealthAddress
 {
+    /// <summary>The address to call when the web server address of the application is known: that address plus the health path (default <c>/auth2/health</c>). Null when the address or the path is not acceptable.</summary>
+    public static string? FromBase(string? webServerUrl, string? path)
+    {
+        var baseUrl = Application.WebServerUrls.Normalize(webServerUrl);
+        if (baseUrl is null) return null;
+        path = string.IsNullOrWhiteSpace(path) ? "/auth2/health" : path.Trim();
+        if (path.Length > 200 || !path.StartsWith('/') || path.Any(c => c is '?' or '#' or '\\' || char.IsWhiteSpace(c) || char.IsControl(c))) return null;
+        return baseUrl + path;
+    }
+
     /// <summary>The address to call, or null when something is missing or not acceptable (no address of the connection, a port outside 1 to 65535, a scheme that is not http or https, a path with a query or spaces).</summary>
     public static string? Derive(System.Net.IPAddress? remote, int? port, string? scheme, string? path)
     {

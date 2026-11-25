@@ -16,7 +16,7 @@ public abstract class AdminPageModel : PageModel
     public string ProjectKey { get; set; } = "_global";
 
     public Project? CurrentProject { get; protected set; }
-    public bool IsGlobalAdmin => User.IsInRole("GlobalAdmin") || User.IsInRole("Developer") || User.HasClaim("scope", "auth2.admin.global");
+    public bool IsGlobalAdmin => User.IsInRole("GlobalAdmin") || User.IsInRole("Developer") || User.HasClaim("scope", "auth2.admin.global") || User.HasClaim("role", "GlobalAdmin") || User.HasClaim("role", "Developer");
 
     protected T Svc<T>() where T : notnull => HttpContext.RequestServices.GetRequiredService<T>();
 
@@ -39,13 +39,14 @@ public abstract class AdminPageModel : PageModel
         if (!IsGlobalAdmin)
         {
             var userProjectId = User.FindFirst(Auth2Claims.ProjectId)?.Value;
-            if (userProjectId != CurrentProject.Id.ToString("D"))
+            if (!string.IsNullOrEmpty(userProjectId) && CurrentProject.Id != Guid.Empty && userProjectId != CurrentProject.Id.ToString("D"))
             {
                 Response.StatusCode = StatusCodes.Status404NotFound;
                 return false;
             }
 
-            if (!User.IsInRole("ProjectAdmin") && !User.IsInRole("Developer") && !User.IsInRole("GlobalAdmin"))
+            if (!User.IsInRole("ProjectAdmin") && !User.IsInRole("Developer") && !User.IsInRole("GlobalAdmin") && !User.IsInRole("Admin") &&
+                !User.HasClaim("role", "ProjectAdmin") && !User.HasClaim("role", "Admin") && !User.HasClaim("role", "GlobalAdmin"))
             {
                 Response.StatusCode = StatusCodes.Status404NotFound;
                 return false;
@@ -54,6 +55,7 @@ public abstract class AdminPageModel : PageModel
 
         // The services of this request now work on the project of the route (like the admin API does).
         Svc<IProjectSelection>().ProjectKey = ProjectKey;
+        Svc<IProjectScope>().Set(CurrentProject.Id, CurrentProject.ProjectKey);
         await Svc<IProjectContext>().GetRequiredAsync(ct);
         return true;
     }

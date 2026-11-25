@@ -42,7 +42,7 @@ public static class Auth2ServerServiceCollectionExtensions
         var connectionString = configuration.GetConnectionString(ConnectionStringName)
             ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is missing.");
 
-        services.AddMemoryCache();
+        services.AddAuth2Caching();   // memory cache + IHybridCacheService (Redis as the shared level when it is on)
         services.TryAddSingleton(TimeProvider.System);
 
         services.AddScoped<ProjectScope>();
@@ -250,6 +250,7 @@ public static class Auth2ServerServiceCollectionExtensions
         // The two-way health check: the Server asks the clients that gave a health address in their handshake. The HTTP client does not follow redirects.
         services.AddHttpClient(ClientHealthService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false });
         services.AddScoped<IClientHealthService, ClientHealthService>();
+        services.AddScoped<IInfrastructureStatusService, InfrastructureStatusService>();
         services.AddHostedService<ClientHealthMonitor>();
 
         var health = services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);

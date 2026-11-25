@@ -58,16 +58,30 @@
     </a2-card>
 
     <!-- Filter & Search -->
-    <div class="flex items-center justify-between gap-4">
-        <form method="get" class="flex items-center gap-2 max-w-sm w-full">
-            <input type="text" name="q" value="@Model.Q" placeholder="Filter group or role..." class="block w-full rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-            <a2-button type="submit" variant="secondary">Search</a2-button>
-            @if (!string.IsNullOrEmpty(Model.Q))
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <form method="get" class="flex flex-wrap items-center gap-2">
+            <select name="groupName" class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="">All Groups</option>
+                @foreach (var g in Model.AvailableGroups)
+                {
+                    <option value="@g.Name" selected="@(Model.GroupName == g.Name ? "selected" : null)">@g.Name</option>
+                }
+            </select>
+            <select name="role" class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="">All Roles</option>
+                @foreach (var r in Model.AvailableRoles)
+                {
+                    <option value="@r.Name" selected="@(Model.Role == r.Name ? "selected" : null)">@r.Name</option>
+                }
+            </select>
+            <input type="text" name="q" value="@Model.Q" placeholder="Search..." class="rounded-[var(--a2-radius,0.375rem)] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <a2-button type="submit" variant="secondary">Filter</a2-button>
+            @if (!string.IsNullOrEmpty(Model.Q) || !string.IsNullOrEmpty(Model.GroupName) || !string.IsNullOrEmpty(Model.Role))
             {
                 <a href="/admin/p/@Model.ProjectKey/group-roles" class="text-xs text-gray-500 dark:text-gray-400 hover:underline">Clear</a>
             }
         </form>
-        <span class="text-xs text-gray-500 dark:text-gray-400">Total: <strong>@Model.Items.Count</strong> assignments</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400">Total: <strong>@Model.TotalCount</strong> assignments</span>
     </div>
 
     <!-- Table -->
@@ -112,4 +126,9 @@
             </tbody>
         </table>
     </div>
+
+    @if (Model.TotalCount > 0)
+    {
+        <a2-pager page="@Model.PageNumber" page-size="@Model.PageSize" total-count="@Model.TotalCount" total-pages="@Model.TotalPages"></a2-pager>
+    }
 </div>

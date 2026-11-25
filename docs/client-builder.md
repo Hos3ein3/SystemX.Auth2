@@ -124,7 +124,7 @@ All of these use `TryAdd...`: **if you registered your own implementation of the
 | `ClientVersion` | the package version | Text sent in the handshake |
 | `RequestTimeout` | 30 s | Time limit of one call to the Server that is not the handshake |
 | `SendRequestCulture` | `true` | Send `CultureInfo.CurrentUICulture` as `Accept-Language` with every call. `false` sends nothing unless `WithCulture` was used ([client-api-service.md](client-api-service.md#language-of-the-calls)) |
-| `CatalogRefreshInterval` | 10 min | How often permissions, roles, scopes and groups are read again when a policy is `Pull` or `Both` |
+| `CatalogRefreshInterval` | 10 min | How often permissions, roles, scopes and groups are read again when a policy is `Pull` or `Both`. 30 seconds to 40 days, or `Timeout.InfiniteTimeSpan` (`-00:00:00.001` in configuration) to read them **once** at start. Anything else stops the application at start |
 | `SyncMaxRetries` | 5 | How many times a failed sync is tried again (waits grow like the handshake retries) |
 | `FailOnSyncError` | `false` | When `true`, a sync that still fails after the retries **stops the application** with `Auth2StartupException`. Use it when the Server must always have your list (for example in a deployment check) |
 
@@ -272,7 +272,7 @@ IAuth2ClientBuilder EnableHealthCheck(this IAuth2ClientBuilder builder)
 IAuth2ClientBuilder EnableHealthCheck(this IAuth2ClientBuilder builder, Action<Auth2HealthCheckOptions>? configure)
 ```
 
-Adds a health check named `auth2`: **Healthy** when the last handshake worked, **Degraded** (with the status text) when it has not finished or failed. The first overload is **one-way**: only your application checks the Server. With the second you can choose **two-way** (`o.Mode = Auth2HealthCheckMode.TwoWay`; optional `o.PublicUrl = "https://shop.example.com"` (without it the server calls the address the handshake came from, at the port the application listens on) and `o.Path`, default `/auth2/health`): your application also answers the Server's question "are you healthy and ready?", and the Server asks every minute and shows the answer on the dashboard of the project in the admin console. See [client-health-check.md](client-health-check.md). Map your health endpoints as usual:
+Adds a health check named `auth2`: **Healthy** when the last handshake worked, **Degraded** (with the status text) when it has not finished or failed. The first overload is **one-way**: only your application checks the Server. With the second you can choose **two-way** (`o.Mode = Auth2HealthCheckMode.TwoWay`; optional `o.PublicUrl = "https://shop.example.com"` (without it the server calls the address the handshake came from, at the port the application listens on) and `o.Path`, default `/auth2/health`): your application also answers the Server's question "are you healthy and ready?", and the Server asks every minute and shows the answer on the dashboard of the project in the admin console. See [client-health-check.md](client-health-check.md). `PublicUrl` is also announced as the **web server address** of the application when `Auth2ClientOptions.WebServerUrl` is not set ([handshake-and-startup.md](handshake-and-startup.md#the-web-server-address-and-the-application-type)). Map your health endpoints as usual:
 
 ```csharp
 builder.Services.AddAuth2Client(section).EnableHealthCheck();

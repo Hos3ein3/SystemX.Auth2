@@ -601,16 +601,16 @@ An application (a client of a project) as shown in the admin API. The secret is 
 
 | Member | What it does |
 |---|---|
-| `(constructor)(Guid, Guid, string, string, bool, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, int, DateTimeOffset)` | An application (a client of a project) as shown in the admin API. The secret is never part of it. |
+| `(constructor)(Guid, Guid, string, string, bool, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, int, DateTimeOffset, ApplicationType, string)` | An application (a client of a project) as shown in the admin API. The secret is never part of it. |
 
 
 ### ClientHandshakeRequest
 
-Handshake check sent by the client. `ProjectKey` is null for a single-project server. `ApplicationName` is the name of the application (the client) inside the project. The body never selects the project: the server finds it from the client id. The project key is only an identifier check, never proof of anything, and it is not a secret. **Two-way health check** (the Server asks the client "are you healthy and ready?"): the client either gives the whole address in `HealthUrl` (it knows how it is reached from outside), or it only says `HealthPort`, `HealthScheme` and `HealthPath` and the Server takes the host from the network address the handshake came from. With none of them (a one-way check) the Server does not call the client; a later handshake without them switches the check off again.
+Handshake check sent by the client. `ProjectKey` is null for a single-project server. `ApplicationName` is the name of the application (the client) inside the project. The body never selects the project: the server finds it from the client id. The project key is only an identifier check, never proof of anything, and it is not a secret. `WebServerUrl` is the address of the application's web server as the Server reaches it, and `ApplicationType` says what kind of application it is. The Server stores them on the application **only when the application allows it** (its setting `AllowClientToSetWebServerUrl`) and the address is a plain http or https address; otherwise it keeps what an admin set and says so in the answer (`WebServerLocked`). **Two-way health check** (the Server asks the client "are you healthy and ready?"): the client says `HealthPath` (and, when it has no `WebServerUrl`, the `HealthPort` and `HealthScheme` it listens on). The address the Server calls is the **web server address of the application plus the path**; without an address the Server uses the network address the handshake came from and the port. `HealthUrl` (the whole address) is how older clients said the same thing. With none of them (a one-way check) the Server does not call the client; a later handshake without them switches the check off again.
 
 | Member | What it does |
 |---|---|
-| `(constructor)(string, string, string, string, Nullable<int>, string, string)` | Handshake check sent by the client. `ProjectKey` is null for a single-project server. `ApplicationName` is the name of the application (the client) inside the project. The body never selects the project: the server finds it from the client id. The project key is only an identifier check, never proof of anything, and it is not a secret. **Two-way health check** (the Server asks the client "are you healthy and ready?"): the client either gives the whole address in `HealthUrl` (it knows how it is reached from outside), or it only says `HealthPort`, `HealthScheme` and `HealthPath` and the Server takes the host from the network address the handshake came from. With none of them (a one-way check) the Server does not call the client; a later handshake without them switches the check off again. |
+| `(constructor)(string, string, string, string, Nullable<int>, string, string, string, Nullable<ApplicationType>)` | Handshake check sent by the client. `ProjectKey` is null for a single-project server. `ApplicationName` is the name of the application (the client) inside the project. The body never selects the project: the server finds it from the client id. The project key is only an identifier check, never proof of anything, and it is not a secret. `WebServerUrl` is the address of the application's web server as the Server reaches it, and `ApplicationType` says what kind of application it is. The Server stores them on the application **only when the application allows it** (its setting `AllowClientToSetWebServerUrl`) and the address is a plain http or https address; otherwise it keeps what an admin set and says so in the answer (`WebServerLocked`). **Two-way health check** (the Server asks the client "are you healthy and ready?"): the client says `HealthPath` (and, when it has no `WebServerUrl`, the `HealthPort` and `HealthScheme` it listens on). The address the Server calls is the **web server address of the application plus the path**; without an address the Server uses the network address the handshake came from and the port. `HealthUrl` (the whole address) is how older clients said the same thing. With none of them (a one-way check) the Server does not call the client; a later handshake without them switches the check off again. |
 
 
 ### ClientHandshakeResponse
@@ -619,7 +619,7 @@ Handshake answer. `ServerMode` tells the client which mode the server uses. `Pro
 
 | Member | What it does |
 |---|---|
-| `(constructor)(Guid, Guid, string, string, ServerMode, string, int, Nullable<TimeSpan>, bool)` | Handshake answer. `ServerMode` tells the client which mode the server uses. `ProjectKey` is null on a single-project server. |
+| `(constructor)(Guid, Guid, string, string, ServerMode, string, int, Nullable<TimeSpan>, bool, string, Nullable<ApplicationType>, bool)` | Handshake answer. `ServerMode` tells the client which mode the server uses. `ProjectKey` is null on a single-project server. |
 
 
 ### ClientHealthResponse
@@ -633,11 +633,11 @@ What a client answers when the Server asks for its health (`GET` on the `HealthU
 
 ### CreateApplicationRequest
 
-Create an application in a project. The client id is `{projectkey}.{name}` unless one is given. It must be unique on the server.
+Create an application in a project. The client id is `{projectkey}.{name}` unless one is given. It must be unique on the server. `ApplicationType` and `WebServerUrl` are optional.
 
 | Member | What it does |
 |---|---|
-| `(constructor)(string, string, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>)` | Create an application in a project. The client id is `{projectkey}.{name}` unless one is given. It must be unique on the server. |
+| `(constructor)(string, string, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, Nullable<ApplicationType>, string)` | Create an application in a project. The client id is `{projectkey}.{name}` unless one is given. It must be unique on the server. `ApplicationType` and `WebServerUrl` are optional. |
 
 
 ### CreateProjectRequest
@@ -660,11 +660,11 @@ A project as shown in the admin API.
 
 ### UpdateApplicationRequest
 
-Update an application. Null lists stay as they are. Disabling blocks only this application.
+Update an application. Null lists stay as they are. Disabling blocks only this application. `ApplicationType` and `WebServerUrl` are changed by a global admin only; null leaves them, an empty `WebServerUrl` clears it.
 
 | Member | What it does |
 |---|---|
-| `(constructor)(string, bool, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, string)` | Update an application. Null lists stay as they are. Disabling blocks only this application. |
+| `(constructor)(string, bool, IReadOnlyList<string>, IReadOnlyList<string>, IReadOnlyList<string>, string, Nullable<ApplicationType>, string)` | Update an application. Null lists stay as they are. Disabling blocks only this application. `ApplicationType` and `WebServerUrl` are changed by a global admin only; null leaves them, an empty `WebServerUrl` clears it. |
 
 
 ### UpdateProjectRequest
@@ -1199,6 +1199,18 @@ When the client loads access data (roles and permissions).
 | `OnSignIn` | Load when the user signs in. |
 | `RolesInCookie` | Put roles in the cookie. |
 | `None` | Nothing happens. |
+
+
+### ApplicationType
+
+What kind of program an application (a client of a project) is. It is a description for admins and tools: it does not change what the application may do (the scopes, roles and permissions do that). A client tells it in the handshake (the Client package works it out from what you configured), and an admin can set it.
+
+| Member | What it does |
+|---|---|
+| `Other` | Not said. The value of an application that nobody has described. |
+| `Web` | A web application with pages for people: MVC, Razor Pages, Blazor. It has a web server and a cookie sign-in. |
+| `Api` | A web API: it answers requests with a bearer token and shows no pages. |
+| `Service` | A service or background job (a worker): no web server, no person. It works as a program (machine to machine). |
 
 
 ### ClientType

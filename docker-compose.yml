@@ -85,6 +85,7 @@ services:
       Auth2__ServerUrl: http://server:5000
       Auth2__PublicServerUrl: http://localhost:5100
       Auth2__ApplicationName: MvcSample
+      Auth2__WebServerUrl: http://sample-mvc:5001
       Auth2__ClientId: mvc-sample
       Auth2__ClientSecret: mvc-sample-secret
       Auth2__ProjectKey: sample-project
@@ -107,6 +108,7 @@ services:
       Auth2__ServerUrl: http://server:5000
       Auth2__PublicServerUrl: http://localhost:5100
       Auth2__ApplicationName: MinimalApiSample
+      Auth2__WebServerUrl: http://sample-minimalapi:5002
       Auth2__ClientId: minimal-api-sample
       Auth2__ClientSecret: minimal-api-sample-secret
       Auth2__ProjectKey: sample-project
@@ -114,6 +116,27 @@ services:
       Auth2__OnProjectNotFound: Continue
     ports:
       - "${MINIMAL_API_PORT:-5102}:5002"
+
+  sample-worker:
+    build:
+      context: .
+      dockerfile: samples/SystemX.Auth2.Samples.Worker/Dockerfile
+    container_name: auth2-samples-worker
+    restart: unless-stopped
+    depends_on:
+      - server
+      - sample-minimalapi
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      Auth2__ServerUrl: http://server:5000
+      Auth2__ApplicationName: WorkerSample
+      Auth2__ClientId: worker-sample
+      Auth2__ClientSecret: worker-sample-secret
+      Auth2__ProjectKey: sample-project
+      Auth2__OnServerUnavailable: Continue
+      Auth2__OnProjectNotFound: Continue
+      Samples__MinimalApiUrl: http://sample-minimalapi:5002/
+      Job__IntervalSeconds: "30"
 
 volumes:
   postgres_data:

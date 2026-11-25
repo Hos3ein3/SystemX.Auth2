@@ -10,10 +10,23 @@ public sealed class IndexModel : AdminPageModel
 
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     [BindProperty(SupportsGet = true)] public string? Category { get; set; }
+    [BindProperty(SupportsGet = true, Name = "page")] public int PageNumber { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 25;
+    public int TotalCount { get; private set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / Math.Max(1, PageSize));
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await AuthorizeAdminAsync()) return Page();
+
+        if (Request.Query.TryGetValue("pageNumber", out var pnVal) && int.TryParse(pnVal, out var pn) && pn > 0)
+        {
+            PageNumber = pn;
+        }
+        else if (Request.Query.TryGetValue("page", out var pVal) && int.TryParse(pVal, out var p) && p > 0)
+        {
+            PageNumber = p;
+        }
 
         var accessSvc = Svc<IAccessService>();
         var all = await accessSvc.ListPermissionsAsync(HttpContext.RequestAborted);
@@ -29,7 +42,8 @@ public sealed class IndexModel : AdminPageModel
             all = all.Where(p => string.Equals(p.Group, Category, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        Permissions = all;
+        TotalCount = all.Count;
+        Permissions = all.Skip((PageNumber - 1) * PageSize).Take(PageSize).ToList();
         return Page();
     }
 

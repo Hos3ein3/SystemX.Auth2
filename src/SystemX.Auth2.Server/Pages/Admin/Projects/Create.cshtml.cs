@@ -23,16 +23,18 @@ public sealed class CreateModel(IAdminProjectService projectService) : PageModel
         public string? Description { get; set; }
     }
 
+    private bool CanManageProjects => User.IsInRole("GlobalAdmin") || User.IsInRole("Developer") || User.HasClaim("scope", "auth2.admin.global") || User.HasClaim("role", "GlobalAdmin") || User.HasClaim("role", "Developer");
+
     public IActionResult OnGet()
     {
-        if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
+        if (!CanManageProjects)
             return NotFound();
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!User.IsInRole("GlobalAdmin") && !User.IsInRole("Developer") && !User.HasClaim("scope", "auth2.admin.global"))
+        if (!CanManageProjects)
             return NotFound();
 
         if (!ModelState.IsValid) return Page();
