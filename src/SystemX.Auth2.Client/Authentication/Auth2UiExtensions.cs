@@ -1,3 +1,4 @@
+using SystemX.Auth2.Client.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -47,7 +48,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         /// <summary>
-        /// The Self UI: your application shows its own login forms and calls <c>IAuth2WebService.LoginAsync</c>. <b>Your application handles passwords</b>, and the server must
+        /// The Self UI: your application shows its own login forms and calls <c>IAuth2WebClientService.LoginAsync</c>. <b>Your application handles passwords</b>, and the server must
         /// allow it (<c>Clients.AllowSelfUiLogin</c>). Set <c>LoginPath</c> to your login page.
         /// </summary>
         public static IAuth2ClientBuilder UseSelfUi(this IAuth2ClientBuilder builder)
@@ -84,7 +85,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<Auth2CookieConfigurator>();
             services.AddSingleton<IConfigureOptions<CookieAuthenticationOptions>>(sp => sp.GetRequiredService<Auth2CookieConfigurator>());
             services.TryAddSingleton<ClientAccessLoader>();
-            services.TryAddSingleton<IAuth2WebService, WebService>();
+            services.TryAddSingleton<IAuth2WebClientService, Auth2WebClientService>();
             // The default scheme: a bearer token when the request has one, else the cookie. Challenges of the cookie redirect browsers and answer 401 to APIs.
             services.AddAuthentication(o =>
             {
@@ -148,9 +149,9 @@ namespace Microsoft.AspNetCore.Builder
             }
             else if (flags.Mode == UiMode.Self)
             {
-                routes.MapMethods("/auth2/logout", ["GET", "POST"], async (HttpContext http, SystemX.Auth2.Client.Authentication.IAuth2WebService web, string? returnUrl) =>
+                routes.MapMethods("/auth2/logout", ["GET", "POST"], async (HttpContext http, SystemX.Auth2.Client.Services.IAuth2WebClientService web, string? returnUrl) =>
                 {
-                    await web.LogoutAsync(http);
+                    await web.LogoutAsync();
                     return Results.Redirect(Auth2Http.SafeReturnUrl(returnUrl));
                 }).AllowAnonymous();
             }

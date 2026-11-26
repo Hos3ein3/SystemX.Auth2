@@ -1193,3 +1193,191 @@ public class A2ToastTagHelper : TagHelper
         output.Content.SetHtmlContent(sb.ToString());
     }
 }
+
+/// <summary>Renders a circular avatar displaying an image or user initials with brand styling.</summary>
+[HtmlTargetElement("a2-avatar", TagStructure = TagStructure.NormalOrSelfClosing)]
+public class A2AvatarTagHelper : TagHelper
+{
+    public string? Name { get; set; }
+    public string? ImageUrl { get; set; }
+    public string Size { get; set; } = "md"; // "xs", "sm", "md", "lg", "xl"
+
+    public override void Process(TagHelperContext context, TagHelperOutput output)
+    {
+        output.TagName = "div";
+        output.TagMode = TagMode.StartTagAndEndTag;
+
+        var sizeClass = Size.ToLowerInvariant() switch
+        {
+            "xs" => "h-6 w-6 text-2xs",
+            "sm" => "h-8 w-8 text-xs",
+            "lg" => "h-12 w-12 text-base",
+            "xl" => "h-16 w-16 text-lg",
+            _ => "h-10 w-10 text-sm"
+        };
+
+        var existingClass = output.Attributes["class"]?.Value?.ToString();
+        var baseClasses = $"relative inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 {sizeClass}";
+
+        if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            output.Attributes.SetAttribute("class", string.IsNullOrEmpty(existingClass) ? baseClasses : $"{baseClasses} {existingClass}");
+            output.Content.SetHtmlContent($"<img src=\"{HtmlEncoder.Default.Encode(ImageUrl)}\" alt=\"{HtmlEncoder.Default.Encode(Name ?? "Avatar")}\" class=\"h-full w-full object-cover\" />");
+            return;
+        }
+
+        var initials = "";
+        if (!string.IsNullOrWhiteSpace(Name))
+        {
+            var parts = Name.Trim().Split(new[] { ' ', '@', '.', '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 1) initials = parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+            else if (parts.Length > 1) initials = $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+        }
+        if (string.IsNullOrEmpty(initials)) initials = "U";
+
+        var bgStyle = "bg-[var(--a2-color-secondary,#4f46e5)]/15 text-[var(--a2-color-secondary,#4f46e5)] font-semibold";
+        output.Attributes.SetAttribute("class", string.IsNullOrEmpty(existingClass) ? $"{baseClasses} {bgStyle}" : $"{baseClasses} {bgStyle} {existingClass}");
+        output.Content.SetContent(initials);
+    }
+}
+
+/// <summary>Copy to clipboard button with click feedback.</summary>
+[HtmlTargetElement("a2-copy-button", TagStructure = TagStructure.NormalOrSelfClosing)]
+public class A2CopyButtonTagHelper : TagHelper
+{
+    public string Value { get; set; } = "";
+    public string Label { get; set; } = "Copy";
+    public string Variant { get; set; } = "secondary"; // "secondary", "ghost", "primary"
+
+    public override void Process(TagHelperContext context, TagHelperOutput output)
+    {
+        output.TagName = "button";
+        output.TagMode = TagMode.StartTagAndEndTag;
+        output.Attributes.SetAttribute("type", "button");
+        output.Attributes.SetAttribute("data-a2-copy", Value);
+        output.Attributes.SetAttribute("aria-label", Label);
+
+        var variantClasses = Variant.ToLowerInvariant() switch
+        {
+            "ghost" => "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-transparent",
+            "primary" => "bg-[var(--a2-color-primary,#2563eb)] text-white hover:opacity-90 shadow-xs",
+            _ => "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-xs"
+        };
+
+        var existingClass = output.Attributes["class"]?.Value?.ToString();
+        var baseClasses = "inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-[var(--a2-radius,0.375rem)] transition-colors cursor-pointer select-none";
+        output.Attributes.SetAttribute("class", string.IsNullOrEmpty(existingClass) ? $"{baseClasses} {variantClasses}" : $"{baseClasses} {variantClasses} {existingClass}");
+
+        var iconSvg = "<svg class=\"w-3.5 h-3.5 shrink-0\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\" /></svg>";
+        output.Content.SetHtmlContent($"{iconSvg}<span>{HtmlEncoder.Default.Encode(Label)}</span>");
+    }
+}
+
+/// <summary>Download text as a file button with click feedback.</summary>
+[HtmlTargetElement("a2-download-button", TagStructure = TagStructure.NormalOrSelfClosing)]
+public class A2DownloadButtonTagHelper : TagHelper
+{
+    public string Value { get; set; } = "";
+    public string Filename { get; set; } = "recovery-codes.txt";
+    public string Label { get; set; } = "Download Codes";
+    public string Variant { get; set; } = "secondary"; // "secondary", "ghost", "primary"
+
+    public override void Process(TagHelperContext context, TagHelperOutput output)
+    {
+        output.TagName = "button";
+        output.TagMode = TagMode.StartTagAndEndTag;
+        output.Attributes.SetAttribute("type", "button");
+        output.Attributes.SetAttribute("data-a2-download", Value);
+        output.Attributes.SetAttribute("data-a2-filename", Filename);
+        output.Attributes.SetAttribute("aria-label", Label);
+
+        var variantClasses = Variant.ToLowerInvariant() switch
+        {
+            "ghost" => "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-transparent",
+            "primary" => "bg-[var(--a2-color-primary,#2563eb)] text-white hover:opacity-90 shadow-xs",
+            _ => "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-xs"
+        };
+
+        var existingClass = output.Attributes["class"]?.Value?.ToString();
+        var baseClasses = "inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-[var(--a2-radius,0.375rem)] transition-colors cursor-pointer select-none";
+        output.Attributes.SetAttribute("class", string.IsNullOrEmpty(existingClass) ? $"{baseClasses} {variantClasses}" : $"{baseClasses} {variantClasses} {existingClass}");
+
+        var iconSvg = "<svg class=\"w-3.5 h-3.5 shrink-0\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4\" /></svg>";
+        output.Content.SetHtmlContent($"{iconSvg}<span>{HtmlEncoder.Default.Encode(Label)}</span>");
+    }
+}
+
+/// <summary>Description list item row for profile and details cards.</summary>
+[HtmlTargetElement("a2-desc-item", TagStructure = TagStructure.NormalOrSelfClosing)]
+public class A2DescItemTagHelper : TagHelper
+{
+    public string Label { get; set; } = "";
+    public string? Value { get; set; }
+
+    public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
+    {
+        output.TagName = "div";
+        output.TagMode = TagMode.StartTagAndEndTag;
+
+        var existingClass = output.Attributes["class"]?.Value?.ToString();
+        var baseClasses = "py-3.5 sm:grid sm:grid-cols-3 sm:gap-4 border-b border-gray-100 dark:border-gray-700/50 last:border-b-0";
+        output.Attributes.SetAttribute("class", string.IsNullOrEmpty(existingClass) ? baseClasses : $"{baseClasses} {existingClass}");
+
+        var child = await output.GetChildContentAsync();
+        var sb = new StringBuilder();
+        sb.Append($"<dt class=\"text-sm font-medium text-gray-500 dark:text-gray-400\">{HtmlEncoder.Default.Encode(Label)}</dt>");
+        sb.Append("<dd class=\"mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2 flex items-center justify-between\">");
+        if (!child.IsEmptyOrWhiteSpace)
+        {
+            sb.Append(child.GetContent());
+        }
+        else
+        {
+            sb.Append($"<span>{HtmlEncoder.Default.Encode(Value ?? "Not set")}</span>");
+        }
+        sb.Append("</dd>");
+
+        output.Content.SetHtmlContent(sb.ToString());
+    }
+}
+
+/// <summary>Renders a QR code as an inline SVG element.</summary>
+[HtmlTargetElement("a2-qr-code", TagStructure = TagStructure.NormalOrSelfClosing)]
+public class A2QrCodeTagHelper : TagHelper
+{
+    public string? Value { get; set; }
+    public int Size { get; set; } = 180;
+
+    public override void Process(TagHelperContext context, TagHelperOutput output)
+    {
+        output.TagName = "div";
+        output.TagMode = TagMode.StartTagAndEndTag;
+
+        if (string.IsNullOrWhiteSpace(Value))
+        {
+            output.SuppressOutput();
+            return;
+        }
+
+        using var qrGenerator = new QRCoder.QRCodeGenerator();
+        using var qrCodeData = qrGenerator.CreateQrCode(Value, QRCoder.QRCodeGenerator.ECCLevel.M);
+        var qrCode = new QRCoder.SvgQRCode(qrCodeData);
+        var svg = qrCode.GetGraphic(new System.Drawing.Size(Size, Size), true, QRCoder.SvgQRCode.SizingMode.ViewBoxAttribute);
+
+        if (svg.StartsWith("<svg ", StringComparison.OrdinalIgnoreCase))
+        {
+            svg = "<svg class=\"w-full h-full block\" style=\"max-width:100%;max-height:100%;\" " + svg[5..];
+        }
+
+        var existingClass = output.Attributes["class"]?.Value?.ToString();
+        var baseClasses = "inline-flex items-center justify-center p-2.5 bg-white rounded-xl shadow-xs border border-gray-200 dark:border-gray-700 shrink-0 overflow-hidden";
+        output.Attributes.SetAttribute("class", string.IsNullOrEmpty(existingClass) ? baseClasses : $"{baseClasses} {existingClass}");
+
+        if (Size > 0)
+        {
+            output.Attributes.SetAttribute("style", $"width: {Size}px; height: {Size}px; max-width: 100%; aspect-ratio: 1 / 1; display: inline-flex; align-items: center; justify-content: center;");
+        }
+
+        output.Content.SetHtmlContent(svg);
+    }
+}

@@ -20,6 +20,41 @@ public class CurrentClientTests
         return new CurrentUserImpl(new HttpContextAccessor { HttpContext = context }, Substitute.For<IAuth2AccessProvider>());
     }
 
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("True", true)]
+    [InlineData("false", false)]
+    [InlineData("", false)]
+    public void TheConfirmedFlags_AreReadFromTheClaims(string value, bool expected)
+    {
+        var user = UserWith(new Claim("sub", Guid.NewGuid().ToString()), new Claim("email_verified", value), new Claim("phone_number_verified", value));
+        user.IsEmailAddressConfirmed.ShouldBe(expected);
+        user.IsPhoneNumberConfirmed.ShouldBe(expected);
+    }
+
+    [Fact]
+    public void TheConfirmedFlags_AreFalse_WithoutTheClaims_AndForAMachineToken()
+    {
+        var person = UserWith(new Claim("sub", Guid.NewGuid().ToString()));
+        (person.IsEmailAddressConfirmed, person.IsPhoneNumberConfirmed).ShouldBe((false, false));   // the token has no email/phone scope: it does not say
+
+        var machine = UserWith(new Claim("sub", "client"), new Claim("machine", "true"), new Claim("email_verified", "true"), new Claim("phone_number_verified", "true"));
+        (machine.IsEmailAddressConfirmed, machine.IsPhoneNumberConfirmed).ShouldBe((false, false));
+        UserWith().IsEmailAddressConfirmed.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task HasGroupAsync_IgnoresCase_AndTrims()
+    {
+        var access = Substitute.For<IAuth2AccessProvider>();
+        access.GetAccessAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(new Auth2Access(["Editor"], ["a.b"], ["newsroom"], 1, [], []));
+        var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", Guid.NewGuid().ToString())], "test")) };
+        var user = new CurrentUserImpl(new HttpContextAccessor { HttpContext = context }, access);
+        (await user.HasGroupAsync("newsroom")).ShouldBeTrue();
+        (await user.HasGroupAsync("  NewsRoom ")).ShouldBeTrue();
+        (await user.HasGroupAsync("finance")).ShouldBeFalse();
+    }
+
     [Fact]
     public void ExternalSignIn_ShowsTheProviderAndTheMethods()
     {

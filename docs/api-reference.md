@@ -55,6 +55,7 @@ See [error-codes.md](error-codes.md).
 | `POST /api/auth2/phone/change/confirm` | user | `auth2.me` | `ConfirmPhoneChangeRequest` | `204`: the number is replaced and confirmed (`invalid_otp` for a wrong code) |
 | `POST /api/auth2/2fa/setup` | user | `auth2.me` | none | `200 TwoFactorSetupResponse` |
 | `POST /api/auth2/2fa/enable` | user | `auth2.me` | `TwoFactorEnableRequest` | `200 TwoFactorEnableResponse` (recovery codes, once) |
+| `POST /api/auth2/2fa/verify` | user | `auth2.me` | `TwoFactorVerifyRequest` (`code`, `optional`) | `204`. Checks one code of the authenticator app (a fresh proof before a sensitive action, what `WithTotp()` / `WithOptionalTotp()` call). A code works once. Errors (`400`): `totp_required` (the person has two-factor and sent no code, not counted as a wrong guess), `invalid_otp` (wrong, expired or used), `totp_setup_required` (no two-factor and `optional` is false); with `optional: true` a person without two-factor gets `204`. `423 locked_out`. Rate limited like the one-time codes |
 | `POST /api/auth2/2fa/disable` | user | `auth2.me` | `TwoFactorDisableRequest` | `204` |
 | `POST /api/auth2/2fa/recovery-codes` | user | `auth2.me` | `RecoveryCodesRequest` | `200 RecoveryCodesResponse` (once) |
 | `GET /api/auth2/me` | user | `auth2.me` | none | `200 CurrentUserInfo` |

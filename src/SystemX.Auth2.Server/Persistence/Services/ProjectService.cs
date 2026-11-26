@@ -30,10 +30,14 @@ public sealed class ProjectService(
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name is required.", nameof(name));
 
         using var _ = globalScope.Begin();
+        var clean = ProjectNames.Clean(name);
+        var key = ProjectNames.Key(name);
+        if (await db.Projects.AnyAsync(p => p.Name.Trim().ToLower() == key, ct)) throw new ProjectNameTakenException(clean);   // a project name is unique
         var now = clock.GetUtcNow();
-        var project = new Project { ProjectKey = projectKey, Name = name.Trim(), Description = description, CreatedAtUtc = now, UpdatedAtUtc = now };
+        var project = new Project { ProjectKey = projectKey, Name = clean, Description = description, CreatedAtUtc = now, UpdatedAtUtc = now };
         db.Projects.Add(project);
-        await db.SaveChangesAsync(ct);
+        try { await db.SaveChangesAsync(ct); }
+        catch (Exception ex) when (ProjectNames.IsNameConflict(ex)) { db.Entry(project).State = EntityState.Detached; throw new ProjectNameTakenException(clean); }   // another request was faster
         await audit.WriteAsync(new AuditEntry("project.created", project.Id, TargetType: "project", TargetId: project.Id.ToString()), ct);
         return project;
     }

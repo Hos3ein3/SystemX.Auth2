@@ -239,6 +239,17 @@ public interface ITwoFactorService
     /// <summary>Turns two-factor on after the first code. Returns the recovery codes (shown once).</summary>
     Task<(OperationResult Result, IReadOnlyList<string> RecoveryCodes)> EnableAsync(AppUser user, string code, CancellationToken ct = default);
 
+    /// <summary>
+    /// Checks one code of the authenticator app for the user (a "step-up" before a sensitive action). A code can be used <b>once</b>
+    /// (a copied code does not work a second time), a wrong code counts as a failed sign-in attempt (so repeated guesses lock the account), and every answer is audited.
+    /// Recovery codes are not accepted here.
+    /// <para>
+    /// A person <b>without</b> two-factor: <c>totp_setup_required</c> (the action needs it), or success when <paramref name="optional"/> is true (the action only asks people who have it).
+    /// An empty code from a person who has it: <c>totp_required</c> (not counted as a failed attempt).
+    /// </para>
+    /// </summary>
+    Task<OperationResult> VerifyAsync(AppUser user, string code, bool optional = false, CancellationToken ct = default);
+
     /// <summary>Turns two-factor off. Needs the password. Refused when the application requires two-factor.</summary>
     Task<OperationResult> DisableAsync(AppUser user, string password, CancellationToken ct = default);
 

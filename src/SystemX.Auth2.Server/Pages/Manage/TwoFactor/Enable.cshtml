@@ -1,14 +1,14 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.TwoFactor.EnableModel
 @{
-    Layout = "_LayoutAccount";
+    Layout = "_LayoutManage";
     ViewData["Title"] = "Two-Factor Authentication";
 }
 
-<div class="space-y-6 max-w-xl">
+<div class="space-y-6 max-w-5xl">
     <div>
-        <h2 class="text-xl font-bold text-gray-900">Two-Factor Authentication (2FA)</h2>
-        <p class="mt-1 text-sm text-gray-500">Protect your account with an authenticator app (Google Authenticator, Microsoft Authenticator, etc.).</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Two-Factor Authentication (2FA)</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Protect your account with an authenticator app (Google Authenticator, Microsoft Authenticator, etc.).</p>
     </div>
 
     @if (Model.Enabled)
@@ -17,21 +17,32 @@
             Two-factor authentication has been enabled for your account!
         </a2-alert>
 
-        <a2-card title="Save Your Recovery Codes">
-            <p class="text-sm text-gray-600 mb-4">
+        <a2-card title="Save Your Recovery Codes" subtitle="Store these backup codes safely.">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 These recovery codes can be used to access your account if you lose your authenticator device.
                 <strong>Store them in a secure place. They will not be displayed again.</strong>
             </p>
 
-            <div class="grid grid-cols-2 gap-2 bg-gray-50 p-4 rounded border font-mono text-sm text-gray-800">
+            <div class="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-[var(--a2-radius,0.375rem)] border border-gray-200 dark:border-gray-700 font-mono text-sm text-gray-800 dark:text-gray-200 mb-4">
                 @foreach (var code in Model.RecoveryCodes)
                 {
-                    <div class="p-1 bg-white border border-gray-200 rounded text-center">@code</div>
+                    <div class="p-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-center select-all">@code</div>
                 }
             </div>
 
-            <div class="mt-4">
-                <a2-link-button href="/Manage/Index" variant="primary">
+            @{
+                var recoveryCodesDownload = $"SystemX Auth2 - Two-Factor Recovery Codes\r\n" +
+                    $"Account: {User.Identity?.Name ?? "User"}\r\n" +
+                    $"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC\r\n\r\n" +
+                    $"Keep these one-time backup recovery codes safe. Each code can only be used once:\r\n\r\n" +
+                    string.Join("\r\n", Model.RecoveryCodes) + "\r\n";
+            }
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                <div class="flex items-center space-x-2">
+                    <a2-copy-button value="@string.Join(" ", Model.RecoveryCodes)" label="Copy All Codes" variant="secondary" />
+                    <a2-download-button value="@recoveryCodesDownload" filename="auth2-recovery-codes.txt" label="Download Codes" variant="secondary" />
+                </div>
+                <a2-link-button href="/Manage" variant="primary">
                     Return to Account Overview
                 </a2-link-button>
             </div>
@@ -39,29 +50,36 @@
     }
     else if (Model.AlreadyEnabled)
     {
-        <a2-card title="Two-Factor Authentication is Enabled">
-            <div class="flex items-center space-x-2 text-green-700 mb-4">
-                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+        <a2-card title="Two-Factor Authentication is Enabled" subtitle="Your account has two-factor protection active.">
+            <div class="flex items-center space-x-2 text-green-700 dark:text-green-400 mb-4 p-3 bg-green-50 dark:bg-green-950/30 rounded-[var(--a2-radius,0.375rem)] border border-green-200 dark:border-green-900/50">
+                <svg class="h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
                 <span class="text-sm font-medium">Your account is currently protected by two-factor authentication.</span>
             </div>
 
             <div class="space-y-4 pt-2">
-                <a href="/Manage/TwoFactor/RecoveryCodes" class="inline-flex text-sm text-blue-600 hover:underline">
+                <a href="/Manage/TwoFactor/RecoveryCodes" class="inline-flex text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
                     Generate new recovery codes
                 </a>
 
                 @if (Model.CanDisable)
                 {
-                    <div class="border-t border-gray-200 pt-4">
-                        <h4 class="text-sm font-semibold text-red-700 mb-2">Disable Two-Factor Authentication</h4>
-                        <p class="text-xs text-gray-500 mb-3">Disabling 2FA makes your account less secure. You must enter your password to confirm.</p>
-                        <form method="post" asp-page-handler="Disable" class="space-y-3">
-                            <a2-field label="Current password" required="true">
-                                <a2-password name="Input.Password" required="true" autocomplete="current-password" />
-                            </a2-field>
-                            <a2-button type="submit" variant="danger">
-                                Disable 2FA
-                            </a2-button>
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <h4 class="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Disable Two-Factor Authentication</h4>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Disabling 2FA makes your account less secure. You must enter your current password and verification code to confirm.</p>
+                        <form method="post" asp-page-handler="Disable" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                <a2-field label="Current password" required="true" class="!mb-0">
+                                    <a2-password name="Input.Password" required="true" autocomplete="current-password" />
+                                </a2-field>
+                                <a2-field label="Two-factor verification code" hint="Enter the 6-digit code or a recovery code." required="true" class="!mb-0">
+                                    <a2-input name="Input.Code" type="text" placeholder="123456 or recovery code" autocomplete="one-time-code" required="true" />
+                                </a2-field>
+                            </div>
+                            <div>
+                                <a2-button type="submit" variant="danger">
+                                    Disable 2FA
+                                </a2-button>
+                            </div>
                         </form>
                     </div>
                 }
@@ -70,19 +88,52 @@
     }
     else
     {
-        <a2-card title="Step 1: Configure Authenticator App">
-            <p class="text-sm text-gray-600 mb-3">
-                To enable two-factor authentication, add your account key into your authenticator app:
+        <a2-card title="Step 1: Configure Authenticator App" subtitle="Scan the QR code or enter the manual setup key into your authenticator app.">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Open your authenticator app (such as Google Authenticator, Microsoft Authenticator, or 1Password) and scan the QR code below, or manually type the setup key:
             </p>
 
-            <div class="mb-4 bg-gray-50 p-4 rounded border text-center">
-                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Manual Setup Key</span>
-                <code class="font-mono text-base font-bold text-gray-900 tracking-widest select-all">@Model.SharedKey</code>
+            <div class="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-8 items-center p-6 bg-gray-50 dark:bg-gray-900/40 rounded-[var(--a2-radius,0.375rem)] border border-gray-200 dark:border-gray-700 mb-6">
+                <!-- QR Code presentation -->
+                <div class="flex flex-col items-center justify-center text-center">
+                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-3">Scan QR Code</span>
+                    @if (!string.IsNullOrEmpty(Model.AuthenticatorUri))
+                    {
+                        <div class="flex items-center justify-center">
+                            <a2-qr-code value="@Model.AuthenticatorUri" size="180" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="h-[180px] w-[180px] flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-xs text-gray-400 rounded-xl border border-gray-200 dark:border-gray-700">
+                            QR Code Unavailable
+                        </div>
+                    }
+                </div>
+
+                <!-- Manual setup key presentation -->
+                <div class="flex flex-col justify-center space-y-4 min-w-0">
+                    <div>
+                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Manual Setup Key</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">If you cannot scan the code, enter this key manually in your app:</p>
+                        <div class="flex items-center justify-between gap-3 bg-white dark:bg-gray-800 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <code class="font-mono text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-normal select-all overflow-x-auto whitespace-nowrap">@Model.SharedKey</code>
+                            @if (!string.IsNullOrEmpty(Model.SharedKey))
+                            {
+                                <a2-copy-button value="@Model.SharedKey" label="Copy" variant="ghost" class="shrink-0" />
+                            }
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1 border-t border-gray-200 dark:border-gray-700/60 pt-3">
+                        <p><span class="font-medium text-gray-700 dark:text-gray-300">Account:</span> @(User.Identity?.Name ?? "User")</p>
+                        <p><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> Time-based (TOTP)</p>
+                    </div>
+                </div>
             </div>
 
-            <form method="post" class="space-y-4 border-t border-gray-200 pt-4">
-                <h4 class="text-sm font-semibold text-gray-800">Step 2: Verify Setup</h4>
-                <p class="text-xs text-gray-500">
+            <form method="post" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Step 2: Verify Setup</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
                     Enter the 6-digit code shown in your authenticator app to confirm setup:
                 </p>
 
@@ -90,9 +141,11 @@
                     <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" />
                 </a2-field>
 
-                <a2-button type="submit" variant="primary">
-                    Verify and Enable 2FA
-                </a2-button>
+                <div class="pt-2 flex justify-end">
+                    <a2-button type="submit" variant="primary">
+                        Verify and Enable 2FA
+                    </a2-button>
+                </div>
             </form>
         </a2-card>
     }

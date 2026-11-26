@@ -439,6 +439,9 @@
                     <a2-field label="Max Wrong OTP Attempts">
                         <a2-input name="InputSettings.TwoFactor.OtpMaxAttempts" type="number" value="@Model.InputSettings.TwoFactor.OtpMaxAttempts.ToString()" />
                     </a2-field>
+                    <a2-field label="Code Valid For Restricted Actions (minutes)" hint="After a code of the authenticator app, restricted pages (delete account, turn two-factor off) do not ask again for this long. 0 = never ask again.">
+                        <a2-input name="InputSettings.TwoFactor.StepUpMinutes" type="number" value="@Model.InputSettings.TwoFactor.StepUpMinutes.ToString()" />
+                    </a2-field>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -548,6 +551,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         <a2-checkbox name="InputSettings.Clients.PermissionSyncAllowed" checked="@Model.InputSettings.Clients.PermissionSyncAllowed" label="Permission Sync Allowed" />
                         <a2-checkbox name="InputSettings.Clients.ScopeSyncAllowed" checked="@Model.InputSettings.Clients.ScopeSyncAllowed" label="Custom Scope Sync Allowed" />
+                        <a2-checkbox name="InputSettings.Clients.AutoAssignScopeToApplication" checked="@Model.InputSettings.Clients.AutoAssignScopeToApplication" label="Give Synced Scopes To The Application" />
                         <a2-checkbox name="InputSettings.Clients.GroupSyncAllowed" checked="@Model.InputSettings.Clients.GroupSyncAllowed" label="Group Sync Allowed" />
                         <a2-checkbox name="InputSettings.Clients.RoleSyncAllowed" checked="@Model.InputSettings.Clients.RoleSyncAllowed" label="Role Sync Allowed" />
                         <a2-checkbox name="InputSettings.Clients.AllowRemovePermissionsFromSync" checked="@Model.InputSettings.Clients.AllowRemovePermissionsFromSync" label="Sync Can Remove Permissions" />

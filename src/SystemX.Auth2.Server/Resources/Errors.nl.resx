@@ -87,6 +87,10 @@
   <data name="two_factor_setup_required" xml:space="preserve"><value>Deze applicatie vereist tweeledige verificatie. Stel dit eerst in.</value></data>
   <data name="grant_not_allowed" xml:space="preserve"><value>Deze methode om een token te verkrijgen is niet toegestaan voor deze applicatie.</value></data>
   <data name="two_factor_not_enabled" xml:space="preserve"><value>Tweeledige verificatie is niet ingeschakeld.</value></data>
+  <data name="totp_required" xml:space="preserve"><value>Voor deze actie is een code uit je authenticator-app nodig.</value></data>
+  <data name="totp_setup_required" xml:space="preserve"><value>Voor deze actie is tweestapsverificatie nodig. Schakel die eerst in bij je account.</value></data>
+  <data name="project_name_taken" xml:space="preserve"><value>Er bestaat al een project met deze naam. Kies een andere naam.</value></data>
+  <data name="phone_number_taken" xml:space="preserve"><value>Dit telefoonnummer is al de gebruikersnaam van een andere persoon.</value></data>
   <data name="two_factor_not_allowed" xml:space="preserve"><value>Deze applicatie staat geen authenticator-apps toe.</value></data>
   <data name="consent_required" xml:space="preserve"><value>U moet akkoord gaan voordat de applicatie kan doorgaan.</value></data>
   <data name="external_email_exists_not_verified" xml:space="preserve"><value>Er bestaat al een account met dit e-mailadres, maar de provider heeft dit niet geverifieerd. Log in met uw gebruikelijke methode en koppel het account daar.</value></data>

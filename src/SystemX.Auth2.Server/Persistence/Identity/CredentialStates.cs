@@ -20,6 +20,28 @@ public abstract class CredentialStateBase(IDataProtectionProvider protection, IS
 
     /// <summary>Decrypts a TOTP key.</summary>
     protected string? Unprotect(string? value) => value is null ? null : _protector.Unprotect(value);
+
+    /// <summary>Generates normalization variations for a recovery code (trimmed, uppercase, with/without hyphens).</summary>
+    protected static IEnumerable<string> CandidateCodes(string code)
+    {
+        var trimmed = (code ?? "").Trim();
+        if (string.IsNullOrEmpty(trimmed)) yield break;
+
+        yield return trimmed;
+
+        var upper = trimmed.ToUpperInvariant();
+        if (upper != trimmed) yield return upper;
+
+        var clean = trimmed.Replace("-", "").Replace(" ", "").ToUpperInvariant();
+        if (clean != upper && clean != trimmed) yield return clean;
+
+        if (clean.Length == 10)
+        {
+            var withHyphen = $"{clean[..5]}-{clean[5..]}";
+            if (withHyphen != trimmed && withHyphen != upper)
+                yield return withHyphen;
+        }
+    }
 }
 
 /// <summary>Credentials in the user row (and the user token table). Used for <see cref="CredentialScope.Shared"/> and single mode.</summary>
@@ -82,7 +104,8 @@ public sealed class UserRowCredentialState(Auth2DbContext db, IDataProtectionPro
         var token = await FindTokenAsync(u, CodesToken, ct);
         if (string.IsNullOrEmpty(token?.Value)) return false;
         var hashes = token.Value.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
-        var match = hashes.FindIndex(h => Hasher.Verify(code, h));
+        var candidates = CandidateCodes(code).ToList();   // once: every check of a hash is slow on purpose
+        var match = hashes.FindIndex(h => candidates.Any(c => Hasher.Verify(c, h)));
         if (match < 0) return false;
         hashes.RemoveAt(match);
         token.Value = string.Join(';', hashes);
@@ -189,7 +212,8 @@ public sealed class UserProjectCredentialState(
     {
         var app = await applications.GetRequiredAsync(ct);
         var rows = await db.RecoveryCodes.Where(c => c.UserId == u.Id && c.ProjectId == app.Id && c.UsedAtUtc == null).ToListAsync(ct);
-        var match = rows.FirstOrDefault(r => Hasher.Verify(code, r.CodeHash));
+        var candidates = CandidateCodes(code).ToList();   // once: every check of a hash is slow on purpose
+        var match = rows.FirstOrDefault(r => candidates.Any(c => Hasher.Verify(c, r.CodeHash)));
         if (match is null) return false;
         match.UsedAtUtc = clock.GetUtcNow();
         return true;

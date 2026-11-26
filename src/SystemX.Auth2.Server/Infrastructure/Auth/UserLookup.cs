@@ -29,19 +29,31 @@ internal sealed class UserLookup(UserManager<AppUser> users, Auth2DbContext db, 
         return Auth2UserValidator.SafeMatch(settings.Phone.PhoneNumberRegex, login.Trim(), timeout) ? IdentifierKind.Phone : IdentifierKind.UserName;
     }
 
-    /// <summary>Finds the user. Two users with one phone number: no user (the login is refused).</summary>
-    public async Task<AppUser?> FindAsync(string login, ProjectSettings settings, CancellationToken ct)
+    /// <summary>
+    /// Finds the user. The <b>user name is the identity</b>: it is always unique, and it can be an email address, a phone number or plain text, so the exact user name is tried
+    /// first, whatever the text looks like. Only when nobody has that user name is the text taken for an email or a phone number and looked up in those columns.
+    /// Two users with one phone number: no user (the login is refused).
+    /// </summary>
+    public async Task<AppUser?> FindAsync(string login, ProjectSettings settings, CancellationToken ct) => (await FindMatchAsync(login, settings, ct)).User;
+
+    /// <summary>The person whose user name is exactly this text (any letter case), or null.</summary>
+    public Task<AppUser?> FindByUserNameAsync(string login) => users.FindByNameAsync(login.Trim());
+
+    /// <summary>The same as <see cref="FindAsync"/>, and what the text matched: the user name, the email or the phone number (null when nobody was found).</summary>
+    public async Task<(AppUser? User, IdentifierKind? Matched)> FindMatchAsync(string login, ProjectSettings settings, CancellationToken ct)
     {
         login = login.Trim();
+        if (await users.FindByNameAsync(login) is { } byName) return (byName, IdentifierKind.UserName);
+
         switch (KindOf(login, settings))
         {
             case IdentifierKind.Email:
-                return await users.FindByEmailAsync(login);
+                return await users.FindByEmailAsync(login) is { } byEmail ? (byEmail, IdentifierKind.Email) : (null, null);
             case IdentifierKind.Phone:
                 var matches = await db.Users.Where(u => u.PhoneNumber == login).Take(2).ToListAsync(ct);
-                return matches.Count == 1 ? matches[0] : null;
+                return matches.Count == 1 ? (matches[0], IdentifierKind.Phone) : (null, null);
             default:
-                return await users.FindByNameAsync(login);
+                return (null, null);
         }
     }
 

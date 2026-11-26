@@ -84,6 +84,9 @@ public static class AccountEndpoints
             return result.Succeeded ? Results.Ok(new TwoFactorEnableResponse(codes)) : ApiResults.From(http, result);
         }).RequireUser(Auth2Scopes.Me);
 
+        routes.MapPost(Auth2Routes.TwoFactorVerify, async (HttpContext http, TwoFactorVerifyRequest r, ITwoFactorService tf) =>
+            ApiResults.From(http, await tf.VerifyAsync(http.CurrentUser(), r.Code ?? "", r.Optional, http.RequestAborted))).RequireUser(Auth2Scopes.Me);
+
         routes.MapPost(Auth2Routes.TwoFactorDisable, async (HttpContext http, TwoFactorDisableRequest r, ITwoFactorService tf) =>
             ApiResults.From(http, await tf.DisableAsync(http.CurrentUser(), r.Password, http.RequestAborted))).RequireUser(Auth2Scopes.Me);
 

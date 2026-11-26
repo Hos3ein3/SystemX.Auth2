@@ -76,7 +76,8 @@ public class AccessLoaderTests
     private static (ClientAccessLoader Loader, IAuth2ApiClientService Api, MemoryCurrentUserStoreProbe Store) Make(AccessLoadMode mode)
     {
         var api = Substitute.For<IAuth2ApiClientService>();
-        api.GetMeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Result<CurrentUserInfo>.Success(Me()));
+        api.WithTokens(Arg.Any<string?>(), Arg.Any<string?>()).Returns(api);   // the token is not what these tests are about
+        api.GetMeAsync(Arg.Any<CancellationToken>()).Returns(Result<CurrentUserInfo>.Success(Me()));
         var store = new MemoryCurrentUserStoreProbe();
         var loader = new ClientAccessLoader(api, store, MsOptions.Create(new Auth2CookieOptions { AccessMode = mode }), MsOptions.Create(new Auth2CurrentUserOptions()),
             MsOptions.Create(new Auth2ClientOptions { ClientId = "blog" }), NullLogger<ClientAccessLoader>.Instance);
@@ -102,7 +103,7 @@ public class AccessLoaderTests
         var user = User();
         await loader.OnSignedInAsync(user, Jwt("12"), default);
         user.FindFirst("pv")!.Value.ShouldBe("12");
-        await api.DidNotReceive().GetMeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await api.DidNotReceive().GetMeAsync(Arg.Any<CancellationToken>());
         store.Items.ShouldBeEmpty();
     }
 
@@ -129,7 +130,7 @@ public class AccessLoaderTests
     public async Task AServerError_DoesNotStopTheSignIn()
     {
         var (loader, api, _) = Make(AccessLoadMode.OnSignIn);
-        api.GetMeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Result<CurrentUserInfo>.Failure(Auth2ClientErrorCodes.ServerUnavailable));
+        api.GetMeAsync(Arg.Any<CancellationToken>()).Returns(Result<CurrentUserInfo>.Failure(Auth2ClientErrorCodes.ServerUnavailable));
         await Should.NotThrowAsync(() => loader.OnSignedInAsync(User(), Jwt("5"), default));
         await Should.NotThrowAsync(() => loader.OnSignedInAsync(User(), "not a jwt", default));
     }
@@ -140,7 +141,7 @@ public class WebServiceTests
     private static string Jwt(string roleClaim = "Editor") => new JsonWebTokenHandler().CreateToken(
         $$"""{"sub":"11111111-1111-1111-1111-111111111111","preferred_username":"sara","name":"Sara","email":"sara@example.com","pv":"3","scope":"openid auth2.me","role":"{{roleClaim}}","iss":"x","aud":"blog"}""");
 
-    private static (IAuth2WebService Web, IAuth2ApiClientService Api, IAuthenticationService Auth, DefaultHttpContext Http) Make(UiMode mode = UiMode.Self, AccessLoadMode access = AccessLoadMode.Lazy, bool saveTokens = true)
+    private static (IAuth2WebClientService Web, IAuth2ApiClientService Api, IAuthenticationService Auth, DefaultHttpContext Http) Make(UiMode mode = UiMode.Self, AccessLoadMode access = AccessLoadMode.Lazy, bool saveTokens = true)
     {
         var api = Substitute.For<IAuth2ApiClientService>();
         var auth = Substitute.For<IAuthenticationService>();
@@ -149,7 +150,9 @@ public class WebServiceTests
         var cookie = new Auth2CookieOptions { AccessMode = access, SaveTokens = saveTokens, LoginPath = "/my/login" };
         var loader = new ClientAccessLoader(api, Substitute.For<ICurrentUserStore>(), MsOptions.Create(cookie), MsOptions.Create(new Auth2CurrentUserOptions()),
             MsOptions.Create(new Auth2ClientOptions { ClientId = "blog" }), NullLogger<ClientAccessLoader>.Instance);
-        var web = new WebService(api, loader, MsOptions.Create(cookie), MsOptions.Create(new Auth2ClientOptions()), MsOptions.Create(new Auth2AuthFlags { Mode = mode }));
+        api.WithTokens(Arg.Any<string?>(), Arg.Any<string?>()).Returns(api);
+        new HttpContextAccessor().HttpContext = http;   // the accessor keeps it per async flow (the test)
+        var web = new Auth2WebClientService(api, loader, new HttpContextAccessor(), MsOptions.Create(cookie), MsOptions.Create(new Auth2ClientOptions()), MsOptions.Create(new Auth2AuthFlags { Mode = mode }));
         return (web, api, auth, http);
     }
 
@@ -158,7 +161,7 @@ public class WebServiceTests
     {
         var (web, api, auth, http) = Make();
         api.LoginAsync(Arg.Any<LoginRequest>(), Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Success(new LoginResponse(Jwt(), "refresh", "idt", 900)));
-        var result = await web.LoginAsync(http, new LoginRequest("sara", "x"), isPersistent: true);
+        var result = await web.LoginAsync(new LoginRequest("sara", "x"), isPersistent: true);
         result.IsSuccess.ShouldBeTrue();
 
         await auth.Received(1).SignInAsync(http, Auth2AuthSchemes.Cookie,
@@ -172,7 +175,7 @@ public class WebServiceTests
     {
         var (web, api, auth, http) = Make();
         api.LoginAsync(Arg.Any<LoginRequest>(), Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Success(new LoginResponse(Jwt(), null, null, 900)));
-        await web.LoginAsync(http, new LoginRequest("sara", "x"));
+        await web.LoginAsync(new LoginRequest("sara", "x"));
         await auth.Received().SignInAsync(http, Auth2AuthSchemes.Cookie, Arg.Is<ClaimsPrincipal>(p => !p.HasClaim(c => c.Type == "role")), Arg.Any<AuthenticationProperties>());
     }
 
@@ -181,7 +184,7 @@ public class WebServiceTests
     {
         var (web, api, auth, http) = Make(saveTokens: false);
         api.LoginAsync(Arg.Any<LoginRequest>(), Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Success(new LoginResponse(Jwt(), "r", null, 900)));
-        await web.LoginAsync(http, new LoginRequest("sara", "x"));
+        await web.LoginAsync(new LoginRequest("sara", "x"));
         await auth.Received().SignInAsync(http, Auth2AuthSchemes.Cookie, Arg.Any<ClaimsPrincipal>(), Arg.Is<AuthenticationProperties>(a => a.GetTokenValue("access_token") == null));
     }
 
@@ -190,15 +193,15 @@ public class WebServiceTests
     {
         var (web, api, auth, http) = Make();
         api.LoginAsync(Arg.Any<LoginRequest>(), Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Failure("invalid_credentials"));
-        (await web.LoginAsync(http, new LoginRequest("sara", "bad"))).Error!.Code.ShouldBe("invalid_credentials");
+        (await web.LoginAsync(new LoginRequest("sara", "bad"))).Error!.Code.ShouldBe("invalid_credentials");
 
         api.LoginAsync(Arg.Any<LoginRequest>(), Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Success(new LoginResponse(null, null, null, null, true, "tft")));
-        var pending = await web.LoginAsync(http, new LoginRequest("sara", "x"));
+        var pending = await web.LoginAsync(new LoginRequest("sara", "x"));
         pending.Value!.TwoFactorRequired.ShouldBeTrue();
         await auth.DidNotReceive().SignInAsync(Arg.Any<HttpContext>(), Arg.Any<string?>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<AuthenticationProperties>());
 
         api.TwoFactorLoginAsync(Arg.Any<TwoFactorRequest>(), Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Success(new LoginResponse(Jwt(), "r", null, 900)));
-        (await web.TwoFactorLoginAsync(http, new TwoFactorRequest("tft", "123456"))).IsSuccess.ShouldBeTrue();
+        (await web.TwoFactorLoginAsync(new TwoFactorRequest("tft", "123456"))).IsSuccess.ShouldBeTrue();
         await auth.Received(1).SignInAsync(http, Auth2AuthSchemes.Cookie, Arg.Any<ClaimsPrincipal>(), Arg.Any<AuthenticationProperties>());
     }
 
@@ -207,7 +210,7 @@ public class WebServiceTests
     {
         var (web, api, auth, http) = Make();
         api.OtpLoginAsync("sara@example.com", "123456", Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Success(new LoginResponse(Jwt(), "r", null, 900)));
-        (await web.OtpLoginAsync(http, "sara@example.com", "123456")).IsSuccess.ShouldBeTrue();
+        (await web.OtpLoginAsync("sara@example.com", "123456")).IsSuccess.ShouldBeTrue();
         await auth.Received(1).SignInAsync(http, Auth2AuthSchemes.Cookie, Arg.Any<ClaimsPrincipal>(), Arg.Any<AuthenticationProperties>());
     }
 
@@ -217,9 +220,11 @@ public class WebServiceTests
         var (web, api, auth, http) = Make();
         auth.AuthenticateAsync(http, Auth2AuthSchemes.Cookie).Returns(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity("x")),
             new AuthenticationProperties(new Dictionary<string, string?> { [".Token.refresh_token"] = "the-refresh" }), Auth2AuthSchemes.Cookie)));
-        api.LogoutAsync("the-refresh", Arg.Any<CancellationToken>()).Returns(Result.Success());
-        await web.LogoutAsync(http);
-        await api.Received(1).LogoutAsync("the-refresh", Arg.Any<CancellationToken>());
+        var revoker = Substitute.For<IAuth2ApiClientService>();
+        api.WithTokens(null, "the-refresh").Returns(revoker);
+        revoker.LogoutAsync(Arg.Any<CancellationToken>()).Returns(Result.Success());
+        await web.LogoutAsync();
+        await revoker.Received(1).LogoutAsync(Arg.Any<CancellationToken>());
         await auth.Received(1).SignOutAsync(http, Auth2AuthSchemes.Cookie, Arg.Any<AuthenticationProperties>());
     }
 
@@ -227,13 +232,13 @@ public class WebServiceTests
     public async Task Challenge_Hosted_StartsOidc_Self_GoesToTheLoginPath_AndUnsafeReturnUrlsAreDropped()
     {
         var (hosted, _, auth, http) = Make(UiMode.Hosted);
-        await hosted.ChallengeAsync(http, "/orders?x=1");
+        await hosted.ChallengeAsync("/orders?x=1");
         await auth.Received(1).ChallengeAsync(http, Auth2AuthSchemes.Oidc, Arg.Is<AuthenticationProperties>(p => p.RedirectUri == "/orders?x=1"));
-        await hosted.ChallengeAsync(http, "https://evil.test");
+        await hosted.ChallengeAsync("https://evil.test");
         await auth.Received(1).ChallengeAsync(http, Auth2AuthSchemes.Oidc, Arg.Is<AuthenticationProperties>(p => p.RedirectUri == "/"));
 
         var (self, _, _, http2) = Make(UiMode.Self);
-        await self.ChallengeAsync(http2, "/orders");
+        await self.ChallengeAsync("/orders");
         http2.Response.Headers.Location.ToString().ShouldBe("/my/login?returnUrl=%2Forders");
     }
 }
@@ -292,5 +297,198 @@ public class BlazorServiceTests
         nav.Last.ShouldBe("auth2/login?returnUrl=%2F");
         service.NavigateToLogout(nav);
         nav.Last.ShouldBe("auth2/logout");
+    }
+}
+
+/// <summary><c>IAuth2WebClientService</c> for a person who is signed in: the access token comes from the session cookie of the current request, an old one is refreshed once, and the new tokens go back into the cookie.</summary>
+public class WebServiceAccountTests
+{
+    private static (Auth2WebClientService Web, IAuth2ApiClientService Api, IAuthenticationService Auth) Make()
+    {
+        var api = Substitute.For<IAuth2ApiClientService>();
+        var auth = Substitute.For<IAuthenticationService>();
+        var cookie = new Auth2CookieOptions { AccessMode = AccessLoadMode.Lazy, SaveTokens = true, LoginPath = "/my/login" };
+        var loader = new ClientAccessLoader(api, Substitute.For<ICurrentUserStore>(), MsOptions.Create(cookie), MsOptions.Create(new Auth2CurrentUserOptions()),
+            MsOptions.Create(new Auth2ClientOptions { ClientId = "blog" }), NullLogger<ClientAccessLoader>.Instance);
+        return (new Auth2WebClientService(api, loader, new HttpContextAccessor(), MsOptions.Create(cookie), MsOptions.Create(new Auth2ClientOptions()), MsOptions.Create(new Auth2AuthFlags { Mode = UiMode.Self })), api, auth);
+    }
+
+    /// <summary>The service the web service gets when it binds this access token (<c>WithTokens(token)</c>): one substitute per token, so a test sees which token was used.</summary>
+    private static IAuth2ApiClientService ForAccess(IAuth2ApiClientService api, string token)
+    {
+        var bound = Substitute.For<IAuth2ApiClientService>();
+        api.WithTokens(token, Arg.Any<string?>()).Returns(bound);
+        return bound;
+    }
+
+    /// <summary>The service the web service gets when it binds this refresh token (<c>WithTokens(null, refresh)</c>).</summary>
+    private static IAuth2ApiClientService ForRefresh(IAuth2ApiClientService api, string refresh)
+    {
+        var bound = Substitute.For<IAuth2ApiClientService>();
+        api.WithTokens(null, refresh).Returns(bound);
+        return bound;
+    }
+
+    /// <summary>
+    /// Makes the current request: a session cookie that holds these tokens (null: nobody is signed in). The <c>HttpContextAccessor</c> keeps the request per async flow, so it is
+    /// what <c>IAuth2WebClientService</c> sees in the test that called this.
+    /// </summary>
+    private static DefaultHttpContext Request(IAuthenticationService auth, string? access = "old-access", string? refresh = "old-refresh")
+    {
+        var http = new DefaultHttpContext { RequestServices = new ServiceCollection().AddSingleton(auth).BuildServiceProvider() };
+        new HttpContextAccessor().HttpContext = http;
+        if (access is null)
+        {
+            auth.AuthenticateAsync(Arg.Any<HttpContext>(), Auth2AuthSchemes.Cookie).Returns(AuthenticateResult.NoResult());
+            return http;
+        }
+        var properties = new AuthenticationProperties();
+        var tokens = new List<AuthenticationToken> { new() { Name = "access_token", Value = access } };
+        if (refresh is not null) tokens.Add(new AuthenticationToken { Name = "refresh_token", Value = refresh });
+        properties.StoreTokens(tokens);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "11111111-1111-1111-1111-111111111111")], Auth2AuthSchemes.Cookie));
+        auth.AuthenticateAsync(Arg.Any<HttpContext>(), Auth2AuthSchemes.Cookie).Returns(AuthenticateResult.Success(new AuthenticationTicket(principal, properties, Auth2AuthSchemes.Cookie)));
+        return http;
+    }
+
+    private static readonly ChangePasswordRequest NewPassword = new("old-password", "new-Password-123");
+
+    [Fact]
+    public async Task TheCallsOfThePerson_UseTheAccessTokenOfTheCookie_WithoutTheCallerGivingARequest()
+    {
+        var (web, api, auth) = Make();
+        Request(auth);
+        var bound = ForAccess(api, "old-access");
+        bound.ChangePasswordAsync(NewPassword, Arg.Any<CancellationToken>()).Returns(Result.Success());
+        (await web.ChangePasswordAsync(NewPassword)).IsSuccess.ShouldBeTrue();
+        await bound.Received(1).ChangePasswordAsync(NewPassword, Arg.Any<CancellationToken>());
+        await api.DidNotReceiveWithAnyArgs().RefreshAsync(default);   // nothing was old
+    }
+
+    [Fact]
+    public async Task WithoutARequest_TheSignInMethodsThrowAClearError_AndThePersonCallsToo()
+    {
+        var (web, _, _) = Make();
+        new HttpContextAccessor().HttpContext = null;
+        await Should.ThrowAsync<InvalidOperationException>(() => web.LogoutAsync());
+        await Should.ThrowAsync<InvalidOperationException>(() => web.ChangePasswordAsync(NewPassword));
+    }
+
+    [Fact]
+    public async Task WithoutATokenInTheCookie_TheAnswerIsInvalidToken_AndTheServerIsNotAsked()
+    {
+        var (web, api, auth) = Make();
+        Request(auth, access: null);
+        var result = await web.ChangePasswordAsync(NewPassword);
+        result.Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);
+        (await web.GetMeAsync()).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);
+        api.DidNotReceiveWithAnyArgs().WithTokens(default, default);
+    }
+
+    [Fact]
+    public async Task AnOldAccessToken_IsRefreshedOnce_TheCookieGetsTheNewTokens_AndTheCallIsAskedAgain()
+    {
+        var (web, api, auth) = Make();
+        var http = Request(auth);
+        var old = ForAccess(api, "old-access");
+        var fresh = ForAccess(api, "new-access");
+        var refresher = ForRefresh(api, "old-refresh");
+        old.ChangePasswordAsync(NewPassword, Arg.Any<CancellationToken>()).Returns(Result.Failure(Auth2ErrorCodes.InvalidToken));
+        refresher.RefreshAsync(Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Success(new LoginResponse("new-access", "new-refresh", null, 900)));
+        fresh.ChangePasswordAsync(NewPassword, Arg.Any<CancellationToken>()).Returns(Result.Success());
+
+        (await web.ChangePasswordAsync(NewPassword)).IsSuccess.ShouldBeTrue();
+
+        await refresher.Received(1).RefreshAsync(Arg.Any<CancellationToken>());
+        await auth.Received(1).SignInAsync(http, Auth2AuthSchemes.Cookie, Arg.Any<ClaimsPrincipal>(),
+            Arg.Is<AuthenticationProperties>(p => p.GetTokenValue("access_token") == "new-access" && p.GetTokenValue("refresh_token") == "new-refresh"));   // for the next request
+    }
+
+    [Fact]
+    public async Task WhenTheRefreshIsRefused_TheFirstAnswerIsGiven_AndTheCallIsNotRepeated()
+    {
+        var (web, api, auth) = Make();
+        Request(auth);
+        var old = ForAccess(api, "old-access");
+        var refresher = ForRefresh(api, "old-refresh");
+        old.ChangePasswordAsync(NewPassword, Arg.Any<CancellationToken>()).Returns(Result.Failure(Auth2ErrorCodes.InvalidToken));
+        refresher.RefreshAsync(Arg.Any<CancellationToken>()).Returns(Result<LoginResponse>.Failure("invalid_grant"));
+
+        (await web.ChangePasswordAsync(NewPassword)).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);   // sign in again
+
+        await old.Received(1).ChangePasswordAsync(NewPassword, Arg.Any<CancellationToken>());
+        await auth.DidNotReceiveWithAnyArgs().SignInAsync(default!, default, default!, default);
+    }
+
+    [Fact]
+    public async Task OtherErrors_DoNotCauseARefresh()
+    {
+        var (web, api, auth) = Make();
+        Request(auth);
+        var old = ForAccess(api, "old-access");
+        old.ChangePasswordAsync(NewPassword, Arg.Any<CancellationToken>()).Returns(Result.Failure(Auth2ErrorCodes.InvalidCredentials));
+        (await web.ChangePasswordAsync(NewPassword)).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidCredentials);
+        api.DidNotReceive().WithTokens(Arg.Is<string?>(t => t == null), Arg.Any<string?>());   // no refresh token was bound
+    }
+
+    [Fact]
+    public async Task NoRefreshToken_MeansNoRefresh()
+    {
+        var (web, api, auth) = Make();
+        Request(auth, refresh: null);
+        ForAccess(api, "old-access").GetMeAsync(Arg.Any<CancellationToken>()).Returns(Result<Contracts.Users.CurrentUserInfo>.Failure(Auth2ErrorCodes.InvalidToken));
+        (await web.GetMeAsync()).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);
+        api.DidNotReceive().WithTokens(Arg.Is<string?>(t => t == null), Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task RequestsThatRefreshAtTheSameMoment_ShareOneRefresh_BecauseARefreshTokenWorksOnce()
+    {
+        var (web, api, auth) = Make();
+        var refresher = ForRefresh(api, "old-refresh");
+        var gate = new TaskCompletionSource();
+        refresher.RefreshAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            await gate.Task;   // the server is slow: the second request arrives while the first is waiting
+            return Result<LoginResponse>.Success(new LoginResponse("new-access", "new-refresh", null, 900));
+        });
+
+        Request(auth);   // both calls come from the same cookie (one request object is enough here)
+        var first = web.RefreshAsync();
+        var second = web.RefreshAsync();
+        gate.SetResult();
+
+        (await first).IsSuccess.ShouldBeTrue();
+        (await second).IsSuccess.ShouldBeTrue();
+        await refresher.Received(1).RefreshAsync(Arg.Any<CancellationToken>());   // the server saw it once
+        Request(auth);                                                            // a later request (its cookie still has the old tokens)
+        await web.RefreshAsync();                                                 // it with the same old cookie also gets the answer of that minute
+        await refresher.Received(1).RefreshAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AFailedRefresh_IsNotRemembered()
+    {
+        var (web, api, auth) = Make();
+        var refresher = ForRefresh(api, "old-refresh");
+        refresher.RefreshAsync(Arg.Any<CancellationToken>()).Returns(
+            Result<LoginResponse>.Failure(Auth2ClientErrorCodes.ServerUnavailable),
+            Result<LoginResponse>.Success(new LoginResponse("new-access", "new-refresh", null, 900)));
+        Request(auth);
+        (await web.RefreshAsync()).IsSuccess.ShouldBeFalse();
+        Request(auth);
+        (await web.RefreshAsync()).IsSuccess.ShouldBeTrue();   // the server had a hiccup: the next try asks again
+        await refresher.Received(2).RefreshAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ThePeopleWhoAreNotSignedIn_UseTheApiServiceAsItIs()
+    {
+        var (web, api, _) = Make();
+        api.RegisterAsync(Arg.Any<RegisterRequest>(), Arg.Any<CancellationToken>()).Returns(Result<RegisterResponse>.Failure(Auth2ErrorCodes.Conflict));
+        api.ForgotPasswordAsync(Arg.Any<ForgotPasswordRequest>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
+        (await web.RegisterAsync(new RegisterRequest("sara", "sara@example.com", null, "x"))).Error!.Code.ShouldBe(Auth2ErrorCodes.Conflict);
+        (await web.ForgotPasswordAsync(new ForgotPasswordRequest("sara"))).IsSuccess.ShouldBeTrue();
+        await api.Received(1).RegisterAsync(Arg.Any<RegisterRequest>(), Arg.Any<CancellationToken>());
     }
 }

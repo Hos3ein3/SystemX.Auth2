@@ -1,23 +1,24 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.DeleteAccountModel
 @{
-    Layout = "_LayoutAccount";
+    Layout = "_LayoutManage";
     ViewData["Title"] = "Leave Project";
 }
 
 <div class="space-y-6 max-w-xl">
     <div>
-        <h2 class="text-xl font-bold text-red-600">Leave Project</h2>
-        <p class="mt-1 text-sm text-gray-500">Remove your membership from this project.</p>
+        <h2 class="text-xl font-bold text-red-600 dark:text-red-400">Leave Project</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Remove your membership from this project.</p>
     </div>
 
-    <a2-card>
-        <div class="text-sm text-gray-700 space-y-3 mb-6">
+    <a2-card title="Danger Zone" subtitle="Revoke your access and project memberships.">
+        <div class="text-sm text-gray-700 dark:text-gray-300 space-y-3 mb-6 p-4 bg-red-50 dark:bg-red-950/30 rounded-[var(--a2-radius,0.375rem)] border border-red-200 dark:border-red-900/50">
             <p>
                 Removing your account membership will revoke your access to all applications in this project.
                 Your direct permissions and role assignments in this project will be deleted.
             </p>
-            <p class="text-red-600 font-semibold">
+            <p class="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1.5">
+                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                 This action cannot be undone.
             </p>
         </div>
@@ -27,7 +28,7 @@
                 <a2-password name="Input.Password" required="true" autocomplete="current-password" />
             </a2-field>
 
-            <div class="pt-2">
+            <div class="pt-2 flex justify-end">
                 <a2-button type="submit" variant="danger">
                     Confirm and Leave Project
                 </a2-button>

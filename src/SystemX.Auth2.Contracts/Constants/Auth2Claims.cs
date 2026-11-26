@@ -11,6 +11,10 @@ public static class Auth2Claims
     public const string Email = "email";
     /// <summary>Phone number.</summary>
     public const string PhoneNumber = "phone_number";
+    /// <summary>"true" when the email address is confirmed (needs the <c>email</c> scope, like <see cref="Email"/>).</summary>
+    public const string EmailVerified = "email_verified";
+    /// <summary>"true" when the phone number is confirmed (needs the <c>phone</c> scope, like <see cref="PhoneNumber"/>).</summary>
+    public const string PhoneNumberVerified = "phone_number_verified";
     /// <summary>First name.</summary>
     public const string GivenName = "given_name";
     /// <summary>Last name.</summary>

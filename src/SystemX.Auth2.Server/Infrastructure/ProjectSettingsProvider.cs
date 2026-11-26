@@ -20,7 +20,7 @@ public sealed class ProjectSettingsProvider(Auth2DbContext db, IHybridCacheServi
         await cache.GetOrCreateAsync(CacheKey(projectId), async token =>
             await db.Projects.AsNoTracking().Where(a => a.Id == projectId).Select(a => a.Settings).FirstOrDefaultAsync(token)
                 ?? throw new ProjectNotFoundException("Application not found."),
-            new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(10) }, ct);
+            new HybridCacheEntryOptions { Expiration = TimeSpan.FromDays(1) }, ct);
 
     /// <inheritdoc />
     public void Invalidate(Guid projectId)

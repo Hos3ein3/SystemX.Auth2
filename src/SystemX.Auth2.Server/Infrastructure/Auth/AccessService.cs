@@ -88,7 +88,7 @@ internal static class AccessSupport
 /// </summary>
 internal sealed class AccessService(
     Auth2DbContext db, IAuthFlowResolver flow, RoleManager<AppRole> roles, UserManager<AppUser> users,
-    IAccessVersionService versions, IMemoryCache cache, IAuditService audit, TimeProvider clock, IOptions<Auth2ServerOptions> options) : IAccessService
+    IAccessVersionService versions, IMemoryCache cache, IAuditService audit, TimeProvider clock, IOptions<Auth2ServerOptions> options, IPrivilegedActor actor) : IAccessService
 {
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(10);
     private ServerMode Mode => options.Value.Mode;
@@ -209,6 +209,22 @@ internal sealed class AccessService(
         return OperationResult.Ok;
     }
 
+    public async Task<OperationResult> UpdatePermissionAsync(string permissionKey, string? displayName, string? description, string? group, CancellationToken ct = default)
+    {
+        var app = await flow.GetProjectAsync(ct);
+        var permission = await FindPermissionAsync(permissionKey, ct);
+        if (permission is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        if (permission.ProjectId != app.Id) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);   // a global permission is changed in the global project only
+        if (displayName is not null) permission.DisplayName = Clean(displayName);
+        if (description is not null) permission.Description = Clean(description);
+        if (group is not null) permission.Group = Clean(group);
+        await db.SaveChangesAsync(ct);
+        await Audit("permission.updated", app, "permission", permission.Key, ct);
+        return OperationResult.Ok;
+    }
+
+    private static string? Clean(string text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
     public async Task<OperationResult> SetPermissionObsoleteAsync(string permissionKey, bool obsolete, CancellationToken ct = default)
     {
         var app = await flow.GetProjectAsync(ct);
@@ -268,10 +284,25 @@ internal sealed class AccessService(
 
     public async Task<OperationResult> CreateRoleAsync(string name, string? description = null, CancellationToken ct = default)
     {
+        // No role may take the name of a built-in power role: a role named "Developer" would be read as the real one by name.
+        if (PrivilegedRoles.IsPrivileged(name)) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
         var app = await flow.GetProjectAsync(ct);
         var result = await roles.CreateAsync(new AppRole(name.Trim()) { ProjectId = app.Id, Description = description });
         if (!result.Succeeded) return OperationResult.Fail(result.Errors);
         await Audit("role.created", app, "role", name.Trim(), ct);
+        return OperationResult.Ok;
+    }
+
+    public async Task<OperationResult> UpdateRoleAsync(string name, string? description, CancellationToken ct = default)
+    {
+        var app = await flow.GetProjectAsync(ct);
+        var role = await FindVisibleRoleAsync(name, app);
+        if (role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        if (role.ProjectId != app.Id || role.IsSystem || PrivilegedRoles.IsPrivileged(role.Name)) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
+        if (description is not null) role.Description = Clean(description);
+        var result = await roles.UpdateAsync(role);
+        if (!result.Succeeded) return OperationResult.Fail(result.Errors);
+        await Audit("role.updated", app, "role", role.Name!, ct);
         return OperationResult.Ok;
     }
 
@@ -280,7 +311,7 @@ internal sealed class AccessService(
         var app = await flow.GetProjectAsync(ct);
         var role = await FindVisibleRoleAsync(name, app);
         if (role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
-        if (role.IsSystem) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
+        if (role.IsSystem || PrivilegedRoles.IsPrivileged(role.Name)) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);   // GlobalAdmin and Developer are never deleted
         var result = await roles.DeleteAsync(role);
         if (!result.Succeeded) return OperationResult.Fail(result.Errors);
         await versions.BumpProjectAsync(ct);
@@ -295,6 +326,7 @@ internal sealed class AccessService(
         if (role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
 
         if (role.ProjectId is not null && !await IsMemberAsync(user, app, ct)) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        if (PrivilegedRoles.IsPrivileged(role.Name) && !await actor.IsPrivilegedAsync(ct)) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);   // only a Developer or a GlobalAdmin gives these roles
 
         if (await users.IsInRoleAsync(user, role.Name!)) return OperationResult.Ok;
         var result = await users.AddToRoleAsync(user, role.Name!);
@@ -308,6 +340,7 @@ internal sealed class AccessService(
         var app = await flow.GetProjectAsync(ct);
         var role = await FindVisibleRoleAsync(roleName, app);
         if (role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        if (PrivilegedRoles.IsPrivileged(role.Name) && !await actor.IsPrivilegedAsync(ct)) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);   // and only they take them away
         if (!await users.IsInRoleAsync(user, role.Name!)) return OperationResult.Ok;
         var result = await users.RemoveFromRoleAsync(user, role.Name!);
         if (!result.Succeeded) return OperationResult.Fail(result.Errors);   // the user store raised the access version
@@ -383,7 +416,7 @@ internal sealed class AccessService(
 }
 
 internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, RoleManager<AppRole> roles, IAccessVersionService versions,
-    IAuditService audit, IOptions<Auth2ServerOptions> options) : IGroupService
+    IAuditService audit, IOptions<Auth2ServerOptions> options, IPrivilegedActor actor) : IGroupService
 {
     public async Task<IReadOnlyList<GroupDto>> ListAsync(CancellationToken ct = default)
     {
@@ -412,6 +445,18 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
         return OperationResult.Ok;
     }
 
+    public async Task<OperationResult> UpdateAsync(string name, string? displayName, string? description, CancellationToken ct = default)
+    {
+        var app = await flow.GetProjectAsync(ct);
+        var group = await FindAsync(name, ct);
+        if (group is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        if (displayName is not null) group.DisplayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim();
+        if (description is not null) group.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        await db.SaveChangesAsync(ct);
+        await Audit("group.updated", app, group.Name, ct);
+        return OperationResult.Ok;
+    }
+
     public async Task<OperationResult> DeleteAsync(string name, CancellationToken ct = default)
     {
         var app = await flow.GetProjectAsync(ct);
@@ -424,6 +469,11 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
         return OperationResult.Ok;
     }
 
+    private Task<bool> GroupHasPrivilegedRoleAsync(Guid groupId, CancellationToken ct) =>
+        (from gr in db.GroupRoles join r in db.Roles on gr.RoleId equals r.Id
+         where gr.GroupId == groupId && (r.Name == Auth2Roles.GlobalAdmin || r.Name == Auth2Roles.Developer)
+         select gr.GroupId).AnyAsync(ct);
+
     public async Task<OperationResult> AddUserAsync(string groupName, AppUser user, CancellationToken ct = default)
     {
         var app = await flow.GetProjectAsync(ct);
@@ -432,6 +482,8 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
 
         if (options.Value.Mode == ServerMode.MultiProject && !await db.UserProjects.AnyAsync(x => x.UserId == user.Id && x.ProjectId == app.Id, ct))
             return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        // Joining a group that has GlobalAdmin or Developer gives that role: the same rule as giving the role itself.
+        if (await GroupHasPrivilegedRoleAsync(group.Id, ct) && !await actor.IsPrivilegedAsync(ct)) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
 
         if (await db.UserGroups.AnyAsync(x => x.UserId == user.Id && x.GroupId == group.Id, ct)) return OperationResult.Ok;
         db.UserGroups.Add(new UserGroup { UserId = user.Id, GroupId = group.Id });
@@ -458,6 +510,7 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
         var group = await FindAsync(groupName, ct);
         var role = await FindRoleAsync(roleName, app);
         if (group is null || role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        if (PrivilegedRoles.IsPrivileged(role.Name) && !await actor.IsPrivilegedAsync(ct)) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
         if (await db.GroupRoles.AnyAsync(x => x.GroupId == group.Id && x.RoleId == role.Id, ct)) return OperationResult.Ok;
         db.GroupRoles.Add(new GroupRole { GroupId = group.Id, RoleId = role.Id });
         if (!await TrySaveAsync(ct)) return OperationResult.Ok;
@@ -472,6 +525,7 @@ internal sealed class GroupService(Auth2DbContext db, IAuthFlowResolver flow, Ro
         var group = await FindAsync(groupName, ct);
         var role = await FindRoleAsync(roleName, app);
         if (group is null || role is null) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
+        if (PrivilegedRoles.IsPrivileged(role.Name) && !await actor.IsPrivilegedAsync(ct)) return OperationResult.Fail(Auth2ErrorCodes.Forbidden);
         if (await db.GroupRoles.Where(x => x.GroupId == group.Id && x.RoleId == role.Id).ExecuteDeleteAsync(ct) == 0) return OperationResult.Ok;
         await versions.BumpProjectAsync(ct);
         await Audit("group.role_removed", app, group.Name, ct, ("role", role.Name));

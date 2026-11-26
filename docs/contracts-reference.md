@@ -932,6 +932,15 @@ Data for the authenticator app. Show `SharedKey` as text and `AuthenticatorUri` 
 | `(constructor)(string, string)` | Data for the authenticator app. Show `SharedKey` as text and `AuthenticatorUri` as a QR code. |
 
 
+### TwoFactorVerifyRequest
+
+A code from the authenticator app, checked for the signed-in user before a sensitive action. A code works once. `Optional`: the action only asks people who have two-factor on. A person without it passes (nothing to check); with `false` (the default) such a person is refused with `totp_setup_required`. An empty code from a person who has two-factor is `totp_required` and is not counted as a failed attempt.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string, bool)` | A code from the authenticator app, checked for the signed-in user before a sensitive action. A code works once. `Optional`: the action only asks people who have two-factor on. A person without it passes (nothing to check); with `false` (the default) such a person is refused with `totp_setup_required`. An empty code from a person who has two-factor is `totp_required` and is not counted as a failed attempt. |
+
+
 ## `SystemX.Auth2.Contracts.Common`
 
 
@@ -945,6 +954,19 @@ Error body returned by the server API. Compatible with problem details.
 | `Code` | Stable machine-readable code. See `Auth2ErrorCodes`. |
 | `Message` | Localized human-readable message. |
 | `Details` | Optional extra data, for example field errors. |
+
+
+### PageRequest
+
+Which page of a list to read. The server never returns more than `MaxPageSize` items.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(int, int, string, bool)` | Which page of a list to read. The server never returns more than `MaxPageSize` items. |
+| `Page` | First page is 1. |
+| `PageSize` | Items per page. |
+| `Search` | Part of the name (or key) to look for; `null` for no filter. |
+| `Descending` | Sort Z to A. |
 
 
 ### PagedResult<T>
@@ -984,6 +1006,75 @@ Result of an operation with a value.
 ## `SystemX.Auth2.Contracts.Constants`
 
 
+### Auth2AdminRoutes
+
+The routes of the admin API (`Admin`), as **templates**. The Server maps them and the Client builds its calls from them, so they never disagree. A template has the names of the route values in braces (`{id:guid}`, `{key}`); `Fill` puts real values in. **Server level** (relative to `Admin`): `Projects`, `Project`, `Keys`, ... **Project level** (relative to `ProjectBase`, the project is in the route): users, roles, permissions, groups, scopes, audit, external identity. **Application level** (relative to `ApplicationsBase`).
+
+| Member | What it does |
+|---|---|
+| `Projects` | Projects (list, create). |
+| `ProjectBase` | The project of a route: the base of every project-level route (`/projects/{projectId}`). |
+| `Project` | One project (read, change, delete). |
+| `ProjectSettings` | The settings of a project. |
+| `ProjectMessaging` | The messaging (email and SMS) settings of a project. |
+| `ApplicationsBase` | The applications of a project: the base of every application-level route. |
+| `Keys` | The signing keys (GlobalAdmin). |
+| `KeysRotate` | Rotates the signing keys (GlobalAdmin). |
+| `BlockedAaguids` | The passkey authenticators (AAGUIDs) that are blocked (GlobalAdmin). |
+| `Applications` | Applications of the project (list, create). |
+| `Application` | One application (read, change, delete). |
+| `ApplicationSetup` | The copy-paste setup of an application. |
+| `ApplicationRotateSecret` | Rotates the secret of an application. |
+| `ApplicationSettings` | The settings of an application. |
+| `ApplicationMessaging` | The messaging settings of an application. |
+| `ApplicationRedirectUris` | The redirect addresses of an application. |
+| `Users` | Users of the project (list, create). |
+| `User` | One user. |
+| `UserAccess` | Roles, permissions and groups of a user now. |
+| `UserLock` | Locks a user. |
+| `UserUnlock` | Unlocks a user. |
+| `UserReset2Fa` | Turns the two-factor of a user off. |
+| `UserSessions` | Open sessions of a user. |
+| `UserSession` | One session of a user. |
+| `UserProjectAdmin` | Makes a user ProjectAdmin. |
+| `UserRole` | A role of a user (give, take). |
+| `UserPermission` | A direct permission of a user (give, take). |
+| `UserGroup` | A group of a user (join, leave). |
+| `UserExternalLogins` | The external sign-ins linked to a user. |
+| `UserExternalLogin` | One external sign-in of a user. |
+| `UserPasskeys` | The passkeys of a user. |
+| `UserPasskey` | One passkey of a user. |
+| `Roles` | Roles (list, create). |
+| `Role` | One role (read, change, delete). |
+| `RolePermissions` | The permissions of a role. |
+| `RolePermission` | One permission of a role (add, remove). |
+| `Permissions` | Permissions (list, create). |
+| `Permission` | One permission (read, change, delete). |
+| `PermissionObsolete` | Marks a permission obsolete, or not. |
+| `Groups` | Groups (list, create). |
+| `Group` | One group (read, change, delete). |
+| `GroupMembers` | The members of a group. |
+| `GroupMember` | One member of a group (add, remove). |
+| `GroupRole` | One role of a group (add, remove). |
+| `GroupPermission` | One permission of a group (add, remove). |
+| `Scopes` | Scopes (list, create). Scopes belong to the whole server; only a GlobalAdmin changes them. |
+| `Scope` | One scope (read, change, delete). |
+| `AuditEvents` | The audit events of the project. |
+| `ExternalProviderTypes` | The kinds of external providers that can be added. |
+| `ExternalProviders` | External providers (list, create). |
+| `ExternalProvider` | One external provider (change, delete). |
+| `ExternalProviderRotateSecret` | Replaces the secret of an external provider. |
+| `ExternalProviderTest` | Tests an external provider. |
+| `ExternalProviderLdapTestUser` | Tests a user against an LDAP provider. |
+| `ExternalProviderSamlRefreshMetadata` | Reads the SAML metadata of a provider again. |
+| `ExternalProviderSamlGenerateSpCertificate` | Makes a new SAML service provider certificate. |
+| `ExternalGroupMappings` | Mappings of external groups and claims to roles, groups and permissions (list, create). |
+| `ExternalGroupMapping` | One mapping (change, delete). |
+| `EmailDomainRoutes` | Email domain to provider routes. |
+| `Fill(string, ValueTuple<string, object>)` | Puts values into a template: `Fill(Role, ("id", roleId))` gives `/roles/6f1c...`. A `Guid` is written in the `D` format, other values are escaped for a path. A value that is not in the template is ignored. |
+| `ForProject(Guid, string, ValueTuple<string, object>)` | The full path of a project-level route: `/api/auth2/admin/projects/{projectId}` + the route, with the values filled in. |
+
+
 ### Auth2Claims
 
 Claim names used in tokens.
@@ -994,6 +1085,8 @@ Claim names used in tokens.
 | `PreferredUserName` | User name. |
 | `Email` | Email. |
 | `PhoneNumber` | Phone number. |
+| `EmailVerified` | "true" when the email address is confirmed (needs the `email` scope, like `Email`). |
+| `PhoneNumberVerified` | "true" when the phone number is confirmed (needs the `phone` scope, like `PhoneNumber`). |
 | `GivenName` | First name. |
 | `FamilyName` | Last name. |
 | `Name` | Full name. |
@@ -1040,13 +1133,17 @@ Stable error codes. Also used as localization keys.
 | `InvalidUserName` | User name has a wrong length or wrong characters. |
 | `InvalidEmail` | Email is not valid. |
 | `EmailDomainNotAllowed` | The email domain is not allowed in this application. |
+| `PhoneNumberTaken` | The phone number is the user name of another person. A user name is the identity of a person and is unique, so an email address or phone number cannot be taken by somebody else. |
 | `InvalidPhoneNumber` | Phone number is not valid. |
 | `UserNotInProject` | The user does not belong to this application (no row yet). |
 | `EmailNotConfirmed` | Email must be confirmed before login. |
 | `PhoneNotConfirmed` | Phone number must be confirmed before login. |
 | `TwoFactorSetupRequired` | Two-factor is required by the application but the user has not set it up yet. |
 | `GrantNotAllowed` | The grant type is not allowed for this application or client. |
+| `ProjectNameTaken` | Another project already has this name. A project name is unique on the server (compared without letter case). |
 | `TwoFactorNotEnabled` | Two-factor is not on for this user. |
+| `TotpRequired` | This action needs a code of the authenticator app (`WithTotp()` / `[Auth2Totp]`) and the request carried none. |
+| `TotpSetupRequired` | This action needs two-factor authentication (`WithTotp()` / `[Auth2Totp]`) but the person has not turned it on: they must set it up first. |
 | `TwoFactorNotAllowed` | The application does not allow authenticator-app two-factor. |
 | `ConsentRequired` | Consent is needed (OIDC `prompt=none` cannot ask). |
 | `LoginMethodNotAllowed` | Login method not allowed. |
@@ -1140,6 +1237,7 @@ Every route string. Client and Server both use this class so they never disagree
 | `TwoFactorSetup` | Start TOTP setup. |
 | `TwoFactorEnable` | Enable TOTP. |
 | `TwoFactorDisable` | Disable TOTP. |
+| `TwoFactorVerify` | Checks one code of the authenticator app for the signed-in user (a fresh proof before a sensitive action). |
 | `TwoFactorRecoveryCodes` | Recovery codes. |
 | `Me` | Current user. |
 | `Handshake` | Client handshake. |
@@ -1154,6 +1252,18 @@ Every route string. Client and Server both use this class so they never disagree
 | `ExternalProviders` | Lists the enabled external sign-in providers of the application (client-credentials token with the handshake scope). |
 | `ScopesSync` | Scope sync (POST). |
 | `UserAccess` | Access of one user. Replace `{id}`. |
+| `AccountBase` | Base path of the pages and JSON calls of a signed-in person (passkeys). |
+| `PasskeyCreationOptions` | Passkey: options to create one (signed in). |
+| `PasskeyRegister` | Passkey: saves the new one (signed in). |
+| `Passkeys` | Passkey: the list of the signed-in person. |
+| `PasskeyById` | Passkey: one of the signed-in person (rename, delete). |
+| `PasskeyRequestOptions` | Passkey: options to sign in. |
+| `PasskeySignIn` | Passkey: signs in. |
+| `ExternalProviderList` | The list of external sign-in providers of the application (hosted UI). |
+| `ExternalChallenge` | Starts an external sign-in. |
+| `BrandingAssetById` | A branding asset by project id and kind (public). |
+| `BrandingAssetByKey` | A branding asset by project key and kind (public). |
+| `ProjectBrandingAsset` | A branding asset of a project by key (short form). |
 | `Admin` | Base path of the admin API. |
 | `HealthLive` | Liveness check. |
 | `HealthReady` | Readiness check. |

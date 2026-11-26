@@ -53,6 +53,7 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<IProjectCookieKey>(sp => sp.GetRequiredService<ProjectScope>());
         services.TryAddScoped<IProjectContext, ModeProjectContext>();
         services.AddScoped<IProjectSettingsProvider, ProjectSettingsProvider>();
+        services.AddScoped<IPrivilegedActor, PrivilegedActor>();   // who may give and take the roles GlobalAdmin and Developer
         services.AddExternalIdentityCore();
 
         services.AddDbContext<Auth2DbContext>(o =>
@@ -71,11 +72,11 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddAuthentication(o => o.DefaultAuthenticateScheme = Auth2Cookie.Scheme).AddAuth2Cookie();
         services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, SessionRoleClaims>();
         services.AddAuthorization(o => o.AddPolicy("Auth2.Session", p => p.AddAuthenticationSchemes(Auth2Cookie.Scheme).RequireAuthenticatedUser()));
-        services.AddRazorPages(o =>
+        var razor = services.AddRazorPages(o =>
         {
             o.Conventions.AuthorizeFolder("/Manage", "Auth2.Session");
             // The pages of the signed-in person that change their own account details (the rest of /Account is for people who are not signed in).
-            foreach (var page in new[] { "ChangePassword", "ChangeUserName", "ChangeEmailAddress", "ChangePhoneNumber" })
+            foreach (var page in new[] { "ChangePassword", "ChangeUserName", "ChangeEmailAddress", "ChangePhoneNumber", "VerifyTotp" })
                 o.Conventions.AuthorizePage("/Account/" + page, "Auth2.Session");
             o.Conventions.AddPageRoute("/Admin/Global/Settings", "/admin/global/settings");
             o.Conventions.AddPageRoute("/Admin/Global/Jobs", "/admin/global/jobs");
@@ -89,6 +90,8 @@ public static class Auth2ServerServiceCollectionExtensions
             o.Conventions.AddPageRoute("/Admin/Assignments/GroupRoles", "/admin/p/{projectKey}/group_roles");
             o.Conventions.AddPageRoute("/Admin/Assignments/GroupPermissions", "/admin/p/{projectKey}/group_permissions");
         });
+        // Razor runtime compilation: a change of a .cshtml file shows after a refresh of the browser, without a new build. Only for development (see UseRazorRuntimeCompilation).
+        if (UseRazorRuntimeCompilation(configuration)) razor.AddRazorRuntimeCompilation();
 
         services.AddScoped<Auth2IdentityErrorDescriber>();
         services.AddIdentityCore<AppUser>(o =>
@@ -214,6 +217,17 @@ public static class Auth2ServerServiceCollectionExtensions
         services.AddScoped<DemoDataRun>();
         services.AddScoped<DatabaseInitializer>();
         return services;
+    }
+
+    /// <summary>
+    /// True when the Razor pages are compiled again when their file changes (<c>AddRazorRuntimeCompilation</c>): in the <c>Development</c> environment, or when
+    /// <c>Auth2:RazorRuntimeCompilation</c> says <c>true</c>. <c>Auth2:RazorRuntimeCompilation=false</c> turns it off even in development. It is not for production: it keeps the compiler
+    /// and the file watchers running, and the pages are the ones of the build otherwise.
+    /// </summary>
+    internal static bool UseRazorRuntimeCompilation(IConfiguration configuration)
+    {
+        var environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? configuration["DOTNET_ENVIRONMENT"] ?? Environments.Production;
+        return configuration.GetValue<bool?>("Auth2:RazorRuntimeCompilation") ?? string.Equals(environment, Environments.Development, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Rate limiting, Redis (optional), key ring, background jobs, health checks, CORS and hardening.</summary>

@@ -1,11 +1,13 @@
 #pragma warning disable CS1591 // Page models are not a public API; the UI reads their properties (see docs/ui-handover.md).
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using SystemX.Auth2.Contracts.Auth;
 using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Contracts.Enums;
 using SystemX.Auth2.Server.Application;
+using SystemX.Auth2.Server.Domain.Entities;
 using SystemX.Auth2.Server.Infrastructure.Auth;
 using SystemX.Auth2.Server.Pages.Manage;
 namespace SystemX.Auth2.Server.Pages.Manage.TwoFactor;
@@ -45,19 +47,71 @@ public sealed class EnableModel(IClientIdAccessor clientId, IAuthFlowResolver fl
         if (string.IsNullOrEmpty(Input.Code)) { Fail(Auth2ErrorCodes.ValidationFailed); await LoadSetupAsync(keepKey: true); return Page(); }
         var (result, codes) = await Svc<ITwoFactorService>().EnableAsync(CurrentUser!, Input.Code, HttpContext.RequestAborted);
         if (!result.Succeeded) { Fail(result); await LoadSetupAsync(keepKey: true); return Page(); }
+        await RefreshSessionAsync(CurrentUser!, codeGivenNow: true);   // the first code is a code of the authenticator app: the restricted pages do not ask again at once
         Enabled = true;
         RecoveryCodes = codes;
         CanDisable = Settings.TwoFactor.Mode != Domain.Settings.TwoFactorMode.Required;
         return Page();
     }
 
-    /// <summary>Turn off. Needs the password. Not possible when the application requires two-factor.</summary>
+    /// <summary>Turn off. Needs the password and two-factor code. Not possible when the application requires two-factor.</summary>
     public async Task<IActionResult> OnPostDisableAsync()
     {
         if (!await LoadSessionAsync()) return Page();
+        if (string.IsNullOrWhiteSpace(Input.Password))
+        {
+            Fail(Auth2ErrorCodes.InvalidCredentials);
+            await LoadSetupAsync();
+            return Page();
+        }
+
+        var userManager = Svc<UserManager<AppUser>>();
+
+        // Verify password first so a typo doesn't waste/consume a valid recovery code
+        if (!await userManager.CheckPasswordAsync(CurrentUser!, Input.Password))
+        {
+            await userManager.AccessFailedAsync(CurrentUser!);
+            Fail(Auth2ErrorCodes.InvalidCredentials);
+            await LoadSetupAsync();
+            return Page();
+        }
+
+        if (!string.IsNullOrWhiteSpace(Input.Code))
+        {
+            var rawCode = Input.Code.Trim();
+            var normalizedTotp = rawCode.Replace(" ", "").Replace("-", "");
+
+            var isCodeValid = normalizedTotp.Length == 6
+                && await userManager.VerifyTwoFactorTokenAsync(CurrentUser!, TokenOptions.DefaultAuthenticatorProvider, normalizedTotp);
+
+            if (!isCodeValid)
+            {
+                var recoveryResult = await userManager.RedeemTwoFactorRecoveryCodeAsync(CurrentUser!, rawCode);
+                isCodeValid = recoveryResult.Succeeded;
+            }
+
+            if (!isCodeValid)
+            {
+                await userManager.AccessFailedAsync(CurrentUser!);
+                Fail(Auth2ErrorCodes.InvalidOtp);
+                await LoadSetupAsync();
+                return Page();
+            }
+        }
+        else
+        {
+            if (await RequireRecentTotpAsync(Request.Path.Value) is { } ask) return ask;   // turning two-factor off is restricted: a fresh code first
+        }
+
         var result = await Svc<ITwoFactorService>().DisableAsync(CurrentUser!, Input.Password ?? "", HttpContext.RequestAborted);
         Input.Password = null;
-        if (!result.Succeeded) { Fail(result); return Page(); }
+        Input.Code = null;
+        if (!result.Succeeded) { Fail(result); await LoadSetupAsync(); return Page(); }
+        await RefreshSessionAsync(CurrentUser!, codeGivenNow: true);
+        if (!string.IsNullOrWhiteSpace(ClientId))
+        {
+            return RedirectToPage(new { ClientId });
+        }
         return RedirectToPage();
     }
 

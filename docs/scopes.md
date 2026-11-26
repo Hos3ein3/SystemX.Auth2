@@ -72,6 +72,26 @@ Your own words, for your own APIs. The usual shape is `{area}.{action}`: `report
 - **Not** `auth2.*` and not a standard scope: those names belong to the Server (the sync skips them).
 - **Do not use the name of a permission.** A scope `reports.read` and a permission `reports.read` are different things that look the same in a log ([access-concepts.md](access-concepts.md)). Give the scope its own name (`api.reports.read`).
 
+### Scope sync and what a scope really limits
+
+**Read this before you rely on scopes for security.** Two project settings (global admin only) decide what a sync does:
+
+| `ScopeSyncAllowed` | `AutoAssignScopeToApplication` | What happens to a pushed scope |
+|---|---|---|
+| on | **on** (default) | It is created if it is new **and added to the allowed scopes of the application that pushed it**, even when the scope already exists and an admin made it for another application. Only `auth2.*` and the standard scopes are refused. The application can use it at once |
+| on | **off** | It is **only registered** (created if new, saved in the database, visible in the console). **No application is given it**, not even the one that pushed it. An admin allows it for the applications that need it |
+| off | (any) | Nothing is accepted: the push answers `sync_not_allowed` |
+
+With auto assign **on**, an application with a valid client secret can allow itself any custom scope, so a check like `[Auth2Scope("orders.write")]` fails only when the application does not **ask for** the scope at sign-in (or for its machine token). That is a decision of the application's developer, not a rule of the Server. With auto assign **off**, the Server did not allow the scope for the application: the token request fails with `invalid_scope` and `[Auth2Scope]` answers 403. The scope is a real limit.
+
+For production, where scopes protect something:
+
+1. Turn **off** `Clients.AutoAssignScopeToApplication` (or the whole `Clients.ScopeSyncAllowed`) in the project settings. The console has the checkbox *Give Synced Scopes To The Application*.
+2. Give each application only the scopes it needs (**Applications -> the application -> Allowed Scopes**, or `ApplicationSpec.AllowedScopes`). A scope the clients registered is already in the list of scopes, so you only tick it.
+3. Protect an API with the audience of the scope (`UseApiAuthentication(o => o.Audience = "orders-api")`, [resources of a scope](#resources-of-a-scope)), so it accepts only tokens made for it.
+
+The sync response then lists in `addedKeys` the scopes **this call registered** (with auto assign on it lists the scopes the application was given). A scope is a limit on the **token** (what this client may do), not on the person: roles, permissions and groups limit the person.
+
 ## How a scope gets into a token
 
 1. **The scope exists on the Server** (it is *registered*): the standard and `auth2.*` scopes are seeded; custom scopes you create ([below](#create-a-scope)).
@@ -114,7 +134,7 @@ Registering a scope does not give it to any application. Every application has i
 - **Console:** the application's page (`Applications` → the application → *Allowed Scopes*), space-separated.
 - **Code:** `ApplicationSpec.AllowedScopes` (`IApplicationService.CreateAsync` and `UpdateAsync`). `UpdateAsync` with a list **replaces** the allowed scopes; add to the current list to keep the others.
 - **Admin API:** `allowedScopes` when you create or update an application ([admin-api.md](admin-api.md)).
-- **Sync:** allows the pushed scope for the **calling** application only. Another application, even of the same project, has to ask for it itself.
+- **Sync:** with `Clients.AutoAssignScopeToApplication` on (default), allows the pushed scope for the **calling** application only. Another application, even of the same project, has to ask for it itself. With it off, a sync allows nothing: you allow the scope here.
 
 Only the scopes an application needs. A browser application usually needs `openid profile email roles offline_access auth2.me` and its own custom scopes; a program needs only the `auth2.*` scopes of the routes it calls.
 
@@ -263,6 +283,7 @@ Both rules apply on the endpoint: the audience says the token is **for this API*
 | Problem | Cause |
 |---|---|
 | `invalid_scope` when signing in or asking for a token | The application does not allow the scope, or the scope is not registered on the Server. Create it, then add it to the application's allowed scopes |
+| A scope check never fails, whatever the application asks | Scope sync is on with `AutoAssignScopeToApplication`: the application allowed the scope for itself. Turn the setting off. See [scope sync and what a scope really limits](#scope-sync-and-what-a-scope-really-limits) |
 | The scope is in the token of one application and not of another | Allowed scopes are per application. Sync allows a scope for the calling application only |
 | `[Auth2Scope]` refuses everybody on a cookie page | The application did not ask for the scope (`UseHostedUi(o => o.Scopes...)`), or does not allow it |
 | `403 insufficient_scope` from the Server | The token lacks the `auth2.*` scope of the route. Allow it on the application and ask for it |

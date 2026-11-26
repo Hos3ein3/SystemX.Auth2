@@ -1,52 +1,67 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.ExternalLoginsModel
 @{
-    Layout = "_LayoutAccount";
+    Layout = "_LayoutManage";
     ViewData["Title"] = "External Logins";
 }
 
 <div class="space-y-6 max-w-2xl">
     <div>
-        <h2 class="text-xl font-bold text-gray-900">External Logins</h2>
-        <p class="mt-1 text-sm text-gray-500">Manage external identity providers linked to your account.</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">External Logins</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage external identity providers linked to your account.</p>
     </div>
 
     @if (Model.Links.Count > 0)
     {
-        <a2-card title="Connected Accounts">
-            <ul class="divide-y divide-gray-200">
+        <a2-card title="Connected Accounts" subtitle="Third-party identity accounts connected to your profile.">
+            <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                 @foreach (var link in Model.Links)
                 {
-                    <li class="py-3 flex items-center justify-between">
-                        <div>
-                            <span class="text-sm font-semibold text-gray-800">@link.Provider</span>
-                            <span class="text-xs text-gray-500 block">Identifier: @link.ProviderKey</span>
+                    <li class="py-3.5 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                            </div>
+                            <div>
+                                <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">@link.Provider</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400 block font-mono">Identifier: @link.ProviderKey</span>
+                            </div>
                         </div>
                         <form method="post" asp-page-handler="Unlink">
                             <input type="hidden" name="Provider" value="@link.Provider" />
                             <input type="hidden" name="ProviderKey" value="@link.ProviderKey" />
-                            <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium">
+                            <a2-button type="submit" variant="danger" class="text-xs py-1 px-2.5">
                                 Disconnect
-                            </button>
+                            </a2-button>
                         </form>
                     </li>
                 }
             </ul>
         </a2-card>
     }
+    else
+    {
+        <a2-card title="Connected Accounts">
+            <a2-empty-state title="No external accounts connected" message="You haven't linked any external identity providers yet." />
+        </a2-card>
+    }
 
     @if (Model.AvailableProviders.Count > 0)
     {
-        <a2-card title="Link Another Account">
-            <p class="text-sm text-gray-600 mb-4">Connect additional identity providers to sign in with one click:</p>
+        <a2-card title="Link Another Account" subtitle="Connect additional identity providers to sign in with one click.">
             <div class="flex flex-wrap gap-3">
                 @foreach (var provider in Model.AvailableProviders)
                 {
                     <form method="post" asp-page-handler="Link">
                         <input type="hidden" name="Provider" value="@provider.Name" />
-                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <a2-button type="submit" variant="secondary" class="gap-2">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
                             Connect @provider.DisplayName
-                        </button>
+                        </a2-button>
                     </form>
                 }
             </div>

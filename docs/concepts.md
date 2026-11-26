@@ -67,7 +67,7 @@ The code does not ask "is this single mode?" in many places. It asks two abstrac
 
 ## User and membership
 
-One real person is one `AppUser` row. User name and email are unique on the whole server.
+One real person is one `AppUser` row. The **user name is the identity**: it is always unique on the whole server (any letter case), and it can be a plain name, an email address or a phone number (a registration by email or phone sets it to that email or phone). The email is unique too. The rule that ties them together: **one text never names two people.** A person's email or phone number cannot be the user name of somebody else, and a user name cannot be the email or phone number of somebody else (`DuplicateEmail`, `DuplicateUserName`, `phone_number_taken`). A person may use their **own** email or phone number as their user name. See [sign-in lookup](authentication-flows.md#how-a-person-is-found-at-sign-in).
 The `user_projects` row says "this person belongs to this project".
 When credentials are per project, this row also holds the password hash, TOTP key and lockout state.
 

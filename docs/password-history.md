@@ -78,7 +78,7 @@ If `OldPasswordsToKeep = 2` and the person then goes on `C→D→E`, the remembe
 
 ### Expiry
 
-`PasswordExpiryDays > 0` is checked at the **password sign-in** (the hosted page, the password grant, `IAuth2WebService.LoginAsync`), **after** the password was proved right and before the second factor. A password older than the limit answers **`password_expired`** and the person cannot sign in; they are told to use "Forgot password". A **wrong** password still answers the normal `invalid_credentials`, so the age reveals nothing to a guesser. Expiry does not count toward the lockout.
+`PasswordExpiryDays > 0` is checked at the **password sign-in** (the hosted page, the password grant, `IAuth2WebClientService.LoginAsync`), **after** the password was proved right and before the second factor. A password older than the limit answers **`password_expired`** and the person cannot sign in; they are told to use "Forgot password". A **wrong** password still answers the normal `invalid_credentials`, so the age reveals nothing to a guesser. Expiry does not count toward the lockout.
 
 How old a password is: `password_changed_at_utc` of the current project's credentials (or of the user for shared credentials). A password **without a recorded date** (set before this feature, or by SQL) counts from the day the person **joined the project** (shared credentials: from the day the person was created). So turning expiry on can make old accounts expire at once; that is the meaning of the rule. The way out is the reset flow, which sets a new password and a new date.
 
@@ -107,7 +107,7 @@ POST /connect/token   grant_type=password&username=sara&password=...&client_id=.
 With the Client package (Self UI):
 
 ```csharp
-var result = await web.LoginAsync(HttpContext, new LoginRequest(model.Login, model.Password), model.RememberMe, ct);
+var result = await web.LoginAsync(new LoginRequest(model.Login, model.Password), model.RememberMe, ct);
 if (!result.IsSuccess && result.Error!.Code == "password_expired")
     return RedirectToAction("ForgotPassword");   // your page: ask for the email, then api.ForgotPasswordAsync(new ForgotPasswordRequest(email))
 ```

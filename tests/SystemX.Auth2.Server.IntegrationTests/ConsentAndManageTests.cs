@@ -254,8 +254,50 @@ public class ManagePagesTests : Phase6Base
         }
 
         (await b.PostPageAsync("/Manage/TwoFactor/RecoveryCodes", new Dictionary<string, string> { ["Input.Code"] = Totp.Now(key) })).StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await b.PostPageAsync("/Manage/TwoFactor/Enable?handler=Disable", new Dictionary<string, string> { ["Input.Password"] = "Wrong-Password-1" })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        (await b.PostPageAsync("/Manage/TwoFactor/Enable?handler=Disable", new Dictionary<string, string> { ["Input.Password"] = PassA })).StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        (await b.PostPageAsync("/Manage/TwoFactor/Enable?handler=Disable", new Dictionary<string, string> { ["Input.Password"] = "Wrong-Password-1", ["Input.Code"] = Totp.Now(key) })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await b.PostPageAsync("/Manage/TwoFactor/Enable?handler=Disable", new Dictionary<string, string> { ["Input.Password"] = PassA, ["Input.Code"] = "000000" })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await b.PostPageAsync("/Manage/TwoFactor/Enable?handler=Disable", new Dictionary<string, string> { ["Input.Password"] = PassA, ["Input.Code"] = Totp.Now(key) })).StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        await using (var scope = ScopeFor("appa"))
+        {
+            var m = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>();
+            (await m.GetTwoFactorEnabledAsync((await m.FindByNameAsync("sara"))!)).ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public async Task TwoFactor_CanBeDisabledWithRecoveryCode_EvenWithoutHyphenOrInLowerCase()
+    {
+        var b = await SignedInAsync();
+        await b.GetAsync("/Manage/TwoFactor/Enable");
+
+        string key;
+        await using (var scope = ScopeFor("appa"))
+        {
+            var m = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>();
+            key = (await m.GetAuthenticatorKeyAsync((await m.FindByNameAsync("sara"))!))!;
+        }
+        var enableRes = await b.PostPageAsync("/Manage/TwoFactor/Enable", new Dictionary<string, string> { ["Input.Code"] = Totp.Now(key) });
+        enableRes.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var html = await enableRes.Content.ReadAsStringAsync();
+        var match = System.Text.RegularExpressions.Regex.Match(html, @"[A-Z0-9]{5}-[A-Z0-9]{5}");
+        match.Success.ShouldBeTrue();
+        var recoveryCode = match.Value;
+
+        var looseCode = recoveryCode.Replace("-", "").ToLowerInvariant();
+
+        // 1. Wrong password fails
+        (await b.PostPageAsync("/Manage/TwoFactor/Enable?handler=Disable", new Dictionary<string, string> { ["Input.Password"] = "Wrong", ["Input.Code"] = looseCode })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        // 2. Correct password and loose recovery code succeeds!
+        var disableRes = await b.PostPageAsync("/Manage/TwoFactor/Enable?handler=Disable", new Dictionary<string, string> { ["Input.Password"] = PassA, ["Input.Code"] = looseCode });
+        disableRes.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+
+        await using (var scope = ScopeFor("appa"))
+        {
+            var m = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>();
+            (await m.GetTwoFactorEnabledAsync((await m.FindByNameAsync("sara"))!)).ShouldBeFalse();
+        }
     }
 
     [Fact]

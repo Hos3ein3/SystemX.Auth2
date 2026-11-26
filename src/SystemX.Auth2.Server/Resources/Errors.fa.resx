@@ -87,6 +87,10 @@
   <data name="two_factor_setup_required" xml:space="preserve"><value>ورود به این برنامه مستلزم فعال‌سازی ورود دومرحله‌ای است.</value></data>
   <data name="grant_not_allowed" xml:space="preserve"><value>این نوع درخواست اعطای دسترسی مجاز نیست.</value></data>
   <data name="two_factor_not_enabled" xml:space="preserve"><value>ورود دومرحله‌ای فعال نشده است.</value></data>
+  <data name="totp_required" xml:space="preserve"><value>برای این عملیات کدی از برنامه احراز هویت لازم است.</value></data>
+  <data name="totp_setup_required" xml:space="preserve"><value>این عملیات به احراز هویت دو مرحله‌ای نیاز دارد. ابتدا آن را در حساب خود فعال کنید.</value></data>
+  <data name="project_name_taken" xml:space="preserve"><value>پروژه‌ای با این نام از قبل وجود دارد. نام دیگری انتخاب کنید.</value></data>
+  <data name="phone_number_taken" xml:space="preserve"><value>این شماره تلفن از قبل نام کاربری شخص دیگری است.</value></data>
   <data name="two_factor_not_allowed" xml:space="preserve"><value>برنامه اجازه ورود دومرحله‌ای با برنامه‌های احراز هویت را نمی‌دهد.</value></data>
   <data name="consent_required" xml:space="preserve"><value>برای ادامه نیاز به تأیید دسترسی توسط کاربر است.</value></data>
   <data name="external_email_exists_not_verified" xml:space="preserve"><value>حسابی با این ایمیل وجود دارد اما توسط سرویس‌دهنده تأیید نشده است. لطفاً با روش معمول وارد شوید و حساب را متصل کنید.</value></data>

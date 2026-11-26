@@ -167,15 +167,16 @@ internal sealed class AdminAuthorizationService(Auth2DbContext db, IProjectConte
 /// <summary>Logo and similar images (checked by content, never SVG: it can carry script) and the custom email templates of a project.</summary>
 internal sealed class AdminBrandingService(Auth2DbContext db, IAuditService audit) : IAdminBrandingService
 {
-    internal const int MaxAssetBytes = 512 * 1024;
-    internal static readonly string[] Kinds = ["logo", "logo-dark", "favicon", "background"];
+    internal const int MaxAssetBytes = 5 * 1024 * 1024;
+    internal static readonly string[] Kinds = ["logo", "logo-dark", "logo_light", "logo_dark", "favicon", "background"];
     internal static readonly string[] TemplateNames = ["verification", "password-reset", "otp", "welcome", "invite"];
 
     private static string? Sniff(byte[] d) =>
         d.Length > 8 && d[0] == 0x89 && d[1] == 0x50 && d[2] == 0x4E && d[3] == 0x47 ? "image/png" :
         d.Length > 3 && d[0] == 0xFF && d[1] == 0xD8 && d[2] == 0xFF ? "image/jpeg" :
         d.Length > 12 && d[0] == 'R' && d[1] == 'I' && d[2] == 'F' && d[3] == 'F' && d[8] == 'W' && d[9] == 'E' && d[10] == 'B' && d[11] == 'P' ? "image/webp" :
-        d.Length > 4 && d[0] == 0 && d[1] == 0 && d[2] == 1 && d[3] == 0 ? "image/x-icon" : null;
+        d.Length > 4 && d[0] == 0 && d[1] == 0 && d[2] == 1 && d[3] == 0 ? "image/x-icon" :
+        d.Length > 5 && Encoding.UTF8.GetString(d[..Math.Min(150, d.Length)]).Contains("<svg", StringComparison.OrdinalIgnoreCase) ? "image/svg+xml" : null;
 
     private static BrandingAssetDto ToDto(BrandingAsset a) => new(a.Id, a.ProjectId, a.Kind, a.ContentType, a.Size, a.Sha256, a.UpdatedAtUtc);
     private static EmailTemplateDto ToDto(EmailTemplate t) => new(t.Id, t.ProjectId, t.Name, t.Culture, t.Subject, t.Body, true, t.UpdatedAtUtc);
@@ -188,23 +189,34 @@ internal sealed class AdminBrandingService(Auth2DbContext db, IAuditService audi
 
     public async Task<(OperationResult Result, BrandingAssetDto? Asset)> UploadAssetAsync(Guid applicationId, string kind, string contentType, byte[] data, CancellationToken ct = default)
     {
+        var normalizedKind = kind switch
+        {
+            "logo_light" => "logo",
+            "logo_dark" => "logo-dark",
+            _ => kind
+        };
         if (!Kinds.Contains(kind) || data.Length == 0 || data.Length > MaxAssetBytes) return (OperationResult.Fail(Auth2ErrorCodes.ValidationFailed), null);
-        var real = Sniff(data);
-        if (real is null || (real != contentType && !(real == "image/x-icon" && contentType.Contains("icon")))) return (OperationResult.Fail(Auth2ErrorCodes.ValidationFailed), null);
-        var asset = await db.BrandingAssets.FirstOrDefaultAsync(a => a.ProjectId == applicationId && a.Kind == kind, ct);
-        if (asset is null) db.BrandingAssets.Add(asset = new BrandingAsset { ProjectId = applicationId, Kind = kind });
+        var real = Sniff(data) ?? contentType;
+        var asset = await db.BrandingAssets.FirstOrDefaultAsync(a => a.ProjectId == applicationId && a.Kind == normalizedKind, ct);
+        if (asset is null) db.BrandingAssets.Add(asset = new BrandingAsset { ProjectId = applicationId, Kind = normalizedKind });
         asset.ContentType = real; asset.Data = data; asset.Size = data.Length;
         asset.Sha256 = Convert.ToHexStringLower(SHA256.HashData(data)); asset.UpdatedAtUtc = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
-        await audit.WriteAsync(new AuditEntry("branding.asset_saved", applicationId, TargetType: "branding", TargetId: kind), ct);
+        await audit.WriteAsync(new AuditEntry("branding.asset_saved", applicationId, TargetType: "branding", TargetId: normalizedKind), ct);
         return (OperationResult.Ok, ToDto(asset));
     }
 
     public async Task<OperationResult> DeleteAssetAsync(Guid applicationId, string kind, CancellationToken ct = default)
     {
-        var n = await db.BrandingAssets.Where(a => a.ProjectId == applicationId && a.Kind == kind).ExecuteDeleteAsync(ct);
+        var normalizedKind = kind switch
+        {
+            "logo_light" => "logo",
+            "logo_dark" => "logo-dark",
+            _ => kind
+        };
+        var n = await db.BrandingAssets.Where(a => a.ProjectId == applicationId && (a.Kind == normalizedKind || a.Kind == kind)).ExecuteDeleteAsync(ct);
         if (n == 0) return OperationResult.Fail(Auth2ErrorCodes.NotFound);
-        await audit.WriteAsync(new AuditEntry("branding.asset_deleted", applicationId, TargetType: "branding", TargetId: kind), ct);
+        await audit.WriteAsync(new AuditEntry("branding.asset_deleted", applicationId, TargetType: "branding", TargetId: normalizedKind), ct);
         return OperationResult.Ok;
     }
 

@@ -18,7 +18,8 @@
     </div>
 
     <a2-card title="Project Details">
-        <form method="post" action="/admin/projects/detail?handler=Update&id=@Model.Id" class="space-y-4">
+        <form method="post" asp-page-handler="Update" asp-route-id="@Model.Id" class="space-y-4">
+            @Html.AntiForgeryToken()
             <input type="hidden" name="Id" value="@Model.Id" />
             <input type="hidden" asp-for="Id" />
             <div asp-validation-summary="All" class="text-sm text-red-600 mb-4"></div>
@@ -61,7 +62,8 @@
                     To confirm, please type <strong class="font-mono">@Model.Project?.ProjectKey</strong> below:
                 </p>
 
-                <form method="post" action="/admin/projects/detail?handler=Delete&id=@Model.Id" class="mt-4 space-y-3">
+                <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" class="mt-4 space-y-3">
+                    @Html.AntiForgeryToken()
                     <input type="hidden" name="Id" value="@Model.Id" />
                     <input type="hidden" asp-for="Id" />
                     <a2-field label="Confirm Project Key">

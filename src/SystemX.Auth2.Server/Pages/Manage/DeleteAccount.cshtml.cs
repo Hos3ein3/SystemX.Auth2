@@ -23,12 +23,14 @@ public sealed class DeleteAccountModel(IClientIdAccessor clientId, IAuthFlowReso
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await LoadSessionAsync()) return Page();
+        if (await RequireRecentTotpAsync() is { } ask) return ask;   // a restricted page: a code of the authenticator app first
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
         if (!await LoadSessionAsync()) return Page();
+        if (await RequireRecentTotpAsync(Request.Path.Value) is { } ask) return ask;
         if (!ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
 
         var userManager = Svc<UserManager<AppUser>>();

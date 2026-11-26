@@ -16,8 +16,8 @@ namespace SystemX.Auth2.Client.Services;
 /// (<c>en</c>, <c>fa</c>, <c>nl</c>, <c>it</c>). Use <see cref="WithCulture"/> to choose it for some calls. The error <b>code</b> never changes with the language.
 /// </para>
 /// <para>
-/// <b>Cookies.</b> This service never makes a cookie and never keeps a token. Login methods only return the tokens. For an application with cookie sign-in use
-/// <c>IAuth2WebService</c>, which calls this service and then signs the cookie in.
+/// <b>Cookies and tokens.</b> This service never makes a cookie and never keeps a token. Login methods only return the tokens; the methods that act for a person find the token of the current request by themselves. For an application with cookie sign-in use
+/// <c>IAuth2WebClientService</c>, which calls this service and then signs the cookie in.
 /// </para>
 /// </summary>
 public interface IAuth2ApiClientService
@@ -27,6 +27,21 @@ public interface IAuth2ApiClientService
     /// Nothing is changed on this instance: use the returned one.
     /// </summary>
     IAuth2ApiClientService WithCulture(string? culture);
+
+    /// <summary>
+    /// The same service with tokens that you choose. <b>Normally you do not need it</b>: the methods that act for a person (<see cref="GetMeAsync"/>, <see cref="ChangePasswordAsync"/>,
+    /// two-factor, <see cref="Admin"/>, ...) take the access token of the current request themselves (<see cref="CurrentUser.IAuth2AccessTokenAccessor"/>: the bearer header of the request, or the token
+    /// saved by the cookie sign-in), and <see cref="RefreshAsync"/> / <see cref="LogoutAsync"/> take the refresh token saved by the cookie sign-in. Use this where there is no request
+    /// (a background job, a script, a test) or when you hold the person's tokens yourself (an API that passes the tokens of its caller). A <c>null</c> value falls back to the current request.
+    /// Nothing is changed on this instance: use the returned one.
+    /// </summary>
+    IAuth2ApiClientService WithTokens(string? accessToken, string? refreshToken = null);
+
+    /// <summary>
+    /// The people, roles, permissions, groups and scopes of the project: create, read, change and delete, and who has what, with the access token of a signed-in admin
+    /// (scope <c>auth2.admin</c>). See <see cref="IAuth2AdminClientService"/>.
+    /// </summary>
+    IAuth2AdminClientService Admin { get; }
 
     /// <summary>Registers a user (or adds an existing person; see <c>RegisterResponse</c>). Needs the client scope <c>auth2.register</c>.</summary>
     Task<Result<RegisterResponse>> RegisterAsync(RegisterRequest request, CancellationToken ct = default);
@@ -52,17 +67,17 @@ public interface IAuth2ApiClientService
     /// <summary>Finishes a password reset with the token from the email.</summary>
     Task<Result> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default);
 
-    /// <summary>Changes the password of the user who owns <paramref name="accessToken"/>.</summary>
-    Task<Result> ChangePasswordAsync(string accessToken, ChangePasswordRequest request, CancellationToken ct = default);
+    /// <summary>Changes the password of the signed-in user.</summary>
+    Task<Result> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct = default);
 
     /// <summary>Gets new tokens with a refresh token. The refresh token can be used once; keep the new one.</summary>
-    Task<Result<LoginResponse>> RefreshAsync(string refreshToken, CancellationToken ct = default);
+    Task<Result<LoginResponse>> RefreshAsync(CancellationToken ct = default);
 
     /// <summary>Revokes a refresh token (sign-out on the server).</summary>
-    Task<Result> LogoutAsync(string refreshToken, CancellationToken ct = default);
+    Task<Result> LogoutAsync(CancellationToken ct = default);
 
     /// <summary>The signed-in user and their roles, permissions and groups (<c>GET /api/auth2/me</c>).</summary>
-    Task<Result<CurrentUserInfo>> GetMeAsync(string accessToken, CancellationToken ct = default);
+    Task<Result<CurrentUserInfo>> GetMeAsync(CancellationToken ct = default);
 
     /// <summary>Makes a handshake now and updates <c>Auth2ClientState</c>. Use it to try again after a start-up failure.</summary>
     Task<Result<ClientHandshakeResponse>> HandshakeAsync(CancellationToken ct = default);
@@ -114,31 +129,37 @@ public interface IAuth2ApiClientService
     // ---- two-factor (user token with the scope auth2.me)
 
     /// <summary>Makes the key for the authenticator app. Show <c>SharedKey</c> and <c>AuthenticatorUri</c> (as a QR code), then call <see cref="EnableTwoFactorAsync"/>.</summary>
-    Task<Result<TwoFactorSetupResponse>> SetupTwoFactorAsync(string accessToken, CancellationToken ct = default);
+    Task<Result<TwoFactorSetupResponse>> SetupTwoFactorAsync(CancellationToken ct = default);
 
     /// <summary>Turns two-factor on with the first code of the app. The recovery codes in the answer are shown once.</summary>
-    Task<Result<TwoFactorEnableResponse>> EnableTwoFactorAsync(string accessToken, TwoFactorEnableRequest request, CancellationToken ct = default);
+    Task<Result<TwoFactorEnableResponse>> EnableTwoFactorAsync(TwoFactorEnableRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Asks the Server to check one code of the authenticator app for the signed-in user (the access token). Used by <c>WithTotp()</c> / <c>[Auth2Totp]</c> before a sensitive action.
+    /// A code works once, and a wrong code counts as a failed sign-in attempt. Failures: <c>invalid_otp</c>, <c>two_factor_not_enabled</c>, <c>locked_out</c>.
+    /// </summary>
+    Task<Result> VerifyTotpAsync(TwoFactorVerifyRequest request, CancellationToken ct = default);
 
     /// <summary>Turns two-factor off. The password is needed. Refused when the application requires two-factor.</summary>
-    Task<Result> DisableTwoFactorAsync(string accessToken, TwoFactorDisableRequest request, CancellationToken ct = default);
+    Task<Result> DisableTwoFactorAsync(TwoFactorDisableRequest request, CancellationToken ct = default);
 
     /// <summary>Makes new recovery codes (the old ones stop working). A code from the authenticator app is needed. The codes are shown once.</summary>
-    Task<Result<RecoveryCodesResponse>> RegenerateRecoveryCodesAsync(string accessToken, RecoveryCodesRequest request, CancellationToken ct = default);
+    Task<Result<RecoveryCodesResponse>> RegenerateRecoveryCodesAsync(RecoveryCodesRequest request, CancellationToken ct = default);
 
     // ---- change the own details (user token with the scope auth2.me)
 
     /// <summary>Changes the user name at once. A person who has a password must send it.</summary>
-    Task<Result> ChangeUserNameAsync(string accessToken, ChangeUserNameRequest request, CancellationToken ct = default);
+    Task<Result> ChangeUserNameAsync(ChangeUserNameRequest request, CancellationToken ct = default);
 
     /// <summary>Starts an email change: a link goes to the <b>new</b> address and nothing changes yet. Finish with <see cref="ConfirmEmailChangeAsync"/>.</summary>
-    Task<Result> RequestEmailChangeAsync(string accessToken, ChangeEmailRequest request, CancellationToken ct = default);
+    Task<Result> RequestEmailChangeAsync(ChangeEmailRequest request, CancellationToken ct = default);
 
     /// <summary>Finishes an email change with the new address and the token of the link. The address is replaced and marked as confirmed.</summary>
-    Task<Result> ConfirmEmailChangeAsync(string accessToken, ConfirmEmailChangeRequest request, CancellationToken ct = default);
+    Task<Result> ConfirmEmailChangeAsync(ConfirmEmailChangeRequest request, CancellationToken ct = default);
 
     /// <summary>Starts a phone change: an SMS code goes to the <b>new</b> number and nothing changes yet. Finish with <see cref="ConfirmPhoneChangeAsync"/>.</summary>
-    Task<Result> RequestPhoneChangeAsync(string accessToken, ChangePhoneNumberRequest request, CancellationToken ct = default);
+    Task<Result> RequestPhoneChangeAsync(ChangePhoneNumberRequest request, CancellationToken ct = default);
 
     /// <summary>Finishes a phone change with the new number and the code. The number is replaced and marked as confirmed.</summary>
-    Task<Result> ConfirmPhoneChangeAsync(string accessToken, ConfirmPhoneChangeRequest request, CancellationToken ct = default);
+    Task<Result> ConfirmPhoneChangeAsync(ConfirmPhoneChangeRequest request, CancellationToken ct = default);
 }

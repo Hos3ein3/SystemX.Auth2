@@ -45,8 +45,8 @@ In single-project mode the only project id is the one of the single project.
 |---|---|---|
 | `GET /projects` | project admin (sees only the own), global admin (all) | Paged list |
 | `GET /projects/{projectId}` | project (own) / global | One project |
-| `POST /projects` | global | Create a project: `{ projectKey, name, description }`. The key never changes. Add applications next |
-| `PUT /projects/{projectId}` | project admin (rename only) / global | Name, description, `isEnabled` (+ `reason`). **Only a global admin may disable or enable.** Disabling revokes all tokens, authorizations and sessions of the project in one transaction and writes an audit event with the admin and the reason. `_global` cannot be disabled |
+| `POST /projects` | global | Create a project: `{ projectKey, name, description }`. The key never changes. The **name is unique** (compared without letter case and without spaces around): a second project with the same name is `409 project_name_taken`. Add applications next |
+| `PUT /projects/{projectId}` | project admin (rename only) / global (a rename to the name of another project is `409 project_name_taken`; a project may keep its own name or change only its letters) | Name, description, `isEnabled` (+ `reason`). **Only a global admin may disable or enable.** Disabling revokes all tokens, authorizations and sessions of the project in one transaction and writes an audit event with the admin and the reason. `_global` cannot be disabled |
 | `DELETE /projects/{projectId}` | global | Delete with all its data and its applications. Not `_global` |
 | `GET /projects/{projectId}/settings` | project (own) / global | Project settings JSON, with `ETag: "v3"` |
 | `PUT /projects/{projectId}/settings` | project (own) / global | Replace the settings. A project admin may change only `ProjectAdminEditable` settings; others give `403` and the list of paths |
@@ -87,7 +87,7 @@ The routes of users, roles, permissions, groups, audit and external identity are
 | `POST /users/{id}/reset-2fa` | Two-factor off, key and recovery codes gone, sessions end |
 | `GET`, `DELETE /users/{id}/sessions`, `DELETE /users/{id}/sessions/{sessionId}` | List and end sessions |
 | `GET /users/{id}/access` | Effective roles, permissions, groups |
-| `PUT`, `DELETE /users/{id}/roles/{roleId}` | Give or take a role. Only a global admin may handle `GlobalAdmin` |
+| `PUT`, `DELETE /users/{id}/roles/{roleId}` | Give or take a role. The built-in roles `GlobalAdmin` and `Developer` can be given and taken away only by a person who holds `GlobalAdmin` or `Developer` (`403` otherwise), see [the built-in roles](access-concepts.md#the-built-in-roles-globaladmin-and-developer) |
 | `PUT /users/{id}/project-admin` | Make the user a project admin of the project (creates the role the first time) |
 | `PUT`, `DELETE /users/{id}/permissions/{key}` | Direct permission |
 | `PUT`, `DELETE /users/{id}/groups/{groupId}` | Group membership |
@@ -96,12 +96,23 @@ The routes of users, roles, permissions, groups, audit and external identity are
 
 | Route | Does |
 |---|---|
-| `GET`, `POST /roles`, `DELETE /roles/{id}` | List (with permission keys), create, delete (not system roles) |
+| `GET`, `POST /roles`, `GET`, `PUT`, `DELETE /roles/{id}` | List (with permission keys), create, read one, change the description, delete. A role is never renamed (`PUT` with another `name` is `400`); system roles, `GlobalAdmin`, `Developer` and global roles are not changed or deleted (`403`) |
 | `GET /roles/{id}/permissions`, `PUT`, `DELETE /roles/{id}/permissions/{key}` | Permissions of a role |
-| `GET`, `POST /permissions`, `PUT /permissions/{id}/obsolete`, `DELETE /permissions/{id}` | List, create, mark obsolete, delete |
-| `GET`, `POST /groups`, `DELETE /groups/{id}` | List (roles, permissions, member count), create, delete |
+| `GET`, `POST /permissions`, `GET`, `PUT /permissions/{id}`, `PUT /permissions/{id}/obsolete`, `DELETE /permissions/{id}` | List, create, read one, change the texts (`displayName`, `description`, `group`; the key never changes; a permission of the global project is not changed from another project: `403`), mark obsolete, delete |
+| `GET`, `POST /groups`, `GET`, `PUT`, `DELETE /groups/{id}` | List (roles, permissions, member count), create, read one, change `displayName` and `description`, delete |
 | `GET /groups/{id}/members`, `PUT`, `DELETE /groups/{id}/members/{userId}` | Members |
 | `PUT`, `DELETE /groups/{id}/roles/{roleId}`, `/groups/{id}/permissions/{key}` | Roles and permissions of a group |
+
+`POST /roles`, `/permissions` and `/groups` answer `201` with the new item (`AdminRoleDto`, `AdminPermissionDto`, `AdminGroupDto`, with its `id`). In `PUT` bodies a missing or `null` field keeps the old value and an empty text clears it.
+
+### Scopes
+
+| Route | Does |
+|---|---|
+| `GET /projects/{projectId}/scopes?q=&page=&pageSize=`, `GET /projects/{projectId}/scopes/{id}` | List and read. Scopes belong to the whole server; every admin may read them |
+| `POST /projects/{projectId}/scopes`, `PUT`, `DELETE /projects/{projectId}/scopes/{id}` | Create (`201`), change (`200`), delete (`204`). **GlobalAdmin only** (`403` for a project admin). The name has no spaces (`400`), an existing name is `409`, a scope that an application uses cannot be deleted (`409`) |
+
+From a client application you do not need to build these calls: [the Client package wraps all of them](client-api-service.md#people-roles-permissions-groups-and-scopes-the-admin-calls).
 
 The effects on access are described in [authorization.md](authorization.md).
 

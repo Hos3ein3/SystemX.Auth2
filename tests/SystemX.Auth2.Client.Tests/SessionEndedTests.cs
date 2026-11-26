@@ -1,3 +1,4 @@
+using SystemX.Auth2.Client.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +11,7 @@ namespace SystemX.Auth2.Client.Tests;
 /// <summary>The user signed out on the server while this application still has a cookie: not an error, the session is over.</summary>
 public class SessionEndedTests
 {
-    private readonly IAuth2WebService _web = Substitute.For<IAuth2WebService>();
+    private readonly IAuth2WebClientService _web = Substitute.For<IAuth2WebClientService>();
     private readonly IAuthenticationService _authentication = Substitute.For<IAuthenticationService>();
 
     private DefaultHttpContext Context(Action<DefaultHttpContext>? setup = null)
@@ -36,7 +37,7 @@ public class SessionEndedTests
         var http = Context();
         await Run(http, Auth2ErrorCodes.InvalidToken);
         await _authentication.Received(1).SignOutAsync(http, Auth2AuthSchemes.Cookie, Arg.Any<AuthenticationProperties?>());
-        await _web.Received(1).ChallengeAsync(http, "/Home/Privacy");
+        await _web.Received(1).ChallengeAsync("/Home/Privacy");
     }
 
     [Fact]
@@ -45,7 +46,7 @@ public class SessionEndedTests
         var http = Context(h => h.Request.Headers.Authorization = "Bearer abc");
         await Run(http, Auth2ErrorCodes.InvalidToken);
         http.Response.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
-        await _web.DidNotReceiveWithAnyArgs().ChallengeAsync(default!, default);
+        await _web.DidNotReceiveWithAnyArgs().ChallengeAsync(default);
     }
 
     [Fact]
@@ -62,6 +63,6 @@ public class SessionEndedTests
         var http = Context();
         await Run(http, null);
         http.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
-        await _web.DidNotReceiveWithAnyArgs().ChallengeAsync(default!, default);
+        await _web.DidNotReceiveWithAnyArgs().ChallengeAsync(default);
     }
 }

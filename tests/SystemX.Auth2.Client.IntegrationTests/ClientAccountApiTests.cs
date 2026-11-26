@@ -95,12 +95,12 @@ public class ClientAccountApiTests : ClientTestBase
         await using var client = await StartAsync();
         var (api, token) = await SignedInAsync(client);
 
-        var setup = await api.SetupTwoFactorAsync(token);
+        var setup = await api.WithTokens(token).SetupTwoFactorAsync();
         setup.IsSuccess.ShouldBeTrue(setup.Error?.Code);
         setup.Value!.AuthenticatorUri.ShouldStartWith("otpauth://totp/");
 
-        (await api.EnableTwoFactorAsync(token, new TwoFactorEnableRequest("000000"))).IsSuccess.ShouldBeFalse();
-        var enabled = await api.EnableTwoFactorAsync(token, new TwoFactorEnableRequest(Totp.Now(setup.Value.SharedKey)));
+        (await api.WithTokens(token).EnableTwoFactorAsync(new TwoFactorEnableRequest("000000"))).IsSuccess.ShouldBeFalse();
+        var enabled = await api.WithTokens(token).EnableTwoFactorAsync(new TwoFactorEnableRequest(Totp.Now(setup.Value.SharedKey)));
         enabled.IsSuccess.ShouldBeTrue(enabled.Error?.Code);
         enabled.Value!.RecoveryCodes.ShouldNotBeEmpty();
 
@@ -109,13 +109,13 @@ public class ClientAccountApiTests : ClientTestBase
         var second = await api.TwoFactorLoginAsync(new TwoFactorRequest(first.Value.TwoFactorToken!, Totp.Now(setup.Value.SharedKey)));
         second.IsSuccess.ShouldBeTrue(second.Error?.Code);
 
-        var fresh = await api.RegenerateRecoveryCodesAsync(second.Value!.AccessToken!, new RecoveryCodesRequest(Totp.Now(setup.Value.SharedKey)));
+        var fresh = await api.WithTokens(second.Value!.AccessToken!).RegenerateRecoveryCodesAsync(new RecoveryCodesRequest(Totp.Now(setup.Value.SharedKey)));
         fresh.IsSuccess.ShouldBeTrue(fresh.Error?.Code);
         fresh.Value!.Codes.ShouldNotBeEmpty();
         fresh.Value.Codes.ShouldNotContain(enabled.Value.RecoveryCodes[0]);
 
-        (await api.DisableTwoFactorAsync(second.Value.AccessToken!, new TwoFactorDisableRequest("Wrong-Password-1"))).IsSuccess.ShouldBeFalse();
-        (await api.DisableTwoFactorAsync(second.Value.AccessToken!, new TwoFactorDisableRequest(Password))).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens(second.Value.AccessToken!).DisableTwoFactorAsync(new TwoFactorDisableRequest("Wrong-Password-1"))).IsSuccess.ShouldBeFalse();
+        (await api.WithTokens(second.Value.AccessToken!).DisableTwoFactorAsync(new TwoFactorDisableRequest(Password))).IsSuccess.ShouldBeTrue();
         (await api.LoginAsync(new LoginRequest("sara", Password))).Value!.TwoFactorRequired.ShouldBeFalse();
     }
 
@@ -127,9 +127,9 @@ public class ClientAccountApiTests : ClientTestBase
         await using var client = await StartAsync();
         var (api, token) = await SignedInAsync(client);
 
-        (await api.ChangeUserNameAsync(token, new ChangeUserNameRequest("sara2", "Wrong-Password-1"))).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidCredentials);
-        (await api.ChangeUserNameAsync(token, new ChangeUserNameRequest("sara2", Password))).IsSuccess.ShouldBeTrue();
-        (await api.GetMeAsync((await api.LoginAsync(new LoginRequest("sara2", Password))).Value!.AccessToken!)).Value!.UserName.ShouldBe("sara2");
+        (await api.WithTokens(token).ChangeUserNameAsync(new ChangeUserNameRequest("sara2", "Wrong-Password-1"))).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidCredentials);
+        (await api.WithTokens(token).ChangeUserNameAsync(new ChangeUserNameRequest("sara2", Password))).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens((await api.LoginAsync(new LoginRequest("sara2", Password))).Value!.AccessToken!).GetMeAsync()).Value!.UserName.ShouldBe("sara2");
     }
 
     [Fact]
@@ -138,13 +138,13 @@ public class ClientAccountApiTests : ClientTestBase
         await using var client = await StartAsync();
         var (api, token) = await SignedInAsync(client);
 
-        (await api.RequestEmailChangeAsync(token, new ChangeEmailRequest("sara.new@example.com", Password))).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens(token).RequestEmailChangeAsync(new ChangeEmailRequest("sara.new@example.com", Password))).IsSuccess.ShouldBeTrue();
         var link = new Uri(Server.Messages.LastEmailTo("sara.new@example.com")!.Data!["link"]);
         var query = QueryHelpers.ParseQuery(link.Query);
 
-        (await api.ConfirmEmailChangeAsync(token, new ConfirmEmailChangeRequest("sara.new@example.com", "wrong-token"))).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);
-        (await api.ConfirmEmailChangeAsync(token, new ConfirmEmailChangeRequest(query["email"]!, query["token"]!))).IsSuccess.ShouldBeTrue();
-        (await api.GetMeAsync((await api.LoginAsync(new LoginRequest("sara", Password))).Value!.AccessToken!)).Value!.Email.ShouldBe("sara.new@example.com");
+        (await api.WithTokens(token).ConfirmEmailChangeAsync(new ConfirmEmailChangeRequest("sara.new@example.com", "wrong-token"))).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);
+        (await api.WithTokens(token).ConfirmEmailChangeAsync(new ConfirmEmailChangeRequest(query["email"]!, query["token"]!))).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens((await api.LoginAsync(new LoginRequest("sara", Password))).Value!.AccessToken!).GetMeAsync()).Value!.Email.ShouldBe("sara.new@example.com");
     }
 
     [Fact]
@@ -153,12 +153,12 @@ public class ClientAccountApiTests : ClientTestBase
         await using var client = await StartAsync();
         var (api, token) = await SignedInAsync(client);
 
-        (await api.RequestPhoneChangeAsync(token, new ChangePhoneNumberRequest("+15551234567", Password))).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens(token).RequestPhoneChangeAsync(new ChangePhoneNumberRequest("+15551234567", Password))).IsSuccess.ShouldBeTrue();
         var code = Server.Messages.LastTextTo("+15551234567")!.Data!["code"];
 
-        (await api.ConfirmPhoneChangeAsync(token, new ConfirmPhoneChangeRequest("+15551234567", code == "000000" ? "111111" : "000000"))).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidOtp);
-        (await api.ConfirmPhoneChangeAsync(token, new ConfirmPhoneChangeRequest("+15551234567", code))).IsSuccess.ShouldBeTrue();
-        (await api.GetMeAsync((await api.LoginAsync(new LoginRequest("sara", Password))).Value!.AccessToken!)).Value!.PhoneNumber.ShouldBe("+15551234567");
+        (await api.WithTokens(token).ConfirmPhoneChangeAsync(new ConfirmPhoneChangeRequest("+15551234567", code == "000000" ? "111111" : "000000"))).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidOtp);
+        (await api.WithTokens(token).ConfirmPhoneChangeAsync(new ConfirmPhoneChangeRequest("+15551234567", code))).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens((await api.LoginAsync(new LoginRequest("sara", Password))).Value!.AccessToken!).GetMeAsync()).Value!.PhoneNumber.ShouldBe("+15551234567");
     }
 
     // ---- language
@@ -213,8 +213,8 @@ public class ClientAccountApiTests : ClientTestBase
         var (api, token) = await SignedInAsync(client);
         var request = new ChangeUserNameRequest("sara2", "Wrong-Password-1");
 
-        var english = await api.WithCulture("en").ChangeUserNameAsync(token, request);
-        var persian = await api.WithCulture("fa").ChangeUserNameAsync(token, request);
+        var english = await api.WithCulture("en").WithTokens(token).ChangeUserNameAsync(request);
+        var persian = await api.WithCulture("fa").WithTokens(token).ChangeUserNameAsync(request);
         english.Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidCredentials);
         persian.Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidCredentials);
         persian.Error.Message.ShouldNotBe(english.Error.Message);
@@ -234,8 +234,8 @@ public class ClientAccountApiTests : ClientTestBase
         await using var client = await StartAsync();
         var (api, token) = await SignedInAsync(client);
 
-        await api.WithCulture("fa").RequestEmailChangeAsync(token, new ChangeEmailRequest("sara.fa@example.com", Password));
-        await api.WithCulture("en").RequestEmailChangeAsync(token, new ChangeEmailRequest("sara.en@example.com", Password));
+        await api.WithCulture("fa").WithTokens(token).RequestEmailChangeAsync(new ChangeEmailRequest("sara.fa@example.com", Password));
+        await api.WithCulture("en").WithTokens(token).RequestEmailChangeAsync(new ChangeEmailRequest("sara.en@example.com", Password));
         Server.Messages.LastEmailTo("sara.fa@example.com")!.Subject.ShouldBe("نشانی ایمیل جدید خود را تأیید کنید");
         Server.Messages.LastEmailTo("sara.en@example.com")!.Subject.ShouldBe("Confirm your new email address");
     }

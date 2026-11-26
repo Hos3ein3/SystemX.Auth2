@@ -217,4 +217,36 @@ public class AdminPagesTests : Phase6Base
         // What is postRes.StatusCode?
         Assert.True(postRes.StatusCode == HttpStatusCode.Redirect || postRes.StatusCode == HttpStatusCode.OK, $"Status was {postRes.StatusCode}");
     }
+
+    [Fact]
+    public async Task ProjectDetail_PostUpdate_Works()
+    {
+        var b = await GlobalAdminAsync();
+        // Get projects list
+        var listRes = await b.GetAsync("/admin/projects?ClientId=_global");
+        listRes.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var listHtml = await listRes.Content.ReadAsStringAsync();
+
+        var match = System.Text.RegularExpressions.Regex.Match(listHtml, @"/admin/projects/detail\?id=([a-f0-9\-]+)");
+        match.Success.ShouldBeTrue();
+        var projId = match.Groups[1].Value;
+
+        // GET detail
+        var getRes = await b.GetAsync($"/admin/projects/detail?id={projId}&ClientId=_global");
+        getRes.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var getHtml = await getRes.Content.ReadAsStringAsync();
+        getHtml.ShouldContain("Save Changes");
+        getHtml.ShouldContain("name=\"__RequestVerificationToken\"");
+
+        // POST update
+        var postRes = await b.PostPageAsync($"/admin/projects/detail?handler=Update&id={projId}", new Dictionary<string, string>
+        {
+            ["Id"] = projId,
+            ["Input.Name"] = "Updated Project Name",
+            ["Input.Description"] = "Updated Description",
+            ["Input.IsEnabled"] = "true"
+        });
+
+        Assert.True(postRes.StatusCode == HttpStatusCode.Redirect || postRes.StatusCode == HttpStatusCode.OK, $"Status was {postRes.StatusCode}");
+    }
 }

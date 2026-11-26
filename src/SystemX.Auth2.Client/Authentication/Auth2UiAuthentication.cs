@@ -98,7 +98,7 @@ internal sealed class ClientAccessLoader(IAuth2ApiClientService api, ICurrentUse
         var mode = cookie.Value.AccessMode;
         if (mode is AccessLoadMode.Lazy or AccessLoadMode.None || accessToken is null) return;
 
-        var me = await api.GetMeAsync(accessToken, ct);
+        var me = await api.WithTokens(accessToken).GetMeAsync(ct);
         if (!me.IsSuccess)
         {
             log.LogWarning("The access data of the user could not be loaded at sign-in ({Code}). It will be loaded when it is needed.", me.Error!.Code);
@@ -222,85 +222,6 @@ internal sealed class Auth2OidcConfigurator(IOptions<Auth2ClientOptions> client,
             foreach (var claim in jwt.Claims.Where(c => c.Type is "scope" or "scp")) identity.AddClaim(new Claim("scope", claim.Value));
         foreach (var type in new[] { Auth2Claims.ClientId, Auth2Claims.ApplicationId, Auth2Claims.ProjectId, Auth2Claims.ProjectKey, Auth2Claims.SessionId })
             if (!identity.HasClaim(c => c.Type == type) && jwt.Claims.FirstOrDefault(c => c.Type == type) is { } found) identity.AddClaim(new Claim(type, found.Value));
-    }
-}
-
-/// <summary>Sign-in and sign-out for apps that show their own forms (Self UI), and for the hosted UI routes.</summary>
-public interface IAuth2WebService
-{
-    /// <summary>
-    /// Signs a user in with login and password (password grant; the server must allow <c>AllowSelfUiLogin</c>) and makes the cookie.
-    /// When two-factor is needed the result succeeds with <c>TwoFactorRequired = true</c> and <b>no cookie is made</b>: call <see cref="TwoFactorLoginAsync"/> next.
-    /// </summary>
-    Task<Result<LoginResponse>> LoginAsync(HttpContext http, LoginRequest request, bool isPersistent = false, CancellationToken ct = default);
-
-    /// <summary>Second step of a login. Makes the cookie when it works.</summary>
-    Task<Result<LoginResponse>> TwoFactorLoginAsync(HttpContext http, TwoFactorRequest request, bool isPersistent = false, CancellationToken ct = default);
-
-    /// <summary>Signs a user in with a one-time code. Makes the cookie when it works.</summary>
-    Task<Result<LoginResponse>> OtpLoginAsync(HttpContext http, string login, string code, bool isPersistent = false, CancellationToken ct = default);
-
-    /// <summary>Ends the server session (revokes the refresh token) and removes the cookie. For the hosted UI use the <c>/auth2/logout</c> route, which also signs out on the server.</summary>
-    Task LogoutAsync(HttpContext http, CancellationToken ct = default);
-
-    /// <summary>
-    /// Sends the browser to sign in: the hosted UI starts the sign-in on the server; the Self UI goes to your <c>LoginPath</c>. After sign-in the user returns to
-    /// <paramref name="returnUrl"/> (a path on this site; anything else is ignored).
-    /// </summary>
-    Task ChallengeAsync(HttpContext http, string? returnUrl = null);
-}
-
-internal sealed class WebService(IAuth2ApiClientService api, ClientAccessLoader loader, IOptions<Auth2CookieOptions> cookie, IOptions<Auth2ClientOptions> client, Microsoft.Extensions.Options.IOptions<Auth2AuthFlags> flags) : IAuth2WebService
-{
-    private static readonly string[] CopiedClaims = ["sub", "preferred_username", "name", "given_name", "family_name", "email", "email_verified", "phone_number", "locale", Auth2Claims.AccessVersion, "scope", Auth2Claims.ProjectId, Auth2Claims.ProjectKey, Auth2Claims.ApplicationId, Auth2Claims.ClientId, Auth2Claims.SessionId, Auth2Claims.IdentityProvider, Auth2Claims.Amr];
-
-    public Task<Result<LoginResponse>> LoginAsync(HttpContext http, LoginRequest request, bool isPersistent = false, CancellationToken ct = default) =>
-        SignInAsync(http, api.LoginAsync(request, ct), isPersistent, ct);
-
-    public Task<Result<LoginResponse>> TwoFactorLoginAsync(HttpContext http, TwoFactorRequest request, bool isPersistent = false, CancellationToken ct = default) =>
-        SignInAsync(http, api.TwoFactorLoginAsync(request, ct), isPersistent, ct);
-
-    public Task<Result<LoginResponse>> OtpLoginAsync(HttpContext http, string login, string code, bool isPersistent = false, CancellationToken ct = default) =>
-        SignInAsync(http, api.OtpLoginAsync(login, code, ct), isPersistent, ct);
-
-    private async Task<Result<LoginResponse>> SignInAsync(HttpContext http, Task<Result<LoginResponse>> login, bool isPersistent, CancellationToken ct)
-    {
-        var result = await login;
-        if (!result.IsSuccess || result.Value is not { AccessToken: { } accessToken } tokens) return result;   // failure, or the second factor is still needed
-
-        var identity = new ClaimsIdentity(Auth2AuthSchemes.Cookie, "name", "role");
-        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(accessToken);
-        foreach (var claim in jwt.Claims.Where(c => CopiedClaims.Contains(c.Type))) identity.AddClaim(new Claim(claim.Type, claim.Value));
-        var principal = new ClaimsPrincipal(identity);
-        await loader.OnSignedInAsync(principal, accessToken, ct);   // roles in the cookie, or the store, by AccessMode
-
-        var properties = new AuthenticationProperties { IsPersistent = isPersistent };
-        if (cookie.Value.SaveTokens)
-        {
-            var saved = new List<AuthenticationToken> { new() { Name = "access_token", Value = accessToken } };
-            if (tokens.RefreshToken is not null) saved.Add(new AuthenticationToken { Name = "refresh_token", Value = tokens.RefreshToken });
-            if (tokens.IdToken is not null) saved.Add(new AuthenticationToken { Name = "id_token", Value = tokens.IdToken });
-            properties.StoreTokens(saved);
-        }
-        await http.SignInAsync(Auth2AuthSchemes.Cookie, principal, properties);
-        return result;
-    }
-
-    public async Task LogoutAsync(HttpContext http, CancellationToken ct = default)
-    {
-        var refresh = await http.GetTokenAsync(Auth2AuthSchemes.Cookie, "refresh_token");
-        if (!string.IsNullOrEmpty(refresh)) await api.LogoutAsync(refresh, ct);   // best effort: the cookie goes in any case
-        await http.SignOutAsync(Auth2AuthSchemes.Cookie);
-    }
-
-    public Task ChallengeAsync(HttpContext http, string? returnUrl = null)
-    {
-        var target = Auth2Http.SafeReturnUrl(returnUrl);
-        if (flags.Value.Mode == UiMode.Hosted)
-            return http.ChallengeAsync(Auth2AuthSchemes.Oidc, new AuthenticationProperties { RedirectUri = target });
-        http.Response.Redirect($"{cookie.Value.LoginPath}?returnUrl={Uri.EscapeDataString(target)}");
-        _ = client;
-        return Task.CompletedTask;
     }
 }
 

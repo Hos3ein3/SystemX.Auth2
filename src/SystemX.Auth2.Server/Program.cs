@@ -72,6 +72,7 @@ app.MapAuth2External();
 app.MapAuth2Passkeys();
 app.MapAuth2Client();
 app.MapAuth2Admin();
+app.MapAuth2Branding();
 app.MapRazorPages();
 await app.RunAsync();
 

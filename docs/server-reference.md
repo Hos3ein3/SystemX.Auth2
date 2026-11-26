@@ -516,12 +516,14 @@ Reads and changes access data (permissions, roles, role permissions, direct gran
 | `HasPermissionAsync(AppUser, string, CancellationToken)` | True when the user has the permission (key is normalized first). |
 | `ListPermissionsAsync(CancellationToken)` | All permissions of the application. |
 | `CreatePermissionAsync(PermissionDefinition, CancellationToken)` | Creates a permission (manual). Succeeds without change when it already exists. |
+| `UpdatePermissionAsync(string, string, string, string, CancellationToken)` | Changes the texts of a permission of this application (`null` keeps the old text; an empty text clears it). The key never changes. A permission of the global project is not changed from another application (`forbidden`). |
 | `SetPermissionObsoleteAsync(string, bool, CancellationToken)` | Marks a permission as obsolete (or not). Grants stay. |
 | `DeletePermissionAsync(string, CancellationToken)` | Deletes a permission and every grant of it. |
 | `GrantPermissionAsync(AppUser, string, Nullable<Guid>, CancellationToken)` | Grants a permission directly to a user. Succeeds without change when already granted. |
 | `RevokePermissionAsync(AppUser, string, CancellationToken)` | Removes a direct grant. |
 | `ListRolesAsync(CancellationToken)` | All roles visible in the application with their permissions. |
 | `CreateRoleAsync(string, string, CancellationToken)` | Creates a role in the current application. |
+| `UpdateRoleAsync(string, string, CancellationToken)` | Changes the description of a role of this application (`null` keeps it; an empty text clears it). The name never changes (it is in tokens and in policies). A system role, GlobalAdmin, Developer and a global role are not changed here (`forbidden`). |
 | `DeleteRoleAsync(string, CancellationToken)` | Deletes a role of the current application (not a system role). |
 | `AssignRoleAsync(AppUser, string, CancellationToken)` | Gives a role to a user. |
 | `RemoveRoleAsync(AppUser, string, CancellationToken)` | Takes a role from a user. |
@@ -1000,6 +1002,7 @@ Groups of the current application: members, roles and permissions of a group.
 |---|---|
 | `ListAsync(CancellationToken)` | All groups. |
 | `CreateAsync(string, string, string, CancellationToken)` | Creates a group. The name is lowercase, unique per application. |
+| `UpdateAsync(string, string, string, CancellationToken)` | Changes the display name and the description of a group (`null` keeps the old text; an empty text clears it). The name never changes. |
 | `DeleteAsync(string, CancellationToken)` | Deletes a group with its links. |
 | `AddUserAsync(string, AppUser, CancellationToken)` | Adds a user to a group. |
 | `RemoveUserAsync(string, AppUser, CancellationToken)` | Removes a user from a group. |
@@ -1139,6 +1142,15 @@ Idempotent upsert of permissions sent by a client application (current applicati
 | Member | What it does |
 |---|---|
 | `SyncAsync(PermissionSyncRequest, CancellationToken)` | Syncs a list. All-or-nothing: one invalid key rejects the whole request. |
+
+
+### IPrivilegedActor
+
+The person who makes the current change. The roles `PrivilegedRoles` can be given to somebody (a user, or a group, or by joining a group that has them) or taken away only by a `Developer` or a `GlobalAdmin`. These two roles can never be deleted, and no role with their names can be created.
+
+| Member | What it does |
+|---|---|
+| `IsPrivilegedAsync(CancellationToken)` | True when the person who makes this change holds the global role `GlobalAdmin` or `Developer` (read from the database, not from the token). A change that is not made by a person (no web request: the seed, the background jobs) counts as trusted. A request without a signed-in person is not. |
 
 
 ### IProfileService
@@ -1392,6 +1404,7 @@ Authenticator-app two-factor for a signed-in user.
 |---|---|
 | `SetupAsync(AppUser, CancellationToken)` | Makes a key for the authenticator app. |
 | `EnableAsync(AppUser, string, CancellationToken)` | Turns two-factor on after the first code. Returns the recovery codes (shown once). |
+| `VerifyAsync(AppUser, string, bool, CancellationToken)` | Checks one code of the authenticator app for the user (a "step-up" before a sensitive action). A code can be used **once** (a copied code does not work a second time), a wrong code counts as a failed sign-in attempt (so repeated guesses lock the account), and every answer is audited. Recovery codes are not accepted here. A person **without** two-factor: `totp_setup_required` (the action needs it), or success when `optional` is true (the action only asks people who have it). An empty code from a person who has it: `totp_required` (not counted as a failed attempt). |
 | `DisableAsync(AppUser, string, CancellationToken)` | Turns two-factor off. Needs the password. Refused when the application requires two-factor. |
 | `RegenerateRecoveryCodesAsync(AppUser, string, CancellationToken)` | Makes new recovery codes. Needs a code from the authenticator app. |
 
@@ -1607,6 +1620,15 @@ Set while Identity checks a password and may replace the hash by a stronger one 
 | `Active` | True during the check of a password. |
 
 
+### PrivilegedRoles
+
+The two built-in roles that give power over the whole server: `GlobalAdmin` and `Developer`.
+
+| Member | What it does |
+|---|---|
+| `IsPrivileged(string)` | True for `GlobalAdmin` and `Developer` (any letter case, spaces around are ignored). |
+
+
 ### ProjectCreationResult
 
 A new project with its first application and the client secret (plain text, shown once).
@@ -1614,6 +1636,27 @@ A new project with its first application and the client secret (plain text, show
 | Member | What it does |
 |---|---|
 | `(constructor)(Project, ClientApplicationInfo, string)` | A new project with its first application and the client secret (plain text, shown once). |
+
+
+### ProjectNameTakenException
+
+Another project already has this name (compared without letter case and without spaces around). A project name is unique on the server.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string)` | Another project already has this name (compared without letter case and without spaces around). A project name is unique on the server. |
+
+
+### ProjectNames
+
+The rule for the name of a project: it is unique on the server, compared without letter case and without spaces around.
+
+| Member | What it does |
+|---|---|
+| `UniqueIndexName` | The name of the unique index on `lower(btrim(name))` of the table `projects`. |
+| `Clean(string)` | The name as it is saved: without spaces around. |
+| `Key(string)` | The form that is compared: lowercase, without spaces around. |
+| `IsNameConflict(Exception)` | True when the exception is the database refusing a second project with the same name (a race between two requests). |
 
 
 ### ProjectNotFoundException
@@ -2001,9 +2044,15 @@ Branding and visual tokens.
 | Member | What it does |
 |---|---|
 | `PrimaryColor` | Primary brand accent color (e.g. #2563eb). |
+| `SecondaryColor` | Secondary brand accent color (e.g. #4f46e5). |
 | `PrimaryTextColor` | Text color on primary accent background (e.g. #ffffff). |
+| `SecondaryTextColor` | Text color on secondary accent background (e.g. #ffffff). |
 | `BackgroundColor` | Page background color (e.g. #f9fafb). |
+| `SurfaceColor` | Card and sidebar surface background color (e.g. #ffffff). |
+| `TextColor` | Main text color (e.g. #111827). |
+| `MutedTextColor` | Muted text color for secondary labels (e.g. #6b7280). |
 | `Radius` | Border radius token (e.g. 0.375rem). |
+| `FontFamily` | Font family stack. |
 
 
 ### ClientApplicationSettings
@@ -2038,6 +2087,7 @@ Client behaviour (project defaults for all applications).
 | `AllowedClientTypes` | Allowed client types. |
 | `PermissionSyncAllowed` | Permission sync is allowed. |
 | `ScopeSyncAllowed` | Custom scope sync is allowed. A client can then register its own scopes (not `auth2.*`, not the standard ones) and allow them for itself. |
+| `AutoAssignScopeToApplication` | Only with `ScopeSyncAllowed`. On (default): a scope that an application pushes is registered **and added to the allowed scopes of that application**, so the application can use it at once. Off: a pushed scope is only **registered** (saved in the database, visible in the console); no application is given it. An admin then allows it for the applications that need it (`Applications` -> the application -> `Allowed Scopes`), and a scope of a client can no longer allow itself. Turn it off wherever scopes protect something. |
 | `GroupSyncAllowed` | Group sync (push) is allowed. Off by default: admins normally decide groups. Push only adds missing groups. |
 | `RoleSyncAllowed` | Role sync is allowed. |
 | `AllowRemovePermissionsFromSync` | Sync may remove permissions. |
@@ -2519,6 +2569,7 @@ Two-factor and OTP rules.
 | `OtpMaxAttempts` | Max wrong OTP attempts. |
 | `OtpResendSeconds` | Seconds before a new OTP may be sent. |
 | `AllowPasskeys` | Allow passkeys (experimental). |
+| `StepUpMinutes` | "Sudo mode": for how many minutes a code of the authenticator app counts as fresh. The pages of the Server that are more restricted (deleting the account, turning two-factor off) ask a person who has two-factor on for a code again when the last one is older than this. Signing in with the second step counts as a code, and so does `/Account/VerifyTotp`. Default 15. `0` turns the extra question off. Only people who have turned on two-factor are asked. |
 
 
 ### UserNameSettings

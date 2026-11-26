@@ -1,0 +1,18 @@
+@inject Microsoft.Extensions.Localization.IStringLocalizer<SystemX.Auth2.Server.Resources.Pages> Loc
+
+<div class="text-center py-2">
+    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-500 dark:text-amber-400 mb-5">
+        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+    </div>
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-3">@Loc["auth_not_supported.title"]</h2>
+    <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
+        @Loc["auth_not_supported.description"]
+    </p>
+    <div class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700/60">
+        <p class="text-xs text-gray-500 dark:text-gray-400 leading-normal max-w-xs mx-auto">
+            @Loc["auth_not_supported.hint"]
+        </p>
+    </div>
+</div>

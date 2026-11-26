@@ -87,6 +87,10 @@
   <data name="two_factor_setup_required" xml:space="preserve"><value>Esta aplicación requiere autenticación en dos pasos. Configúrala primero.</value></data>
   <data name="grant_not_allowed" xml:space="preserve"><value>Este tipo de concesión de token no está permitido para esta aplicación.</value></data>
   <data name="two_factor_not_enabled" xml:space="preserve"><value>La autenticación en dos pasos no está habilitada.</value></data>
+  <data name="totp_required" xml:space="preserve"><value>Esta acción requiere un código de tu aplicación de autenticación.</value></data>
+  <data name="totp_setup_required" xml:space="preserve"><value>Esta acción requiere autenticación en dos pasos. Actívala primero en tu cuenta.</value></data>
+  <data name="project_name_taken" xml:space="preserve"><value>Ya existe un proyecto con este nombre. Elige otro nombre.</value></data>
+  <data name="phone_number_taken" xml:space="preserve"><value>Este número de teléfono ya es el nombre de usuario de otra persona.</value></data>
   <data name="two_factor_not_allowed" xml:space="preserve"><value>Esta aplicación no permite aplicaciones de autenticación.</value></data>
   <data name="consent_required" xml:space="preserve"><value>Debes aceptar antes de que la aplicación pueda continuar.</value></data>
   <data name="external_email_exists_not_verified" xml:space="preserve"><value>Ya existe una cuenta con este correo, pero el proveedor no lo verificó. Inicia sesión normalmente y vincula tu cuenta.</value></data>

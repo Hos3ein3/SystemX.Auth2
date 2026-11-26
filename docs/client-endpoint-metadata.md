@@ -42,6 +42,11 @@ If you mix styles in one application nothing breaks. Pick one per project for re
 | `.WithOnlyUserPermission()` | `[Auth2OnlyUserPermission]` | The permissions must be direct grants | (same) |
 | `.WithScope("s")` | `[Auth2Scope("s")]` | **Any** of the scopes of the token | `auth2:scope:any:s` |
 | `.WithGroup("g")` | `[Auth2Group("g")]` | In **any** of the groups | `auth2:group:any:g` |
+| `.WithAllGroups("a","b")` | `[Auth2Group(true, "a","b")]` | In **all** of the groups | `auth2:group:all:a\|b` |
+| `.WithSignInMethod("swk","hwk")` | `[Auth2SignInMethod("swk","hwk")]` | Signed in with **any** of these methods (`amr`) | `auth2:amr:any:swk\|hwk` |
+| `.WithMultiFactor()` | `[Auth2MultiFactor]` | Signed in with more than one factor | `auth2:amr:mfa:` |
+| `.WithTotp()` | `[Auth2Totp]` | A fresh code of the authenticator app, **required**; a person without two-factor is refused | `auth2:totp:required:` |
+| `.WithOptionalTotp()` | `[Auth2OptionalTotp]` | A fresh code, but **only for people who have two-factor on**; the others pass | `auth2:totp:optional:` |
 | `.WithMachineOnly()` | `[Auth2MachineOnly]` | A client-credentials token | `auth2:kind:machine:` |
 | `.WithUserOnly()` | `[Auth2UserOnly]` | A person's token | `auth2:kind:user:` |
 | `.WithAnyOf(roles:, permissions:, groups:, scopes:)` | `[Auth2AnyOf(Roles = ..., Permissions = ..., Groups = ..., Scopes = ...)]` | **Any one** of everything listed, across kinds ([below](#any-of-rules-a-role-or-a-permission)) | `auth2:any:any:r=..;p=..;g=..;s=..` |
@@ -105,6 +110,105 @@ How a rule is checked:
 - The attributes list the values as named properties, so write arrays with `new[] { ... }`; the Minimal API methods take `["a", "b"]`.
 
 **Scanning.** The scanners read these rules like the single ones: the **roles**, **permissions**, **groups** and **scopes** in a rule are added to the catalogs and synced ([permission-sync.md](permission-sync.md)). A rule gives names only (no texts), so a text from `[Auth2Permission(DisplayName = ...)]` or a list still wins when the same key appears twice. `auth2.*` and the standard scopes are skipped, as always.
+
+## The sign-in method of the person
+
+Some endpoints need more than "signed in": a transfer of money, changing the security settings, deleting data. These two rules check **how the person signed in**, from the `amr` claim ("authentication methods references") that the Server writes into the access token and the identity token, and that the hosted-UI cookie of your application keeps.
+
+| `amr` value | Written when | Constant |
+|---|---|---|
+| `pwd` | a password was used | `Auth2SignInMethods.Password` |
+| `otp` | a one-time code was used (email, SMS, or an authenticator app) | `Auth2SignInMethods.OneTimeCode` |
+| `swk` | a passkey that syncs between devices (iCloud Keychain, Google Password Manager) | `Auth2SignInMethods.SyncedPasskey` |
+| `hwk` | a passkey bound to one device, or a security key | `Auth2SignInMethods.DevicePasskey` |
+| `mfa` | a passkey that was unlocked with a fingerprint, face or PIN (it counts as more than one factor) | `Auth2SignInMethods.MultiFactor` |
+
+A sign-in has one or more values: a password sign-in is `["pwd"]`, a password with a two-factor code is `["pwd", "otp"]`, a verified passkey is `["swk", "mfa"]` or `["hwk", "mfa"]`.
+
+```csharp
+// one of these methods is enough (the comparison ignores the letter case)
+app.MapPost("/api/settings/security", ChangeSecurity)
+   .WithSignInMethod(Auth2SignInMethods.SyncedPasskey, Auth2SignInMethods.DevicePasskey);
+
+// more than one factor: a verified passkey, or a password plus a one-time code
+app.MapPost("/api/transfers", Transfer).WithMultiFactor();
+```
+
+```csharp
+[Auth2MultiFactor]                                            // controllers and Razor Pages
+public IActionResult Transfer() => ...;
+
+[Auth2SignInMethod("swk", "hwk")]
+public IActionResult ChangeSecurity() => ...;
+```
+
+- `WithMultiFactor` passes when `mfa` is present, or when both `pwd` and `otp` are present (`Auth2SignInMethods.IsMultiFactor`). A passkey that the person did not verify (`swk` or `hwk` alone) does **not** count.
+- A **machine token** has no sign-in method, so both rules refuse it. They are for people.
+- The rules are checked on the token that the request carries. A person who signed in with a password and later turned on two-factor still has the old token until it is renewed or they sign in again.
+- A refused request answers `403` like the other rules. Chaining with another rule is AND: `.WithRole("Admin").WithMultiFactor()` needs both.
+- The rules are not scanned for the catalog (they are not permissions, roles, groups or scopes), so nothing is synced to the Server for them.
+
+## Ask for a code of the authenticator app (TOTP)
+
+`WithMultiFactor` looks at **how the person signed in**, some time ago. Some actions need the person to be there **right now**: a transfer of money, deleting an account, changing a security setting. `WithTotp()` / `[Auth2Totp]` asks for a **fresh code of the authenticator app** on that request.
+
+There are two forms, because two-factor is a rule in some places and a choice in others:
+
+| | `WithTotp()` / `[Auth2Totp]` (the code is **required**) | `WithOptionalTotp()` / `[Auth2OptionalTotp]` (the code is **optional**) |
+|---|---|---|
+| Person **has** two-factor on | must give a code | must give a code |
+| Person has **not** turned it on | **refused** with the error `totp_setup_required` ("turn on two-factor first") | **passes** without a code (there is nothing to check) |
+| Use it when | two-factor is a rule for this action | two-factor is a choice, and people who made it get the extra protection |
+
+```csharp
+// Minimal API: the caller sends the code in a header
+app.MapDelete("/api/account", DeleteAccount).WithTotp();            // required
+app.MapPost("/api/export", Export).WithOptionalTotp();               // only people who use two-factor
+
+// controller or Razor Page: a form posts the code in a field
+[Auth2Totp]                  // required
+[HttpPost]
+public IActionResult Transfer(TransferInput input) => ...;
+
+[Auth2OptionalTotp]          // only people who use two-factor
+[HttpPost]
+public IActionResult Export() => ...;
+```
+
+```html
+<form method="post">
+  ...
+  <input name="auth2_totp" inputmode="numeric" autocomplete="one-time-code" />
+  <button>Transfer</button>
+</form>
+```
+
+For an API call: `X-Auth2-Totp: 123456` next to the `Authorization: Bearer ...` header. The names are constants: `Auth2Totp.HeaderName` and `Auth2Totp.FormField`. (A query string is not read: it ends up in logs.)
+
+**What happens**
+
+1. The Client reads the code from the header, or from the form field (it may be missing).
+2. It always asks the Server, with the person's own access token, at `POST /api/auth2/2fa/verify` ([api-reference.md](api-reference.md)). Only the Server knows whether the person has two-factor on, so only the Server can tell "no code" from "no authenticator app".
+3. The Server answers, and checks the code: it works **once** (a code that was copied or seen over a shoulder does not work a second time), a wrong code counts as a failed sign-in attempt (guesses lock the account), the route is rate limited, and every answer is audited (`2fa.step_up`, `2fa.step_up_failed`, `2fa.step_up_replayed`). A request **without** a code is not counted as a wrong guess.
+4. On success the request goes on. The Server is asked **once per request**, so two rules on one endpoint do not use the code twice.
+
+**When it is refused** the answer is `403`. The response header `X-Auth2-Totp-Status` holds the **error code**, and for an API or AJAX request the body is `{ "code": "...", "message": "..." }` (the message is written by the Server in the language of the request, `Errors.resx`). A browser page gets the normal access-denied answer plus the header.
+
+| Error code | Meaning | What to do |
+|---|---|---|
+| `totp_required` | The person has two-factor on and sent no code | Ask for the code and send the request again |
+| `invalid_otp` | The code is wrong, expired or already used | Ask for the next code (about 30 seconds later) |
+| `totp_setup_required` | The action needs two-factor (**required** rule) and the person has not turned it on | Send them to turn it on (`/Manage/TwoFactor/Enable` on the Server) |
+| `locked_out` | Too many wrong codes: the account is locked | Wait, or an admin unlocks it |
+| `two_factor_not_allowed` | The project does not allow authenticator apps (`TwoFactor.AllowTotp`) | Change the setting, or do not use the rule |
+| `forbidden` | A machine token: a program has no authenticator app | Use the rule only on endpoints for people |
+| `server_unavailable` | The Server could not be asked: the action is refused (it fails closed) | Try again |
+
+- Recovery codes are not accepted here.
+- It checks the code on **every** request. If an action runs in steps, put the rule on the step that does the damage.
+- Chaining is AND: `.WithRole("Admin").WithTotp()` needs the role and a code.
+- Not scanned for the catalog (it is not a permission, role, group or scope).
+- The sample: `/Home/TotpForm` in the MVC sample has a button for each form.
 
 ## Minimal API in practice
 
@@ -232,7 +336,8 @@ The interfaces are public so your own code can read a rule without parsing polic
 | `IAuth2PermissionMetadata` | `Permissions`, `RequireAll` |
 | `IAuth2RoleMetadata` | `Roles`, `RequireAll` |
 | `IAuth2ScopeMetadata` | `Scopes` |
-| `IAuth2GroupMetadata` | `Groups` |
+| `IAuth2GroupMetadata` | `Groups`, `RequireAll` (default `false`) |
+| `IAuth2SignInMethodMetadata` | `Methods`, `MultiFactor` |
 | `IAuth2AnyOfMetadata` | `Roles`, `Permissions`, `Groups`, `Scopes` of an any-of rule |
 | `IAuth2PermissionSourceMetadata` | `Source` (`Any`, `RoleOnly`, `UserOnly`) |
 | `IAuth2TokenKindMetadata` | `MachineOnly` |

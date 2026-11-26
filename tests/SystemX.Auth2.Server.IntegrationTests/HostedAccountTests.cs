@@ -215,6 +215,53 @@ public class HostedAccountTests : Phase6Base
         (await UserAsync(Email: null, phone: "+31612345678")).PhoneNumberConfirmed.ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task Login_WithClientId_PreservesClientIdInPasskeyAndRegisterLinks()
+    {
+        await PrepareAppsAsync(both: s =>
+        {
+            s.Methods.AllowedLoginMethods.Add(Contracts.Enums.LoginMethod.Passkey);
+            s.Passkeys.AllowPasskeys = true;
+        });
+
+        var b = new Browser(Factory);
+        var r = await b.GetAsync("/Account/Login?client_id=appa");
+        r.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var html = await r.Content.ReadAsStringAsync();
+
+        html.ShouldContain("/Account/LoginPasskey?client_id=appa");
+        html.ShouldNotContain("/Account/LoginPasskey?ReturnUrl=&ClientId=");
+        html.ShouldContain("/Account/Register?client_id=appa");
+        html.ShouldContain("/Account/ForgotPassword?client_id=appa");
+    }
+
+    [Fact]
+    public async Task Pages_WithoutClientId_RenderDirectAuthenticationNotSupported()
+    {
+        await PrepareAppsAsync();
+        var b = new Browser(Factory);
+
+        // GET /Account/Login without client_id
+        var rLogin = await b.GetAsync("/Account/Login");
+        rLogin.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var htmlLogin = await rLogin.Content.ReadAsStringAsync();
+        htmlLogin.ShouldContain("Direct Authentication Not Supported");
+        htmlLogin.ShouldContain("This authentication service requires an application context");
+
+        // GET /Account/LoginPasskey?ReturnUrl=&ClientId=
+        var rPasskey = await b.GetAsync("/Account/LoginPasskey?ReturnUrl=&ClientId=");
+        rPasskey.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var htmlPasskey = await rPasskey.Content.ReadAsStringAsync();
+        htmlPasskey.ShouldContain("Direct Authentication Not Supported");
+        htmlPasskey.ShouldNotContain("Continue with Passkey");
+
+        // GET /Account/Register without client_id
+        var rReg = await b.GetAsync("/Account/Register");
+        rReg.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var htmlReg = await rReg.Content.ReadAsStringAsync();
+        htmlReg.ShouldContain("Direct Authentication Not Supported");
+    }
+
     private async Task<AppUser> UserAsync(string? Email, string phone)
     {
         await using var scope = NewScope();

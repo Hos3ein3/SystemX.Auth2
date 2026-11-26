@@ -327,8 +327,12 @@ internal sealed class AdminProjectService(
         {
             if (await db.Projects.AnyAsync(a => a.ProjectKey == request.ProjectKey, ct)) return (OperationResult.Fail(Auth2ErrorCodes.Conflict), null);
         }
-        var created = await projects.CreateAsync(request.ProjectKey!, request.Name, request.Description, ct);
-        return (OperationResult.Ok, new CreateProjectResponse(ToDto(created)));
+        try
+        {
+            var created = await projects.CreateAsync(request.ProjectKey!, request.Name, request.Description, ct);
+            return (OperationResult.Ok, new CreateProjectResponse(ToDto(created)));
+        }
+        catch (ProjectNameTakenException) { return (OperationResult.Fail(Auth2ErrorCodes.ProjectNameTaken), null); }
     }
 
     public async Task<(OperationResult Result, ProjectDto? Project)> UpdateAsync(Guid id, UpdateProjectRequest request, Guid? actorUserId, CancellationToken ct = default)
@@ -339,10 +343,14 @@ internal sealed class AdminProjectService(
         if (project is null) return (OperationResult.Fail(Auth2ErrorCodes.NotFound), null);
         if (project.IsGlobalProject && !request.IsEnabled) return (OperationResult.Fail(Auth2ErrorCodes.Forbidden), null);   // never lock out the admins
         var oldName = project.Name;
-        project.Name = request.Name.Trim();
+        var newKey = ProjectNames.Key(request.Name);
+        // The name is unique on the server: another project may not have it (this project may keep it, or only change its letter case).
+        if (await db.Projects.AnyAsync(a => a.Id != id && a.Name.Trim().ToLower() == newKey, ct)) return (OperationResult.Fail(Auth2ErrorCodes.ProjectNameTaken), null);
+        project.Name = ProjectNames.Clean(request.Name);
         project.Description = request.Description;
         project.UpdatedAtUtc = clock.GetUtcNow();
-        await db.SaveChangesAsync(ct);
+        try { await db.SaveChangesAsync(ct); }
+        catch (Exception ex) when (ProjectNames.IsNameConflict(ex)) { return (OperationResult.Fail(Auth2ErrorCodes.ProjectNameTaken), null); }
         cache.InvalidateProject(id);
         cache.Invalidate(AuthFlowCache.Single(oldName)); cache.Invalidate(AuthFlowCache.Single(project.Name));   // single-project mode finds its project by name
         if (project.IsEnabled != request.IsEnabled) await projects.SetEnabledAsync(id, request.IsEnabled, request.Reason, actorUserId, ct);

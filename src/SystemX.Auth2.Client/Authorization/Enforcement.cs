@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
+using SystemX.Auth2.Client.Authentication;
 using SystemX.Auth2.Client.CurrentUser;
+using SystemX.Auth2.Client.Services;
+using SystemX.Auth2.Contracts.Auth;
 using SystemX.Auth2.Contracts.Constants;
 
 namespace SystemX.Auth2.Client.Authorization;
 
-internal enum Auth2RequirementKind { Permission, Role, Scope, Group, MachineOnly, UserOnly }
+internal enum Auth2RequirementKind { Permission, Role, Scope, Group, MachineOnly, UserOnly, SignInMethod, MultiFactor, Totp, OptionalTotp }
 
 /// <summary>One rule of an Auth2 policy. Several rules on one endpoint must all pass.</summary>
 internal sealed record Auth2Requirement(Auth2RequirementKind Kind, bool RequireAll, IReadOnlyList<string> Values) : IAuthorizationRequirement;
@@ -25,12 +28,16 @@ internal sealed class Auth2AuthorizationHandler(IAuth2AccessProvider access, ILo
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, Auth2Requirement requirement)
     {
+        if (requirement.Kind is Auth2RequirementKind.Totp or Auth2RequirementKind.OptionalTotp) return;   // the code is checked by Auth2TotpAuthorizationHandler (it needs the request)
         var user = context.User;
         var ok = requirement.Kind switch
         {
             Auth2RequirementKind.MachineOnly => user.FindFirst(Auth2Claims.Machine)?.Value == "true",
             Auth2RequirementKind.UserOnly => user.FindFirst(Auth2Claims.Machine)?.Value != "true",
             Auth2RequirementKind.Scope => Any(ScopeClaims.Read(user), requirement.Values, StringComparer.Ordinal),
+            // how the person signed in (the amr claim); a machine token has none, so it never passes
+            Auth2RequirementKind.SignInMethod => Any(user.FindAll(Auth2Claims.Amr).Select(c => c.Value).ToList(), requirement.Values, StringComparer.OrdinalIgnoreCase),
+            Auth2RequirementKind.MultiFactor => Auth2SignInMethods.IsMultiFactor(user.FindAll(Auth2Claims.Amr).Select(c => c.Value)),
             Auth2RequirementKind.Role => Check(await RolesAsync(user), requirement, StringComparer.OrdinalIgnoreCase),
             _ => await CheckAccessAsync(context, requirement),
         };
@@ -50,7 +57,7 @@ internal sealed class Auth2AuthorizationHandler(IAuth2AccessProvider access, ILo
             return false;
         }
 
-        if (requirement.Kind == Auth2RequirementKind.Group) return Any(data.Groups, requirement.Values, StringComparer.OrdinalIgnoreCase);
+        if (requirement.Kind == Auth2RequirementKind.Group) return Check(data.Groups, requirement, StringComparer.OrdinalIgnoreCase);
 
         // Permission keys are lowercase on the server.
         var have = Auth2Checks.PermissionsOf(data, context.Resource);
@@ -61,6 +68,51 @@ internal sealed class Auth2AuthorizationHandler(IAuth2AccessProvider access, ILo
 
     private static bool Check(IReadOnlyList<string> have, Auth2Requirement r, StringComparer comparer) =>
         r.RequireAll ? r.Values.All(v => have.Contains(v, comparer)) : r.Values.Any(v => have.Contains(v, comparer));
+}
+
+/// <summary>
+/// Checks the code of <c>WithTotp()</c> and <c>WithOptionalTotp()</c>. The code comes from the request (header or form field, it may be missing); the Server decides
+/// (<see cref="IAuth2ApiClientService.VerifyTotpAsync"/>), once per request: it knows whether the person has two-factor on, so it can tell "no code" from "no authenticator app",
+/// and it answers with the error code and the message in the language of the request. Everything that goes wrong is a refusal (fail closed).
+/// </summary>
+internal sealed class Auth2TotpAuthorizationHandler(IHttpContextAccessor http, IAuth2AccessTokenAccessor tokens, IAuth2ApiClientService api, ILogger<Auth2TotpAuthorizationHandler> log)
+    : AuthorizationHandler<Auth2Requirement>
+{
+    protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, Auth2Requirement requirement)
+    {
+        if (requirement.Kind is not (Auth2RequirementKind.Totp or Auth2RequirementKind.OptionalTotp)) return;
+        var request = context.Resource as HttpContext ?? http.HttpContext;
+        var outcome = await OutcomeAsync(context, request, optional: requirement.Kind == Auth2RequirementKind.OptionalTotp);
+        if (request is not null) request.Items[Auth2Totp.ItemsKey] = outcome;
+        if (outcome.Code == Auth2Totp.OkCode) context.Succeed(requirement);
+        else context.Fail(new AuthorizationFailureReason(this, $"Auth2 TOTP not accepted ({outcome.Code})."));
+    }
+
+    private async Task<Auth2TotpOutcome> OutcomeAsync(AuthorizationHandlerContext context, HttpContext? request, bool optional)
+    {
+        if (context.User.FindFirst(Auth2Claims.Machine)?.Value == "true" || request is null)
+            return new(Auth2ErrorCodes.Forbidden, "A program has no authenticator app. This action is for people.");
+
+        // The same request is asked once: a code works once, so a second evaluation (another policy check) must not ask the Server again.
+        if (request.Items[Auth2Totp.ItemsKey] is Auth2TotpOutcome known) return known;
+
+        var code = request.Request.Headers[Auth2Totp.HeaderName].ToString();
+        if (string.IsNullOrWhiteSpace(code) && request.Request.HasFormContentType)
+            code = (await request.Request.ReadFormAsync(request.RequestAborted))[Auth2Totp.FormField].ToString();
+
+        var token = await tokens.GetAccessTokenAsync(request.RequestAborted);
+        if (token is null) return new(Auth2ErrorCodes.InvalidToken, "There is no access token in this request.");
+        try
+        {
+            var result = await api.VerifyTotpAsync(new TwoFactorVerifyRequest((code ?? "").Trim(), optional), request.RequestAborted);
+            return result.IsSuccess ? new(Auth2Totp.OkCode, null) : new(result.Error?.Code ?? Auth2ErrorCodes.InvalidOtp, result.Error?.Message);
+        }
+        catch (Auth2Exception ex)
+        {
+            log.LogWarning("The TOTP code could not be checked because the Auth2 server could not be asked ({Code}).", ex.ErrorCode);
+            return new(Auth2ClientErrorCodes.ServerUnavailable, "The Auth2 server could not be asked, so the action was refused.");
+        }
+    }
 }
 
 /// <summary>What the handlers share: where roles come from, and which permission list counts on this endpoint.</summary>
@@ -151,6 +203,8 @@ internal sealed class Auth2PolicyProvider(IOptions<AuthorizationOptions> options
             "scope" => Auth2RequirementKind.Scope,
             "group" => Auth2RequirementKind.Group,
             "kind" => parts[1] == "machine" ? Auth2RequirementKind.MachineOnly : Auth2RequirementKind.UserOnly,
+            "amr" => parts[1] == "mfa" ? Auth2RequirementKind.MultiFactor : Auth2RequirementKind.SignInMethod,
+            "totp" => parts[1] == "optional" ? Auth2RequirementKind.OptionalTotp : Auth2RequirementKind.Totp,
             _ => throw new InvalidOperationException($"Unknown Auth2 policy '{name}'."),
         };
         return new AuthorizationPolicyBuilder().RequireAuthenticatedUser().AddRequirements(new Auth2Requirement(kind, parts[1] == "all", values)).Build();
@@ -207,6 +261,17 @@ internal sealed class Auth2AuthorizationResultHandler(IAuth2AuditSink sink) : IA
             var machine = user.FindFirst(Auth2Claims.Machine)?.Value == "true";
             Guid? id = !machine && Guid.TryParse(user.FindFirst("sub")?.Value, out var g) ? g : null;
             await sink.OnAuthorizationAsync(new Auth2AuthorizationEvent(audit.Action, authorizeResult.Succeeded, id, machine, context.Request.Path.Value ?? "", DateTimeOffset.UtcNow), context.RequestAborted);
+        }
+        // A refused TOTP rule tells the caller why (no code, a wrong code, two-factor not turned on...): the error code in a header, and for an API or AJAX call also the body.
+        if (!authorizeResult.Succeeded && context.Items[Auth2Totp.ItemsKey] is Auth2TotpOutcome totp && totp.Code != Auth2Totp.OkCode && !context.Response.HasStarted)
+        {
+            context.Response.Headers[Auth2Totp.ResponseHeader] = totp.Code;
+            if (Auth2Http.IsApiRequest(context))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new { code = totp.Code, message = totp.Message });
+                return;
+            }
         }
         await _default.HandleAsync(next, context, policy, authorizeResult);
     }

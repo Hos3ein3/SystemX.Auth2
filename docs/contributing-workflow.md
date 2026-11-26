@@ -14,6 +14,14 @@ For each small piece of work:
 4. Write or update the page in `/docs`.
 5. Only then start the next piece.
 
+## Editing pages without a rebuild
+
+In the **Development** environment the Server compiles the Razor pages (`.cshtml`) again when the file changes (`AddRazorRuntimeCompilation`, package `Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation`): change a page, refresh the browser. It is on when `ASPNETCORE_ENVIRONMENT` is `Development`; the setting `Auth2:RazorRuntimeCompilation` overrides it (`true` forces it on, `false` turns it off even in development). It is **not** for production: it keeps the compiler and file watchers running, and the pages of the build are used otherwise. Notes:
+
+- Only the `.cshtml` files are watched. A change of a `.cs` file (a page model) still needs a build (`dotnet watch` does that for you).
+- The CSS is built from the classes found in the pages (Tailwind). A **new** Tailwind class in a page needs `npm run build:css` (in `src/SystemX.Auth2.Server`), or keep `npm run watch:css` running, before the class has a style.
+- The tests run without it (the environment is `Testing`).
+
 ## Step by step
 
 1. Create a branch.
@@ -37,6 +45,8 @@ For each small piece of work:
 - English for code, comments, logs and docs.
 - Test names: `Method_Scenario_ExpectedResult`.
 - No `TODO` without a note in [roadmap.md](roadmap.md).
+- **Result types, by layer.** Inside the **Server** a method that can fail on a rule answers with `OperationResult` (`Succeeded`, `ErrorCode`, the Identity errors; `ApiResults.From` turns it into the HTTP answer). In the **Client package and the contracts** it is `Result` / `Result<T>` (`IsSuccess`, `Error` with the code and the message of the Server). Do not mix them in one layer: the Server does not return `Result`, the Client does not know `OperationResult`. Failures that are not about a rule (a missing project, a name that is taken in a service that creates something) are exceptions, as `ProjectNotFoundException` and `ProjectNameTakenException`.
+- **Managers.** Ask for `UserManager<AppUser>` and `RoleManager<AppRole>` (the Identity types): the Server registers `Auth2UserManager` and `Auth2RoleManager` as their implementations ([identity-stores.md](identity-stores.md)).
 - No UI work in the Server for now: a page is a PageModel plus an empty `.cshtml`.
 
 ## Docs style

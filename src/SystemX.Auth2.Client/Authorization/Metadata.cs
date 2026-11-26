@@ -29,12 +29,91 @@ public interface IAuth2ScopeMetadata
     IReadOnlyList<string> Scopes { get; }
 }
 
-/// <summary>Endpoint metadata: the user must be in one of these groups.</summary>
+/// <summary>Endpoint metadata: the user must be in these groups.</summary>
 public interface IAuth2GroupMetadata
 {
-    /// <summary>Group names (one is enough).</summary>
+    /// <summary>Group names.</summary>
     IReadOnlyList<string> Groups { get; }
+
+    /// <summary>True when the user must be in all of the groups, false (the default) when one is enough.</summary>
+    bool RequireAll => false;
 }
+
+/// <summary>Endpoint metadata: how the person must have signed in (the <c>amr</c> claim of the token).</summary>
+public interface IAuth2SignInMethodMetadata
+{
+    /// <summary>The accepted <c>amr</c> values (one is enough), for example <c>pwd</c>, <c>otp</c>, <c>swk</c> (a synced passkey), <c>hwk</c> (a device-bound passkey), <c>mfa</c>. Empty when <see cref="MultiFactor"/> is used.</summary>
+    IReadOnlyList<string> Methods { get; }
+
+    /// <summary>True when the person must have used more than one factor (see <see cref="Auth2SignInMethods.IsMultiFactor"/>).</summary>
+    bool MultiFactor { get; }
+}
+
+/// <summary>The <c>amr</c> values the Server writes into a token, and what counts as more than one factor.</summary>
+public static class Auth2SignInMethods
+{
+    /// <summary>A password.</summary>
+    public const string Password = "pwd";
+    /// <summary>A one-time code (email, SMS or an authenticator app).</summary>
+    public const string OneTimeCode = "otp";
+    /// <summary>A passkey that syncs between devices (iCloud Keychain, Google Password Manager).</summary>
+    public const string SyncedPasskey = "swk";
+    /// <summary>A passkey bound to one device or a security key.</summary>
+    public const string DevicePasskey = "hwk";
+    /// <summary>More than one factor (a passkey that was unlocked with a fingerprint, face or PIN).</summary>
+    public const string MultiFactor = "mfa";
+
+    /// <summary>True when the person used more than one factor: <c>mfa</c> is present (a verified passkey), or both a password and a one-time code were used (password plus two-factor code).</summary>
+    public static bool IsMultiFactor(IEnumerable<string> amr)
+    {
+        var have = amr.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return have.Contains(MultiFactor) || (have.Contains(Password) && have.Contains(OneTimeCode));
+    }
+}
+
+/// <summary>Endpoint metadata: the request must carry a fresh code of the authenticator app (TOTP).</summary>
+public interface IAuth2TotpMetadata
+{
+    /// <summary>
+    /// False (<c>WithTotp()</c> / <c>[Auth2Totp]</c>): a code is <b>required</b>; a person without two-factor is refused with <c>totp_setup_required</c>.
+    /// True (<c>WithOptionalTotp()</c> / <c>[Auth2OptionalTotp]</c>): only people who have two-factor on are asked; the others pass.
+    /// </summary>
+    bool Optional { get; }
+}
+
+/// <summary>
+/// Where the code of <c>WithTotp()</c> / <c>[Auth2Totp]</c> is read from, and how a refused request tells the caller why.
+/// <para>A refused request is <b>403</b>. The response header <see cref="ResponseHeader"/> holds the error code, and an API or AJAX request also gets the body <c>{ "code": "...", "message": "..." }</c>:</para>
+/// <list type="bullet">
+/// <item><c>totp_required</c>: the person has two-factor on and sent no code. Ask for one.</item>
+/// <item><c>invalid_otp</c>: the code is wrong, expired or already used. Ask for the next one.</item>
+/// <item><c>totp_setup_required</c>: the person has not turned on two-factor and the action needs it (not for an optional rule). Send them to turn it on.</item>
+/// <item><c>locked_out</c>: too many wrong codes, the account is locked.</item>
+/// <item><c>two_factor_not_allowed</c>: the project does not allow authenticator apps.</item>
+/// <item><c>forbidden</c>: a machine token (a program has no authenticator app).</item>
+/// <item><c>server_unavailable</c>: the Server could not be asked (the action is refused: fail closed).</item>
+/// </list>
+/// The messages of the Server are written in the language of the request (<c>Errors.resx</c>).
+/// </summary>
+public static class Auth2Totp
+{
+    /// <summary>The request header that carries the code (APIs and AJAX calls).</summary>
+    public const string HeaderName = "X-Auth2-Totp";
+
+    /// <summary>The form field that carries the code (HTML forms of controllers and Razor Pages).</summary>
+    public const string FormField = "auth2_totp";
+
+    /// <summary>The response header of a refused request: the error code (see the list above).</summary>
+    public const string ResponseHeader = "X-Auth2-Totp-Status";
+
+    internal const string ItemsKey = "Auth2.Totp.Outcome";
+
+    /// <summary>The code of a request that passed.</summary>
+    internal const string OkCode = "ok";
+}
+
+/// <summary>What the check of the code said, kept for the request: <see cref="Auth2Totp.OkCode"/> or an error code with the message of the Server.</summary>
+internal sealed record Auth2TotpOutcome(string Code, string? Message);
 
 /// <summary>Where a required permission must come from.</summary>
 public enum Auth2PermissionSource
@@ -216,17 +295,21 @@ public sealed class Auth2ScopeAttribute : AuthorizeAttribute, IAuth2ScopeMetadat
 }
 
 /// <summary>
-/// On a class or method: the user must be in one of these groups.
+/// On a class or method: the user must be in one of these groups (or in all of them, with <c>requireAll: true</c>).
 /// On a <c>const string</c> field or an enum member: no names, only the data of the group (<see cref="DisplayName"/>).
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
 public sealed class Auth2GroupAttribute : AuthorizeAttribute, IAuth2GroupMetadata
 {
     /// <summary>Needs any of the groups. With no name (on a field) it only carries the data of the group.</summary>
-    public Auth2GroupAttribute(params string[] groups)
+    public Auth2GroupAttribute(params string[] groups) : this(false, groups) { }
+
+    /// <summary>Needs all of the groups (<paramref name="requireAll"/> true) or any of them (false).</summary>
+    public Auth2GroupAttribute(bool requireAll, params string[] groups)
     {
         Groups = [.. groups];
-        if (groups.Length > 0) Policy = PolicyNames.Make("group", "any", groups);
+        RequireAll = requireAll;
+        if (groups.Length > 0) Policy = PolicyNames.Make("group", requireAll ? "all" : "any", groups);
     }
 
     /// <summary>Display name of the group (on a field or enum member).</summary>
@@ -234,6 +317,76 @@ public sealed class Auth2GroupAttribute : AuthorizeAttribute, IAuth2GroupMetadat
 
     /// <inheritdoc />
     public IReadOnlyList<string> Groups { get; }
+
+    /// <inheritdoc />
+    public bool RequireAll { get; }
+}
+
+/// <summary>
+/// The person must have signed in with one of these methods (the <c>amr</c> claim): <c>pwd</c> (password), <c>otp</c> (one-time code), <c>swk</c> / <c>hwk</c> (a passkey), <c>mfa</c>.
+/// Use it for a sensitive endpoint that needs a stronger sign-in than a password. A machine token has no sign-in method, so it is refused. See <see cref="Auth2SignInMethods"/>.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public sealed class Auth2SignInMethodAttribute : AuthorizeAttribute, IAuth2SignInMethodMetadata
+{
+    /// <summary>Needs any of the methods.</summary>
+    public Auth2SignInMethodAttribute(params string[] methods)
+    {
+        if (methods.Length == 0) throw new ArgumentException("At least one sign-in method is needed.", nameof(methods));
+        Methods = [.. methods];
+        Policy = PolicyNames.Make("amr", "any", methods);
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> Methods { get; }
+
+    /// <inheritdoc />
+    public bool MultiFactor => false;
+}
+
+/// <summary>
+/// The request must carry a <b>fresh code of the authenticator app</b> (TOTP), checked on the Server every time. For actions that need the person to be there right now: a transfer,
+/// deleting data, changing security settings. The code is read from the header <c>X-Auth2-Totp</c> or the form field <c>auth2_totp</c> (<see cref="Auth2Totp"/>).
+/// A code works <b>once</b>. The code is <b>required</b>: a person who has not turned on two-factor is refused with the error <c>totp_setup_required</c>
+/// (use <see cref="Auth2OptionalTotpAttribute"/> to ask only the people who have it). Without a code the error is <c>totp_required</c>, with a wrong one <c>invalid_otp</c>.
+/// 403 with the header <c>X-Auth2-Totp-Status</c> (and a JSON body for API requests). A machine token is refused.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+public sealed class Auth2TotpAttribute : AuthorizeAttribute, IAuth2TotpMetadata
+{
+    /// <summary>Creates the attribute.</summary>
+    public Auth2TotpAttribute() => Policy = PolicyNames.Make("totp", "required", []);
+
+    /// <inheritdoc />
+    public bool Optional => false;
+}
+
+/// <summary>
+/// Like <see cref="Auth2TotpAttribute"/>, but the code is <b>optional</b> for people who have not turned on two-factor: they pass without a code (there is nothing to check), and a person
+/// who <b>has</b> two-factor on must give a code. Use it where two-factor is a choice, not a rule.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+public sealed class Auth2OptionalTotpAttribute : AuthorizeAttribute, IAuth2TotpMetadata
+{
+    /// <summary>Creates the attribute.</summary>
+    public Auth2OptionalTotpAttribute() => Policy = PolicyNames.Make("totp", "optional", []);
+
+    /// <inheritdoc />
+    public bool Optional => true;
+}
+
+/// <summary>The person must have used more than one factor to sign in: a passkey unlocked with a fingerprint, face or PIN, or a password plus a one-time code. See <see cref="Auth2SignInMethods.IsMultiFactor"/>.</summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+public sealed class Auth2MultiFactorAttribute : AuthorizeAttribute, IAuth2SignInMethodMetadata
+{
+    /// <summary>Creates the attribute.</summary>
+    public Auth2MultiFactorAttribute() => Policy = PolicyNames.Make("amr", "mfa", []);
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> Methods => [];
+
+    /// <inheritdoc />
+    public bool MultiFactor => true;
 }
 
 /// <summary>Only machine tokens (client credentials) are accepted.</summary>

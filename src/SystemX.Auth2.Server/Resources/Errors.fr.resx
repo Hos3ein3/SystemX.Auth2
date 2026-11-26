@@ -87,6 +87,10 @@
   <data name="two_factor_setup_required" xml:space="preserve"><value>Cette application requiert l'authentification à deux facteurs. Veuillez la configurer d'abord.</value></data>
   <data name="grant_not_allowed" xml:space="preserve"><value>Ce type d'autorisation de jeton n'est pas autorisé pour cette application.</value></data>
   <data name="two_factor_not_enabled" xml:space="preserve"><value>L'authentification à deux facteurs n'est pas activée.</value></data>
+  <data name="totp_required" xml:space="preserve"><value>Cette action nécessite un code de votre application d'authentification.</value></data>
+  <data name="totp_setup_required" xml:space="preserve"><value>Cette action nécessite l'authentification à deux facteurs. Activez-la d'abord dans votre compte.</value></data>
+  <data name="project_name_taken" xml:space="preserve"><value>Un projet portant ce nom existe déjà. Choisissez un autre nom.</value></data>
+  <data name="phone_number_taken" xml:space="preserve"><value>Ce numéro de téléphone est déjà le nom d'utilisateur d'une autre personne.</value></data>
   <data name="two_factor_not_allowed" xml:space="preserve"><value>Cette application n'autorise pas les applications d'authentification.</value></data>
   <data name="consent_required" xml:space="preserve"><value>Vous devez donner votre accord pour que l'application puisse continuer.</value></data>
   <data name="external_email_exists_not_verified" xml:space="preserve"><value>Un compte avec cette adresse e-mail existe déjà, mais le fournisseur ne l'a pas vérifiée. Connectez-vous avec votre méthode habituelle et liez votre compte.</value></data>

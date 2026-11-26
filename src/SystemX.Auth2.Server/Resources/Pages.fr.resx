@@ -43,6 +43,14 @@
   <data name="login.identifier_username_phone" xml:space="preserve"><value>Nom d'utilisateur ou téléphone</value></data>
   <data name="login.identifier_email_phone" xml:space="preserve"><value>E-mail ou téléphone</value></data>
   <data name="login.identifier_all" xml:space="preserve"><value>Nom d'utilisateur, e-mail ou téléphone</value></data>
+  <data name="verify_totp.title" xml:space="preserve"><value>Vérifier avec votre application d'authentification</value></data>
+  <data name="verify_totp.subtitle" xml:space="preserve"><value>Saisissez le code à 6 chiffres que votre application d'authentification affiche maintenant.</value></data>
+  <data name="verify_totp.code" xml:space="preserve"><value>Code d'authentification</value></data>
+  <data name="verify_totp.button" xml:space="preserve"><value>Vérifier</value></data>
+  <data name="verify_totp.success" xml:space="preserve"><value>Votre code a été accepté.</value></data>
+  <data name="verify_totp.not_enabled" xml:space="preserve"><value>L'authentification à deux facteurs n'est pas activée sur votre compte, il n'y a donc aucun code à saisir.</value></data>
+  <data name="verify_totp.enable_link" xml:space="preserve"><value>Activer l'authentification à deux facteurs</value></data>
+  <data name="verify_totp.hint" xml:space="preserve"><value>Un code ne fonctionne qu'une fois. S'il a été refusé, attendez le suivant (environ 30 secondes).</value></data>
   <data name="login.password" xml:space="preserve"><value>Mot de passe</value></data>
   <data name="login.remember_me" xml:space="preserve"><value>Se souvenir de moi</value></data>
   <data name="login.forgot_password" xml:space="preserve"><value>Mot de passe oublié ?</value></data>

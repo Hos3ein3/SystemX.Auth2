@@ -35,6 +35,10 @@ The codes live in `Auth2ErrorCodes` (Contracts).
 | `two_factor_setup_required` | The application requires two-factor and the user has not set it up. |
 | `grant_not_allowed` | The grant type is not allowed for this application (Self UI is off). |
 | `two_factor_not_enabled`, `two_factor_not_allowed` | Two-factor is off for the user, or the application does not allow authenticator apps. |
+| `phone_number_taken` | The phone number is the user name of another person. A user name is the identity and is unique, so an email or phone number cannot be taken by somebody else (for an email the answer is the standard `DuplicateEmail`). |
+| `project_name_taken` | Another project already has this name. A project name is unique on the server (without letter case and without spaces around). Choose another name. `409` in the admin API. |
+| `totp_required` | An action that needs a code of the authenticator app (`WithTotp()`, `WithOptionalTotp()`, `POST /2fa/verify`) got no code from a person who has two-factor on. Ask for a code. Not counted as a wrong attempt. |
+| `totp_setup_required` | The action needs two-factor (`WithTotp()`) and the person has not turned it on. Send them to turn it on (`/Manage/TwoFactor/Enable`). |
 | `consent_required` | Consent is needed and the request used `prompt=none`. |
 | `login_method_not_allowed` | This login method is off for the application. |
 | `registration_disabled` | Registration is closed. |

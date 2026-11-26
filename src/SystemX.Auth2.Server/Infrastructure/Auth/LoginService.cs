@@ -45,12 +45,24 @@ internal sealed class LoginService(
         // 1. application enabled
         if (await flow.CheckGateAsync(ct) is { } denied) return await FailAsync(app, null, denied, request, ct, publicCode: Auth2ErrorCodes.AccessDenied);
 
-        // 2. which login method is this, and is it allowed?
+        // 2. which login method is this, and is it allowed? The user name is the identity, and it can look like an email or a phone number: the text is a way that is not allowed
+        // only when nobody has it as a user name (or user names are not allowed either).
+        var allowed = settings.Methods.AllowedLoginMethods;
         var method = MethodOf(lookup.KindOf(request.Login, settings));
-        if (!settings.Methods.AllowedLoginMethods.Contains(method))
-            return await FailAsync(app, null, Auth2ErrorCodes.LoginMethodNotAllowed, request, ct, new() { ["method"] = method.ToString() });
-
-        var user = await lookup.FindAsync(request.Login, settings, ct);
+        AppUser? user;
+        if (allowed.Contains(method))
+        {
+            IdentifierKind? matched;
+            (user, matched) = await lookup.FindMatchAsync(request.Login, settings, ct);
+            // Found by what it is: a user name needs UserNamePassword, an email EmailPassword, a phone number PhonePassword. A match by a way that is not allowed is the same as nobody found.
+            if (user is not null && matched is { } how && !allowed.Contains(MethodOf(how))) user = null;
+        }
+        else
+        {
+            user = allowed.Contains(LoginMethod.UserNamePassword) ? await lookup.FindByUserNameAsync(request.Login) : null;
+            if (user is null)
+                return await FailAsync(app, null, Auth2ErrorCodes.LoginMethodNotAllowed, request, ct, new() { ["method"] = method.ToString() });
+        }
 
         // 3. user exists, is active, and belongs to the application (multi mode). Otherwise: the same error as a wrong password.
         if (user is null || !user.IsActive)

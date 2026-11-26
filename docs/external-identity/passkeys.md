@@ -49,6 +49,10 @@ All fields are for developers (global admin) only. `Passkey` must be in `Allowed
 | Replay | Every challenge is single use; a copied answer fails. The signature counter is stored and updated |
 | Rate limit | Policy `passkey` (default 20 per minute) on `/account/passkey/*` |
 
+### The Passkeys page is empty and has no "Register" button
+
+Passkeys are a setting of **each project**. `/Manage/Passkeys` works on the project of the signed-in session (for an admin signed in to `_global`, that is the `_global` project), so passkeys turned on in `sample-project` do nothing there. The page now says so: *Passkeys are not enabled for the project ...*, with a link to the settings of that project for a global admin. Turn on **Enable Passkeys in this project** and add `Passkey` to the allowed login methods in `/admin/p/{project-key}/settings`, then reload.
+
 ### Recovery
 
 A passkey is lost when the device is lost. Advise users to (1) register a passkey on **two** devices, or use one that syncs (iCloud Keychain, Google Password Manager, a password manager: the Server marks these `isBackedUp`), and (2) keep another way to sign in (a password or an external login). The management page suggests adding another passkey when none of the user's passkeys is backed up. An admin can remove a lost passkey with the admin API (see [admin-api.md](../admin-api.md#external-identity-routes)).

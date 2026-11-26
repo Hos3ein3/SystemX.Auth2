@@ -1,14 +1,14 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.ProfileModel
 @{
-    Layout = "_LayoutAccount";
+    Layout = "_LayoutManage";
     ViewData["Title"] = "Profile";
 }
 
-<div class="space-y-6 max-w-xl">
+<div class="space-y-6 max-w-2xl">
     <div>
-        <h2 class="text-xl font-bold text-gray-900">Personal Profile</h2>
-        <p class="mt-1 text-sm text-gray-500">Update your personal details and display preferences.</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Personal Profile</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Update your personal details and display preferences.</p>
     </div>
 
     @if (Model.Saved)
@@ -18,9 +18,17 @@
         </a2-alert>
     }
 
-    <a2-card>
+    <a2-card title="Profile Details" subtitle="Information visible within your account and applications.">
+        <div class="flex items-center space-x-4 mb-6 pb-6 border-b border-gray-100 dark:border-gray-700">
+            <a2-avatar name="@(Model.Input.DisplayName ?? User.Identity?.Name)" size="xl" />
+            <div>
+                <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">@(string.IsNullOrWhiteSpace(Model.Input.DisplayName) ? User.Identity?.Name : Model.Input.DisplayName)</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Profile avatar generated from your name</p>
+            </div>
+        </div>
+
         <form method="post" class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <a2-field label="First name">
                     <a2-input name="Input.FirstName" value="@Model.Input.FirstName" placeholder="John" />
                 </a2-field>
@@ -34,11 +42,11 @@
                 <a2-input name="Input.DisplayName" value="@Model.Input.DisplayName" placeholder="johndoe" />
             </a2-field>
 
-            <a2-field label="Preferred culture / language" hint="e.g. en, fa, de">
+            <a2-field label="Preferred culture / language" hint="e.g. en, fa, nl, it, de, es, fr">
                 <a2-input name="Input.PreferredCulture" value="@Model.Input.PreferredCulture" placeholder="en" />
             </a2-field>
 
-            <div class="pt-2">
+            <div class="pt-2 flex justify-end">
                 <a2-button type="submit" variant="primary">
                     Save Profile
                 </a2-button>

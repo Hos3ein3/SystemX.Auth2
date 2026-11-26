@@ -35,6 +35,7 @@ public sealed class RecoveryCodesModel(IClientIdAccessor clientId, IAuthFlowReso
         if (!ModelState.IsValid) { Fail(Auth2ErrorCodes.ValidationFailed); return Page(); }
         var (result, codes) = await Svc<ITwoFactorService>().RegenerateRecoveryCodesAsync(CurrentUser!, Input.Code, HttpContext.RequestAborted);
         if (!result.Succeeded) { Fail(result); return Page(); }
+        await RefreshSessionAsync(CurrentUser!, codeGivenNow: true);   // a right code of the authenticator app
         Codes = codes;
         return Page();
     }

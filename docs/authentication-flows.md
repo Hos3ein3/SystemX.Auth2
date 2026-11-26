@@ -130,6 +130,17 @@ Use `recovery_code=...` instead of `code` to use a recovery code. A recovery cod
 
 The hosted UI does the same in `/Account/TwoFactor`.
 
+## How a person is found at sign-in
+
+The text that a person types (`Input.Login`, `LoginRequest.Login`, the field of forgot password, join and the passkey sign-in) is looked up in this order (`UserLookup.FindMatchAsync`):
+
+1. **The user name**, exactly (the letter case does not matter), **whatever the text looks like**. The user name is the identity and is always unique, and it may be an email address (`jo@example.com`) or a phone number (`+14155552671`).
+2. Only when nobody has that user name: a text with `@` is looked up as an **email**, a phone-number pattern as a **phone number** (two people with one phone number: nobody is found and the sign-in is refused).
+
+The method that found the person must be allowed (`Methods.AllowedLoginMethods`): a person found by their user name needs `UserNamePassword`, by their email `EmailPassword`, by their phone number `PhonePassword`. A person found by a method that is not allowed is answered like a wrong password (`invalid_credentials`). A text that looks like an email or a phone number, when that method is not allowed and nobody has it as a user name, is answered `login_method_not_allowed`, as before.
+
+Because of step 1 a text can never find two people, the database and the validators keep one text for one person: see [concepts.md](concepts.md#user-and-membership) and `Auth2UserValidator`.
+
 ## Refresh tokens
 
 - A refresh request gives a **new** refresh token and invalidates the old one (rotation).

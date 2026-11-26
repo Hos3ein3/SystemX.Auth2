@@ -1,3 +1,4 @@
+using SystemX.Auth2.Client.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,7 @@ internal sealed class Auth2SessionEndedMiddleware(RequestDelegate next)
             if (await http.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>().GetSchemeAsync(Auth2AuthSchemes.Cookie) is not null)
                 await http.SignOutAsync(Auth2AuthSchemes.Cookie);
 
-            var web = http.RequestServices.GetService<IAuth2WebService>();
+            var web = http.RequestServices.GetService<IAuth2WebClientService>();
             if (Auth2Http.IsApiRequest(http) || web is null)
             {
                 http.Response.Clear();
@@ -32,7 +33,7 @@ internal sealed class Auth2SessionEndedMiddleware(RequestDelegate next)
                 return;
             }
             http.Response.Clear();
-            await web.ChallengeAsync(http, http.Request.Path + http.Request.QueryString);
+            await web.ChallengeAsync(http.Request.Path + http.Request.QueryString);
         }
     }
 }

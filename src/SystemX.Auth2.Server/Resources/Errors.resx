@@ -88,6 +88,10 @@
   <data name="two_factor_setup_required" xml:space="preserve"><value>This application requires two-factor authentication. Set it up first.</value></data>
   <data name="grant_not_allowed" xml:space="preserve"><value>This way of getting a token is not allowed for this application.</value></data>
   <data name="two_factor_not_enabled" xml:space="preserve"><value>Two-factor authentication is not turned on.</value></data>
+  <data name="totp_required" xml:space="preserve"><value>A code from your authenticator app is required for this action.</value></data>
+  <data name="totp_setup_required" xml:space="preserve"><value>This action needs two-factor authentication. Turn it on in your account first.</value></data>
+  <data name="project_name_taken" xml:space="preserve"><value>A project with this name already exists. Choose another name.</value></data>
+  <data name="phone_number_taken" xml:space="preserve"><value>This phone number is already the user name of another person.</value></data>
   <data name="two_factor_not_allowed" xml:space="preserve"><value>This application does not allow authenticator apps.</value></data>
   <data name="consent_required" xml:space="preserve"><value>You must agree before the application can continue.</value></data>
   <data name="external_email_exists_not_verified" xml:space="preserve"><value>An account with this email already exists, but the provider did not confirm the email. Sign in with your usual method and link the account there.</value></data>

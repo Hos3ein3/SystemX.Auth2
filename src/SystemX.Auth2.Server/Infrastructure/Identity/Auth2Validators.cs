@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using SystemX.Auth2.Server.Persistence;
 using SystemX.Auth2.Contracts.Constants;
 using SystemX.Auth2.Server.Application;
 using SystemX.Auth2.Server.Domain.Entities;
@@ -39,7 +41,7 @@ public sealed class Auth2PasswordValidator(IAuthFlowResolver flow, Auth2Identity
 /// Checks user name, email and phone number against the rules of the current application.
 /// Uniqueness is handled by the standard Identity validator and the database indexes (global).
 /// </summary>
-public sealed class Auth2UserValidator(IAuthFlowResolver flow, Auth2IdentityErrorDescriber describer) : IUserValidator<AppUser>
+public sealed class Auth2UserValidator(IAuthFlowResolver flow, Auth2IdentityErrorDescriber describer, Auth2DbContext db) : IUserValidator<AppUser>
 {
     /// <inheritdoc />
     public async Task<IdentityResult> ValidateAsync(UserManager<AppUser> manager, AppUser user)
@@ -71,6 +73,20 @@ public sealed class Auth2UserValidator(IAuthFlowResolver flow, Auth2IdentityErro
 
         if (!string.IsNullOrEmpty(user.PhoneNumber) && !SafeMatch(s.Phone.PhoneNumberRegex, user.PhoneNumber, timeout))
             errors.Add(describer.InvalidPhoneNumber());
+
+        // The user name is the identity and is unique. It can be an email address or a phone number, so a person's email or phone number may not be the user name of ANOTHER person,
+        // and a user name may not be the email or phone number of another person: a sign-in with that text would match two people.
+        var id = user.Id;
+        if (!string.IsNullOrEmpty(user.Email) && await db.Users.AnyAsync(u => u.Id != id && u.NormalizedUserName == manager.NormalizeName(user.Email)))
+            errors.Add(describer.DuplicateEmail(user.Email));
+        if (!string.IsNullOrEmpty(user.PhoneNumber) && await db.Users.AnyAsync(u => u.Id != id && u.NormalizedUserName == manager.NormalizeName(user.PhoneNumber)))
+            errors.Add(describer.DuplicatePhoneNumber(user.PhoneNumber));
+        if (name.Length > 0)
+        {
+            var normalizedEmail = manager.NormalizeEmail(name);
+            if (await db.Users.AnyAsync(u => u.Id != id && (u.NormalizedEmail == normalizedEmail || u.PhoneNumber == name)))
+                errors.Add(describer.DuplicateUserName(name));
+        }
 
         return errors.Count == 0 ? IdentityResult.Success : IdentityResult.Failed([.. errors]);
     }

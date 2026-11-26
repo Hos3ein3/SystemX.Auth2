@@ -43,6 +43,14 @@
   <data name="login.identifier_username_phone" xml:space="preserve"><value>نام کاربری یا شماره تلفن</value></data>
   <data name="login.identifier_email_phone" xml:space="preserve"><value>ایمیل یا شماره تلفن</value></data>
   <data name="login.identifier_all" xml:space="preserve"><value>نام کاربری، ایمیل یا شماره تلفن</value></data>
+  <data name="verify_totp.title" xml:space="preserve"><value>تأیید با برنامه احراز هویت</value></data>
+  <data name="verify_totp.subtitle" xml:space="preserve"><value>کد ۶ رقمی که برنامه احراز هویت شما اکنون نشان می‌دهد را وارد کنید.</value></data>
+  <data name="verify_totp.code" xml:space="preserve"><value>کد برنامه احراز هویت</value></data>
+  <data name="verify_totp.button" xml:space="preserve"><value>تأیید</value></data>
+  <data name="verify_totp.success" xml:space="preserve"><value>کد شما پذیرفته شد.</value></data>
+  <data name="verify_totp.not_enabled" xml:space="preserve"><value>احراز هویت دو مرحله‌ای برای حساب شما فعال نیست، بنابراین کدی برای وارد کردن وجود ندارد.</value></data>
+  <data name="verify_totp.enable_link" xml:space="preserve"><value>فعال‌سازی احراز هویت دو مرحله‌ای</value></data>
+  <data name="verify_totp.hint" xml:space="preserve"><value>هر کد فقط یک بار کار می‌کند. اگر رد شد، منتظر کد بعدی (حدود ۳۰ ثانیه) بمانید.</value></data>
   <data name="login.password" xml:space="preserve"><value>رمز عبور</value></data>
   <data name="login.remember_me" xml:space="preserve"><value>مرا به خاطر بسپار</value></data>
   <data name="login.forgot_password" xml:space="preserve"><value>رمز عبور خود را فراموش کرده‌اید؟</value></data>

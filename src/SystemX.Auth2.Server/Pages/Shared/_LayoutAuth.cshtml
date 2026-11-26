@@ -10,8 +10,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @(pageModel?.BrandName ?? "SystemX Auth2")</title>
-    <partial name="_Branding" model="Model" />
     <link rel="stylesheet" href="/css/site.css" />
+    <partial name="_Branding" model="Model" />
     <script src="/js/a2.js" asp-append-version="true" defer></script>
 </head>
 <body class="h-full font-[var(--a2-font-family,system-ui)] text-[var(--a2-color-text,#111827)] dark:text-gray-100 bg-gray-50 dark:bg-gray-900 antialiased">
@@ -23,15 +23,18 @@
             var linkClient = pageModel?.ClientIdForLinks;
             var clientQuery = string.IsNullOrEmpty(linkClient) ? "" : "?ClientId=" + Uri.EscapeDataString(linkClient);
         }
-        <div class="sm:mx-auto sm:w-full @width text-center">
-            <h1 class="text-3xl font-extrabold tracking-tight text-[var(--a2-color-primary,#2563eb)]">
-                @(pageModel?.BrandName ?? "SystemX Auth2")
-            </h1>
-            @if (ViewData["Subtitle"] is string subtitle)
-            {
-                <p class="mt-2 text-sm text-[var(--a2-color-muted,#6b7280)]">@subtitle</p>
-            }
-        </div>
+        @if (pageModel == null || pageModel.ProjectFound)
+        {
+            <div class="sm:mx-auto sm:w-full @width text-center">
+                <h1 class="text-3xl font-extrabold tracking-tight text-[var(--a2-color-primary,#2563eb)]">
+                    @(pageModel?.BrandName ?? "SystemX Auth2")
+                </h1>
+                @if (ViewData["Subtitle"] is string subtitle)
+                {
+                    <p class="mt-2 text-sm text-[var(--a2-color-muted,#6b7280)]">@subtitle</p>
+                }
+            </div>
+        }
 
         <div class="mt-8 sm:mx-auto sm:w-full @width">
             <div class="bg-[var(--a2-color-surface,#ffffff)] dark:bg-gray-800 py-8 px-4 shadow-sm sm:rounded-[var(--a2-radius,0.375rem)] sm:px-10 border border-gray-200 dark:border-gray-700">
@@ -89,7 +92,15 @@
                 {
                     <a2-alert variant="error">@pageModel.ErrorMessage</a2-alert>
                 }
-                @RenderBody()
+                @if (pageModel != null && !pageModel.ProjectFound && !(ViewContext.ActionDescriptor.DisplayName?.Contains("Logout", StringComparison.OrdinalIgnoreCase) ?? false))
+                {
+                    <partial name="_DirectAuthNotSupported" />
+                    <div class="hidden">@RenderBody()</div>
+                }
+                else
+                {
+                    @RenderBody()
+                }
             </div>
 
             <footer class="mt-6 text-center text-xs text-[var(--a2-color-muted,#6b7280)] space-x-4">

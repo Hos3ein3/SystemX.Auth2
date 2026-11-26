@@ -18,7 +18,8 @@ using SystemX.Auth2.Server.Persistence;
 namespace SystemX.Auth2.Server.Infrastructure.Auth;
 
 internal sealed class TwoFactorService(
-    UserManager<AppUser> users, IAuthFlowResolver flow, ICredentialStateProvider credentials, IAccessVersionService versions, IAuditService audit) : ITwoFactorService
+    UserManager<AppUser> users, IAuthFlowResolver flow, ICredentialStateProvider credentials, IAccessVersionService versions, IAuditService audit,
+    IReplayCache replay, TimeProvider clock) : ITwoFactorService
 {
     public async Task<(OperationResult, TwoFactorSetupResponse?)> SetupAsync(AppUser user, CancellationToken ct = default)
     {
@@ -33,6 +34,36 @@ internal sealed class TwoFactorService(
         var label = Uri.EscapeDataString(user.Email ?? user.UserName ?? user.Id.ToString("N"));
         var uri = $"otpauth://totp/{issuer}:{label}?secret={key}&issuer={issuer}&digits=6";
         return (OperationResult.Ok, new TwoFactorSetupResponse(string.Join(' ', Enumerable.Range(0, (key.Length + 3) / 4).Select(i => key.Substring(i * 4, Math.Min(4, key.Length - i * 4)))).ToLowerInvariant(), uri));
+    }
+
+    public async Task<OperationResult> VerifyAsync(AppUser user, string code, bool optional = false, CancellationToken ct = default)
+    {
+        var settings = await flow.GetSettingsAsync(ct);
+        var app = await flow.GetProjectAsync(ct);
+        // No authenticator app is possible, or the person has none: an optional action has nothing to ask, a required one tells the person to set it up.
+        if (!settings.TwoFactor.AllowTotp || !await users.GetTwoFactorEnabledAsync(user))
+            return optional ? OperationResult.Ok : OperationResult.Fail(Auth2ErrorCodes.TotpSetupRequired);
+        if (await users.IsLockedOutAsync(user)) return OperationResult.Fail(Auth2ErrorCodes.LockedOut);
+
+        var normalized = Normalize(code);
+        if (normalized.Length == 0) return OperationResult.Fail(Auth2ErrorCodes.TotpRequired);   // no code was given: ask for one (not a wrong guess, so not counted)
+        if (!await users.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, normalized))
+        {
+            await users.AccessFailedAsync(user);   // guesses count towards the lockout
+            await audit.WriteAsync(new AuditEntry("2fa.step_up_failed", app.Id, ActorUserId: user.Id, TargetType: "user", TargetId: user.Id.ToString()), ct);
+            return OperationResult.Fail(Auth2ErrorCodes.InvalidOtp);
+        }
+
+        // A code is valid for about 90 seconds. It may be used once, so a copied or intercepted code is of no use to anybody else.
+        if (!await replay.TryAddAsync(app.Id, $"totp:{user.Id:N}:{normalized}", clock.GetUtcNow().AddMinutes(3), ct))
+        {
+            await audit.WriteAsync(new AuditEntry("2fa.step_up_replayed", app.Id, ActorUserId: user.Id, TargetType: "user", TargetId: user.Id.ToString()), ct);
+            return OperationResult.Fail(Auth2ErrorCodes.InvalidOtp);
+        }
+
+        await users.ResetAccessFailedCountAsync(user);
+        await audit.WriteAsync(new AuditEntry("2fa.step_up", app.Id, ActorUserId: user.Id, TargetType: "user", TargetId: user.Id.ToString()), ct);
+        return OperationResult.Ok;
     }
 
     public async Task<(OperationResult, IReadOnlyList<string>)> EnableAsync(AppUser user, string code, CancellationToken ct = default)

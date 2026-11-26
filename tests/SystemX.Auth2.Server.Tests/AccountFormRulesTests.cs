@@ -94,6 +94,16 @@ public class AccountFormRulesTests
     }
 
     [Fact]
+    public void TheAuthenticatorCodeRule_NeedsSixToEightDigits_SpacesAllowed()
+    {
+        var rule = Parse(Rules().TotpCode("Authenticator code"));
+        rule.GetProperty("required").GetString()!.ShouldContain("Authenticator code");
+        var pattern = new System.Text.RegularExpressions.Regex(rule.GetProperty("pattern").GetString()!);
+        foreach (var good in new[] { "123456", "123 456", "12345678" }) pattern.IsMatch(good).ShouldBeTrue(good);
+        foreach (var bad in new[] { "12345", "abcdef", "12-3456", "" }) pattern.IsMatch(bad).ShouldBeFalse(bad);
+    }
+
+    [Fact]
     public void TheConfirmPasswordRule_PointsAtThePasswordInput() =>
         Parse(Rules().ConfirmPassword("Confirm", "Input_NewPassword")).GetProperty("match").GetString().ShouldBe("Input_NewPassword");
 

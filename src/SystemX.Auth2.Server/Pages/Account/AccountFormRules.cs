@@ -99,6 +99,14 @@ public sealed class AccountFormRules(ProjectSettings settings, IAuth2Localizer t
     /// </summary>
     public string LoginPassword(string label) => NewPassword(label, showList: false);
 
+    /// <summary>The code of an authenticator app: 6 to 8 digits (spaces are allowed, the Server ignores them).</summary>
+    public string TotpCode(string label) => Serialize(new Rule
+    {
+        Required = Required(label),
+        Pattern = @"^[0-9 ]{6,10}$",
+        PatternMsg = text.Validation("invalid_format", label),
+    });
+
     /// <summary>A required field that only needs a value (a current password, a code).</summary>
     public string RequiredOnly(string label) => Serialize(new Rule { Required = Required(label) });
 

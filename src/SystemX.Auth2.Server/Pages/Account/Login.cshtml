@@ -15,22 +15,7 @@
 
 @if (!Model.ProjectFound)
 {
-    <div class="text-center space-y-4 py-4">
-        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white">@Loc["auth_not_supported.title"]</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-300">
-            @Loc["auth_not_supported.description"]
-        </p>
-        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-                @Loc["auth_not_supported.hint"]
-            </p>
-        </div>
-    </div>
+    <partial name="_DirectAuthNotSupported" />
 }
 else
 {
@@ -49,7 +34,7 @@ else
 
     <div class="flex items-center justify-between text-sm py-1">
         <a2-checkbox id="rememberMe" name="RememberMe" label="@Loc["login.remember_me"]" class="mb-0" />
-        <a href="/Account/ForgotPassword?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">@Loc["login.forgot_password"]</a>
+        <a href="@Model.GetForgotPasswordUrl()" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">@Loc["login.forgot_password"]</a>
     </div>
 
     <div>
@@ -70,7 +55,7 @@ else
         <div class="space-y-2">
             @if (Model.ShowPasskeyLogin)
             {
-                <a href="/Account/LoginPasskey?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <a href="@Model.GetLoginPasskeyUrl()" class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <svg class="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                     </svg>
@@ -84,7 +69,7 @@ else
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="Provider" value="@p.Name" />
                     <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
-                    <input type="hidden" name="ClientId" value="@Model.ClientId" />
+                    <input type="hidden" name="ClientId" value="@Model.ClientIdForLinks" />
                     <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         @if (p.Name.Contains("google", StringComparison.OrdinalIgnoreCase) || p.Type.ToString().Contains("Google", StringComparison.OrdinalIgnoreCase))
                         {
@@ -127,7 +112,7 @@ else
     {
         <div class="mt-6 text-center text-sm">
             <span class="text-[var(--a2-color-muted,#6b7280)] dark:text-gray-400">@Loc["login.dont_have_account"]</span>
-            <a href="/Account/Register?ReturnUrl=@Model.ReturnUrl&ClientId=@Model.ClientId" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline ml-1">@Loc["login.sign_up_link"]</a>
+            <a href="@Model.GetRegisterUrl()" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline ml-1">@Loc["login.sign_up_link"]</a>
         </div>
     }
 </form>

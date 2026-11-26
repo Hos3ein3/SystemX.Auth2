@@ -1,14 +1,16 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.ChangeEmailModel
 @{
-    Layout = "_LayoutAccount";
+    var rules = SystemX.Auth2.Server.Pages.Account.AccountFormRules.For(Model);
+    var emailRule = rules.Email("New email address", true);
+    Layout = "_LayoutManage";
     ViewData["Title"] = "Change Email";
 }
 
 <div class="space-y-6 max-w-xl">
     <div>
-        <h2 class="text-xl font-bold text-gray-900">Change Email Address</h2>
-        <p class="mt-1 text-sm text-gray-500">Update the primary email address associated with your account.</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Change Email Address</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Update the primary email address associated with your account.</p>
     </div>
 
     @if (Model.EmailSent)
@@ -18,18 +20,18 @@
         </a2-alert>
     }
 
-    <a2-card>
-        <form method="post" class="space-y-4">
-            <div class="mb-4">
-                <span class="block text-sm font-medium text-gray-500 mb-1">Current email</span>
-                <span class="text-sm font-semibold text-gray-900">@Model.CurrentEmail</span>
+    <a2-card title="Email Settings" subtitle="Verify and update your primary email contact.">
+        <form method="post" class="space-y-4" novalidate>
+            <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-800/60 rounded-[var(--a2-radius,0.375rem)] border border-gray-200 dark:border-gray-700">
+                <span class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Current email</span>
+                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">@Model.CurrentEmail</span>
             </div>
 
             <a2-field label="New email address" required="true">
-                <a2-input name="Input.NewEmail" type="email" value="@Model.Input.NewEmail" required="true" placeholder="new.email@example.com" autocomplete="email" />
+                <a2-input id="Input_NewEmail" name="Input.NewEmail" type="email" value="@Model.Input.NewEmail" required="true" placeholder="new.email@example.com" autocomplete="email" data-a2-rule="@emailRule" />
             </a2-field>
 
-            <div class="pt-2">
+            <div class="pt-2 flex justify-end">
                 <a2-button type="submit" variant="primary">
                     Send Confirmation Link
                 </a2-button>

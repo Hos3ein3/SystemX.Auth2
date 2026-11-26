@@ -60,6 +60,17 @@ A tick means: the page opens. Everything else shows the access denied page. The 
 | `AnythingGoes` | `[Auth2AnyOf(Roles, Permissions, Groups, Scopes)]` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `Inspect` | `[Authorize]` (the checks are written in code) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
+**Rules that are not about who the person is** (so they are not in the table above; open them from the Showcase page):
+
+| Page | Rule | What you see |
+|---|---|---|
+| `FinanceEurope` | `[Auth2Group(true, "finance", "finance-eu")]`: **all** of the groups | A person in `finance` **and** `finance-eu` passes; one of the two gets 403 |
+| `SignedInWithPassword` | `[Auth2SignInMethod("pwd")]` | A password sign-in passes; a passkey sign-in gets 403 |
+| `MultiFactorOnly` | `[Auth2MultiFactor]` | A verified passkey, or a password plus a one-time code, passes; a password alone gets 403 |
+| `TotpForm` (then `TotpAction`) | `[Auth2Totp]`: a **fresh code of the authenticator app**, posted in the field `auth2_totp` | You need two-factor on (`/Manage/TwoFactor/Enable`). A right code passes once; a wrong or missing code gets 403 with the header `X-Auth2-Totp-Status` |
+| `ScopeFails` | `[Auth2Scope("payments.refund")]`: a scope this application does not have | **Always 403** |
+| `ScopeFailsInCode` | `currentClient.HasScope("payments.refund")` in code | **Always 403** with `{ "error": "insufficient_scope", "required": ..., "granted": [...] }` |
+
 (The attributes in the code write the arrays as `new[] { ... }`; the table shortens them.) The other generated demo people have roles and groups too: `FinanceRegions` opens for `william.hernandez`, `benjamin.gonzalez` and `logan.wright`, who are in `finance-us` or `finance-eu`.
 
 ### What each group of actions teaches

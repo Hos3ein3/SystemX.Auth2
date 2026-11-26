@@ -32,9 +32,7 @@ public abstract class AccountChangePageModel(IClientIdAccessor clientId, IAuthFl
     protected void FailWith(OperationResult result) => Fail(result, Endpoints.ApiResults.StatusFor(result.ErrorCode ?? Auth2ErrorCodes.ValidationFailed));
 
     /// <summary>Signs the same session in again, so the cookie shows the new user name.</summary>
-    protected Task RefreshCookieAsync(AppUser user) =>
-        Auth2Cookie.SignInAsync(HttpContext, user, Project!, Client, Effective, User.FindAll(Auth2Claims.Amr).Select(c => c.Value),
-            User.FindFirst(Auth2Claims.SessionId)?.Value, User.FindFirst(Auth2Claims.IdentityProvider)?.Value);
+    protected Task RefreshCookieAsync(AppUser user) => RefreshSessionAsync(user);   // keeps the time of the last code of the authenticator app
 
     /// <summary>Removes the hosted-UI session cookie.</summary>
     protected Task SignOutCookieAsync() => HttpContext.SignOutAsync(Auth2Cookie.Scheme);

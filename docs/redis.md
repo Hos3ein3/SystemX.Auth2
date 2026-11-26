@@ -8,7 +8,7 @@ Redis is **optional**. Without it everything works on one Server instance. With 
 |---|---|---|
 | Server | Rate-limit counters (`{prefix}:rl:...`) | Each instance counts alone (`MemoryRateLimiter`) |
 | Server | One-time codes of email and SMS (`{prefix}:otp:...`) | They are rows of the table `otp_codes` |
-| Server | The **settings of every project**: a version number and the value, shared by all instances ([the hybrid cache](#the-hybrid-cache-settings-without-asking-the-database)) | Each instance keeps them in its own memory for 10 minutes |
+| Server | The **settings of every project**: a version number and the value, shared by all instances ([the hybrid cache](#the-hybrid-cache-settings-without-asking-the-database)) | Each instance keeps them in its own memory for 1 day |
 | Server | The channel `{prefix}:settings-changed` (publish / subscribe) | Each instance learns from the database: a cache that expires, and a poll every `Auth2:ExternalProviders:PollSeconds` for providers |
 | Client | The access data of signed-in users (roles, permissions, groups) | In the memory of each application instance |
 
@@ -27,7 +27,7 @@ What Redis does **not** hold, on purpose ([ADR-068](decisions.md)): the Data Pro
 
 - **Rate limits that really limit.** With Redis the counters are shared: 10 sign-in attempts per minute means 10 per minute in total, not per instance. The count is one atomic Lua script (`INCR` plus `PEXPIRE`), so parallel requests cannot slip through.
 - **One-time codes with the right rules at any scale.** A code is a Redis hash with an expiry that Redis itself enforces; "use" is `DEL`, so two parallel requests cannot both succeed. Resend delay and wrong-attempt limits work the same as in the table version.
-- **Instant settings changes everywhere.** When an admin changes a project's settings, the instance that saved the change publishes the project id; every other instance drops its cached settings and project status at once and reloads its external providers. Without Redis the other instances wait for their cache to expire (10 minutes) or for the provider poll (30 seconds).
+- **Instant settings changes everywhere.** When an admin changes a project's settings, the instance that saved the change publishes the project id; every other instance drops its cached settings and project status at once and reloads its external providers. Without Redis the other instances wait for their cache to expire (1 day, because settings change rarely) or for the provider poll (30 seconds), so **run more than one instance only with Redis**.
 - **Less load on PostgreSQL.** Short-lived, high-volume data (counters, codes) is not written to the database.
 - **A readiness check.** `/health/ready` also pings Redis when it is configured ([observability.md](observability.md)).
 
@@ -98,7 +98,7 @@ The Server **still starts** (`AbortOnConnectFail = false`), reconnects by itself
 | Redis key | Content | Lifetime |
 |---|---|---|
 | `{prefix}:hc:{key}:ver` | The version (an integer, raised on every change) | none (a few bytes per key) |
-| `{prefix}:hc:{key}:data` | A hash: `ver` and `json` (the value, written like the settings in the database) | `HybridCacheEntryOptions.Expiration` (10 minutes for settings) |
+| `{prefix}:hc:{key}:data` | A hash: `ver` and `json` (the value, written like the settings in the database) | `HybridCacheEntryOptions.Expiration` (1 day for settings) |
 
 What uses it (every request starts with these three, so none of them reads PostgreSQL on every request any more):
 
@@ -129,7 +129,7 @@ The test `AuthFlowCacheRedisTests` does the same against a real Redis: the keys 
 | Problem | Likely cause |
 |---|---|
 | No `hc:` keys in Redis | `Auth2:Redis:ConnectionString` is not set, or the Server was not restarted after setting it. The hybrid cache then uses memory only |
-| A change made directly in PostgreSQL does not appear | By design: the cache is dropped by the Server's own write paths (admin console, API, handshake, seed). Entries also expire after 10 minutes. Change data through the Server, or drop the keys of the project (`SCAN` and `DEL` its `hc:` keys) |
+| A change made directly in PostgreSQL does not appear | By design: the cache is dropped by the Server's own write paths (admin console, API, handshake, seed). Entries also expire after 1 day. Change data through the Server, or drop the keys of the project (`SCAN` and `DEL` its `hc:` keys) |
 | A change appears on one instance only | The instances use different `Auth2:Redis:KeyPrefix` values, or one of them has no Redis |
 | Warnings "Redis did not answer the version of the cache key" in the log | Redis is down or too slow. The cache keeps working from memory and the database (slower); fix Redis |
 
@@ -145,7 +145,7 @@ To use it for something else: inject `IHybridCacheService` and call `GetOrCreate
 |---|---|---|
 | `{prefix}:rl:{policy key}` | A counter for one rate-limit window | The window of the policy (default 60 s) |
 | `{prefix}:otp:{projectId}:{userId}:{purpose}` | A hash: `h` (hash of the code), `a` (wrong attempts), `c` (created), `e` (expires) | `TwoFactor.OtpLifetimeSeconds` (default 120 s) |
-| `{prefix}:hc:{key}:ver`, `{prefix}:hc:{key}:data` | The version and the value of a hybrid cache entry (the settings of a project) | `ver`: none, `data`: 10 minutes |
+| `{prefix}:hc:{key}:ver`, `{prefix}:hc:{key}:data` | The version and the value of a hybrid cache entry (the settings of a project) | `ver`: none, `data`: 1 day |
 | channel `{prefix}:settings-changed` | The project id (a message, not stored). Still used to drop the project status cache of the other instances | none |
 
 The rate-limit key names the address, the client id and the login, never a raw token (a bearer token is hashed).

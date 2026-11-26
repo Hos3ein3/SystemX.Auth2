@@ -49,6 +49,7 @@ public static class ProjectSettingsValidator
         if (t.OtpLifetimeSeconds is < 10 or > 3600) Err("TwoFactor.OtpLifetimeSeconds", "Must be between 10 and 3600.");
         if (t.OtpMaxAttempts < 1) Err("TwoFactor.OtpMaxAttempts", "Must be at least 1.");
         if (t.OtpResendSeconds < 0) Err("TwoFactor.OtpResendSeconds", "Must not be negative.");
+        if (t.StepUpMinutes is < 0 or > 720) Err("TwoFactor.StepUpMinutes", "Must be between 0 (never ask again) and 720.");
         if (t.RecoveryCodeCount is < 1 or > 50) Err("TwoFactor.RecoveryCodeCount", "Must be between 1 and 50.");
         if (t.Mode == TwoFactorMode.Required && !t.AllowTotp)
             Err("TwoFactor.Mode", "Required two-factor needs AllowTotp.");

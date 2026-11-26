@@ -1,15 +1,41 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.PasskeysModel
 @{
-    Layout = "_LayoutAccount";
+    Layout = "_LayoutManage";
     ViewData["Title"] = "Passkeys";
 }
 
 <div class="space-y-6 max-w-2xl">
-    <div>
-        <h2 class="text-xl font-bold text-gray-900">Passkeys</h2>
-        <p class="mt-1 text-sm text-gray-500">Sign in securely using biometric recognition (Touch ID, Face ID, Windows Hello) or a security key.</p>
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="passkeyManageClientId" value="@(Model.ClientIdForLinks ?? Model.ClientId ?? "")" />
+
+    <div id="passkeyManageAlert" class="hidden">
+        <a2-alert variant="error" id="passkeyManageAlertText"></a2-alert>
     </div>
+
+    <div>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Passkeys</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Sign in securely using biometric recognition (Touch ID, Face ID, Windows Hello) or a security key.</p>
+    </div>
+
+    @if (!Model.PasskeysAllowed)
+    {
+        // Settings are per project: passkeys turned on in another project do not count here.
+        var canChange = User.IsInRole("GlobalAdmin") || User.IsInRole("Developer") || User.HasClaim("scope", "auth2.admin.global");
+        <a2-alert variant="warning">
+            Passkeys are not enabled for the project <span class="font-mono font-semibold">@(Model.Project?.ProjectKey ?? "this project")</span>, so you cannot register one here.
+            Settings belong to one project: passkeys turned on in another project do not apply to this one.
+            @if (canChange && Model.Project is not null)
+            {
+                <span>Turn on <b>Enable Passkeys in this project</b> (and add <b>Passkey</b> to the allowed login methods) in the
+                    <a href="/admin/p/@Model.Project.ProjectKey/settings" class="font-semibold underline">settings of this project</a>.</span>
+            }
+            else
+            {
+                <span>Ask an administrator of this server to turn them on.</span>
+            }
+        </a2-alert>
+    }
 
     @if (Model.SuggestBackupPasskey)
     {
@@ -20,26 +46,28 @@
 
     @if (Model.Passkeys.Count > 0)
     {
-        <a2-card title="Registered Passkeys">
-            <ul class="divide-y divide-gray-200">
+        <a2-card title="Registered Passkeys" subtitle="Hardware and platform authenticators linked to your account.">
+            <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                 @foreach (var passkey in Model.Passkeys)
                 {
-                    <li class="py-3 flex items-center justify-between">
+                    <li class="py-3.5 flex items-center justify-between">
                         <div class="flex items-center space-x-3">
-                            <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                            </svg>
+                            <div class="p-2 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                </svg>
+                            </div>
                             <div>
-                                <span class="text-sm font-semibold text-gray-800">@(string.IsNullOrEmpty(passkey.Name) ? "Passkey" : passkey.Name)</span>
-                                <span class="text-xs text-gray-500 block">Created @passkey.CreatedAtUtc.ToString("d")</span>
+                                <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">@(string.IsNullOrEmpty(passkey.Name) ? "Passkey" : passkey.Name)</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400 block">Created @passkey.CreatedAtUtc.ToString("d")</span>
                             </div>
                         </div>
                         <div class="flex items-center space-x-3">
                             <form method="post" asp-page-handler="Delete">
                                 <input type="hidden" name="Id" value="@passkey.Id" />
-                                <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium">
+                                <a2-button type="submit" variant="danger" class="text-xs py-1 px-2.5">
                                     Remove
-                                </button>
+                                </a2-button>
                             </form>
                         </div>
                     </li>
@@ -47,12 +75,12 @@
             </ul>
         </a2-card>
     }
-    else
+    else if (Model.PasskeysAllowed)
     {
         <a2-empty-state title="No passkeys registered" message="You haven't set up any passkeys yet.">
             @if (Model.CanAddMore)
             {
-                <button type="button" id="btnRegisterPasskey" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[var(--a2-color-primary,#2563eb)] hover:bg-blue-700 focus:outline-none">
+                <button type="button" id="btnRegisterPasskey" data-passkey-register="true" class="inline-flex items-center px-4 py-2 border border-transparent shadow-xs text-sm font-medium rounded-[var(--a2-radius,0.375rem)] text-white bg-[var(--a2-color-primary,#2563eb)] hover:opacity-90 focus:outline-none cursor-pointer">
                     Register a Passkey
                 </button>
             }
@@ -61,8 +89,8 @@
 
     @if (Model.Passkeys.Count > 0 && Model.CanAddMore)
     {
-        <div>
-            <button type="button" id="btnRegisterPasskey" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[var(--a2-color-primary,#2563eb)] hover:bg-blue-700 focus:outline-none">
+        <div class="flex justify-end">
+            <button type="button" id="btnRegisterPasskeySecondary" data-passkey-register="true" class="inline-flex items-center px-4 py-2 border border-transparent shadow-xs text-sm font-medium rounded-[var(--a2-radius,0.375rem)] text-white bg-[var(--a2-color-primary,#2563eb)] hover:opacity-90 focus:outline-none cursor-pointer">
                 Add Another Passkey
             </button>
         </div>

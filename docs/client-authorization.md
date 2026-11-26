@@ -54,7 +54,11 @@ public IActionResult Index() => View();
 | `.WithOnlyRolePermission()` | `[Auth2OnlyRolePermission]` | The permissions above must come from a **role** (or the role of a group), not a direct grant |
 | `.WithOnlyUserPermission()` | `[Auth2OnlyUserPermission]` | The permissions above must be **direct grants** |
 | `.WithScope("s")` | `[Auth2Scope("s")]` | Any of the scopes in the token (`ICurrentClient`) |
-| `.WithGroup("g")` | `[Auth2Group("g")]` | The user is in any of the groups |
+| `.WithGroup("g")` | `[Auth2Group("g")]` | The user is in any of the groups (`WithAllGroups` / `[Auth2Group(true, "a", "b")]` = all) |
+| `.WithSignInMethod("swk","hwk")` | `[Auth2SignInMethod("swk","hwk")]` | The person signed in with **one** of these methods (the `amr` claim): `pwd` password, `otp` one-time code, `swk` / `hwk` passkey, `mfa`. A machine token is refused ([sign-in method](client-endpoint-metadata.md#the-sign-in-method-of-the-person)) |
+| `.WithTotp()` | `[Auth2Totp]` | A **fresh code of the authenticator app** (header `X-Auth2-Totp` or form field `auth2_totp`), checked by the Server every time and usable once. **Required**: a person without two-factor gets the error `totp_setup_required`, without a code `totp_required`, with a wrong one `invalid_otp` ([ask for a code](client-endpoint-metadata.md#ask-for-a-code-of-the-authenticator-app-totp)) |
+| `.WithOptionalTotp()` | `[Auth2OptionalTotp]` | The same, but **only people who have two-factor on** are asked; the others pass |
+| `.WithMultiFactor()` | `[Auth2MultiFactor]` | The person used **more than one factor**: a passkey unlocked with a fingerprint, face or PIN, or a password plus a one-time code |
 | `.WithMachineOnly()` / `.WithUserOnly()` | `[Auth2MachineOnly]` / `[Auth2UserOnly]` | A client-credentials token / a user token (`ICurrentClient.IsMachine`) |
 | `.WithRoleOrPermission(roles, permissions)` and `.WithAnyOf(...)` | `[Auth2RoleOrPermission(Roles = ..., Permissions = ...)]`, `[Auth2AnyOf(...)]` | A role **or** a permission (also `OrGroup`, `ScopeOrRole`): OR **across kinds**. See [client-endpoint-metadata.md](client-endpoint-metadata.md#any-of-rules-a-role-or-a-permission) |
 | `.WithAuth2Policy("name")` | (use `[Authorize(Policy="name")]`) | One of your own policies |

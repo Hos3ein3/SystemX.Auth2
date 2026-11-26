@@ -243,6 +243,12 @@ public sealed class TwoFactorSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public int OtpResendSeconds { get; set; } = 60;
     /// <summary>Allow passkeys (experimental).</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool AllowPasskeys { get; set; }
+    /// <summary>
+    /// "Sudo mode": for how many minutes a code of the authenticator app counts as fresh. The pages of the Server that are more restricted (deleting the account, turning two-factor off)
+    /// ask a person who has two-factor on for a code again when the last one is older than this. Signing in with the second step counts as a code, and so does <c>/Account/VerifyTotp</c>.
+    /// Default 15. <c>0</c> turns the extra question off. Only people who have turned on two-factor are asked.
+    /// </summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public int StepUpMinutes { get; set; } = 15;
 }
 
 /// <summary>Sessions and tokens.</summary>
@@ -287,6 +293,12 @@ public sealed class ClientSettings
     [SettingEditability(SettingEditor.GlobalOnly)] public bool PermissionSyncAllowed { get; set; } = true;
     /// <summary>Custom scope sync is allowed. A client can then register its own scopes (not <c>auth2.*</c>, not the standard ones) and allow them for itself.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool ScopeSyncAllowed { get; set; } = true;
+    /// <summary>
+    /// Only with <see cref="ScopeSyncAllowed"/>. On (default): a scope that an application pushes is registered <b>and added to the allowed scopes of that application</b>, so the application can use it at once.
+    /// Off: a pushed scope is only <b>registered</b> (saved in the database, visible in the console); no application is given it. An admin then allows it for the applications that need it
+    /// (<c>Applications</c> -> the application -> <c>Allowed Scopes</c>), and a scope of a client can no longer allow itself. Turn it off wherever scopes protect something.
+    /// </summary>
+    [SettingEditability(SettingEditor.GlobalOnly)] public bool AutoAssignScopeToApplication { get; set; } = true;
     /// <summary>Group sync (push) is allowed. Off by default: admins normally decide groups. Push only adds missing groups.</summary>
     [SettingEditability(SettingEditor.GlobalOnly)] public bool GroupSyncAllowed { get; set; }
     /// <summary>Role sync is allowed.</summary>
@@ -318,12 +330,30 @@ public sealed class BrandingSettings
     /// <summary>Primary brand accent color (e.g. #2563eb).</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string PrimaryColor { get; set; } = "#2563eb";
 
+    /// <summary>Secondary brand accent color (e.g. #4f46e5).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string SecondaryColor { get; set; } = "#4f46e5";
+
     /// <summary>Text color on primary accent background (e.g. #ffffff).</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string PrimaryTextColor { get; set; } = "#ffffff";
+
+    /// <summary>Text color on secondary accent background (e.g. #ffffff).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string SecondaryTextColor { get; set; } = "#ffffff";
 
     /// <summary>Page background color (e.g. #f9fafb).</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string BackgroundColor { get; set; } = "#f9fafb";
 
+    /// <summary>Card and sidebar surface background color (e.g. #ffffff).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string SurfaceColor { get; set; } = "#ffffff";
+
+    /// <summary>Main text color (e.g. #111827).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string TextColor { get; set; } = "#111827";
+
+    /// <summary>Muted text color for secondary labels (e.g. #6b7280).</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string MutedTextColor { get; set; } = "#6b7280";
+
     /// <summary>Border radius token (e.g. 0.375rem).</summary>
     [SettingEditability(SettingEditor.ProjectAdminEditable)] public string Radius { get; set; } = "0.375rem";
+
+    /// <summary>Font family stack.</summary>
+    [SettingEditability(SettingEditor.ProjectAdminEditable)] public string FontFamily { get; set; } = "system-ui, -apple-system, sans-serif";
 }

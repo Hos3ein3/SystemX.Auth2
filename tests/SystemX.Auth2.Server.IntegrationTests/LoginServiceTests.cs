@@ -104,9 +104,10 @@ public class LoginServiceTests : IdentityTestBase
         await CreateUserInAsync("appa");
         await using (var scope = NewScope())
         {
+            // the real way to disable a project: it also drops the cached copy, so the next request sees it
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-            (await db.Projects.SingleAsync(a => a.ProjectKey == "appa")).IsEnabled = false;
-            await db.SaveChangesAsync();
+            var project = await db.Projects.AsNoTracking().SingleAsync(a => a.ProjectKey == "appa");
+            await scope.ServiceProvider.GetRequiredService<IProjectService>().SetEnabledAsync(project.Id, false, null, null);
         }
         (await LoginAsync("appa", "sara", PassA)).ErrorCode.ShouldBe(Auth2ErrorCodes.AccessDenied);   // the public answer is generic; the audit log has the reason
         (await AuditAsync("login.failed")).Last().DataJson!.ShouldContain("project_disabled");

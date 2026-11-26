@@ -119,6 +119,46 @@ public class ScopeSyncTests : Phase6Base
         })).StatusCode;
 
     [Fact]
+    public async Task WithAutoAssignOff_TheScopeIsOnlyRegistered_AnAdminAllowsItLater()
+    {
+        await PrepareAppsAsync(both: s => s.Clients.AutoAssignScopeToApplication = false);
+        var token = await ClientTokenAsync("appa", Scope);
+
+        var r = await SyncAsync(token, new ScopeDefinition("Reports.Read", "Read reports", "Lets you read reports"));
+        r.Status.ShouldBe(HttpStatusCode.OK, r.Body.ToString());
+        r.Body.Values("addedKeys").ShouldBe(["reports.read"]);                 // registered by this call
+        (await AllowedAsync(A)).ShouldNotContain("reports.read");              // but not given to the application
+        (await ClientCredentialsAsync("appa", "reports.read")).ShouldBe(HttpStatusCode.BadRequest);   // so the client cannot use it
+
+        // the scope exists in the database: a second sync registers nothing and still gives nothing
+        var again = await SyncAsync(token, new ScopeDefinition("reports.read"));
+        again.Body.GetProperty("added").GetInt32().ShouldBe(0);
+        (await AllowedAsync(A)).ShouldNotContain("reports.read");
+
+        // an admin allows it for the application: now the client can use it
+        await using (var scope = NewScope())
+        {
+            var applications = scope.ServiceProvider.GetRequiredService<IApplicationService>();
+            var current = (await applications.ListAsync(A.Id)).First();
+            await applications.UpdateAsync(current.Id, new ApplicationSpec("", AllowedScopes: [.. current.AllowedScopes, "reports.read"]));
+        }
+        (await ClientCredentialsAsync("appa", "reports.read")).ShouldBe(HttpStatusCode.OK);
+        (await ClientCredentialsAsync("appb", "reports.read")).ShouldBe(HttpStatusCode.BadRequest);   // another application was never given it
+    }
+
+    [Fact]
+    public async Task WithAutoAssignOff_ASyncCannotAllowAScopeAnAdminMadeForAnotherApplication()
+    {
+        await PrepareAppsAsync(both: s => s.Clients.AutoAssignScopeToApplication = false);
+        var tokenB = await ClientTokenAsync("appb", Scope);
+        (await SyncAsync(tokenB, new ScopeDefinition("orders.write"))).Status.ShouldBe(HttpStatusCode.OK);
+
+        var tokenA = await ClientTokenAsync("appa", Scope);
+        (await SyncAsync(tokenA, new ScopeDefinition("orders.write"))).Status.ShouldBe(HttpStatusCode.OK);   // the same name, pushed by another application
+        (await AllowedAsync(A)).ShouldNotContain("orders.write");
+    }
+
+    [Fact]
     public async Task Sync_RegistersTheScope_AllowsItForTheApplication_AndTheClientCanUseItAtOnce()
     {
         await PrepareAppsAsync();

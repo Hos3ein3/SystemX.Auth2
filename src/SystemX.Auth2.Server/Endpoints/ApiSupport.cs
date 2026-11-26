@@ -94,7 +94,7 @@ internal static class ApiResults
         Auth2ErrorCodes.Forbidden or Auth2ErrorCodes.InsufficientScope or Auth2ErrorCodes.RegistrationDisabled
             or Auth2ErrorCodes.ProjectDisabled or Auth2ErrorCodes.ApplicationDisabled or Auth2ErrorCodes.AccessDenied or Auth2ErrorCodes.TwoFactorNotAllowed or Auth2ErrorCodes.SyncNotAllowed => StatusCodes.Status403Forbidden,
         Auth2ErrorCodes.NotFound or Auth2ErrorCodes.ProjectNotFound => StatusCodes.Status404NotFound,
-        Auth2ErrorCodes.Conflict or Auth2ErrorCodes.ProjectKeyOrNameMismatch or Auth2ErrorCodes.ServerModeMismatch => StatusCodes.Status409Conflict,
+        Auth2ErrorCodes.Conflict or Auth2ErrorCodes.ProjectNameTaken or Auth2ErrorCodes.ProjectKeyOrNameMismatch or Auth2ErrorCodes.ServerModeMismatch => StatusCodes.Status409Conflict,
         Auth2ErrorCodes.LockedOut => StatusCodes.Status423Locked,
         Auth2ErrorCodes.RateLimited => StatusCodes.Status429TooManyRequests,
         _ => StatusCodes.Status400BadRequest,

@@ -38,33 +38,32 @@ public static class PasskeyEndpoints
     /// <summary>Maps the routes.</summary>
     public static IEndpointRouteBuilder MapAuth2Passkeys(this IEndpointRouteBuilder routes)
     {
-        var group = routes.MapGroup("/account");
 
         // ---- registration and management (signed in)
-        group.MapPost("/passkey/creation-options", (HttpContext http, string? client_id) => Session(http, client_id, async (user, svc) =>
+        routes.MapPost(Auth2Routes.PasskeyCreationOptions, (HttpContext http, string? client_id) => Session(http, client_id, async (user, svc) =>
         {
             var r = await svc.CreationOptionsAsync(user, http.RequestAborted);
             return r.Succeeded ? Results.Content(r.Value!, "application/json") : ApiResults.Error(http, StatusCodes.Status400BadRequest, r.Result.ErrorCode!);
         }));
-        group.MapPost("/passkey/register", (HttpContext http, string? client_id, PasskeyRegisterRequest body) => Session(http, client_id, async (user, svc) =>
+        routes.MapPost(Auth2Routes.PasskeyRegister, (HttpContext http, string? client_id, PasskeyRegisterRequest body) => Session(http, client_id, async (user, svc) =>
         {
             var r = await svc.RegisterAsync(user, body.Credential.GetRawText(), body.Name, http.RequestAborted);
             return r.Succeeded ? Results.Ok(r.Value) : ApiResults.Error(http, StatusCodes.Status400BadRequest, r.Result.ErrorCode!);
         }));
-        group.MapGet("/passkeys", (HttpContext http, string? client_id) => Session(http, client_id, async (user, svc) => Results.Ok(await svc.ListAsync(user, http.RequestAborted)), checkToken: false));
-        group.MapMethods("/passkeys/{id}", ["PATCH"], (HttpContext http, string id, string? client_id, PasskeyRenameRequest body) => Session(http, client_id, async (user, svc) =>
+        routes.MapGet(Auth2Routes.Passkeys, (HttpContext http, string? client_id) => Session(http, client_id, async (user, svc) => Results.Ok(await svc.ListAsync(user, http.RequestAborted)), checkToken: false));
+        routes.MapMethods(Auth2Routes.PasskeyById, ["PATCH"], (HttpContext http, string id, string? client_id, PasskeyRenameRequest body) => Session(http, client_id, async (user, svc) =>
         {
             var r = await svc.RenameAsync(user, id, body.Name, http.RequestAborted);
             return r.Succeeded ? Results.NoContent() : ApiResults.Error(http, r.ErrorCode == Auth2ErrorCodes.NotFound ? StatusCodes.Status404NotFound : StatusCodes.Status400BadRequest, r.ErrorCode!);
         }));
-        group.MapDelete("/passkeys/{id}", (HttpContext http, string id, string? client_id) => Session(http, client_id, async (user, svc) =>
+        routes.MapDelete(Auth2Routes.PasskeyById, (HttpContext http, string id, string? client_id) => Session(http, client_id, async (user, svc) =>
         {
             var r = await svc.RemoveAsync(user, id, http.RequestAborted);
             return r.Succeeded ? Results.NoContent() : ApiResults.Error(http, r.ErrorCode == Auth2ErrorCodes.NotFound ? StatusCodes.Status404NotFound : StatusCodes.Status400BadRequest, r.ErrorCode!);
         }));
 
         // ---- sign-in (anonymous)
-        group.MapPost("/passkey/request-options", async (HttpContext http, string? client_id, PasskeyRequestOptionsRequest? body, IClientIdAccessor accessor, IPasskeyService svc) =>
+        routes.MapPost(Auth2Routes.PasskeyRequestOptions, async (HttpContext http, string? client_id, PasskeyRequestOptionsRequest? body, IClientIdAccessor accessor, IPasskeyService svc) =>
         {
             accessor.ClientId ??= client_id;
             try
@@ -74,7 +73,7 @@ public static class PasskeyEndpoints
             }
             catch (ProjectNotFoundException) { return ApiResults.Error(http, StatusCodes.Status404NotFound, Auth2ErrorCodes.ProjectNotFound); }
         });
-        group.MapPost("/passkey/signin", async (HttpContext http, string? client_id, PasskeySignInRequest body, IClientIdAccessor accessor, IPasskeyService svc,
+        routes.MapPost(Auth2Routes.PasskeySignIn, async (HttpContext http, string? client_id, PasskeySignInRequest body, IClientIdAccessor accessor, IPasskeyService svc,
             IAuthFlowResolver flow, IReturnUrlValidator urls) =>
         {
             accessor.ClientId ??= client_id;

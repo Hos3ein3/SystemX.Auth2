@@ -291,8 +291,8 @@ public class RegisterApiTests : Phase6Base
         await using (var scope = NewScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-            (await db.Projects.SingleAsync(a => a.ProjectKey == "appa")).IsEnabled = false;
-            await db.SaveChangesAsync();
+            await scope.ServiceProvider.GetRequiredService<SystemX.Auth2.Server.Application.IProjectService>().SetEnabledAsync(
+                (await db.Projects.AsNoTracking().SingleAsync(a => a.ProjectKey == "appa")).Id, false, null, null);   // the real way: it also drops the cached copy
         }
         var disabled = await CallAsync(b, Auth2Routes.Register, new RegisterRequest(null, "y@example.com", null, PassA), tokenA);
         disabled.Status.ShouldBeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);   // the token of a disabled project is refused at its next validation

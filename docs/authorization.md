@@ -103,7 +103,7 @@ Load the `user` with the `UserManager` of the **same scope**. Passing a user loa
 
 ## Audit
 
-Every real change writes an audit event: `permission.created`, `permission.obsolete`, `permission.restored`, `permission.deleted`, `permission.granted`, `permission.revoked`, `role.created`, `role.deleted`, `role.assigned`, `role.removed`, `role.permission_added`, `role.permission_removed`, `group.created`, `group.deleted`, `group.user_added`, `group.user_removed`, `group.role_added`, `group.role_removed`, `group.permission_added`, `group.permission_removed`. Events hold ids and keys, never secrets.
+Every real change writes an audit event: `permission.created`, `permission.updated`, `permission.obsolete`, `permission.restored`, `permission.deleted`, `permission.granted`, `permission.revoked`, `role.created`, `role.updated`, `role.deleted`, `role.assigned`, `role.removed`, `role.permission_added`, `role.permission_removed`, `group.created`, `group.updated`, `group.deleted`, `group.user_added`, `group.user_removed`, `group.role_added`, `group.role_removed`, `group.permission_added`, `group.permission_removed`. Events hold ids and keys, never secrets.
 
 ## Common problems
 

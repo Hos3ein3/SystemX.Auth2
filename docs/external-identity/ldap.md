@@ -34,7 +34,7 @@ Your users already live in Active Directory or OpenLDAP and must not get a secon
 ## How to use it
 
 - **The user** types the directory user name and password in the **normal login form** of the Server. There is no separate button (`loginFormRequired: true` in `GET /connect/external/providers`).
-- **Self UI applications** can do the same through the token endpoint when the application has `AllowSelfUiLogin` on: `IAuth2WebService.LoginAsync(...)` sends the name and password and the Server decides ([client-setup.md](../client-setup.md#self-ui)). With the Mvc sample this is the Self UI form of `.UseSelfUi()`.
+- **Self UI applications** can do the same through the token endpoint when the application has `AllowSelfUiLogin` on: `IAuth2WebClientService.LoginAsync(...)` sends the name and password and the Server decides ([client-setup.md](../client-setup.md#self-ui)). With the Mvc sample this is the Self UI form of `.UseSelfUi()`.
 - **Groups to roles**: [group-mapping.md](group-mapping.md). `syncOnLogin` (default on) updates the person and the group mappings at every sign-in.
 - **Disabled, expired and locked accounts** are refused. With `revealDirectoryAccountState` on, the user sees the real reason (`ldap_account_disabled`); by default the answer is the generic one.
 - **Safety**: attempts are rate limited and count toward the project's lockout. Empty passwords are never sent. Filter input is escaped. The link key is the directory's unique id (`objectGUID` or `entryUUID`), never the DN.

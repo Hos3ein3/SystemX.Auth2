@@ -67,6 +67,16 @@ public interface ICurrentUser
     string? Email { get; }
     /// <summary>Phone number.</summary>
     string? PhoneNumber { get; }
+    /// <summary>
+    /// True when the email address is confirmed (claim <c>email_verified</c>; the token has it when it was issued with the <c>email</c> scope, like <see cref="Email"/>).
+    /// False when it is not confirmed, or the token does not say.
+    /// </summary>
+    bool IsEmailAddressConfirmed { get; }
+    /// <summary>
+    /// True when the phone number is confirmed (claim <c>phone_number_verified</c>; the token has it when it was issued with the <c>phone</c> scope, like <see cref="PhoneNumber"/>).
+    /// False when it is not confirmed, or the token does not say.
+    /// </summary>
+    bool IsPhoneNumberConfirmed { get; }
     /// <summary>First name.</summary>
     string? FirstName { get; }
     /// <summary>Last name.</summary>
@@ -84,6 +94,8 @@ public interface ICurrentUser
     Task<bool> HasPermissionAsync(string permission, CancellationToken ct = default);
     /// <summary>True when the user has the role.</summary>
     Task<bool> HasRoleAsync(string role, CancellationToken ct = default);
+    /// <summary>True when the user is in the group (the name is compared without regard to case).</summary>
+    Task<bool> HasGroupAsync(string group, CancellationToken ct = default);
 }
 
 /// <summary>The access data of one user that the client keeps. The two source lists can be empty with an older server.</summary>
@@ -168,6 +180,9 @@ public interface IAuth2AccessTokenAccessor
 {
     /// <summary>The bearer token of the request, or the token saved by the cookie sign-in, or null.</summary>
     Task<string?> GetAccessTokenAsync(CancellationToken ct = default);
+
+    /// <summary>The refresh token saved by the cookie or OIDC sign-in (<c>SaveTokens</c>), or null. A bearer request has none.</summary>
+    Task<string?> GetRefreshTokenAsync(CancellationToken ct = default);
 }
 
 internal sealed class AccessTokenAccessor(IHttpContextAccessor http) : IAuth2AccessTokenAccessor
@@ -180,6 +195,9 @@ internal sealed class AccessTokenAccessor(IHttpContextAccessor http) : IAuth2Acc
         if (header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return header["Bearer ".Length..].Trim();
         return await context.GetTokenAsync("access_token");   // saved by the cookie or OIDC sign-in (SaveTokens)
     }
+
+    public async Task<string?> GetRefreshTokenAsync(CancellationToken ct = default) =>
+        http.HttpContext is { } context ? await context.GetTokenAsync("refresh_token") : null;
 }
 
 internal sealed class CurrentUserService(IAuth2ApiClientService api, IAuth2AccessTokenAccessor tokens, IHttpContextAccessor http) : IAuth2CurrentUserService
@@ -191,10 +209,10 @@ internal sealed class CurrentUserService(IAuth2ApiClientService api, IAuth2Acces
         var token = await tokens.GetAccessTokenAsync(ct);
         return token is null
             ? Result<CurrentUserInfo>.Failure(Auth2ErrorCodes.InvalidToken, "There is no access token in this request.")
-            : await api.GetMeAsync(token, ct);
+            : await api.GetMeAsync(ct);
     }
 
-    public Task<Result<CurrentUserInfo>> FetchAsync(string accessToken, CancellationToken ct = default) => api.GetMeAsync(accessToken, ct);
+    public Task<Result<CurrentUserInfo>> FetchAsync(string accessToken, CancellationToken ct = default) => api.WithTokens(accessToken).GetMeAsync(ct);
 }
 
 /// <summary>
@@ -274,6 +292,8 @@ internal sealed class CurrentUserImpl(IHttpContextAccessor http, IAuth2AccessPro
     public string? UserName => IsMachine ? null : Claim("preferred_username", "name");
     public string? Email => Claim("email");
     public string? PhoneNumber => Claim("phone_number");
+    public bool IsEmailAddressConfirmed => IsAuthenticated && string.Equals(Claim(Auth2Claims.EmailVerified), "true", StringComparison.OrdinalIgnoreCase);
+    public bool IsPhoneNumberConfirmed => IsAuthenticated && string.Equals(Claim(Auth2Claims.PhoneNumberVerified), "true", StringComparison.OrdinalIgnoreCase);
     public string? FirstName => Claim("given_name");
     public string? LastName => Claim("family_name");
     public string? FullName => Claim("name");
@@ -285,6 +305,8 @@ internal sealed class CurrentUserImpl(IHttpContextAccessor http, IAuth2AccessPro
         (await access.GetAccessAsync(Principal, ct)).Permissions.Contains(permission.Trim().ToLowerInvariant());
     public async Task<bool> HasRoleAsync(string role, CancellationToken ct = default) =>
         (await access.GetAccessAsync(Principal, ct)).Roles.Contains(role, StringComparer.OrdinalIgnoreCase);
+    public async Task<bool> HasGroupAsync(string group, CancellationToken ct = default) =>
+        (await access.GetAccessAsync(Principal, ct)).Groups.Contains(group.Trim(), StringComparer.OrdinalIgnoreCase);
 }
 
 internal sealed class CurrentClientImpl(IHttpContextAccessor http) : ICurrentClient

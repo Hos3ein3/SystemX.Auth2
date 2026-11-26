@@ -98,7 +98,21 @@ The full guide is [scopes.md](scopes.md); here is the short version.
 - A role is a name with a list of permissions. Roles are per project; two projects can both have `Editor` with different contents. Global roles (no project) only count in the `_global` project and in single-project mode.
 - The `role` claim is in the token when the application was granted the `roles` scope. Without it the token has no roles, and `[Auth2Role]` reads the roles from the access data instead.
 - **The role in a token is a snapshot.** If an admin gives or takes a role, an old token keeps its old `role` claim until it is renewed (a new sign-in or a refresh). `ICurrentUser.HasRoleAsync` reads the access data, which follows the project's access version, so it can be newer than the claim. For a check that must be current, protect with a **permission**.
-- `GlobalAdmin` and `ProjectAdmin` are reserved roles for the admin API. Do not use them for your own screens.
+- `GlobalAdmin`, `Developer` and `ProjectAdmin` are reserved roles for the admin API and the console. Do not use them for your own screens.
+
+### The built-in roles GlobalAdmin and Developer
+
+These two global roles give power over the whole server, so the Server protects them in one place (every route, admin page and group goes through it):
+
+| Rule | Detail |
+|---|---|
+| **Never deleted** | `DeleteRoleAsync`, the admin page, the API and any code that uses `RoleManager` get a refusal (`403` / `forbidden`). The role store itself refuses, not only the pages |
+| **No look-alike roles** | A role of a project, or a renamed role, cannot be named `GlobalAdmin` or `Developer` (any letter case). The Server reads these roles **by name**, so such a role would be taken for the real one. The role sync skips both names too |
+| **Given and taken away only by a Developer or GlobalAdmin** | Giving one to a user, taking it away, adding it to a group or removing it from a group, and **joining a group that has it**: all need a person who holds the global role `GlobalAdmin` or `Developer`. Otherwise `403` (`forbidden`). The database decides, not the roles in the token or the cookie |
+| **Not a person** | The seed and the background jobs (code that is not a web request) are trusted |
+| **Where they can be managed** | Global roles are visible only in the `_global` project (or in single-project mode). In any other project they are "not found" |
+
+Everything else about ordinary roles is unchanged: any admin of the project gives and takes its own roles.
 
 ## Group in depth
 

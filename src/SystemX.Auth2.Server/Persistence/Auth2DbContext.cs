@@ -146,7 +146,16 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IProjectSc
             e.Property(u => u.LastName).HasMaxLength(100);
             e.Property(u => u.DisplayName).HasMaxLength(200);
             e.Property(u => u.PreferredCulture).HasMaxLength(16);
-            // Email is unique across the whole server (one person = one AppUser). Null emails are allowed (phone-only users).
+            // The USER NAME is the identity of a person and is unique across the whole server (one person = one AppUser), compared without letter case (NormalizedUserName).
+            // It can be a plain name, an email address or a phone number: a registration by email or phone sets it to that email or phone, and sign-in tries the exact user name first
+            // (UserLookup). It is declared here, next to the email, so the rule is visible; the name of the index is the one of Identity ("UserNameIndex", user_name_index in the database).
+            var oldUserNameIndex = e.Metadata.GetIndexes().Single(i => i.Properties.Count == 1 && i.Properties[0].Name == nameof(AppUser.NormalizedUserName));
+            e.Metadata.RemoveIndex(oldUserNameIndex);
+            e.HasIndex(u => u.NormalizedUserName, "UserNameIndex").IsUnique();
+
+            // The email is a second key of the same person and is unique too. Null emails are allowed (phone-only users). The phone number is not unique in the database (UserLookup refuses a
+            // sign-in that matches two people). What no index can say is that ONE TEXT NEVER NAMES TWO PEOPLE (an email or a phone number that is the user name of somebody else):
+            // Auth2UserValidator checks it, because an index cannot compare two columns.
             var oldEmailIndex = e.Metadata.GetIndexes().Single(i => i.Properties.Count == 1 && i.Properties[0].Name == nameof(AppUser.NormalizedEmail));
             e.Metadata.RemoveIndex(oldEmailIndex);
             e.HasIndex(u => u.NormalizedEmail, "EmailIndex").IsUnique();
@@ -222,6 +231,8 @@ public class Auth2DbContext(DbContextOptions<Auth2DbContext> options, IProjectSc
             e.Property(a => a.ProjectKey).HasMaxLength(64).IsRequired();
             e.Property(a => a.Name).HasMaxLength(200).IsRequired();
             e.HasIndex(a => a.ProjectKey).IsUnique();
+            // The name is unique too (without letter case and spaces around): the unique index ux_projects_name_ci on lower(btrim(name)) is made by the migration UniqueProjectName in SQL,
+            // because EF Core cannot describe an index on an expression. See ProjectNames.
             e.Property(a => a.Version).HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();   // PostgreSQL system column
             e.Property(a => a.Settings).HasColumnName("settings_json").HasColumnType("jsonb")
                 .HasConversion(SettingsConverter<Domain.Settings.ProjectSettings>(), SettingsComparer<Domain.Settings.ProjectSettings>());

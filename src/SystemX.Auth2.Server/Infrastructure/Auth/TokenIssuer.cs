@@ -50,6 +50,7 @@ public sealed class TokenIssuer(
         identity.SetClaim(Claims.Email, user.Email);
         identity.SetClaim(Claims.EmailVerified, user.EmailConfirmed ? "true" : "false");
         identity.SetClaim(Claims.PhoneNumber, user.PhoneNumber);
+        identity.SetClaim(Claims.PhoneNumberVerified, user.PhoneNumberConfirmed ? "true" : "false");
         identity.SetClaim(Claims.GivenName, user.FirstName);
         identity.SetClaim(Claims.FamilyName, user.LastName);
         identity.SetClaim(Claims.Name, FullName(user));
@@ -106,7 +107,9 @@ public sealed class TokenIssuer(
         if (principal.GetClaim(Auth2Claims.ClientId) is { Length: > 0 } clientId)
             principal.SetResources(await AudiencesAsync(clientId, principal.GetScopes(), ct));
         principal.SetClaim(Claims.Email, user.Email);
+        principal.SetClaim(Claims.EmailVerified, user.EmailConfirmed ? "true" : "false");
         principal.SetClaim(Claims.PhoneNumber, user.PhoneNumber);
+        principal.SetClaim(Claims.PhoneNumberVerified, user.PhoneNumberConfirmed ? "true" : "false");
         principal.SetClaim(Claims.Name, FullName(user));
         ApplyDestinations(principal);
     }
@@ -135,7 +138,7 @@ public sealed class TokenIssuer(
             Claims.Name or Claims.PreferredUsername or Claims.GivenName or Claims.FamilyName or Auth2Claims.Locale
                 when claim.Subject!.HasScope(Scopes.Profile) => [Destinations.AccessToken, Destinations.IdentityToken],
             Claims.Email or Claims.EmailVerified when claim.Subject!.HasScope(Scopes.Email) => [Destinations.AccessToken, Destinations.IdentityToken],
-            Claims.PhoneNumber when claim.Subject!.HasScope(Scopes.Phone) => [Destinations.AccessToken, Destinations.IdentityToken],
+            Claims.PhoneNumber or Claims.PhoneNumberVerified when claim.Subject!.HasScope(Scopes.Phone) => [Destinations.AccessToken, Destinations.IdentityToken],
             Claims.Role when claim.Subject!.HasScope(Scopes.Roles) => [Destinations.AccessToken, Destinations.IdentityToken],
             Claims.AuthenticationMethodReference or Auth2Claims.IdentityProvider => [Destinations.AccessToken, Destinations.IdentityToken],
             _ => [Destinations.AccessToken],

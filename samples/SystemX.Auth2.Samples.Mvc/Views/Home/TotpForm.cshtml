@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "A code of the authenticator app";
+}
+
+<div class="space-y-6 max-w-xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h1 class="text-2xl font-bold text-gray-900">A code of the authenticator app</h1>
+        <p class="text-sm text-gray-500 mt-1">
+            This action is protected by <code class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs">[Auth2Totp]</code>. Type the 6-digit code that your authenticator app shows now.
+            You need two-factor turned on (<code class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs">/Manage/TwoFactor/Enable</code> on the Auth2 server).
+        </p>
+
+        <form asp-action="TotpAction" method="post" class="mt-4 space-y-3" id="totpForm">
+            <label class="block text-sm font-medium text-gray-700" for="auth2_totp">Code</label>
+            <input id="auth2_totp" name="auth2_totp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required
+                   class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm tracking-widest font-mono" placeholder="123456" />
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" class="inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Run the action (code required)</button>
+                <button type="submit" formaction="@Url.Action("OptionalTotpAction")" class="inline-flex items-center px-4 py-2 rounded-md border border-gray-300 text-sm font-medium hover:bg-gray-50">Run the optional one (code only if you use two-factor)</button>
+            </div>
+        </form>
+
+        <p class="mt-4 text-sm text-gray-500">A wrong or missing code gives <b>403</b>. The response header <code class="font-mono">X-Auth2-Totp-Status</code> holds the error: <code>totp_required</code>, <code>invalid_otp</code> or <code>totp_setup_required</code> (you have not turned on two-factor, for the first button only).</p>
+        <p class="mt-2 text-sm"><a asp-action="Showcase" class="text-indigo-600 hover:underline">&larr; All the demo rules</a></p>
+    </div>
+</div>

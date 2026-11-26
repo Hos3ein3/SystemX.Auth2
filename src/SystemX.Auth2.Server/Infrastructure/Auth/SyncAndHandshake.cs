@@ -195,7 +195,7 @@ internal sealed class RoleSyncService(Auth2DbContext db, IAuthFlowResolver flow,
     private static bool IsValidRoleName(string? name)
     {
         if (string.IsNullOrEmpty(name) || name.Length > MaxNameLength) return false;
-        if (name.Equals(Auth2Roles.GlobalAdmin, StringComparison.OrdinalIgnoreCase) || name.Equals(Auth2Roles.ProjectAdmin, StringComparison.OrdinalIgnoreCase)) return false;
+        if (PrivilegedRoles.IsPrivileged(name) || name.Equals(Auth2Roles.ProjectAdmin, StringComparison.OrdinalIgnoreCase)) return false;   // GlobalAdmin and Developer cannot be created by a sync
         return name.All(c => char.IsLetterOrDigit(c) || c is ' ' or '.' or '_' or ':' or '-');
     }
 
@@ -338,6 +338,7 @@ internal sealed class ScopeSyncService(IServiceScopeFactory scopeFactory, IAuthF
         }
 
         var added = new List<string>();
+        var autoAssign = settings.Clients.AutoAssignScopeToApplication;   // off: the scope is only registered, an admin allows it for the applications that need it
         // One at a time per application: two syncs must not both read the settings and overwrite each other's additions.
         await locks.RunExclusiveAsync($"scopes:{client.Id:N}", async token =>
         {
@@ -347,12 +348,15 @@ internal sealed class ScopeSyncService(IServiceScopeFactory scopeFactory, IAuthF
                 try
                 {
                     await scopes.CreateAsync(new OpenIddictScopeDescriptor { Name = name, DisplayName = def.DisplayName, Description = def.Description }, token);
+                    if (!autoAssign) added.Add(name);   // what this call registered (with auto assign on, "added" counts what the application was given)
                 }
                 catch (Exception)
                 {
                     if (await scopes.FindByNameAsync(name, token) is null) throw;   // not a race: a real error
                 }
             }
+
+            if (!autoAssign) return;   // registered only: the application is not given anything
 
             // A new DI scope: its own DbContext, so no old copy of the OpenIddict client is tracked.
             // The allowed scopes are a field of the OpenIddict application: the calling application gets the permission for the new scopes.
@@ -367,7 +371,7 @@ internal sealed class ScopeSyncService(IServiceScopeFactory scopeFactory, IAuthF
 
         if (added.Count > 0)
             await audit.WriteAsync(new AuditEntry("scopes.synced", app.Id, ActorClientId: client.ClientId, TargetType: "application", TargetId: client.Id.ToString(),
-                Data: new Dictionary<string, object?> { ["added"] = added.Count }), ct);
+                Data: new Dictionary<string, object?> { ["added"] = added.Count, ["assigned"] = autoAssign }), ct);
         added.Sort(StringComparer.Ordinal);
         Operations.Auth2Metrics.SyncChanges.Add(added.Count, new KeyValuePair<string, object?>("kind", "scopes"));
         return new SyncOutcome(OperationResult.Ok, new SyncResponse(added.Count, 0, wanted.Count - added.Count, added));

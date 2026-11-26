@@ -57,6 +57,37 @@ public static class Auth2EndpointExtensions
     public static TBuilder WithGroup<TBuilder>(this TBuilder builder, params string[] groups) where TBuilder : IEndpointConventionBuilder =>
         builder.RequireAuthorization(new Auth2GroupAttribute(groups));
 
+    /// <summary>The user must be in <b>all</b> of these groups. Example: <c>.WithAllGroups("finance", "auditors")</c>.</summary>
+    public static TBuilder WithAllGroups<TBuilder>(this TBuilder builder, params string[] groups) where TBuilder : IEndpointConventionBuilder =>
+        builder.RequireAuthorization(new Auth2GroupAttribute(true, groups));
+
+    /// <summary>
+    /// The person must have signed in with <b>one</b> of these methods (the <c>amr</c> claim of the token): <c>pwd</c> password, <c>otp</c> one-time code, <c>swk</c> / <c>hwk</c> passkey, <c>mfa</c>.
+    /// See <see cref="Auth2SignInMethods"/>. A machine token is refused. Example: <c>.WithSignInMethod(Auth2SignInMethods.SyncedPasskey, Auth2SignInMethods.DevicePasskey)</c>.
+    /// </summary>
+    public static TBuilder WithSignInMethod<TBuilder>(this TBuilder builder, params string[] methods) where TBuilder : IEndpointConventionBuilder =>
+        builder.RequireAuthorization(new Auth2SignInMethodAttribute(methods));
+
+    /// <summary>
+    /// The request must carry a <b>fresh code of the authenticator app</b> (TOTP), checked on the Server every time, in the header <c>X-Auth2-Totp</c> (or the form field <c>auth2_totp</c>).
+    /// For actions that need the person to be there right now. A code works once. The code is <b>required</b>: a person who has not turned on two-factor is refused with the error
+    /// <c>totp_setup_required</c>, without a code the error is <c>totp_required</c>, with a wrong one <c>invalid_otp</c>. All are 403 with the header <c>X-Auth2-Totp-Status</c>
+    /// (and a JSON body for API calls), see <see cref="Auth2Totp"/>. A machine token is refused. Example: <c>app.MapDelete("/api/account", Delete).WithTotp();</c>
+    /// </summary>
+    public static TBuilder WithTotp<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder =>
+        builder.RequireAuthorization(new Auth2TotpAttribute());
+
+    /// <summary>
+    /// Like <see cref="WithTotp{TBuilder}"/>, but only for people who <b>have</b> two-factor on: they must give a code. A person who has not turned it on passes (there is nothing to check).
+    /// Use it where two-factor is a choice, not a rule. Example: <c>app.MapPost("/api/export", Export).WithOptionalTotp();</c>
+    /// </summary>
+    public static TBuilder WithOptionalTotp<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder =>
+        builder.RequireAuthorization(new Auth2OptionalTotpAttribute());
+
+    /// <summary>The person must have used more than one factor to sign in (a verified passkey, or a password plus a one-time code). For endpoints that move money or change security settings.</summary>
+    public static TBuilder WithMultiFactor<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder =>
+        builder.RequireAuthorization(new Auth2MultiFactorAttribute());
+
     /// <summary>
     /// "One of these is enough", across kinds: the user has any of <paramref name="roles"/>, or any of <paramref name="permissions"/>, or is in any of <paramref name="groups"/>,
     /// or the token has any of <paramref name="scopes"/>. Leave out the lists you do not need. At least one value is required. Scanned like the single-kind rules, so the roles,

@@ -113,7 +113,7 @@ public sealed partial class Auth2Seeder(
             project = new Project
             {
                 ProjectKey = projectKey,
-                Name = projectName,
+                Name = await FreeNameAsync(projectName, projectKey, ct),
                 Description = projectDesc,
                 IsEnabled = true,
                 CreatedAtUtc = now,
@@ -413,13 +413,28 @@ public sealed partial class Auth2Seeder(
             log.LogWarning("The GlobalAdmin user still has the default password. Change it now.");
     }
 
+    /// <summary>
+    /// A project name is unique. When somebody already named another project like a project of the seed ("Global", "Sample Project"), the seeded one gets the key added
+    /// (<c>Global (_global)</c>), so the start of the server never fails because of a name.
+    /// </summary>
+    private async Task<string> FreeNameAsync(string name, string projectKey, CancellationToken ct)
+    {
+        var candidate = ProjectNames.Clean(name);
+        for (var attempt = 0; ; attempt++)
+        {
+            var key = ProjectNames.Key(candidate);
+            if (!await db.Projects.AnyAsync(p => p.ProjectKey != projectKey && p.Name.Trim().ToLower() == key, ct)) return candidate;
+            candidate = attempt == 0 ? $"{ProjectNames.Clean(name)} ({projectKey})" : $"{ProjectNames.Clean(name)} ({projectKey} {attempt + 1})";
+        }
+    }
+
     private async Task<Project> EnsureProjectAsync(string projectKey, string name, string? description, string applicationName, CancellationToken ct)
     {
         var project = await db.Projects.FirstOrDefaultAsync(a => a.ProjectKey == projectKey, ct);
         if (project is null)
         {
             var now = clock.GetUtcNow();
-            project = new Project { ProjectKey = projectKey, Name = name, Description = description, CreatedAtUtc = now, UpdatedAtUtc = now };
+            project = new Project { ProjectKey = projectKey, Name = await FreeNameAsync(name, projectKey, ct), Description = description, CreatedAtUtc = now, UpdatedAtUtc = now };
             db.Projects.Add(project);
             await db.SaveChangesAsync(ct);
         }

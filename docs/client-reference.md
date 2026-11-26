@@ -53,7 +53,7 @@ The builder methods can be called in any order. Each returns the builder.
 | `UseApiAuthentication(Action<Auth2ApiOptions>?)` | `Auth2ApiOptions` | JWT bearer authentication: discovery, cached keys, audience = the client id |
 | `UseCookieAuthentication(Action<Auth2CookieOptions>?)` | `Auth2CookieOptions` | The sign-in cookie of browser apps (`LoginPath`, `AccessDeniedPath`, `AccessMode`, `SaveTokens`) |
 | `UseHostedUi(Action<Auth2HostedUiOptions>?)` | `Auth2HostedUiOptions` | Sign in on the Server's pages (code flow with PKCE). Maps `/auth2/login` and `/auth2/logout` |
-| `UseSelfUi()` | none | Your own login form; `IAuth2WebService` signs the cookie in |
+| `UseSelfUi()` | none | Your own login form; `IAuth2WebClientService` signs the cookie in |
 | `UseBlazor()` | none | `IAuth2BlazorService` and the access mode that fits a circuit |
 | `EnableCurrentUser(Action<Auth2CurrentUserOptions>?)` | `Auth2CurrentUserOptions` | `ICurrentUser` and `ICurrentClient`: `Source`, `CacheTtl` |
 | `UseDistributedCurrentUserStore()` | none | Keeps access data in `IDistributedCache` (Redis) instead of memory |
@@ -146,14 +146,14 @@ app.MapGet("/api/reports", () => Results.Ok(/* ... */)).WithScope("reports.read"
 
 ### 6. Calling the Server: `IAuth2ApiClientService`
 
-Returns `Result` / `Result<T>` and never throws for a failed call. The Minimal API sample's `/api/auth/login` is one line: `var result = await api.LoginAsync(request, ct);`. Methods for register and join, login (password, two-factor, one-time code), refresh and logout, confirmations, password reset and change, **two-factor setup**, **change of the own user name, email address and phone number**, `/me`, handshake, sync, pull and the external provider list. Every call carries the language of the current request (`WithCulture` chooses another), and the service never makes a cookie: for a cookie use `IAuth2WebService` (section 7). Every method, route, token and scope: [client-api-service.md](client-api-service.md); the HTTP side: [api-reference.md](api-reference.md).
+Returns `Result` / `Result<T>` and never throws for a failed call. The Minimal API sample's `/api/auth/login` is one line: `var result = await api.LoginAsync(request, ct);`. Methods for register and join, login (password, two-factor, one-time code), refresh and logout, confirmations, password reset and change, **two-factor setup**, **change of the own user name, email address and phone number**, `/me`, handshake, sync, pull and the external provider list, and **`Admin`**: manage people, roles, permissions, groups and scopes with an admin's token ([client-api-service.md](client-api-service.md#people-roles-permissions-groups-and-scopes-the-admin-calls)). Every call carries the language of the current request (`WithCulture` chooses another), and the service never makes a cookie: for a cookie use `IAuth2WebClientService` (section 7). Every method, route, token and scope: [client-api-service.md](client-api-service.md); the HTTP side: [api-reference.md](api-reference.md).
 
-### 7. Browser sign-in: `IAuth2WebService`
+### 7. Browser sign-in: `IAuth2WebClientService`
 
 `LoginAsync`, `TwoFactorLoginAsync`, `OtpLoginAsync` (Self UI: sign the cookie in), `LogoutAsync`, `ChallengeAsync`. Sample (`AccountController` of the MVC sample with `.UseSelfUi()`):
 
 ```csharp
-var result = await web.LoginAsync(HttpContext, new LoginRequest(model.Login, model.Password), model.RememberMe, ct);
+var result = await web.LoginAsync(new LoginRequest(model.Login, model.Password), model.RememberMe, ct);
 ```
 
 ### 8. Machine to machine
@@ -208,6 +208,11 @@ Authorization for Minimal API endpoints (and route groups). Chaining means AND: 
 | `WithMachineOnly(this T)` | Only machine tokens (client credentials) are accepted. |
 | `WithUserOnly(this T)` | Only user tokens are accepted. |
 | `WithGroup(this T, string[])` | The user must be in **one** of these groups. |
+| `WithAllGroups(this T, string[])` | The user must be in **all** of these groups. Example: `.WithAllGroups("finance", "auditors")`. |
+| `WithSignInMethod(this T, string[])` | The person must have signed in with **one** of these methods (the `amr` claim of the token): `pwd` password, `otp` one-time code, `swk` / `hwk` passkey, `mfa`. See `Auth2SignInMethods`. A machine token is refused. Example: `.WithSignInMethod(Auth2SignInMethods.SyncedPasskey, Auth2SignInMethods.DevicePasskey)`. |
+| `WithTotp(this T)` | The request must carry a **fresh code of the authenticator app** (TOTP), checked on the Server every time, in the header `X-Auth2-Totp` (or the form field `auth2_totp`). For actions that need the person to be there right now. A code works once. The code is **required**: a person who has not turned on two-factor is refused with the error `totp_setup_required`, without a code the error is `totp_required`, with a wrong one `invalid_otp`. All are 403 with the header `X-Auth2-Totp-Status` (and a JSON body for API calls), see `Auth2Totp`. A machine token is refused. Example: `app.MapDelete("/api/account", Delete).WithTotp();` |
+| `WithOptionalTotp(this T)` | Like `WithTotp`, but only for people who **have** two-factor on: they must give a code. A person who has not turned it on passes (there is nothing to check). Use it where two-factor is a choice, not a rule. Example: `app.MapPost("/api/export", Export).WithOptionalTotp();` |
+| `WithMultiFactor(this T)` | The person must have used more than one factor to sign in (a verified passkey, or a password plus a one-time code). For endpoints that move money or change security settings. |
 | `WithAnyOf(this T, string[], string[], string[], string[])` | "One of these is enough", across kinds: the user has any of `roles`, or any of `permissions`, or is in any of `groups`, or the token has any of `scopes`. Leave out the lists you do not need. At least one value is required. Scanned like the single-kind rules, so the roles, permissions, groups and scopes are synced. |
 | `WithRoleOrPermission(this T, string[], string[])` | The user has **any** of the roles **or any** of the permissions. Example: `.WithRoleOrPermission(["Admin"], ["orders.write"])`. |
 | `WithRoleOrGroup(this T, string[], string[])` | The user has **any** of the roles **or** is in **any** of the groups. |
@@ -279,7 +284,7 @@ Cookie, hosted UI, Self UI and Blazor features of the builder.
 |---|---|
 | `UseCookieAuthentication(this IAuth2ClientBuilder, Action<Auth2CookieOptions>)` | Adds the sign-in cookie for browser apps (MVC, Razor Pages, Blazor). A request with a bearer token still uses the token, so this can be combined with `UseApiAuthentication`. Browsers that are not signed in are sent to `LoginPath`; APIs and AJAX calls get 401 / 403. |
 | `UseHostedUi(this IAuth2ClientBuilder, Action<Auth2HostedUiOptions>)` | The hosted UI: users sign in on the Auth2 Server (authorization code with PKCE). The package maps `/auth2/login` and `/auth2/logout` (with `app.UseAuth2()`) and the callback paths. **Register the callback address** (for example `https://app.example.com/signin-oidc`) as a redirect URI of the application on the server. |
-| `UseSelfUi(this IAuth2ClientBuilder)` | The Self UI: your application shows its own login forms and calls `IAuth2WebService.LoginAsync`. **Your application handles passwords**, and the server must allow it (`Clients.AllowSelfUiLogin`). Set `LoginPath` to your login page. |
+| `UseSelfUi(this IAuth2ClientBuilder)` | The Self UI: your application shows its own login forms and calls `IAuth2WebClientService.LoginAsync`. **Your application handles passwords**, and the server must allow it (`Clients.AllowSelfUiLogin`). Set `LoginPath` to your login page. |
 | `UseBlazor(this IAuth2ClientBuilder)` | Blazor: cascading authentication state, `AuthorizeView` support with the Auth2 attributes, and `IAuth2BlazorService`. Pair it with `UseHostedUi()` or `UseSelfUi()`. In Blazor Server the access data is loaded at sign-in (`AccessMode.OnSignIn`) unless you choose another mode, because a circuit has no HTTP request to read the token from. |
 
 
@@ -361,19 +366,6 @@ Helpers for Blazor. Use it in components; it reads the user from the `Authentica
 | `NavigateToLogout(NavigationManager)` | Goes to the sign-out route. |
 
 
-### IAuth2WebService
-
-Sign-in and sign-out for apps that show their own forms (Self UI), and for the hosted UI routes.
-
-| Member | What it does |
-|---|---|
-| `LoginAsync(HttpContext, LoginRequest, bool, CancellationToken)` | Signs a user in with login and password (password grant; the server must allow `AllowSelfUiLogin`) and makes the cookie. When two-factor is needed the result succeeds with `TwoFactorRequired = true` and **no cookie is made**: call `TwoFactorLoginAsync` next. |
-| `TwoFactorLoginAsync(HttpContext, TwoFactorRequest, bool, CancellationToken)` | Second step of a login. Makes the cookie when it works. |
-| `OtpLoginAsync(HttpContext, string, string, bool, CancellationToken)` | Signs a user in with a one-time code. Makes the cookie when it works. |
-| `LogoutAsync(HttpContext, CancellationToken)` | Ends the server session (revokes the refresh token) and removes the cookie. For the hosted UI use the `/auth2/logout` route, which also signs out on the server. |
-| `ChallengeAsync(HttpContext, string)` | Sends the browser to sign in: the hosted UI starts the sign-in on the server; the Self UI goes to your `LoginPath`. After sign-in the user returns to `returnUrl` (a path on this site; anything else is ignored). |
-
-
 ## `SystemX.Auth2.Client.Authorization`
 
 
@@ -440,13 +432,15 @@ The user must be signed in (a valid token). Use on controllers, Razor Page model
 
 ### Auth2GroupAttribute
 
-On a class or method: the user must be in one of these groups. On a `const string` field or an enum member: no names, only the data of the group (`DisplayName`).
+On a class or method: the user must be in one of these groups (or in all of them, with `requireAll: true`). On a `const string` field or an enum member: no names, only the data of the group (`DisplayName`).
 
 | Member | What it does |
 |---|---|
 | `(constructor)(string[])` | Needs any of the groups. With no name (on a field) it only carries the data of the group. |
+| `(constructor)(bool, string[])` | Needs all of the groups (`requireAll` true) or any of them (false). |
 | `DisplayName` | Display name of the group (on a field or enum member). |
 | `Groups` |  |
+| `RequireAll` |  |
 
 
 ### Auth2MachineOnlyAttribute
@@ -457,6 +451,17 @@ Only machine tokens (client credentials) are accepted.
 |---|---|
 | `(constructor)()` | Creates the attribute. |
 | `MachineOnly` |  |
+
+
+### Auth2MultiFactorAttribute
+
+The person must have used more than one factor to sign in: a passkey unlocked with a fingerprint, face or PIN, or a password plus a one-time code. See `IsMultiFactor`.
+
+| Member | What it does |
+|---|---|
+| `(constructor)()` | Creates the attribute. |
+| `Methods` |  |
+| `MultiFactor` |  |
 
 
 ### Auth2OnlyRolePermissionAttribute
@@ -475,6 +480,16 @@ The permissions of this endpoint must be direct grants to the user, not come fro
 | Member | What it does |
 |---|---|
 | `Source` |  |
+
+
+### Auth2OptionalTotpAttribute
+
+Like `Auth2TotpAttribute`, but the code is **optional** for people who have not turned on two-factor: they pass without a code (there is nothing to check), and a person who **has** two-factor on must give a code. Use it where two-factor is a choice, not a rule.
+
+| Member | What it does |
+|---|---|
+| `(constructor)()` | Creates the attribute. |
+| `Optional` |  |
 
 
 ### Auth2PermissionAttribute
@@ -570,6 +585,52 @@ The token has any of the `Scopes` **or** the user has any of the `Roles`. Exampl
 | `Roles` | Roles (any). |
 
 
+### Auth2SignInMethodAttribute
+
+The person must have signed in with one of these methods (the `amr` claim): `pwd` (password), `otp` (one-time code), `swk` / `hwk` (a passkey), `mfa`. Use it for a sensitive endpoint that needs a stronger sign-in than a password. A machine token has no sign-in method, so it is refused. See `Auth2SignInMethods`.
+
+| Member | What it does |
+|---|---|
+| `(constructor)(string[])` | Needs any of the methods. |
+| `Methods` |  |
+| `MultiFactor` |  |
+
+
+### Auth2SignInMethods
+
+The `amr` values the Server writes into a token, and what counts as more than one factor.
+
+| Member | What it does |
+|---|---|
+| `Password` | A password. |
+| `OneTimeCode` | A one-time code (email, SMS or an authenticator app). |
+| `SyncedPasskey` | A passkey that syncs between devices (iCloud Keychain, Google Password Manager). |
+| `DevicePasskey` | A passkey bound to one device or a security key. |
+| `MultiFactor` | More than one factor (a passkey that was unlocked with a fingerprint, face or PIN). |
+| `IsMultiFactor(IEnumerable<string>)` | True when the person used more than one factor: `mfa` is present (a verified passkey), or both a password and a one-time code were used (password plus two-factor code). |
+
+
+### Auth2Totp
+
+Where the code of `WithTotp()` / `[Auth2Totp]` is read from, and how a refused request tells the caller why. A refused request is **403**. The response header `ResponseHeader` holds the error code, and an API or AJAX request also gets the body `{ "code": "...", "message": "..." }`: `totp_required`: the person has two-factor on and sent no code. Ask for one. `invalid_otp`: the code is wrong, expired or already used. Ask for the next one. `totp_setup_required`: the person has not turned on two-factor and the action needs it (not for an optional rule). Send them to turn it on. `locked_out`: too many wrong codes, the account is locked. `two_factor_not_allowed`: the project does not allow authenticator apps. `forbidden`: a machine token (a program has no authenticator app). `server_unavailable`: the Server could not be asked (the action is refused: fail closed). The messages of the Server are written in the language of the request (`Errors.resx`).
+
+| Member | What it does |
+|---|---|
+| `HeaderName` | The request header that carries the code (APIs and AJAX calls). |
+| `FormField` | The form field that carries the code (HTML forms of controllers and Razor Pages). |
+| `ResponseHeader` | The response header of a refused request: the error code (see the list above). |
+
+
+### Auth2TotpAttribute
+
+The request must carry a **fresh code of the authenticator app** (TOTP), checked on the Server every time. For actions that need the person to be there right now: a transfer, deleting data, changing security settings. The code is read from the header `X-Auth2-Totp` or the form field `auth2_totp` (`Auth2Totp`). A code works **once**. The code is **required**: a person who has not turned on two-factor is refused with the error `totp_setup_required` (use `Auth2OptionalTotpAttribute` to ask only the people who have it). Without a code the error is `totp_required`, with a wrong one `invalid_otp`. 403 with the header `X-Auth2-Totp-Status` (and a JSON body for API requests). A machine token is refused.
+
+| Member | What it does |
+|---|---|
+| `(constructor)()` | Creates the attribute. |
+| `Optional` |  |
+
+
 ### Auth2UserOnlyAttribute
 
 Only user tokens are accepted (not machine tokens).
@@ -612,11 +673,12 @@ Receives audit events of authorization. Register your own to write them to your 
 
 ### IAuth2GroupMetadata
 
-Endpoint metadata: the user must be in one of these groups.
+Endpoint metadata: the user must be in these groups.
 
 | Member | What it does |
 |---|---|
-| `Groups` | Group names (one is enough). |
+| `Groups` | Group names. |
+| `RequireAll` | True when the user must be in all of the groups, false (the default) when one is enough. |
 
 
 ### IAuth2PermissionMetadata
@@ -657,6 +719,16 @@ Endpoint metadata: the token needs these scopes.
 | `Scopes` | Scope names (one is enough). |
 
 
+### IAuth2SignInMethodMetadata
+
+Endpoint metadata: how the person must have signed in (the `amr` claim of the token).
+
+| Member | What it does |
+|---|---|
+| `Methods` | The accepted `amr` values (one is enough), for example `pwd`, `otp`, `swk` (a synced passkey), `hwk` (a device-bound passkey), `mfa`. Empty when `MultiFactor` is used. |
+| `MultiFactor` | True when the person must have used more than one factor (see `IsMultiFactor`). |
+
+
 ### IAuth2TokenKindMetadata
 
 Endpoint metadata: only machine tokens (client credentials), or only user tokens.
@@ -664,6 +736,15 @@ Endpoint metadata: only machine tokens (client credentials), or only user tokens
 | Member | What it does |
 |---|---|
 | `MachineOnly` | True for machine tokens only, false for user tokens only. |
+
+
+### IAuth2TotpMetadata
+
+Endpoint metadata: the request must carry a fresh code of the authenticator app (TOTP).
+
+| Member | What it does |
+|---|---|
+| `Optional` | False (`WithTotp()` / `[Auth2Totp]`): a code is **required**; a person without two-factor is refused with `totp_setup_required`. True (`WithOptionalTotp()` / `[Auth2OptionalTotp]`): only people who have two-factor on are asked; the others pass. |
 
 
 ## `SystemX.Auth2.Client.CurrentUser`
@@ -708,6 +789,7 @@ Finds the access token of the current request.
 | Member | What it does |
 |---|---|
 | `GetAccessTokenAsync(CancellationToken)` | The bearer token of the request, or the token saved by the cookie sign-in, or null. |
+| `GetRefreshTokenAsync(CancellationToken)` | The refresh token saved by the cookie or OIDC sign-in (`SaveTokens`), or null. A bearer request has none. |
 
 
 ### IAuth2CurrentUserService
@@ -750,6 +832,8 @@ The signed-in **person**. Name and email come from the token (no call). Roles, p
 | `UserName` | User name. |
 | `Email` | Email. |
 | `PhoneNumber` | Phone number. |
+| `IsEmailAddressConfirmed` | True when the email address is confirmed (claim `email_verified`; the token has it when it was issued with the `email` scope, like `Email`). False when it is not confirmed, or the token does not say. |
+| `IsPhoneNumberConfirmed` | True when the phone number is confirmed (claim `phone_number_verified`; the token has it when it was issued with the `phone` scope, like `PhoneNumber`). False when it is not confirmed, or the token does not say. |
 | `FirstName` | First name. |
 | `LastName` | Last name. |
 | `FullName` | Full name. |
@@ -758,6 +842,7 @@ The signed-in **person**. Name and email come from the token (no call). Roles, p
 | `GetGroupsAsync(CancellationToken)` | Groups. Empty for a machine token. |
 | `HasPermissionAsync(string, CancellationToken)` | True when the user has the permission. |
 | `HasRoleAsync(string, CancellationToken)` | True when the user has the role. |
+| `HasGroupAsync(string, CancellationToken)` | True when the user is in the group (the name is compared without regard to case). |
 
 
 ### ICurrentUserStore
@@ -1253,13 +1338,119 @@ How an enum member name becomes a key.
 ## `SystemX.Auth2.Client.Services`
 
 
+### IAuth2AdminClientService
+
+Manages the people, roles, permissions, groups and scopes of a project on the Auth2 Server (the admin API of `/api/auth2/admin`), and the links between them. Get it from `Admin` (an API: the token of the current request) or `Admin` (a cookie application: the token of the cookie, renewed once when it is old). Both give the same calls. `Users`: create, read, change, delete, lock, sessions, and the roles, permissions and groups of a user. `Roles`: create, read, change, delete, and the permissions of a role. `Permissions`: create, read, change, mark obsolete, delete. `Groups`: create, read, change, delete, the roles and permissions of a group, and its members. `Scopes`: create, read, change, delete (GlobalAdmin changes; every admin reads). **Who may call.** A **signed-in admin** (a ProjectAdmin of this application's project, or a GlobalAdmin) whose token has the scope `auth2.admin` (`Admin`): ask for it when they sign in (`LoginRequest.Scopes`) and allow it for the application. The token of the application itself (client credentials) is refused with `forbidden`. No call takes a token or a `HttpContext`: it is found for you (`WithTokens` chooses another). **Project.** The calls work on the project of this application (known from the handshake). A GlobalAdmin may work on another project with `ForProject`. Like `IAuth2ApiClientService`, nothing throws for a server error: the code is in `Result.Error.Code` (`not_found`, `forbidden`, `conflict`, `validation_failed`, `insufficient_scope`, `invalid_token`, ...). Ids are the ids of the lists (`AdminRoleDto.Id`, ...). A permission in a link is named by its **key**. Adding a link that exists, or removing one that does not, succeeds.
+
+| Member | What it does |
+|---|---|
+| `ForProject(Guid)` | The same calls for another project (GlobalAdmin only; a ProjectAdmin gets `not_found`). Nothing is changed on this instance: use the returned one. |
+| `Users` | The people of the project. |
+| `Roles` | The roles of the project. |
+| `Permissions` | The permissions of the project. |
+| `Groups` | The groups of the project. |
+| `Scopes` | The scopes of the server. |
+
+
+### IAuth2AdminGroups
+
+The groups of a project.
+
+| Member | What it does |
+|---|---|
+| `ListAsync(PageRequest, CancellationToken)` | Groups of the project with their role names, permission keys and member count. |
+| `GetAsync(Guid, CancellationToken)` | One group. |
+| `CreateAsync(CreateGroupRequest, CancellationToken)` | Creates a group (the name is made lowercase; `conflict` when it exists). |
+| `UpdateAsync(Guid, UpdateGroupRequest, CancellationToken)` | Changes the display name and the description of a group. The name never changes. |
+| `DeleteAsync(Guid, CancellationToken)` | Deletes a group with its links. |
+| `AddRoleAsync(Guid, Guid, CancellationToken)` | Gives a role to every member of a group. GlobalAdmin cannot be given by a ProjectAdmin (`forbidden`). |
+| `RemoveRoleAsync(Guid, Guid, CancellationToken)` | Takes a role from a group. |
+| `AddPermissionAsync(Guid, string, CancellationToken)` | Gives a permission to every member of a group. |
+| `RemovePermissionAsync(Guid, string, CancellationToken)` | Takes a permission from a group. |
+| `ListMembersAsync(Guid, CancellationToken)` | The ids of the members of a group. |
+| `AddMemberAsync(Guid, Guid, CancellationToken)` | Adds a user to a group. |
+| `RemoveMemberAsync(Guid, Guid, CancellationToken)` | Removes a user from a group. |
+
+
+### IAuth2AdminPermissions
+
+The permissions of a project.
+
+| Member | What it does |
+|---|---|
+| `ListAsync(PageRequest, CancellationToken)` | Permissions of the project. |
+| `GetAsync(Guid, CancellationToken)` | One permission. |
+| `CreateAsync(PermissionDefinition, CancellationToken)` | Creates a permission (`invalid_permission_key` when the key is not valid; a key that exists is left as it is). |
+| `UpdateAsync(Guid, UpdatePermissionRequest, CancellationToken)` | Changes the texts of a permission (display name, description, group). The key never changes. A global permission is changed in the global project only (`forbidden`). |
+| `SetObsoleteAsync(Guid, bool, CancellationToken)` | Marks a permission obsolete, or not. The grants stay. |
+| `DeleteAsync(Guid, CancellationToken)` | Deletes a permission and every grant of it. |
+
+
+### IAuth2AdminRoles
+
+The roles of a project. Roles are never renamed (their names are in tokens and policies).
+
+| Member | What it does |
+|---|---|
+| `ListAsync(PageRequest, CancellationToken)` | Roles of the project (and the global roles on the global project) with their permission keys. |
+| `GetAsync(Guid, CancellationToken)` | One role. |
+| `CreateAsync(CreateRoleRequest, CancellationToken)` | Creates a role. The names `GlobalAdmin` and `Developer` are refused (`forbidden`); a name that exists gives `conflict` or `validation_failed`. |
+| `UpdateAsync(Guid, UpdateRoleRequest, CancellationToken)` | Changes the description of a role. The name never changes (`validation_failed` when another name is sent). System roles, GlobalAdmin, Developer and global roles are refused (`forbidden`). |
+| `DeleteAsync(Guid, CancellationToken)` | Deletes a role with its links. System roles, GlobalAdmin and Developer are refused (`forbidden`). |
+| `ListPermissionsAsync(Guid, CancellationToken)` | The permission keys of a role. |
+| `AddPermissionAsync(Guid, string, CancellationToken)` | Gives a permission to a role (every person with the role gets it). |
+| `RemovePermissionAsync(Guid, string, CancellationToken)` | Takes a permission from a role. |
+
+
+### IAuth2AdminScopes
+
+The scopes of the server. Every admin reads them; only a GlobalAdmin changes them (`forbidden` otherwise).
+
+| Member | What it does |
+|---|---|
+| `ListAsync(PageRequest, CancellationToken)` | Scopes of the server. |
+| `GetAsync(Guid, CancellationToken)` | One scope. |
+| `CreateAsync(CreateScopeRequest, CancellationToken)` | Creates a scope. The name has no spaces; `conflict` when it exists. |
+| `UpdateAsync(Guid, UpdateScopeRequest, CancellationToken)` | Changes a scope (`null` keeps the old value). |
+| `DeleteAsync(Guid, CancellationToken)` | Deletes a scope that no application uses (`conflict` otherwise). |
+
+
+### IAuth2AdminUsers
+
+The people of a project: their account, sessions, and what they have (roles, permissions, groups).
+
+| Member | What it does |
+|---|---|
+| `ListAsync(PageRequest, Nullable<bool>, CancellationToken)` | People of the project. `lockedOut` `true` gives only the locked ones, `false` only the others, `null` everybody. |
+| `GetAsync(Guid, CancellationToken)` | One person. |
+| `CreateAsync(AdminCreateUserRequest, CancellationToken)` | Creates a person with a password, or, when the person already exists on the server, only adds them to this project (no password is set; see `UserWasCreated`). The project rules for the user name, email, phone number and password apply (`validation_failed`, `conflict`, `invalid_password`, ...). |
+| `UpdateAsync(Guid, AdminUpdateUserRequest, CancellationToken)` | Changes the profile of a person (`null` keeps the old value; `IsActive` false turns the account off). |
+| `DeleteAsync(Guid, CancellationToken)` | Removes the person from this project (their roles, groups and grants of this project go too). On a single-project server it deletes the account. Nobody deletes themselves. |
+| `LockAsync(Guid, Nullable<DateTimeOffset>, CancellationToken)` | Locks a person until `untilUtc`, or until an admin unlocks them (`null`). |
+| `UnlockAsync(Guid, CancellationToken)` | Unlocks a person. |
+| `ResetTwoFactorAsync(Guid, CancellationToken)` | Turns the two-factor of a person off (they lost the authenticator and the recovery codes). |
+| `ListSessionsAsync(Guid, CancellationToken)` | The open sessions of a person. |
+| `RevokeSessionAsync(Guid, string, CancellationToken)` | Ends one session. |
+| `RevokeAllSessionsAsync(Guid, CancellationToken)` | Ends every session of a person. |
+| `GetAccessAsync(Guid, CancellationToken)` | What a person has now: roles, permissions and groups (direct, and through roles and groups). |
+| `AssignRoleAsync(Guid, Guid, CancellationToken)` | Gives a role to a person. GlobalAdmin and Developer are given only by someone who has them (`forbidden`). |
+| `RemoveRoleAsync(Guid, Guid, CancellationToken)` | Takes a role from a person. Nobody takes their own GlobalAdmin or ProjectAdmin role (`conflict`). |
+| `MakeProjectAdminAsync(Guid, CancellationToken)` | Makes the person a ProjectAdmin of this project (the role is created the first time). |
+| `GrantPermissionAsync(Guid, string, CancellationToken)` | Gives a permission straight to a person. |
+| `RevokePermissionAsync(Guid, string, CancellationToken)` | Takes a direct permission from a person (a permission that comes from a role or a group stays). |
+| `AddToGroupAsync(Guid, Guid, CancellationToken)` | Puts a person in a group. |
+| `RemoveFromGroupAsync(Guid, Guid, CancellationToken)` | Takes a person out of a group. |
+
+
 ### IAuth2ApiClientService
 
-Calls the Auth2 Server. Every method returns `Result` or `Result` and never throws for server errors (a wrong password is a normal answer). The error code is in `Result.Error.Code`; a server that cannot be reached gives `ServerUnavailable`. Calls that change something (register, login, password change) are never repeated automatically. **Language.** Every call carries the language of the current request (`Accept-Language`, from `CultureInfo.CurrentUICulture`; switch off with `Auth2ClientOptions.SendRequestCulture`), so the error message, and the email or SMS that the call causes, are written in that language when the server has it (`en`, `fa`, `nl`, `it`). Use `WithCulture` to choose it for some calls. The error **code** never changes with the language. **Cookies.** This service never makes a cookie and never keeps a token. Login methods only return the tokens. For an application with cookie sign-in use `IAuth2WebService`, which calls this service and then signs the cookie in.
+Calls the Auth2 Server. Every method returns `Result` or `Result` and never throws for server errors (a wrong password is a normal answer). The error code is in `Result.Error.Code`; a server that cannot be reached gives `ServerUnavailable`. Calls that change something (register, login, password change) are never repeated automatically. **Language.** Every call carries the language of the current request (`Accept-Language`, from `CultureInfo.CurrentUICulture`; switch off with `Auth2ClientOptions.SendRequestCulture`), so the error message, and the email or SMS that the call causes, are written in that language when the server has it (`en`, `fa`, `nl`, `it`). Use `WithCulture` to choose it for some calls. The error **code** never changes with the language. **Cookies and tokens.** This service never makes a cookie and never keeps a token. Login methods only return the tokens; the methods that act for a person find the token of the current request by themselves. For an application with cookie sign-in use `IAuth2WebClientService`, which calls this service and then signs the cookie in.
 
 | Member | What it does |
 |---|---|
 | `WithCulture(string)` | The same service for calls in another language. `culture` is a language tag such as `fa` or `fa-IR`; `null` or empty goes back to the language of the current request. Nothing is changed on this instance: use the returned one. |
+| `WithTokens(string, string)` | The same service with tokens that you choose. **Normally you do not need it**: the methods that act for a person (`GetMeAsync`, `ChangePasswordAsync`, two-factor, `Admin`, ...) take the access token of the current request themselves (`IAuth2AccessTokenAccessor`: the bearer header of the request, or the token saved by the cookie sign-in), and `RefreshAsync` / `LogoutAsync` take the refresh token saved by the cookie sign-in. Use this where there is no request (a background job, a script, a test) or when you hold the person's tokens yourself (an API that passes the tokens of its caller). A `null` value falls back to the current request. Nothing is changed on this instance: use the returned one. |
+| `Admin` | The people, roles, permissions, groups and scopes of the project: create, read, change and delete, and who has what, with the access token of a signed-in admin (scope `auth2.admin`). See `IAuth2AdminClientService`. |
 | `RegisterAsync(RegisterRequest, CancellationToken)` | Registers a user (or adds an existing person; see `RegisterResponse`). Needs the client scope `auth2.register`. |
 | `LoginAsync(LoginRequest, CancellationToken)` | Signs a user in with the password grant (the server must allow `AllowSelfUiLogin`). When two-factor is needed the result succeeds with `TwoFactorRequired = true` and a `TwoFactorToken`: call `TwoFactorLoginAsync` next. |
 | `TwoFactorLoginAsync(TwoFactorRequest, CancellationToken)` | Second step of a login: the authenticator code or a recovery code. |
@@ -1267,10 +1458,10 @@ Calls the Auth2 Server. Every method returns `Result` or `Result` and never thro
 | `RequestOtpAsync(OtpRequest, CancellationToken)` | Sends a one-time code by email or SMS. The answer is always the same, so nobody can find out who has an account. |
 | `ForgotPasswordAsync(ForgotPasswordRequest, CancellationToken)` | Starts a password reset. The answer is always the same. |
 | `ResetPasswordAsync(ResetPasswordRequest, CancellationToken)` | Finishes a password reset with the token from the email. |
-| `ChangePasswordAsync(string, ChangePasswordRequest, CancellationToken)` | Changes the password of the user who owns `accessToken`. |
-| `RefreshAsync(string, CancellationToken)` | Gets new tokens with a refresh token. The refresh token can be used once; keep the new one. |
-| `LogoutAsync(string, CancellationToken)` | Revokes a refresh token (sign-out on the server). |
-| `GetMeAsync(string, CancellationToken)` | The signed-in user and their roles, permissions and groups (`GET /api/auth2/me`). |
+| `ChangePasswordAsync(ChangePasswordRequest, CancellationToken)` | Changes the password of the signed-in user. |
+| `RefreshAsync(CancellationToken)` | Gets new tokens with a refresh token. The refresh token can be used once; keep the new one. |
+| `LogoutAsync(CancellationToken)` | Revokes a refresh token (sign-out on the server). |
+| `GetMeAsync(CancellationToken)` | The signed-in user and their roles, permissions and groups (`GET /api/auth2/me`). |
 | `HandshakeAsync(CancellationToken)` | Makes a handshake now and updates `Auth2ClientState`. Use it to try again after a start-up failure. |
 | `SyncPermissionsAsync(PermissionSyncRequest, CancellationToken)` | Sends permissions to the server (adds and updates, never deletes). |
 | `SyncRolesAsync(RoleSyncRequest, CancellationToken)` | Sends roles to the server (adds and updates, never deletes). |
@@ -1285,15 +1476,52 @@ Calls the Auth2 Server. Every method returns `Result` or `Result` and never thro
 | `ResendEmailConfirmationAsync(ResendEmailConfirmationRequest, CancellationToken)` | Sends the email confirmation again. The answer is always the same. Needs the client scope `auth2.login`. |
 | `ConfirmPhoneAsync(ConfirmPhoneRequest, CancellationToken)` | Confirms a phone number with the code from the SMS (ask for it with `RequestOtpAsync`, purpose `confirm_phone`). Needs the client scope `auth2.login`. |
 | `CompleteJoinAsync(JoinCompleteRequest, CancellationToken)` | Finishes joining this application for a person who already has an account elsewhere: the code that proves ownership and the new password. Needs the client scope `auth2.register`. |
-| `SetupTwoFactorAsync(string, CancellationToken)` | Makes the key for the authenticator app. Show `SharedKey` and `AuthenticatorUri` (as a QR code), then call `EnableTwoFactorAsync`. |
-| `EnableTwoFactorAsync(string, TwoFactorEnableRequest, CancellationToken)` | Turns two-factor on with the first code of the app. The recovery codes in the answer are shown once. |
-| `DisableTwoFactorAsync(string, TwoFactorDisableRequest, CancellationToken)` | Turns two-factor off. The password is needed. Refused when the application requires two-factor. |
-| `RegenerateRecoveryCodesAsync(string, RecoveryCodesRequest, CancellationToken)` | Makes new recovery codes (the old ones stop working). A code from the authenticator app is needed. The codes are shown once. |
-| `ChangeUserNameAsync(string, ChangeUserNameRequest, CancellationToken)` | Changes the user name at once. A person who has a password must send it. |
-| `RequestEmailChangeAsync(string, ChangeEmailRequest, CancellationToken)` | Starts an email change: a link goes to the **new** address and nothing changes yet. Finish with `ConfirmEmailChangeAsync`. |
-| `ConfirmEmailChangeAsync(string, ConfirmEmailChangeRequest, CancellationToken)` | Finishes an email change with the new address and the token of the link. The address is replaced and marked as confirmed. |
-| `RequestPhoneChangeAsync(string, ChangePhoneNumberRequest, CancellationToken)` | Starts a phone change: an SMS code goes to the **new** number and nothing changes yet. Finish with `ConfirmPhoneChangeAsync`. |
-| `ConfirmPhoneChangeAsync(string, ConfirmPhoneChangeRequest, CancellationToken)` | Finishes a phone change with the new number and the code. The number is replaced and marked as confirmed. |
+| `SetupTwoFactorAsync(CancellationToken)` | Makes the key for the authenticator app. Show `SharedKey` and `AuthenticatorUri` (as a QR code), then call `EnableTwoFactorAsync`. |
+| `EnableTwoFactorAsync(TwoFactorEnableRequest, CancellationToken)` | Turns two-factor on with the first code of the app. The recovery codes in the answer are shown once. |
+| `VerifyTotpAsync(TwoFactorVerifyRequest, CancellationToken)` | Asks the Server to check one code of the authenticator app for the signed-in user (the access token). Used by `WithTotp()` / `[Auth2Totp]` before a sensitive action. A code works once, and a wrong code counts as a failed sign-in attempt. Failures: `invalid_otp`, `two_factor_not_enabled`, `locked_out`. |
+| `DisableTwoFactorAsync(TwoFactorDisableRequest, CancellationToken)` | Turns two-factor off. The password is needed. Refused when the application requires two-factor. |
+| `RegenerateRecoveryCodesAsync(RecoveryCodesRequest, CancellationToken)` | Makes new recovery codes (the old ones stop working). A code from the authenticator app is needed. The codes are shown once. |
+| `ChangeUserNameAsync(ChangeUserNameRequest, CancellationToken)` | Changes the user name at once. A person who has a password must send it. |
+| `RequestEmailChangeAsync(ChangeEmailRequest, CancellationToken)` | Starts an email change: a link goes to the **new** address and nothing changes yet. Finish with `ConfirmEmailChangeAsync`. |
+| `ConfirmEmailChangeAsync(ConfirmEmailChangeRequest, CancellationToken)` | Finishes an email change with the new address and the token of the link. The address is replaced and marked as confirmed. |
+| `RequestPhoneChangeAsync(ChangePhoneNumberRequest, CancellationToken)` | Starts a phone change: an SMS code goes to the **new** number and nothing changes yet. Finish with `ConfirmPhoneChangeAsync`. |
+| `ConfirmPhoneChangeAsync(ConfirmPhoneChangeRequest, CancellationToken)` | Finishes a phone change with the new number and the code. The number is replaced and marked as confirmed. |
+
+
+### IAuth2WebClientService
+
+Everything a website with its **own forms** (Self UI) needs from the Auth2 Server, in one service: signing in and out, and the account pages of the signed-in person (password, user name, email, phone, two-factor), plus the forms for people who are not signed in (register, forgot password, confirm email). It is `IAuth2ApiClientService` for web applications: the same calls, but it works with the **session cookie**. Sign-in methods make the cookie and keep the tokens in it (`Auth2CookieOptions.SaveTokens`). Methods with an `HttpContext` act for the **signed-in person**: the service takes the access token from the cookie, so your code never handles a token. When the access token is old (`invalid_token`) the service refreshes it **once** with the refresh token of the cookie, saves the new tokens in the cookie and asks again; several requests that need it at the same moment share one refresh (a refresh token works once). Methods without an `HttpContext` are for people who are not signed in. Like the API service, nothing throws for a server error: the answer is a `Result` with the error code. A program (a job, an API, a back end that holds tokens itself) uses `IAuth2ApiClientService`.
+
+| Member | What it does |
+|---|---|
+| `LoginAsync(LoginRequest, bool, CancellationToken)` | Signs a user in with login and password (password grant; the server must allow `AllowSelfUiLogin`) and makes the cookie. When two-factor is needed the result succeeds with `TwoFactorRequired = true` and **no cookie is made**: call `TwoFactorLoginAsync` next. |
+| `TwoFactorLoginAsync(TwoFactorRequest, bool, CancellationToken)` | Second step of a login. Makes the cookie when it works. |
+| `OtpLoginAsync(string, string, bool, CancellationToken)` | Signs a user in with a one-time code. Makes the cookie when it works. |
+| `LogoutAsync(CancellationToken)` | Ends the server session (revokes the refresh token) and removes the cookie. For the hosted UI use the `/auth2/logout` route, which also signs out on the server. |
+| `ChallengeAsync(string)` | Sends the browser to sign in: the hosted UI starts the sign-in on the server; the Self UI goes to your `LoginPath`. After sign-in the user returns to `returnUrl` (a path on this site; anything else is ignored). |
+| `RegisterAsync(RegisterRequest, CancellationToken)` | Registers a person (no cookie is made: they sign in next, or confirm their email first). |
+| `RequestOtpAsync(OtpRequest, CancellationToken)` | Sends a one-time code by email or SMS (for `OtpLoginAsync`). The answer is the same whether the account exists or not. |
+| `ForgotPasswordAsync(ForgotPasswordRequest, CancellationToken)` | Starts the reset of a forgotten password (the person gets a link or code). |
+| `ResetPasswordAsync(ResetPasswordRequest, CancellationToken)` | Sets a new password with the token or code of `ForgotPasswordAsync`. |
+| `ConfirmEmailAsync(ConfirmEmailRequest, CancellationToken)` | Confirms an email address with the code or token of the message. |
+| `ResendEmailConfirmationAsync(ResendEmailConfirmationRequest, CancellationToken)` | Sends the confirmation message again. |
+| `ConfirmPhoneAsync(ConfirmPhoneRequest, CancellationToken)` | Confirms a phone number with the code of the SMS. |
+| `CompleteJoinAsync(JoinCompleteRequest, CancellationToken)` | Finishes joining this application for a person who already has an account on the server (with the proof they were sent). |
+| `GetExternalProvidersAsync(CancellationToken)` | The external sign-in providers (Google, GitHub, ...) this application shows, for your own login page. |
+| `GetMeAsync(CancellationToken)` | The signed-in person: profile, roles, permissions and groups, read from the server. |
+| `RefreshAsync(CancellationToken)` | Refreshes the tokens of the session now: uses the refresh token of the cookie and saves the new tokens in it. Other methods do it by themselves when the access token is old; call this to keep a long session alive or to pick up new roles. Fails when the cookie has no refresh token or the server refuses it (sign in again). |
+| `ChangePasswordAsync(ChangePasswordRequest, CancellationToken)` | Changes the password of the signed-in person. The current password is needed when they have one. |
+| `ChangeUserNameAsync(ChangeUserNameRequest, CancellationToken)` | Changes the user name of the signed-in person (the project rules apply; the password is needed when they have one). |
+| `RequestEmailChangeAsync(ChangeEmailRequest, CancellationToken)` | Asks to change the email address: a link is sent **to the new address**. |
+| `ConfirmEmailChangeAsync(ConfirmEmailChangeRequest, CancellationToken)` | Confirms the new email address with the token of the link. |
+| `RequestPhoneChangeAsync(ChangePhoneNumberRequest, CancellationToken)` | Asks to change the phone number: a code is sent **to the new number**. |
+| `ConfirmPhoneChangeAsync(ConfirmPhoneChangeRequest, CancellationToken)` | Confirms the new phone number with the code of the SMS. |
+| `SetupTwoFactorAsync(CancellationToken)` | Makes the key for the authenticator app. Show `SharedKey` and `AuthenticatorUri` (as a QR code), then call `EnableTwoFactorAsync`. |
+| `EnableTwoFactorAsync(TwoFactorEnableRequest, CancellationToken)` | Turns two-factor on with the first code of the app. The recovery codes in the answer are shown once. |
+| `VerifyTotpAsync(TwoFactorVerifyRequest, CancellationToken)` | Checks one code of the authenticator app for the signed-in person, for example before a restricted action of your own page. A code works once. Errors: `totp_required`, `invalid_otp`, `totp_setup_required` (or success when `Optional` and the person has no two-factor), `locked_out`. |
+| `DisableTwoFactorAsync(TwoFactorDisableRequest, CancellationToken)` | Turns two-factor off. The password is needed. Refused when the application requires two-factor. |
+| `RegenerateRecoveryCodesAsync(RecoveryCodesRequest, CancellationToken)` | Makes new recovery codes (the old ones stop working). Needs a code of the authenticator app. They are shown once. |
+| `Admin` | The people, roles, permissions, groups and scopes of the project: create, read, change and delete, and who has what, with the token of the signed-in **admin** (session scope `auth2.admin`). The same calls as `Admin`; the token is the one of the cookie, renewed once when it is old. See `IAuth2AdminClientService`. |
 
 
 ## `SystemX.Auth2.Client.Sync`

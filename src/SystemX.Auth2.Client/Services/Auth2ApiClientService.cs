@@ -18,16 +18,58 @@ using SystemX.Auth2.Contracts.Users;
 namespace SystemX.Auth2.Client.Services;
 
 internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2MachineTokenProvider tokens, HandshakeRunner handshake, Auth2ClientState state,
-    IOptions<Auth2ClientOptions> options) : IAuth2ApiClientService
+    IOptions<Auth2ClientOptions> options, CurrentUser.IAuth2AccessTokenAccessor current) : IAuth2ApiClientService, IAuth2AdminTransport
 {
     // The language chosen with WithCulture; null means "the language of the current request".
     private string? _culture;
+
+    // Tokens chosen with WithTokens; null means "the tokens of the current request".
+    private string? _accessToken;
+    private string? _refreshToken;
+
+    public IAuth2ApiClientService WithTokens(string? accessToken, string? refreshToken = null)
+    {
+        var copy = (Auth2ApiClientService)MemberwiseClone();
+        copy._accessToken = string.IsNullOrWhiteSpace(accessToken) ? null : accessToken.Trim();
+        copy._refreshToken = string.IsNullOrWhiteSpace(refreshToken) ? null : refreshToken.Trim();
+        return copy;
+    }
+
+    private const string NoAccessToken = "There is no access token: nobody is signed in on this request (or the cookie keeps no tokens: Auth2CookieOptions.SaveTokens). Use WithTokens to give one.";
+
+    private async Task<string?> AccessTokenAsync(CancellationToken ct) => _accessToken ?? await current.GetAccessTokenAsync(ct);
+
+    private async Task<string?> RefreshTokenAsync(CancellationToken ct) => _refreshToken ?? await current.GetRefreshTokenAsync(ct);
+
+    /// <summary>A call for the person of the current request (or of <see cref="WithTokens"/>).</summary>
+    private async Task<Result> ForPersonAsync(HttpMethod method, string path, object? body, bool idempotent, CancellationToken ct) =>
+        await AccessTokenAsync(ct) is { } token ? await CallAsync(method, path, body, null, token, idempotent, ct) : Result.Failure(Auth2ErrorCodes.InvalidToken, NoAccessToken);
+
+    private async Task<Result<T>> ForPersonAsync<T>(HttpMethod method, string path, object? body, bool idempotent, CancellationToken ct) =>
+        await AccessTokenAsync(ct) is { } token ? await CallAsync<T>(method, path, body, null, token, idempotent, ct) : Result<T>.Failure(Auth2ErrorCodes.InvalidToken, NoAccessToken);
 
     public IAuth2ApiClientService WithCulture(string? culture)
     {
         var copy = (Auth2ApiClientService)MemberwiseClone();
         copy._culture = string.IsNullOrWhiteSpace(culture) ? null : culture.Trim();
         return copy;
+    }
+
+    public IAuth2AdminClientService Admin => new Auth2AdminClientService(this, null);
+
+    // The admin calls (Auth2AdminClientService) go through here with the token of the current request, or the one chosen with WithTokens.
+    Task<Result> IAuth2AdminTransport.SendAsync(HttpMethod method, string path, object? body, bool idempotent, CancellationToken ct) =>
+        ForPersonAsync(method, path, body, idempotent, ct);
+
+    Task<Result<T>> IAuth2AdminTransport.SendAsync<T>(HttpMethod method, string path, object? body, bool idempotent, CancellationToken ct) =>
+        ForPersonAsync<T>(method, path, body, idempotent, ct);
+
+    /// <summary>The id of the project of this application, from the last handshake (one is made when there was none).</summary>
+    public async Task<Guid?> ProjectIdAsync(CancellationToken ct)
+    {
+        if (state.LastResponse is { } known) return known.ProjectId;
+        var made = await HandshakeAsync(ct);
+        return made.IsSuccess ? made.Value!.ProjectId : null;
     }
 
     // ---------------------------------------------------------------- accounts (machine token)
@@ -58,38 +100,41 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
 
     // ---------------------------------------------------------------- user token
 
-    public Task<Result<TwoFactorSetupResponse>> SetupTwoFactorAsync(string accessToken, CancellationToken ct = default) =>
-        CallAsync<TwoFactorSetupResponse>(HttpMethod.Post, Auth2Routes.TwoFactorSetup, null, null, accessToken, idempotent: false, ct);
+    public Task<Result<TwoFactorSetupResponse>> SetupTwoFactorAsync(CancellationToken ct = default) =>
+        ForPersonAsync<TwoFactorSetupResponse>(HttpMethod.Post, Auth2Routes.TwoFactorSetup, null, idempotent: false, ct);
 
-    public Task<Result<TwoFactorEnableResponse>> EnableTwoFactorAsync(string accessToken, TwoFactorEnableRequest request, CancellationToken ct = default) =>
-        CallAsync<TwoFactorEnableResponse>(HttpMethod.Post, Auth2Routes.TwoFactorEnable, request, null, accessToken, idempotent: false, ct);
+    public Task<Result<TwoFactorEnableResponse>> EnableTwoFactorAsync(TwoFactorEnableRequest request, CancellationToken ct = default) =>
+        ForPersonAsync<TwoFactorEnableResponse>(HttpMethod.Post, Auth2Routes.TwoFactorEnable, request, idempotent: false, ct);
 
-    public Task<Result> DisableTwoFactorAsync(string accessToken, TwoFactorDisableRequest request, CancellationToken ct = default) =>
-        CallAsync(HttpMethod.Post, Auth2Routes.TwoFactorDisable, request, null, accessToken, idempotent: false, ct);
+    public Task<Result> VerifyTotpAsync(TwoFactorVerifyRequest request, CancellationToken ct = default) =>
+        ForPersonAsync(HttpMethod.Post, Auth2Routes.TwoFactorVerify, request, idempotent: false, ct);
 
-    public Task<Result<RecoveryCodesResponse>> RegenerateRecoveryCodesAsync(string accessToken, RecoveryCodesRequest request, CancellationToken ct = default) =>
-        CallAsync<RecoveryCodesResponse>(HttpMethod.Post, Auth2Routes.TwoFactorRecoveryCodes, request, null, accessToken, idempotent: false, ct);
+    public Task<Result> DisableTwoFactorAsync(TwoFactorDisableRequest request, CancellationToken ct = default) =>
+        ForPersonAsync(HttpMethod.Post, Auth2Routes.TwoFactorDisable, request, idempotent: false, ct);
 
-    public Task<Result> ChangeUserNameAsync(string accessToken, ChangeUserNameRequest request, CancellationToken ct = default) =>
-        CallAsync(HttpMethod.Post, Auth2Routes.UserNameChange, request, null, accessToken, idempotent: false, ct);
+    public Task<Result<RecoveryCodesResponse>> RegenerateRecoveryCodesAsync(RecoveryCodesRequest request, CancellationToken ct = default) =>
+        ForPersonAsync<RecoveryCodesResponse>(HttpMethod.Post, Auth2Routes.TwoFactorRecoveryCodes, request, idempotent: false, ct);
 
-    public Task<Result> RequestEmailChangeAsync(string accessToken, ChangeEmailRequest request, CancellationToken ct = default) =>
-        CallAsync(HttpMethod.Post, Auth2Routes.EmailChange, request, null, accessToken, idempotent: false, ct);
+    public Task<Result> ChangeUserNameAsync(ChangeUserNameRequest request, CancellationToken ct = default) =>
+        ForPersonAsync(HttpMethod.Post, Auth2Routes.UserNameChange, request, idempotent: false, ct);
 
-    public Task<Result> ConfirmEmailChangeAsync(string accessToken, ConfirmEmailChangeRequest request, CancellationToken ct = default) =>
-        CallAsync(HttpMethod.Post, Auth2Routes.EmailChangeConfirm, request, null, accessToken, idempotent: false, ct);
+    public Task<Result> RequestEmailChangeAsync(ChangeEmailRequest request, CancellationToken ct = default) =>
+        ForPersonAsync(HttpMethod.Post, Auth2Routes.EmailChange, request, idempotent: false, ct);
 
-    public Task<Result> RequestPhoneChangeAsync(string accessToken, ChangePhoneNumberRequest request, CancellationToken ct = default) =>
-        CallAsync(HttpMethod.Post, Auth2Routes.PhoneChange, request, null, accessToken, idempotent: false, ct);
+    public Task<Result> ConfirmEmailChangeAsync(ConfirmEmailChangeRequest request, CancellationToken ct = default) =>
+        ForPersonAsync(HttpMethod.Post, Auth2Routes.EmailChangeConfirm, request, idempotent: false, ct);
 
-    public Task<Result> ConfirmPhoneChangeAsync(string accessToken, ConfirmPhoneChangeRequest request, CancellationToken ct = default) =>
-        CallAsync(HttpMethod.Post, Auth2Routes.PhoneChangeConfirm, request, null, accessToken, idempotent: false, ct);
+    public Task<Result> RequestPhoneChangeAsync(ChangePhoneNumberRequest request, CancellationToken ct = default) =>
+        ForPersonAsync(HttpMethod.Post, Auth2Routes.PhoneChange, request, idempotent: false, ct);
 
-    public Task<Result> ChangePasswordAsync(string accessToken, ChangePasswordRequest request, CancellationToken ct = default) =>
-        CallAsync(HttpMethod.Post, Auth2Routes.PasswordChange, request, null, accessToken, idempotent: false, ct);
+    public Task<Result> ConfirmPhoneChangeAsync(ConfirmPhoneChangeRequest request, CancellationToken ct = default) =>
+        ForPersonAsync(HttpMethod.Post, Auth2Routes.PhoneChangeConfirm, request, idempotent: false, ct);
 
-    public Task<Result<CurrentUserInfo>> GetMeAsync(string accessToken, CancellationToken ct = default) =>
-        CallAsync<CurrentUserInfo>(HttpMethod.Get, Auth2Routes.Me, null, null, accessToken, idempotent: true, ct);
+    public Task<Result> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct = default) =>
+        ForPersonAsync(HttpMethod.Post, Auth2Routes.PasswordChange, request, idempotent: false, ct);
+
+    public Task<Result<CurrentUserInfo>> GetMeAsync(CancellationToken ct = default) =>
+        ForPersonAsync<CurrentUserInfo>(HttpMethod.Get, Auth2Routes.Me, null, idempotent: true, ct);
 
     // ---------------------------------------------------------------- token endpoint
 
@@ -112,11 +157,14 @@ internal sealed class Auth2ApiClientService(IHttpClientFactory http, IAuth2Machi
     public Task<Result<LoginResponse>> OtpLoginAsync(string login, string code, CancellationToken ct = default) =>
         TokenAsync(new Dictionary<string, string> { ["grant_type"] = Auth2GrantTypes.Otp, ["username"] = login, ["code"] = code, ["scope"] = "openid offline_access auth2.me" }, ct);
 
-    public Task<Result<LoginResponse>> RefreshAsync(string refreshToken, CancellationToken ct = default) =>
-        TokenAsync(new Dictionary<string, string> { ["grant_type"] = "refresh_token", ["refresh_token"] = refreshToken }, ct);
+    public async Task<Result<LoginResponse>> RefreshAsync(CancellationToken ct = default) =>
+        await RefreshTokenAsync(ct) is { } refresh
+            ? await TokenAsync(new Dictionary<string, string> { ["grant_type"] = "refresh_token", ["refresh_token"] = refresh }, ct)
+            : Result<LoginResponse>.Failure(Auth2ErrorCodes.InvalidToken, "There is no refresh token: nobody is signed in on this request (or the cookie keeps no tokens). Use WithTokens to give one.");
 
-    public async Task<Result> LogoutAsync(string refreshToken, CancellationToken ct = default)
+    public async Task<Result> LogoutAsync(CancellationToken ct = default)
     {
+        if (await RefreshTokenAsync(ct) is not { } refreshToken) return Result.Success();   // no refresh token: nothing to revoke
         var o = options.Value;
         var form = new Dictionary<string, string>
         {

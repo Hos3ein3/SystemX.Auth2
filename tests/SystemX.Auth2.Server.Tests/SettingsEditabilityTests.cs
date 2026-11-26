@@ -19,6 +19,15 @@ public class SettingsEditabilityTests
     }
 
     [Fact]
+    public void AutoAssignScopeToApplication_IsOnByDefault_AndOnlyAGlobalAdminChangesIt()
+    {
+        new ProjectSettings().Clients.AutoAssignScopeToApplication.ShouldBeTrue();   // today's behaviour stays unless it is turned off
+        var after = new ProjectSettings();
+        after.Clients.AutoAssignScopeToApplication = false;
+        SettingsEditability.ChangedGlobalOnly(new ProjectSettings(), after).ShouldContain(p => p.Contains("AutoAssignScopeToApplication"));
+    }
+
+    [Fact]
     public void AllowClientToSetWebServerUrl_IsASettingOfTheApplication_OnByDefault_AndGlobalOnly()
     {
         new SystemX.Auth2.Server.Domain.Settings.ClientApplicationSettings().AllowClientToSetWebServerUrl.ShouldBeTrue();

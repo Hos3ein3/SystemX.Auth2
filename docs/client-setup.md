@@ -134,7 +134,7 @@ To try again by hand: `await api.HandshakeAsync()`.
 
 ## The Auth2 API service
 
-`IAuth2ApiClientService` calls the server: `RegisterAsync`, `CompleteJoinAsync`, `LoginAsync` (+ `TwoFactorLoginAsync`, `OtpLoginAsync`), `RequestOtpAsync`, `ForgotPasswordAsync`, `ResetPasswordAsync`, `ConfirmEmailAsync`, `ResendEmailConfirmationAsync`, `ConfirmPhoneAsync`, `ChangePasswordAsync`, `ChangeUserNameAsync`, `RequestEmailChangeAsync` / `ConfirmEmailChangeAsync`, `RequestPhoneChangeAsync` / `ConfirmPhoneChangeAsync`, `SetupTwoFactorAsync`, `EnableTwoFactorAsync`, `DisableTwoFactorAsync`, `RegenerateRecoveryCodesAsync`, `RefreshAsync`, `LogoutAsync`, `GetMeAsync`, `HandshakeAsync`, the four `Sync...Async` and the `Get...Async` of the catalogs. `WithCulture("fa")` makes the calls in another language. The service **never makes a cookie**: for a cookie app call `IAuth2WebService` (below). Everything about it, with the routes, tokens and examples: [client-api-service.md](client-api-service.md).
+`IAuth2ApiClientService` calls the server: `RegisterAsync`, `CompleteJoinAsync`, `LoginAsync` (+ `TwoFactorLoginAsync`, `OtpLoginAsync`), `RequestOtpAsync`, `ForgotPasswordAsync`, `ResetPasswordAsync`, `ConfirmEmailAsync`, `ResendEmailConfirmationAsync`, `ConfirmPhoneAsync`, `ChangePasswordAsync`, `ChangeUserNameAsync`, `RequestEmailChangeAsync` / `ConfirmEmailChangeAsync`, `RequestPhoneChangeAsync` / `ConfirmPhoneChangeAsync`, `SetupTwoFactorAsync`, `EnableTwoFactorAsync`, `DisableTwoFactorAsync`, `RegenerateRecoveryCodesAsync`, `RefreshAsync`, `LogoutAsync`, `GetMeAsync`, `HandshakeAsync`, the four `Sync...Async` and the `Get...Async` of the catalogs. `WithCulture("fa")` makes the calls in another language. The service **never makes a cookie**: for a cookie app call `IAuth2WebClientService` (below). Everything about it, with the routes, tokens and examples: [client-api-service.md](client-api-service.md).
 
 **Results, not exceptions.** Every method returns `Result` or `Result<T>`. A wrong password or a server that is down is a normal answer:
 
@@ -238,9 +238,9 @@ What `OnTokenValidated` is: ASP.NET Core raises this event when the identity tok
 builder.Services.AddAuth2Client(...).UseSelfUi()
     .UseCookieAuthentication(o => o.LoginPath = "/login");
 
-app.MapPost("/login", async (HttpContext http, IAuth2WebService web, LoginForm form) =>
+app.MapPost("/login", async (IAuth2WebClientService web, LoginForm form) =>
 {
-    var result = await web.LoginAsync(http, new LoginRequest(form.Login, form.Password), form.RememberMe);
+    var result = await web.LoginAsync(new LoginRequest(form.Login, form.Password), form.RememberMe);
     if (!result.IsSuccess) return Results.BadRequest(result.Error!.Code);
     return result.Value!.TwoFactorRequired
         ? Results.Ok(new { twoFactor = result.Value.TwoFactorToken })          // show the code form, then call TwoFactorLoginAsync
@@ -260,7 +260,17 @@ return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, ["A
 
 Hosted UI, cookie and Blazor apps need nothing new: the user picks a provider on the Server's page and your app sees a normal code flow. The token has the claims `idp` and `amr`, available as `ICurrentUser.IdentityProvider` and `ICurrentUser.AuthenticationMethods`.
 
-`IAuth2WebService`: `LoginAsync`, `TwoFactorLoginAsync`, `OtpLoginAsync` (each makes the cookie when it works), `LogoutAsync` (revokes the refresh token and removes the cookie), `ChallengeAsync(http, returnUrl)`. `/auth2/logout` is mapped for you.
+`IAuth2WebClientService`: `LoginAsync`, `TwoFactorLoginAsync`, `OtpLoginAsync` (each makes the cookie when it works), `LogoutAsync` (revokes the refresh token and removes the cookie), `ChallengeAsync(returnUrl)`. `/auth2/logout` is mapped for you.
+
+The same service has the **account pages of the signed-in person**, so your forms need no token code: `GetMeAsync()`, `ChangePasswordAsync(request)`, `ChangeUserNameAsync`, `RequestEmailChangeAsync` / `ConfirmEmailChangeAsync`, `RequestPhoneChangeAsync` / `ConfirmPhoneChangeAsync`, `SetupTwoFactorAsync` / `EnableTwoFactorAsync` / `DisableTwoFactorAsync` / `RegenerateRecoveryCodesAsync`, `VerifyTotpAsync` (a fresh code before a restricted action), and `RefreshAsync(http)`. They take the access token from the cookie (`Auth2CookieOptions.SaveTokens` must be on, the default) and refresh it once when it is old. The forms for people who are **not** signed in are there without an `HttpContext`: `RegisterAsync`, `ForgotPasswordAsync`, `ResetPasswordAsync`, `RequestOtpAsync`, `ConfirmEmailAsync`, `ResendEmailConfirmationAsync`, `ConfirmPhoneAsync`, `CompleteJoinAsync`, `GetExternalProvidersAsync`. Which service when: [client-api-service.md](client-api-service.md#iauth2webclientservice-or-iauth2apiclientservice).
+
+```csharp
+app.MapPost("/account/password", async (IAuth2WebClientService web, PasswordForm form) =>
+{
+    var result = await web.ChangePasswordAsync(new ChangePasswordRequest(form.Current, form.New));   // the request and the token are found by the service (the cookie of the current request)
+    return result.IsSuccess ? Results.Redirect("/account") : Results.BadRequest(result.Error);                // result.Error.Code, for example invalid_credentials
+}).RequireAuthorization();
+```
 
 ### Cookie options (`UseCookieAuthentication`)
 

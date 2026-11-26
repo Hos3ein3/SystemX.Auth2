@@ -96,7 +96,7 @@ internal static class RateLimitPolicyMap
         }
         if (Is(path, "/account/login") || Is(path, "/account/twofactor")) return "login";
         if (Is(path, "/account/register") || Is(path, Auth2Routes.Register) || Is(path, Auth2Routes.JoinComplete) || Is(path, "/account/joinapplication")) return "register";
-        if (Is(path, "/account/verifyotp") || Is(path, Auth2Routes.OtpRequest) || Is(path, Auth2Routes.EmailConfirm)
+        if (Is(path, "/account/verifyotp") || Is(path, "/account/verifytotp") || Is(path, Auth2Routes.TwoFactorVerify) || Is(path, Auth2Routes.OtpRequest) || Is(path, Auth2Routes.EmailConfirm)
             || Is(path, Auth2Routes.PhoneConfirm) || Is(path, "/account/confirmemail") || Is(path, "/account/confirmphone")) return "otp";
         if (Is(path, "/account/forgotpassword") || Is(path, "/account/resetpassword") || Is(path, Auth2Routes.PasswordForgot)
             || Is(path, Auth2Routes.PasswordReset) || Is(path, Auth2Routes.EmailConfirmResend)) return "password-reset";

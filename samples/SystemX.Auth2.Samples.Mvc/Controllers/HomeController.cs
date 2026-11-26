@@ -17,12 +17,13 @@ namespace SystemX.Auth2.Samples.Mvc.Controllers;
 /// OR across kinds with the "any of" family), the audit hook, the resources of scopes in the token, and checks written in code. The Showcase page lists them;
 /// docs/sample-mvc.md says who passes which one with the demo users.
 /// </summary>
-public class HomeController(ICurrentUser currentUser, ICurrentClient currentClient, ILogger<HomeController> logger) : Controller
+public class HomeController(ICurrentUser currentUser, ICurrentClient currentClient,IAuth2ApiClientService api,IAuth2WebClientService client,IAuth2AdminClientService admin, ILogger<HomeController> logger) : Controller
 {
     [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
+
         ViewBag.IsAuthenticated = currentUser.IsAuthenticated;
         ViewBag.UserName = currentUser.UserName;
         ViewBag.Roles = currentUser.IsAuthenticated ? await currentUser.GetRolesAsync(ct) : [];
@@ -56,6 +57,7 @@ public class HomeController(ICurrentUser currentUser, ICurrentClient currentClie
     [HttpGet]
     public IActionResult AdminPanel()
     {
+       
         logger.LogInformation("Admin user {UserName} accessed AdminPanel view.", currentUser.UserName);
         return View();
     }
@@ -141,6 +143,44 @@ public class HomeController(ICurrentUser currentUser, ICurrentClient currentClie
     [HttpGet]
     public IActionResult FinanceRegions() => Rule("Finance, Europe or US", """[Auth2Group("finance-eu", "finance-us")]""", "You are in the group finance-eu OR finance-us (groups of the demo data: william.hernandez, benjamin.gonzalez, logan.wright).");
 
+    /// <summary>All of several groups (the "all" form of the group rule).</summary>
+    [Auth2Group(true, "finance", "finance-eu")]
+    [HttpGet]
+    public IActionResult FinanceEurope() => Rule("Finance AND Europe", """[Auth2Group(true, "finance", "finance-eu")]""", "You are in the group finance AND in the group finance-eu. One of the two is not enough.");
+
+    // ---- how the person signed in (the amr claim of the token)
+
+    /// <summary>Signed in with a password (a passkey sign-in has no <c>pwd</c>).</summary>
+    [Auth2SignInMethod("pwd")]
+    [HttpGet]
+    public IActionResult SignedInWithPassword() => Rule("Signed in with a password", """[Auth2SignInMethod("pwd")]""", "Your sign-in used a password (amr has pwd). If you signed in with a passkey you get 403 here.");
+
+    /// <summary>More than one factor: a verified passkey, or a password plus a one-time code.</summary>
+    [Auth2MultiFactor]
+    [HttpGet]
+    public IActionResult MultiFactorOnly() => Rule("More than one factor", "[Auth2MultiFactor]", "Your sign-in used more than one factor: a passkey unlocked with a fingerprint, face or PIN, or a password plus a one-time code (two-factor sign-in). A password alone gets 403 here. Look at the amr values on the Inspect page.");
+
+    /// <summary>The form that asks for a code of the authenticator app, then posts it to <see cref="TotpAction"/>.</summary>
+    [HttpGet]
+    public IActionResult TotpForm() => View("TotpForm");
+
+    /// <summary>
+    /// An action that needs a <b>fresh code of the authenticator app</b> every time (<c>[Auth2Totp]</c>): the person must have turned on two-factor in
+    /// <c>/Manage/TwoFactor/Enable</c> of the Auth2 server. The form posts the code in the field <c>auth2_totp</c>; an API sends the header <c>X-Auth2-Totp</c>.
+    /// Without a code or with a wrong one the answer is 403 and the header <c>X-Auth2-Totp-Status</c> says why. A code works once.
+    /// </summary>
+    [Auth2Totp]
+    [HttpPost]
+    public IActionResult TotpAction() => Rule("Needs a code of the authenticator app", "[Auth2Totp]", "The Server checked the code of your authenticator app just now. A code works once: to run this again you need the next code (about 30 seconds later).");
+
+    /// <summary>
+    /// The same, but the code is <b>optional</b> for people who have not turned on two-factor (<c>[Auth2OptionalTotp]</c>): they pass without a code; a person who has two-factor must
+    /// give one. Compare with <see cref="TotpAction"/>, where a person without two-factor is refused with <c>totp_setup_required</c>.
+    /// </summary>
+    [Auth2OptionalTotp]
+    [HttpPost]
+    public IActionResult OptionalTotpAction() => Rule("A code only if you use two-factor", "[Auth2OptionalTotp]", "If you have two-factor turned on, the Server checked the code of your authenticator app just now. If you have not, there was nothing to check and you came in without a code.");
+
     // ---- scopes (what the CLIENT may do)
 
     /// <summary>A scope of the token.</summary>
@@ -152,6 +192,39 @@ public class HomeController(ICurrentUser currentUser, ICurrentClient currentClie
     [Auth2Scope("orders.read", "orders.write")]
     [HttpGet]
     public IActionResult OrdersScope() => Rule("Orders scopes", """[Auth2Scope("orders.read", "orders.write")]""", "The token has the scope orders.read OR orders.write.");
+
+    /// <summary>
+    /// A scope this application does NOT have (<c>payments.refund</c> is not registered, so no token of this application can carry it). The rule fails for everybody, whatever
+    /// their roles or permissions: open <c>/Home/ScopeFails</c> after signing in and you get <b>403 Forbidden</b> (the access-denied page of the Client package).
+    /// </summary>
+    [Auth2Scope("payments.refund")]
+    [HttpGet]
+    public IActionResult ScopeFails() => Rule("Scope that fails", """[Auth2Scope("payments.refund")]""", "You should never see this page: the token of this application does not have the scope payments.refund, so the rule refuses the request with 403.");
+
+    /// <summary>
+    /// The same failure written in code: the page decides itself and answers a JSON error, like an API would. <c>/Home/ScopeFailsInCode</c> returns 403 with the scope that is missing
+    /// and the scopes the token really has.
+    /// </summary>
+    [HttpGet]
+    [Auth2Scope("scope.test")]
+    public IActionResult ScopeFailsInCode()
+    {
+        const string required = "scope.test";
+        if (currentClient.HasScope(required)) return Content("The token has the scope " + required);
+        return StatusCode(StatusCodes.Status403Forbidden, new { error = "insufficient_scope", required, granted = currentClient.Scopes });
+    }
+    /// <summary>
+    /// The same failure written in code: the page decides itself and answers a JSON error, like an API would. <c>/Home/ScopeFailsInCode</c> returns 403 with the scope that is missing
+    /// and the scopes the token really has.
+    /// </summary>
+    [HttpGet]
+    [Auth2Scope("scope.test2")]
+    public IActionResult ScopeFailsInCode2()
+    {
+        const string required = "scope.test2";
+        if (currentClient.HasScope(required)) return Content("The token has the scope " + required);
+        return StatusCode(StatusCodes.Status403Forbidden, new { error = "insufficient_scope", required, granted = currentClient.Scopes });
+    }
 
     /// <summary>A scope AND a permission: two attributes are two rules, both must pass.</summary>
     [Auth2Scope("reports.read")]
@@ -230,13 +303,9 @@ public class HomeController(ICurrentUser currentUser, ICurrentClient currentClie
     [Auth2Authorize]
     public async Task<IActionResult> AfterLoginRegisterRedirect(
         [FromServices] IAuth2ApiClientService auth,
-        [FromServices] IAuth2AccessTokenAccessor tokens,
         CancellationToken ct)
     {
-        var token = await tokens.GetAccessTokenAsync(ct);        // the token the cookie keeps
-        if (token is null) return Challenge();                   // not signed in: go to the login
-
-        var me = await auth.GetMeAsync(token, ct);               // GET /api/auth2/me with that token
+        var me = await auth.GetMeAsync(ct);                      // GET /api/auth2/me with the token the cookie keeps (invalid_token when nobody is signed in)
         if (!me.IsSuccess)
         {
             // me.Error.Code, for example "invalid_token" (the token expired) or "server_unavailable"

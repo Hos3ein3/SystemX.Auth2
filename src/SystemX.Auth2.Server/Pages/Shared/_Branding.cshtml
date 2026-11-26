@@ -8,30 +8,42 @@
     var branding = settings?.Branding;
     var primary = !string.IsNullOrWhiteSpace(branding?.PrimaryColor) ? branding.PrimaryColor : "#2563eb";
     var primaryText = !string.IsNullOrWhiteSpace(branding?.PrimaryTextColor) ? branding.PrimaryTextColor : "#ffffff";
+    var secondary = !string.IsNullOrWhiteSpace(branding?.SecondaryColor) ? branding.SecondaryColor : "#4f46e5";
+    var secondaryText = !string.IsNullOrWhiteSpace(branding?.SecondaryTextColor) ? branding.SecondaryTextColor : "#ffffff";
     var background = !string.IsNullOrWhiteSpace(branding?.BackgroundColor) ? branding.BackgroundColor : "#f9fafb";
-    var surface = "#ffffff";
-    var text = "#111827";
-    var muted = "#6b7280";
+    var surface = !string.IsNullOrWhiteSpace(branding?.SurfaceColor) ? branding.SurfaceColor : "#ffffff";
+    var text = !string.IsNullOrWhiteSpace(branding?.TextColor) ? branding.TextColor : "#111827";
+    var muted = !string.IsNullOrWhiteSpace(branding?.MutedTextColor) ? branding.MutedTextColor : "#6b7280";
     var error = "#dc2626";
     var success = "#16a34a";
     var radius = !string.IsNullOrWhiteSpace(branding?.Radius) ? branding.Radius : "0.375rem";
-    var font = "system-ui, -apple-system, sans-serif";
+    var font = !string.IsNullOrWhiteSpace(branding?.FontFamily) ? branding.FontFamily : "system-ui, -apple-system, sans-serif";
 
     var title = settings?.Localization?.BrandName ?? project?.Name ?? "SystemX Auth2";
+    var env = Context.RequestServices.GetService(typeof(Microsoft.AspNetCore.Hosting.IWebHostEnvironment)) as Microsoft.AspNetCore.Hosting.IWebHostEnvironment;
+    var webRoot = env?.WebRootPath ?? "wwwroot";
+    var faviconUrl = project != null
+        ? (SystemX.Auth2.Server.Infrastructure.Branding.ProjectAssetStorage.FindAssetUrl(webRoot, project.ProjectKey, "favicon") ?? $"/projects/{project.ProjectKey}/favicon.ico")
+        : "/favicon.ico";
 }
 
+<link rel="icon" href="@faviconUrl" />
 <style nonce="@(Context.Items["Auth2.CspNonce"])">
-    :root {
-        --a2-color-primary: @primary;
-        --a2-color-primary-text: @primaryText;
-        --a2-color-background: @background;
-        --a2-color-surface: @surface;
-        --a2-color-text: @text;
-        --a2-color-muted: @muted;
-        --a2-color-error: @error;
-        --a2-color-success: @success;
-        --a2-radius: @radius;
-        --a2-font-family: @font;
+    :root, html, body {
+        --a2-color-primary: @primary !important;
+        --a2-color-primary-text: @primaryText !important;
+        --a2-color-secondary: @secondary !important;
+        --a2-color-secondary-text: @secondaryText !important;
+        --a2-color-background: @background !important;
+        --a2-color-surface: @surface !important;
+        --a2-color-text: @text !important;
+        --a2-color-muted: @muted !important;
+        --a2-color-error: @error !important;
+        --a2-color-success: @success !important;
+        --a2-radius: @radius !important;
+        --a2-font-family: @font !important;
+        --color-a2-primary: @primary !important;
+        --color-a2-secondary: @secondary !important;
     }
 </style>
 <title>@ViewData["Title"] - @title</title>

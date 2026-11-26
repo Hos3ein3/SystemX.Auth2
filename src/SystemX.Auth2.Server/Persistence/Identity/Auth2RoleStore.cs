@@ -24,6 +24,12 @@ public class Auth2RoleStore(Auth2DbContext context, IProjectScope scope, IProjec
             .OrderBy(r => r.ProjectId == current ? 0 : r.ProjectId == null ? 1 : 2)
             .FirstOrDefaultAsync(ct);
     }
+
+    /// <summary>The built-in roles <c>GlobalAdmin</c> and <c>Developer</c> are never deleted, by any code path (the admin pages, the API, a sync, or code that uses <c>RoleManager</c> directly).</summary>
+    public override Task<IdentityResult> DeleteAsync(AppRole role, CancellationToken ct = default) =>
+        PrivilegedRoles.IsPrivileged(role.Name)
+            ? Task.FromResult(IdentityResult.Failed(new IdentityError { Code = Contracts.Constants.Auth2ErrorCodes.Forbidden, Description = "The roles GlobalAdmin and Developer cannot be deleted." }))
+            : base.DeleteAsync(role, ct);
 }
 
 /// <summary>Role name must be unique inside the same application only (<c>writer</c> in two applications is fine).</summary>
@@ -33,6 +39,9 @@ public sealed class Auth2RoleValidator(Auth2DbContext db, IdentityErrorDescriber
     public async Task<IdentityResult> ValidateAsync(RoleManager<AppRole> manager, AppRole role)
     {
         if (string.IsNullOrWhiteSpace(role.Name)) return IdentityResult.Failed(describer.InvalidRoleName(role.Name));
+        // The names GlobalAdmin and Developer belong to the two built-in global roles. A role of a project (or a renamed role) may not take them:
+        // the Server reads these roles by name, so a project role with such a name would be treated as the real one.
+        if (PrivilegedRoles.IsPrivileged(role.Name) && role.ProjectId is not null) return IdentityResult.Failed(describer.InvalidRoleName(role.Name));
         var normalized = manager.NormalizeKey(role.Name);
         // Looks at every application on purpose: the same-application rule must hold even when a global scope is active.
         var duplicate = await db.Roles.IgnoreQueryFilters()

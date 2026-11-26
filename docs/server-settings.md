@@ -236,6 +236,7 @@ Two-factor and OTP rules.
 | `OtpLength` | `int` | `6` | GlobalOnly | OTP length. |
 | `OtpLifetimeSeconds` | `int` | `120` | GlobalOnly | OTP lifetime in seconds. |
 | `OtpMaxAttempts` | `int` | `5` | GlobalOnly | Max wrong OTP attempts. |
+| `StepUpMinutes` | `int` | `15` | GlobalOnly | "Sudo mode": how many minutes a code of the authenticator app counts as fresh. The restricted pages (delete the account, turn two-factor off) ask a person who has two-factor on for a code again when the last one is older. The second step of the sign-in counts as a code. `0` = never ask again. 0 to 720 ([two-factor.md](two-factor.md#the-pages-and-what-each-one-is-for)). |
 | `OtpResendSeconds` | `int` | `60` | GlobalOnly | Seconds before a new OTP may be sent. |
 | `AllowPasskeys` | `bool` | `false` | GlobalOnly | Allow passkeys (experimental). |
 
@@ -275,6 +276,7 @@ Client behaviour: project defaults for all applications. Scopes, redirect URIs, 
 | `RoleSyncAllowed` | `bool` | `true` | GlobalOnly | Role sync is allowed. |
 | `AllowRemovePermissionsFromSync` | `bool` | `false` | GlobalOnly | Sync marks permissions that are missing from the list as obsolete (never deletes). |
 | `DefaultUiMode` | `UiMode` | `Hosted` | GlobalOnly | Default UI mode. |
+| `AutoAssignScopeToApplication` | `bool` | `true` | GlobalOnly | With scope sync on: a pushed scope is registered **and** added to the allowed scopes of the application that pushed it. Off: it is only registered (saved in the database); an admin allows it for the applications that need it. Turn it off wherever scopes protect something ([scopes.md](scopes.md#scope-sync-and-what-a-scope-really-limits)). |
 | `ScopeSyncAllowed` | `bool` | `true` | GlobalOnly | A client may register its own custom scopes and allow them for itself (never `auth2.*` or the standard scopes). |
 | `GroupSyncAllowed` | `bool` | `false` | GlobalOnly | A client may add missing groups (push). Admins keep all other control. |
 | `AllowProjectAdminRotateSecret` | `bool` | `false` | GlobalOnly | A project admin may rotate the client secret of the applications of the own project. |
@@ -337,7 +339,7 @@ The OpenIddict fields (redirect URIs, post-logout redirect URIs, allowed scopes)
 ## Common problems
 
 - *`SettingsValidationException` when saving:* read the `Path` of each error and fix that field.
-- *A setting change has no effect:* the settings are cached. `UpdateSettingsAsync` clears the cache on this instance. With Redis the other instances are cleared at once (pub/sub); without Redis their cache lives at most 10 minutes.
+- *A setting change has no effect:* the settings are cached. `UpdateSettingsAsync` clears the cache on this instance. With Redis the other instances are cleared at once (pub/sub); without Redis their cache lives at most 1 day. So with several instances, use Redis: without it a change saved on one instance can stay unseen on the others for a whole day. (A shorter lifetime for installs without Redis was considered and left out on purpose: settings change rarely.)
 
 ## Related pages
 

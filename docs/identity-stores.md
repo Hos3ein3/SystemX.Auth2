@@ -199,6 +199,8 @@ It is scoped and cheap: it only asks the flow resolver for the effective scope a
 
 ### `Auth2UserManager`
 
+**Which type to ask for.** Ask for `UserManager<AppUser>` (the Identity type), as all the code of the Server does. `Auth2UserManager` is registered as **the** implementation of it (`AddUserManager<Auth2UserManager>`), so `UserManager<AppUser>` **is** an `Auth2UserManager`, the same object inside one scope, and its project rules apply to every caller. There is no other user manager; a test (`TheUserManagerOfTheServer_IsTheAuth2UserManager...`) keeps it so. Ask for `Auth2UserManager` itself only if you need a member that exists only on it.
+
 A `UserManager<AppUser>` with **four overrides: lockout and the rehash marker**. Why only lockout: `IdentityOptions.Lockout` is global, but the lockout rules are project settings (`Lockout.LockoutEnabled`, `MaxFailedAttempts`, `LockoutMinutes`, `LockoutForNewUsers`; [server-settings.md](server-settings.md)). Everything else Identity needs per project is done by the validators and the stores.
 
 | Override | Behaviour |

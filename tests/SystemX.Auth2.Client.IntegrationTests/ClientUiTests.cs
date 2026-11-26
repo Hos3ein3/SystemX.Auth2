@@ -236,10 +236,10 @@ public class SelfUiIntegrationTests : ClientAppTestBase
 {
     private static void Map(IEndpointRouteBuilder e)
     {
-        e.MapPost("/login", async (HttpContext http, IAuth2WebService web) =>
+        e.MapPost("/login", async (HttpContext http, IAuth2WebClientService web) =>
         {
             var form = await http.Request.ReadFormAsync();
-            var result = await web.LoginAsync(http, new LoginRequest(form["login"].ToString(), form["password"].ToString()));
+            var result = await web.LoginAsync(new LoginRequest(form["login"].ToString(), form["password"].ToString()));
             return result.IsSuccess ? Results.Ok(new { result.Value!.TwoFactorRequired }) : Results.BadRequest(new { result.Error!.Code });
         }).WithAnonymous();
         e.MapGet("/secure", () => "ok").WithAuth2();

@@ -231,3 +231,23 @@ public sealed class SettingsValidationException(IReadOnlyList<SettingsError> err
 
 /// <summary>No application matches the request.</summary>
 public sealed class ProjectNotFoundException(string message) : Exception(message);
+
+/// <summary>Another project already has this name (compared without letter case and without spaces around). A project name is unique on the server.</summary>
+public sealed class ProjectNameTakenException(string name) : Exception($"A project named '{name}' already exists.");
+
+/// <summary>The rule for the name of a project: it is unique on the server, compared without letter case and without spaces around.</summary>
+public static class ProjectNames
+{
+    /// <summary>The name of the unique index on <c>lower(btrim(name))</c> of the table <c>projects</c>.</summary>
+    public const string UniqueIndexName = "ux_projects_name_ci";
+
+    /// <summary>The name as it is saved: without spaces around.</summary>
+    public static string Clean(string? name) => (name ?? "").Trim();
+
+    /// <summary>The form that is compared: lowercase, without spaces around.</summary>
+    public static string Key(string? name) => Clean(name).ToLowerInvariant();
+
+    /// <summary>True when the exception is the database refusing a second project with the same name (a race between two requests).</summary>
+    public static bool IsNameConflict(Exception ex) =>
+        ex is Microsoft.EntityFrameworkCore.DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: UniqueIndexName } };
+}

@@ -38,6 +38,39 @@
       const source = t.closest('div')?.querySelector(t.getAttribute('data-copy') || 'pre');
       if (source) { try { await navigator.clipboard.writeText(source.textContent ?? ''); t.textContent = 'Copied'; } catch { /* the text can be selected by hand */ } }
     }
+    const copyValBtn = e.target instanceof Element ? e.target.closest('[data-a2-copy]') : null;
+    if (copyValBtn) {
+      const val = copyValBtn.getAttribute('data-a2-copy');
+      if (val) {
+        try {
+          await navigator.clipboard.writeText(val);
+          const orig = copyValBtn.innerHTML;
+          copyValBtn.textContent = 'Copied!';
+          setTimeout(() => { copyValBtn.innerHTML = orig; }, 2000);
+        } catch {}
+      }
+    }
+    const downloadValBtn = e.target instanceof Element ? e.target.closest('[data-a2-download]') : null;
+    if (downloadValBtn) {
+      const content = downloadValBtn.getAttribute('data-a2-download');
+      const filename = downloadValBtn.getAttribute('data-a2-filename') || 'recovery-codes.txt';
+      if (content) {
+        try {
+          const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          const orig = downloadValBtn.innerHTML;
+          downloadValBtn.textContent = 'Downloaded!';
+          setTimeout(() => { downloadValBtn.innerHTML = orig; }, 2000);
+        } catch {}
+      }
+    }
     const toggle = e.target instanceof Element ? e.target.closest('[data-toggle-password]') : null;
     if (toggle) {
       const input = document.getElementById(toggle.getAttribute('data-toggle-password'));
@@ -47,6 +80,33 @@
     if (themeBtn) {
       window.toggleDarkMode();
     }
+    const menuToggle = e.target instanceof Element ? e.target.closest('[data-menu-toggle]') : null;
+    if (menuToggle) {
+      const targetId = menuToggle.getAttribute('data-menu-toggle');
+      const targetMenu = targetId ? document.getElementById(targetId) : null;
+      if (targetMenu) {
+        const isHidden = targetMenu.classList.contains('hidden');
+        document.querySelectorAll('[data-menu-content]').forEach(m => {
+          m.classList.add('hidden');
+          const t = document.querySelector(`[data-menu-toggle="${m.id}"]`);
+          if (t) t.setAttribute('aria-expanded', 'false');
+        });
+        if (isHidden) {
+          targetMenu.classList.remove('hidden');
+          menuToggle.setAttribute('aria-expanded', 'true');
+        }
+      }
+      return;
+    }
+
+    // Close dropdown menus when clicking outside
+    document.querySelectorAll('[data-menu-content]').forEach(menu => {
+      if (!menu.classList.contains('hidden') && !menu.contains(e.target)) {
+        menu.classList.add('hidden');
+        const trigger = document.querySelector(`[data-menu-toggle="${menu.id}"]`);
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      }
+    });
     const lockOpen = e.target instanceof Element ? e.target.closest('[data-lock-modal-open]') : null;
     if (lockOpen) {
       const modal = document.getElementById('lockModal');
@@ -73,6 +133,21 @@
         const d = new Date(Date.now() + minutes * 60000);
         d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
         untilInput.value = d.toISOString().slice(0, 16);
+      }
+    }
+  });
+
+  // Color picker sync
+  document.addEventListener('input', (e) => {
+    const input = e.target instanceof HTMLInputElement ? e.target : null;
+    if (!input) return;
+    if (input.type === 'color' && input.dataset.colorFor) {
+      const text = document.getElementById(input.dataset.colorFor);
+      if (text instanceof HTMLInputElement) text.value = input.value;
+    } else if (input.type === 'text' && input.dataset.colorPicker) {
+      const picker = document.getElementById(input.dataset.colorPicker);
+      if (picker instanceof HTMLInputElement && /^#[0-9a-fA-F]{6}$/.test(input.value)) {
+        picker.value = input.value;
       }
     }
   });
@@ -1155,16 +1230,35 @@
     }
   });
 
-  // Passkey Registration
+  // Passkey Registration (both signup and account self-service management)
   document.addEventListener('click', async (e) => {
-    const btn = e.target instanceof Element ? e.target.closest('#btnPasskeySignUp') : null;
+    const btn = e.target instanceof Element ? e.target.closest('#btnPasskeySignUp, #btnRegisterPasskey, #btnRegisterPasskeySecondary, [data-passkey-register]') : null;
     if (!btn || !window.PublicKeyCredential) return;
 
-    const alertBox = document.getElementById('passkeyRegAlert');
-    const alertText = document.getElementById('passkeyRegAlertText');
+    const isManage = btn.id !== 'btnPasskeySignUp';
+    const alertBox = isManage ? document.getElementById('passkeyManageAlert') : document.getElementById('passkeyRegAlert');
+    const alertText = isManage ? document.getElementById('passkeyManageAlertText') : document.getElementById('passkeyRegAlertText');
     const nameInput = document.getElementById('passkeyNameInput');
-    const clientId = document.getElementById('passkeyRegClientId')?.value || '';
+
+    let passkeyName = nameInput?.value?.trim() || null;
+    if (isManage && !passkeyName) {
+      const prompted = window.prompt('Enter a name for this passkey (e.g. My MacBook):', 'Passkey');
+      if (prompted === null) return;
+      passkeyName = prompted.trim() || 'Passkey';
+    }
+
+    const clientId = (isManage ? document.getElementById('passkeyManageClientId')?.value : document.getElementById('passkeyRegClientId')?.value)
+      || new URLSearchParams(window.location.search).get('ClientId')
+      || new URLSearchParams(window.location.search).get('client_id')
+      || '';
     const returnUrl = document.getElementById('passkeyRegReturnUrl')?.value || '';
+
+    // Antiforgery token for signed-in session validation
+    const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    const reqHeaders = { 'Content-Type': 'application/json' };
+    if (csrfToken) {
+      reqHeaders['RequestVerificationToken'] = csrfToken;
+    }
 
     const showError = (msg) => {
       if (alertText) alertText.textContent = msg;
@@ -1178,7 +1272,7 @@
       const optUrl = '/account/passkey/creation-options' + (clientId ? '?client_id=' + encodeURIComponent(clientId) : '');
       const optRes = await fetch(optUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: reqHeaders
       });
 
       if (!optRes.ok) {
@@ -1217,13 +1311,17 @@
       const regUrl = '/account/passkey/register' + (clientId ? '?client_id=' + encodeURIComponent(clientId) : '');
       const regRes = await fetch(regUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: credJson, name: nameInput?.value?.trim() || null })
+        headers: reqHeaders,
+        body: JSON.stringify({ credential: credJson, name: passkeyName })
       });
 
       window.a2HideLoader();
       if (regRes.ok) {
-        window.location.href = returnUrl || '/';
+        if (isManage) {
+          window.location.reload();
+        } else {
+          window.location.href = returnUrl || '/';
+        }
       } else {
         const err = await regRes.json().catch(() => ({}));
         showError(err.error_description || err.error || 'Failed to register passkey.');

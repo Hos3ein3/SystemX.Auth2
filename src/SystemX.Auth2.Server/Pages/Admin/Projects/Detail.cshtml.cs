@@ -68,13 +68,19 @@ public sealed class DetailModel(IAdminProjectService projectService) : PageModel
         if (!CanManageProjects) return NotFound();
 
         EnsureIdResolved();
+        if (Id == Guid.Empty) return NotFound();
         Project = await projectService.GetAsync(Id, HttpContext.RequestAborted);
         if (Project is null) return NotFound();
+
+        if (!ModelState.IsValid)
+        {
+            return Page();
+        }
 
         var (result, updated) = await projectService.UpdateAsync(Id, new UpdateProjectRequest(Input.Name, Input.Description, Input.IsEnabled, Input.Reason), null, HttpContext.RequestAborted);
         if (!result.Succeeded)
         {
-            ModelState.AddModelError("", result.ErrorCode ?? "Update failed");
+            ModelState.AddModelError("", result.ErrorCode is { } code ? HttpContext.RequestServices.GetRequiredService<SystemX.Auth2.Server.Application.IAuth2Localizer>().Error(code) : "Update failed");
             return Page();
         }
 
@@ -87,6 +93,7 @@ public sealed class DetailModel(IAdminProjectService projectService) : PageModel
         if (!CanManageProjects) return NotFound();
 
         EnsureIdResolved();
+        if (Id == Guid.Empty) return NotFound();
         Project = await projectService.GetAsync(Id, HttpContext.RequestAborted);
         if (Project is null) return NotFound();
 

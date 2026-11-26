@@ -38,6 +38,12 @@ public interface IAccessService
     /// <summary>Creates a permission (manual). Succeeds without change when it already exists.</summary>
     Task<OperationResult> CreatePermissionAsync(PermissionDefinition definition, CancellationToken ct = default);
 
+    /// <summary>
+    /// Changes the texts of a permission of this application (<c>null</c> keeps the old text; an empty text clears it). The key never changes. A permission of the global project
+    /// is not changed from another application (<c>forbidden</c>).
+    /// </summary>
+    Task<OperationResult> UpdatePermissionAsync(string permissionKey, string? displayName, string? description, string? group, CancellationToken ct = default);
+
     /// <summary>Marks a permission as obsolete (or not). Grants stay.</summary>
     Task<OperationResult> SetPermissionObsoleteAsync(string permissionKey, bool obsolete, CancellationToken ct = default);
 
@@ -55,6 +61,12 @@ public interface IAccessService
 
     /// <summary>Creates a role in the current application.</summary>
     Task<OperationResult> CreateRoleAsync(string name, string? description = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Changes the description of a role of this application (<c>null</c> keeps it; an empty text clears it). The name never changes (it is in tokens and in policies).
+    /// A system role, GlobalAdmin, Developer and a global role are not changed here (<c>forbidden</c>).
+    /// </summary>
+    Task<OperationResult> UpdateRoleAsync(string name, string? description, CancellationToken ct = default);
 
     /// <summary>Deletes a role of the current application (not a system role).</summary>
     Task<OperationResult> DeleteRoleAsync(string name, CancellationToken ct = default);
@@ -80,6 +92,9 @@ public interface IGroupService
 
     /// <summary>Creates a group. The name is lowercase, unique per application.</summary>
     Task<OperationResult> CreateAsync(string name, string? displayName = null, string? description = null, CancellationToken ct = default);
+
+    /// <summary>Changes the display name and the description of a group (<c>null</c> keeps the old text; an empty text clears it). The name never changes.</summary>
+    Task<OperationResult> UpdateAsync(string name, string? displayName, string? description, CancellationToken ct = default);
 
     /// <summary>Deletes a group with its links.</summary>
     Task<OperationResult> DeleteAsync(string name, CancellationToken ct = default);

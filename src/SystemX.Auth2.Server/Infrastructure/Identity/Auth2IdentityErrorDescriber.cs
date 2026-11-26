@@ -68,4 +68,6 @@ public class Auth2IdentityErrorDescriber(IAuth2Localizer localizer) : IdentityEr
     public virtual IdentityError EmailDomainNotAllowed(string domain) => Auth2(Auth2ErrorCodes.EmailDomainNotAllowed);
     /// <summary>The phone number is not valid.</summary>
     public virtual IdentityError InvalidPhoneNumber() => Auth2(Auth2ErrorCodes.InvalidPhoneNumber);
+    /// <summary>The phone number is the user name of another person.</summary>
+    public virtual IdentityError DuplicatePhoneNumber(string phone) => Auth2(Auth2ErrorCodes.PhoneNumberTaken);
 }

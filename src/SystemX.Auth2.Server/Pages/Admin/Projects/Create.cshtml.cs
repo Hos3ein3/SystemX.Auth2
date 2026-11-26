@@ -42,7 +42,7 @@ public sealed class CreateModel(IAdminProjectService projectService) : PageModel
         var (result, response) = await projectService.CreateAsync(new CreateProjectRequest(Input.ProjectKey, Input.Name, Input.Description), HttpContext.RequestAborted);
         if (!result.Succeeded)
         {
-            ModelState.AddModelError("", result.ErrorCode ?? "Failed to create project");
+            ModelState.AddModelError("", result.ErrorCode is { } code ? HttpContext.RequestServices.GetRequiredService<SystemX.Auth2.Server.Application.IAuth2Localizer>().Error(code) : "Failed to create project");
             return Page();
         }
 

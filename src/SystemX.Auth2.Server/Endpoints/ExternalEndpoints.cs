@@ -9,16 +9,12 @@ namespace SystemX.Auth2.Server.Endpoints;
 /// <summary>Public routes of the external sign-in: the list of providers and the start of a sign-in.</summary>
 public static class ExternalEndpoints
 {
-    /// <summary>Route of the provider list.</summary>
-    public const string Providers = "/connect/external/providers";
-    /// <summary>Route that starts a sign-in.</summary>
-    public const string Challenge = "/connect/external/challenge";
 
     /// <summary>Maps the routes.</summary>
     public static IEndpointRouteBuilder MapAuth2External(this IEndpointRouteBuilder routes)
     {
         // The list has no secrets: names, button texts and kinds. The application comes from client_id (optional in single mode).
-        routes.MapGet(Providers, async (HttpContext http, string? client_id, string? hint, IClientIdAccessor accessor, ExternalFlow flow) =>
+        routes.MapGet(Auth2Routes.ExternalProviderList, async (HttpContext http, string? client_id, string? hint, IClientIdAccessor accessor, ExternalFlow flow) =>
         {
             accessor.ClientId ??= client_id;
             try
@@ -33,7 +29,7 @@ public static class ExternalEndpoints
         });
 
         // A form post with an anti-forgery token (like the page). Answers with a redirect to the provider.
-        routes.MapPost(Challenge, async (HttpContext http, IAntiforgery antiforgery, IClientIdAccessor accessor, ExternalFlow flow) =>
+        routes.MapPost(Auth2Routes.ExternalChallenge, async (HttpContext http, IAntiforgery antiforgery, IClientIdAccessor accessor, ExternalFlow flow) =>
         {
             try { await antiforgery.ValidateRequestAsync(http); }
             catch (AntiforgeryValidationException) { return ApiResults.Error(http, StatusCodes.Status400BadRequest, Auth2ErrorCodes.ValidationFailed); }

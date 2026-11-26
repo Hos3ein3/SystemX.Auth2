@@ -40,6 +40,8 @@ public static class Auth2Routes
     public const string TwoFactorEnable = Base + "/2fa/enable";
     /// <summary>Disable TOTP.</summary>
     public const string TwoFactorDisable = Base + "/2fa/disable";
+    /// <summary>Checks one code of the authenticator app for the signed-in user (a fresh proof before a sensitive action).</summary>
+    public const string TwoFactorVerify = Base + "/2fa/verify";
     /// <summary>Recovery codes.</summary>
     public const string TwoFactorRecoveryCodes = Base + "/2fa/recovery-codes";
     /// <summary>Current user.</summary>
@@ -68,6 +70,30 @@ public static class Auth2Routes
     public const string ScopesSync = Base + "/scopes/sync";
     /// <summary>Access of one user. Replace <c>{id}</c>.</summary>
     public const string UserAccess = Base + "/users/{id}/access";
+    /// <summary>Base path of the pages and JSON calls of a signed-in person (passkeys).</summary>
+    public const string AccountBase = "/account";
+    /// <summary>Passkey: options to create one (signed in).</summary>
+    public const string PasskeyCreationOptions = AccountBase + "/passkey/creation-options";
+    /// <summary>Passkey: saves the new one (signed in).</summary>
+    public const string PasskeyRegister = AccountBase + "/passkey/register";
+    /// <summary>Passkey: the list of the signed-in person.</summary>
+    public const string Passkeys = AccountBase + "/passkeys";
+    /// <summary>Passkey: one of the signed-in person (rename, delete).</summary>
+    public const string PasskeyById = AccountBase + "/passkeys/{id}";
+    /// <summary>Passkey: options to sign in.</summary>
+    public const string PasskeyRequestOptions = AccountBase + "/passkey/request-options";
+    /// <summary>Passkey: signs in.</summary>
+    public const string PasskeySignIn = AccountBase + "/passkey/signin";
+    /// <summary>The list of external sign-in providers of the application (hosted UI).</summary>
+    public const string ExternalProviderList = "/connect/external/providers";
+    /// <summary>Starts an external sign-in.</summary>
+    public const string ExternalChallenge = "/connect/external/challenge";
+    /// <summary>A branding asset by project id and kind (public).</summary>
+    public const string BrandingAssetById = "/branding/assets/{projectId:guid}/{kind}";
+    /// <summary>A branding asset by project key and kind (public).</summary>
+    public const string BrandingAssetByKey = "/branding/assets/{projectKey}/{kind}";
+    /// <summary>A branding asset of a project by key (short form).</summary>
+    public const string ProjectBrandingAsset = "/projects/{projectKey}/{kind}";
     /// <summary>Base path of the admin API.</summary>
     public const string Admin = Base + "/admin";
 

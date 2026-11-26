@@ -75,10 +75,11 @@ if (client.IsMachine) return Results.StatusCode(StatusCodes.Status403Forbidden);
 | `UserId` | `sub`, then the .NET name-identifier claim; parsed as a GUID. `null` for a machine token |
 | `UserName` | `preferred_username`, then `name`. `null` for a machine token |
 | `Email`, `PhoneNumber` | `email`, `phone_number` |
+| `IsEmailAddressConfirmed`, `IsPhoneNumberConfirmed` | `email_verified`, `phone_number_verified` (`"true"`). `false` when the value is not `true`, when the token does not carry the claim, and for a machine token |
 | `FirstName`, `LastName` | `given_name`, `family_name` |
 | `FullName` | `name` |
 
-A claim is only present when the token has the matching scope: ask for `profile` (names), `email` and `phone` ([troubleshooting at the end](#common-problems)). The hosted UI asks for `openid profile email offline_access auth2.me` by default.
+A claim is only present when the token has the matching scope: ask for `profile` (names), `email` (also `email_verified`) and `phone` (also `phone_number_verified`) ([troubleshooting at the end](#common-problems)). The hosted UI asks for `openid profile email offline_access auth2.me` by default.
 
 ### The rights: async, cached
 
@@ -89,6 +90,7 @@ A claim is only present when the token has the matching scope: ask for `profile`
 | `GetGroupsAsync()` | The groups of the person | |
 | `HasPermissionAsync(permission)` | `true` if the person has it | The key is trimmed and **lower-cased** before the check |
 | `HasRoleAsync(role)` | `true` if the person has it | **Not** case sensitive |
+| `HasGroupAsync(group)` | `true` if the person is in the group | **Not** case sensitive; the name is trimmed |
 
 For a machine token every list is empty, the Server is never asked, and nothing throws.
 

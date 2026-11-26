@@ -49,6 +49,8 @@ public static class Auth2ErrorCodes
     public const string InvalidEmail = "invalid_email";
     /// <summary>The email domain is not allowed in this application.</summary>
     public const string EmailDomainNotAllowed = "email_domain_not_allowed";
+    /// <summary>The phone number is the user name of another person. A user name is the identity of a person and is unique, so an email address or phone number cannot be taken by somebody else.</summary>
+    public const string PhoneNumberTaken = "phone_number_taken";
     /// <summary>Phone number is not valid.</summary>
     public const string InvalidPhoneNumber = "invalid_phone_number";
     /// <summary>The user does not belong to this application (no row yet).</summary>
@@ -61,8 +63,14 @@ public static class Auth2ErrorCodes
     public const string TwoFactorSetupRequired = "two_factor_setup_required";
     /// <summary>The grant type is not allowed for this application or client.</summary>
     public const string GrantNotAllowed = "grant_not_allowed";
+    /// <summary>Another project already has this name. A project name is unique on the server (compared without letter case).</summary>
+    public const string ProjectNameTaken = "project_name_taken";
     /// <summary>Two-factor is not on for this user.</summary>
     public const string TwoFactorNotEnabled = "two_factor_not_enabled";
+    /// <summary>This action needs a code of the authenticator app (<c>WithTotp()</c> / <c>[Auth2Totp]</c>) and the request carried none.</summary>
+    public const string TotpRequired = "totp_required";
+    /// <summary>This action needs two-factor authentication (<c>WithTotp()</c> / <c>[Auth2Totp]</c>) but the person has not turned it on: they must set it up first.</summary>
+    public const string TotpSetupRequired = "totp_setup_required";
     /// <summary>The application does not allow authenticator-app two-factor.</summary>
     public const string TwoFactorNotAllowed = "two_factor_not_allowed";
     /// <summary>Consent is needed (OIDC <c>prompt=none</c> cannot ask).</summary>

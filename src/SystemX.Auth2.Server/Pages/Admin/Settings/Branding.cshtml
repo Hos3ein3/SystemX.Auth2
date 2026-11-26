@@ -3,122 +3,316 @@
 @{
     Layout = "_LayoutAdmin";
     ViewData["Title"] = $"Branding - {Model.CurrentProject?.Name}";
+
+    var lightLogo = Model.Assets.FirstOrDefault(a => a.Kind == "logo" || a.Kind == "logo_light");
+    var darkLogo = Model.Assets.FirstOrDefault(a => a.Kind == "logo-dark" || a.Kind == "logo_dark");
+    var favicon = Model.Assets.FirstOrDefault(a => a.Kind == "favicon");
+    var bgAsset = Model.Assets.FirstOrDefault(a => a.Kind == "background");
+
+    var lightLogoUrl = Model.GetDiskAssetUrl("logo") ?? $"/projects/{Model.ProjectKey}/logo.png";
+    var darkLogoUrl = Model.GetDiskAssetUrl("logo-dark") ?? $"/projects/{Model.ProjectKey}/logo-dark.png";
+    var faviconUrl = Model.GetDiskAssetUrl("favicon") ?? $"/projects/{Model.ProjectKey}/favicon.ico";
+    var bgUrl = Model.GetDiskAssetUrl("background") ?? $"/projects/{Model.ProjectKey}/background.png";
 }
 
-<div class="max-w-4xl mx-auto space-y-6">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">Branding & Assets</h1>
-        <p class="mt-1 text-sm text-gray-500">Customize color tokens, logos, and visual assets for @Model.CurrentProject?.Name.</p>
+<div class="max-w-5xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <div class="flex items-center space-x-2 text-xs text-gray-500 mb-1">
+                <a href="/admin/p/@Model.ProjectKey" class="hover:underline text-blue-600 dark:text-blue-400">@Model.CurrentProject?.Name</a>
+                <span>/</span>
+                <span class="text-gray-700 dark:text-gray-300">Settings</span>
+                <span>/</span>
+                <span class="text-gray-900 dark:text-gray-100 font-medium">Branding</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Branding & Visual Identity</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Customize brand identity, color tokens, typography, and visual assets stored under <code class="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">wwwroot/projects/@Model.ProjectKey/</code>.</p>
+        </div>
     </div>
 
-    <!-- Design Tokens / Colors -->
-    <a2-card title="Color Tokens">
-        <form method="post" asp-page-handler="SaveColors" class="space-y-4">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <!-- Visual Tokens & Brand Settings Form -->
+    <form method="post" asp-page-handler="SaveTokens" class="space-y-6">
+        <!-- Brand Identity -->
+        <a2-card title="Brand Identity" subtitle="General identity details shown across hosted login, self-service, and user interfaces.">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a2-field label="Brand Name" hint="Displayed on headers, page titles, and notification emails. Defaults to project name.">
+                    <a2-input name="BrandName" value="@Model.BrandName" placeholder="@Model.CurrentProject?.Name" />
+                </a2-field>
+
+                <a2-field label="Support Email" hint="Contact email shown to users on login, help, and verification screens.">
+                    <a2-input name="SupportEmail" type="email" value="@Model.SupportEmail" placeholder="support@yourdomain.com" />
+                </a2-field>
+            </div>
+        </a2-card>
+
+        <!-- Color & Theme Tokens -->
+        <a2-card title="Design & Color Tokens" subtitle="Core color palette used to style authentication pages, account self-service, and component widgets.">
+            <div class="space-y-6">
+                <!-- Group 1: Brand Accents -->
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Primary Color</label>
-                    <div class="flex items-center space-x-2">
-                        <input type="color" name="PrimaryColor" value="@Model.PrimaryColor" class="h-9 w-9 rounded border border-gray-300 p-0.5" />
-                        <span class="font-mono text-xs text-gray-700">@Model.PrimaryColor</span>
+                    <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Brand Accents</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Primary Color</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="primaryPicker" data-color-for="primaryInput" value="@Model.PrimaryColor" class="h-9 w-9 rounded border border-gray-300 dark:border-gray-600 p-0.5 cursor-pointer bg-transparent" />
+                                <input type="text" id="primaryInput" name="PrimaryColor" data-color-picker="primaryPicker" value="@Model.PrimaryColor" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 uppercase" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Primary Text</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="primaryTextPicker" data-color-for="primaryTextInput" value="@Model.PrimaryTextColor" class="h-9 w-9 rounded border border-gray-300 dark:border-gray-600 p-0.5 cursor-pointer bg-transparent" />
+                                <input type="text" id="primaryTextInput" name="PrimaryTextColor" data-color-picker="primaryTextPicker" value="@Model.PrimaryTextColor" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 uppercase" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Secondary Color</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="secondaryPicker" data-color-for="secondaryInput" value="@Model.SecondaryColor" class="h-9 w-9 rounded border border-gray-300 dark:border-gray-600 p-0.5 cursor-pointer bg-transparent" />
+                                <input type="text" id="secondaryInput" name="SecondaryColor" data-color-picker="secondaryPicker" value="@Model.SecondaryColor" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 uppercase" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Secondary Text</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="secondaryTextPicker" data-color-for="secondaryTextInput" value="@Model.SecondaryTextColor" class="h-9 w-9 rounded border border-gray-300 dark:border-gray-600 p-0.5 cursor-pointer bg-transparent" />
+                                <input type="text" id="secondaryTextInput" name="SecondaryTextColor" data-color-picker="secondaryTextPicker" value="@Model.SecondaryTextColor" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 uppercase" />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                <!-- Group 2: Surfaces & Canvas -->
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Primary Text</label>
-                    <div class="flex items-center space-x-2">
-                        <input type="color" name="PrimaryTextColor" value="@Model.PrimaryTextColor" class="h-9 w-9 rounded border border-gray-300 p-0.5" />
-                        <span class="font-mono text-xs text-gray-700">@Model.PrimaryTextColor</span>
+                    <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Canvas & Surfaces</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Background Canvas</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="bgPicker" data-color-for="bgInput" value="@Model.BackgroundColor" class="h-9 w-9 rounded border border-gray-300 dark:border-gray-600 p-0.5 cursor-pointer bg-transparent" />
+                                <input type="text" id="bgInput" name="BackgroundColor" data-color-picker="bgPicker" value="@Model.BackgroundColor" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 uppercase" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Surface (Cards & Sidebar)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="surfacePicker" data-color-for="surfaceInput" value="@Model.SurfaceColor" class="h-9 w-9 rounded border border-gray-300 dark:border-gray-600 p-0.5 cursor-pointer bg-transparent" />
+                                <input type="text" id="surfaceInput" name="SurfaceColor" data-color-picker="surfacePicker" value="@Model.SurfaceColor" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 uppercase" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Primary Text Color</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="textPicker" data-color-for="textInput" value="@Model.TextColor" class="h-9 w-9 rounded border border-gray-300 dark:border-gray-600 p-0.5 cursor-pointer bg-transparent" />
+                                <input type="text" id="textInput" name="TextColor" data-color-picker="textPicker" value="@Model.TextColor" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 uppercase" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Muted Text Color</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="mutedPicker" data-color-for="mutedInput" value="@Model.MutedTextColor" class="h-9 w-9 rounded border border-gray-300 dark:border-gray-600 p-0.5 cursor-pointer bg-transparent" />
+                                <input type="text" id="mutedInput" name="MutedTextColor" data-color-picker="mutedPicker" value="@Model.MutedTextColor" class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 uppercase" />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                <!-- Group 3: Shape & Typography -->
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Background</label>
-                    <div class="flex items-center space-x-2">
-                        <input type="color" name="BackgroundColor" value="@Model.BackgroundColor" class="h-9 w-9 rounded border border-gray-300 p-0.5" />
-                        <span class="font-mono text-xs text-gray-700">@Model.BackgroundColor</span>
-                    </div>
-                </div>
+                    <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Shape & Typography</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <a2-field label="Border Radius" hint="CSS radius value for buttons, cards, and input fields (e.g. 0.375rem, 0.5rem, 9999px).">
+                            <a2-input name="Radius" value="@Model.Radius" placeholder="0.375rem" />
+                        </a2-field>
 
-                <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Border Radius</label>
-                    <input type="text" name="Radius" value="@Model.Radius" class="block w-full rounded border border-gray-300 px-3 py-1.5 text-xs font-mono" />
+                        <a2-field label="Font Family" hint="CSS font family stack applied to brand screens and layouts.">
+                            <a2-input name="FontFamily" value="@Model.FontFamily" placeholder="system-ui, -apple-system, sans-serif" />
+                        </a2-field>
+                    </div>
                 </div>
             </div>
 
-            <div class="pt-3 flex justify-end">
-                <a2-button type="submit" variant="primary">Save Colors</a2-button>
+            <div class="pt-4 flex justify-end">
+                <a2-button type="submit" variant="primary">
+                    Save Branding Settings
+                </a2-button>
             </div>
-        </form>
-    </a2-card>
+        </a2-card>
+    </form>
 
-    <!-- Upload Branding Assets -->
-    <a2-card title="Brand Assets (Logos & Favicons)">
-        <p class="text-sm text-gray-600 mb-4">Supported formats: PNG, JPEG, WebP, SVG. Maximum logo size: 512 KB, Favicon: 64 KB.</p>
+    <!-- Upload Brand Assets (Stored under wwwroot/projects/{projectname}/) -->
+    <a2-card title="Brand Assets (Stored in wwwroot/projects/@Model.ProjectKey/)" subtitle="Assets uploaded here are saved to wwwroot/projects/@Model.ProjectKey/ and replace the current files on disk.">
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">Supported formats: PNG, JPEG, WebP, SVG, ICO. Replaces the file on disk and in database.</p>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Logo Light -->
-            <div class="border rounded-lg p-4 bg-gray-50 flex flex-col justify-between">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 1. Logo Light -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col justify-between">
                 <div>
-                    <span class="text-sm font-semibold text-gray-800 block mb-1">Logo (Light theme)</span>
-                    <p class="text-xs text-gray-500 mb-3">Shown on light background login screens.</p>
-                    @{
-                        var lightLogo = Model.Assets.FirstOrDefault(a => a.Kind == "logo_light");
-                    }
-                    @if (lightLogo is not null)
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Logo (Light)</span>
+                        @if (lightLogo is not null || Model.GetDiskAssetUrl("logo") is not null)
+                        {
+                            <a2-badge variant="success">Active</a2-badge>
+                        }
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Path: <code class="font-mono text-2xs">/projects/@Model.ProjectKey/logo.*</code></p>
+
+                    <div class="h-24 p-2 bg-white border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center my-3">
+                        <img src="@lightLogoUrl" alt="Light Logo" class="max-h-full max-w-full object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <div class="text-center text-xs text-gray-400" style="display:none;">
+                            <svg class="w-8 h-8 mx-auto mb-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <span>No logo on disk</span>
+                        </div>
+                    </div>
+
+                    @if (lightLogo is not null || Model.GetDiskAssetUrl("logo") is not null)
                     {
-                        <div class="bg-white p-2 border rounded mb-3 text-center">
-                            <span class="text-xs text-green-700 font-medium">Uploaded (@(lightLogo.Size / 1024) KB)</span>
+                        <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                            <span>@(lightLogo is not null ? $"{lightLogo.Size / 1024} KB" : "On disk")</span>
+                            <form method="post" asp-page-handler="DeleteAsset">
+                                <input type="hidden" name="kind" value="logo" />
+                                <button type="submit" class="text-red-600 hover:text-red-800 font-medium cursor-pointer">Delete</button>
+                            </form>
                         </div>
                     }
                 </div>
-                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2">
-                    <input type="hidden" name="kind" value="logo_light" />
-                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                    <button type="submit" class="w-full text-xs py-1.5 bg-white border border-gray-300 rounded font-medium text-gray-700 hover:bg-gray-100">Upload</button>
+
+                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <input type="hidden" name="kind" value="logo" />
+                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                    <button type="submit" class="w-full text-xs py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                        Upload & Replace Logo
+                    </button>
                 </form>
             </div>
 
-            <!-- Logo Dark -->
-            <div class="border rounded-lg p-4 bg-gray-50 flex flex-col justify-between">
+            <!-- 2. Logo Dark -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col justify-between">
                 <div>
-                    <span class="text-sm font-semibold text-gray-800 block mb-1">Logo (Dark theme)</span>
-                    <p class="text-xs text-gray-500 mb-3">Shown on dark surfaces or inverted layouts.</p>
-                    @{
-                        var darkLogo = Model.Assets.FirstOrDefault(a => a.Kind == "logo_dark");
-                    }
-                    @if (darkLogo is not null)
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Logo (Dark)</span>
+                        @if (darkLogo is not null || Model.GetDiskAssetUrl("logo-dark") is not null)
+                        {
+                            <a2-badge variant="success">Active</a2-badge>
+                        }
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Path: <code class="font-mono text-2xs">/projects/@Model.ProjectKey/logo-dark.*</code></p>
+
+                    <div class="h-24 p-2 bg-gray-900 border border-gray-800 rounded-lg flex items-center justify-center my-3">
+                        <img src="@darkLogoUrl" alt="Dark Logo" class="max-h-full max-w-full object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <div class="text-center text-xs text-gray-500" style="display:none;">
+                            <svg class="w-8 h-8 mx-auto mb-1 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <span>No dark logo on disk</span>
+                        </div>
+                    </div>
+
+                    @if (darkLogo is not null || Model.GetDiskAssetUrl("logo-dark") is not null)
                     {
-                        <div class="bg-gray-800 p-2 border rounded mb-3 text-center">
-                            <span class="text-xs text-green-400 font-medium">Uploaded (@(darkLogo.Size / 1024) KB)</span>
+                        <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                            <span>@(darkLogo is not null ? $"{darkLogo.Size / 1024} KB" : "On disk")</span>
+                            <form method="post" asp-page-handler="DeleteAsset">
+                                <input type="hidden" name="kind" value="logo-dark" />
+                                <button type="submit" class="text-red-600 hover:text-red-800 font-medium cursor-pointer">Delete</button>
+                            </form>
                         </div>
                     }
                 </div>
-                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2">
-                    <input type="hidden" name="kind" value="logo_dark" />
-                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                    <button type="submit" class="w-full text-xs py-1.5 bg-white border border-gray-300 rounded font-medium text-gray-700 hover:bg-gray-100">Upload</button>
+
+                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <input type="hidden" name="kind" value="logo-dark" />
+                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                    <button type="submit" class="w-full text-xs py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                        Upload & Replace Dark Logo
+                    </button>
                 </form>
             </div>
 
-            <!-- Favicon -->
-            <div class="border rounded-lg p-4 bg-gray-50 flex flex-col justify-between">
+            <!-- 3. Favicon -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col justify-between">
                 <div>
-                    <span class="text-sm font-semibold text-gray-800 block mb-1">Favicon</span>
-                    <p class="text-xs text-gray-500 mb-3">Browser tab icon (16x16 or 32x32).</p>
-                    @{
-                        var favicon = Model.Assets.FirstOrDefault(a => a.Kind == "favicon");
-                    }
-                    @if (favicon is not null)
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Favicon</span>
+                        @if (favicon is not null || Model.GetDiskAssetUrl("favicon") is not null)
+                        {
+                            <a2-badge variant="success">Active</a2-badge>
+                        }
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Path: <code class="font-mono text-2xs">/projects/@Model.ProjectKey/favicon.*</code></p>
+
+                    <div class="h-24 p-2 bg-white border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center gap-3 my-3">
+                        <div class="flex items-center space-x-2 px-3 py-1 bg-gray-100 border border-gray-200 rounded text-xs text-gray-700 shadow-2xs">
+                            <img src="@faviconUrl" alt="Favicon" class="h-4 w-4 object-contain" onerror="this.src='/favicon.ico'" />
+                            <span class="font-medium truncate max-w-[80px]">@(Model.BrandName ?? "Tab")</span>
+                        </div>
+                    </div>
+
+                    @if (favicon is not null || Model.GetDiskAssetUrl("favicon") is not null)
                     {
-                        <div class="bg-white p-2 border rounded mb-3 text-center">
-                            <span class="text-xs text-green-700 font-medium">Uploaded (@(favicon.Size / 1024) KB)</span>
+                        <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                            <span>@(favicon is not null ? $"{favicon.Size / 1024} KB" : "On disk")</span>
+                            <form method="post" asp-page-handler="DeleteAsset">
+                                <input type="hidden" name="kind" value="favicon" />
+                                <button type="submit" class="text-red-600 hover:text-red-800 font-medium cursor-pointer">Delete</button>
+                            </form>
                         </div>
                     }
                 </div>
-                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2">
+
+                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                     <input type="hidden" name="kind" value="favicon" />
-                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                    <button type="submit" class="w-full text-xs py-1.5 bg-white border border-gray-300 rounded font-medium text-gray-700 hover:bg-gray-100">Upload</button>
+                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                    <button type="submit" class="w-full text-xs py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                        Upload & Replace Favicon
+                    </button>
+                </form>
+            </div>
+
+            <!-- 4. Background Banner -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Background</span>
+                        @if (bgAsset is not null || Model.GetDiskAssetUrl("background") is not null)
+                        {
+                            <a2-badge variant="success">Active</a2-badge>
+                        }
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Path: <code class="font-mono text-2xs">/projects/@Model.ProjectKey/background.*</code></p>
+
+                    <div class="h-24 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex items-center justify-center my-3">
+                        <img src="@bgUrl" alt="Background Banner" class="h-full w-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <div class="text-center text-xs text-gray-400" style="display:none;">
+                            <svg class="w-8 h-8 mx-auto mb-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                            <span>No background</span>
+                        </div>
+                    </div>
+
+                    @if (bgAsset is not null || Model.GetDiskAssetUrl("background") is not null)
+                    {
+                        <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                            <span>@(bgAsset is not null ? $"{bgAsset.Size / 1024} KB" : "On disk")</span>
+                            <form method="post" asp-page-handler="DeleteAsset">
+                                <input type="hidden" name="kind" value="background" />
+                                <button type="submit" class="text-red-600 hover:text-red-800 font-medium cursor-pointer">Delete</button>
+                            </form>
+                        </div>
+                    }
+                </div>
+
+                <form method="post" asp-page-handler="UploadAsset" enctype="multipart/form-data" class="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <input type="hidden" name="kind" value="background" />
+                    <input type="file" name="file" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                    <button type="submit" class="w-full text-xs py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                        Upload & Replace Background
+                    </button>
                 </form>
             </div>
         </div>

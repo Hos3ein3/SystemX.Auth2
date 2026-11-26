@@ -1,27 +1,38 @@
 @page
 @model SystemX.Auth2.Server.Pages.Manage.IndexModel
 @{
-    Layout = "_LayoutAccount";
+    Layout = "_LayoutManage";
     ViewData["Title"] = "Account Overview";
 }
 
 <div class="space-y-6">
     <div>
-        <h2 class="text-xl font-bold text-gray-900">Account Overview</h2>
-        <p class="mt-1 text-sm text-gray-500">Manage your profile, credentials, and active sessions.</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Account Overview</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage your profile, credentials, and active sessions.</p>
     </div>
 
-    <a2-card title="Profile Information">
-        <dl class="divide-y divide-gray-200 text-sm">
-            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
-                <dt class="font-medium text-gray-500">Username</dt>
-                <dd class="text-gray-900 sm:col-span-2">@(Model.UserName ?? "Not set")</dd>
-            </div>
-            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
-                <dt class="font-medium text-gray-500">Email address</dt>
-                <dd class="flex items-center justify-between sm:col-span-2">
-                    <span class="text-gray-900">@Model.Email</span>
-                    @if (Model.EmailConfirmed)
+    <a2-card title="Profile Information" subtitle="Basic personal and contact details associated with your account.">
+        <dl class="divide-y divide-gray-100 dark:divide-gray-700/50">
+            <a2-desc-item label="Username" value="@(Model.UserName ?? "Not set")" />
+            <a2-desc-item label="Email address">
+                <span class="text-gray-900 dark:text-gray-100 font-medium">@Model.Email</span>
+                @if (Model.EmailConfirmed)
+                {
+                    <a2-badge variant="success">Verified</a2-badge>
+                }
+                else
+                {
+                    <span class="inline-flex items-center space-x-2">
+                        <a2-badge variant="warning">Unverified</a2-badge>
+                        <a href="/Account/ConfirmEmail" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Verify</a>
+                    </span>
+                }
+            </a2-desc-item>
+            <a2-desc-item label="Phone number">
+                <span class="text-gray-900 dark:text-gray-100 font-medium">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "Not set" : Model.PhoneNumber)</span>
+                @if (!string.IsNullOrEmpty(Model.PhoneNumber))
+                {
+                    @if (Model.PhoneConfirmed)
                     {
                         <a2-badge variant="success">Verified</a2-badge>
                     }
@@ -29,64 +40,38 @@
                     {
                         <span class="inline-flex items-center space-x-2">
                             <a2-badge variant="warning">Unverified</a2-badge>
-                            <a href="/Account/ConfirmEmail" class="text-xs text-blue-600 hover:underline">Verify</a>
+                            <a href="/Account/ConfirmPhone" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Verify</a>
                         </span>
                     }
-                </dd>
-            </div>
-            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
-                <dt class="font-medium text-gray-500">Phone number</dt>
-                <dd class="flex items-center justify-between sm:col-span-2">
-                    <span class="text-gray-900">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "Not set" : Model.PhoneNumber)</span>
-                    @if (!string.IsNullOrEmpty(Model.PhoneNumber))
-                    {
-                        @if (Model.PhoneConfirmed)
-                        {
-                            <a2-badge variant="success">Verified</a2-badge>
-                        }
-                        else
-                        {
-                            <span class="inline-flex items-center space-x-2">
-                                <a2-badge variant="warning">Unverified</a2-badge>
-                                <a href="/Account/ConfirmPhone" class="text-xs text-blue-600 hover:underline">Verify</a>
-                            </span>
-                        }
-                    }
-                </dd>
-            </div>
+                }
+            </a2-desc-item>
         </dl>
     </a2-card>
 
-    <a2-card title="Security Status">
-        <dl class="divide-y divide-gray-200 text-sm">
-            <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
-                <dt class="font-medium text-gray-500">Password</dt>
-                <dd class="flex items-center justify-between sm:col-span-2">
-                    <span class="text-gray-900">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span>
-                    <a href="/Manage/ChangePassword" class="text-xs text-blue-600 hover:underline">Change Password</a>
-                </dd>
-            </div>
+    <a2-card title="Security Status" subtitle="Credentials and security methods protecting your sign-in.">
+        <dl class="divide-y divide-gray-100 dark:divide-gray-700/50">
+            <a2-desc-item label="Password">
+                <span class="text-gray-900 dark:text-gray-100 tracking-wider">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span>
+                <a href="/Manage/ChangePassword" class="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline">Change Password</a>
+            </a2-desc-item>
             @if (Model.ShowTwoFactor)
             {
-                <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
-                    <dt class="font-medium text-gray-500">Two-Factor Authentication</dt>
-                    <dd class="flex items-center justify-between sm:col-span-2">
+                <a2-desc-item label="Two-Factor Authentication">
+                    <div class="flex items-center space-x-3">
                         @if (Model.TwoFactorEnabled)
                         {
-                            <span class="flex items-center space-x-2">
-                                <a2-badge variant="success">Enabled</a2-badge>
-                                <a href="/Manage/TwoFactor/RecoveryCodes" class="text-xs text-gray-600 hover:underline ml-2">Recovery Codes</a>
-                            </span>
+                            <a2-badge variant="success">Enabled</a2-badge>
+                            <a href="/Manage/TwoFactor/RecoveryCodes" class="text-xs text-gray-600 dark:text-gray-400 hover:underline">Recovery Codes</a>
                         }
                         else
                         {
                             <a2-badge variant="neutral">Disabled</a2-badge>
                         }
-                        <a href="/Manage/TwoFactor/Enable" class="text-xs text-blue-600 hover:underline">
-                            @(Model.TwoFactorEnabled ? "Manage 2FA" : "Set up 2FA")
-                        </a>
-                    </dd>
-                </div>
+                    </div>
+                    <a href="/Manage/TwoFactor/Enable" class="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                        @(Model.TwoFactorEnabled ? "Manage 2FA" : "Set up 2FA")
+                    </a>
+                </a2-desc-item>
             }
         </dl>
     </a2-card>

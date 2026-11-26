@@ -439,7 +439,7 @@ public class TokenEndpointTests : IdentityTestBase
     {
         await using var scope = NewScope();
         var db = scope.ServiceProvider.GetRequiredService<Auth2DbContext>();
-        (await db.Projects.SingleAsync(a => a.ProjectKey == projectKey)).IsEnabled = false;
-        await db.SaveChangesAsync();
+        await scope.ServiceProvider.GetRequiredService<SystemX.Auth2.Server.Application.IProjectService>().SetEnabledAsync(
+            (await db.Projects.AsNoTracking().SingleAsync(a => a.ProjectKey == projectKey)).Id, false, null, null);   // the real way: it also drops the cached copy
     }
 }

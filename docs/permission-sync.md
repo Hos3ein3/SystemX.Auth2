@@ -85,7 +85,7 @@ For roles, `addedKeys` holds the names of the roles that were created.
 A *scope* says what a token may be used for. The server owns `auth2.*` and the standard OpenID Connect scopes (`openid`, `profile`, `email`, `phone`, `roles`, `offline_access`). Your application may have its own, for example `reports.read`.
 
 - `POST /api/auth2/scopes/sync` with `{ "scopes": [ { "name": "reports.read", "displayName": "Read reports" } ] }`.
-- The server **registers** the scope when it is new (the registry is shared, the first text stays) and **allows it for the calling application** (adds it to `the allowed scopes of the application`). The client can ask for it at once.
+- The server **registers** the scope when it is new (the registry is shared, the first text stays). With `Clients.AutoAssignScopeToApplication` on (default) it also **allows it for the calling application** (adds it to the allowed scopes of the application), so the client can ask for it at once. With it **off** the scope is only registered and an admin allows it for the applications that need it ([scopes.md](scopes.md#scope-sync-and-what-a-scope-really-limits)).
 - Reserved names (`auth2.*`, standard scopes) and invalid names give `400 invalid_scope_name`, and nothing is saved. Maximum 500.
 - `Clients.ScopeSyncAllowed` (default on). Another application (even of the same project) still has to ask for the same scope itself, because the allowed scopes are a field of each application.
 - It never removes a scope. Pull (`GET /api/auth2/scopes`) lists the custom scopes of the calling application with their texts.

@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
@@ -20,6 +21,7 @@
     <PackageReference Include="Novell.Directory.Ldap.NETStandard" />
     <PackageReference Include="ITfoxtec.Identity.Saml2" />
     <PackageReference Include="ITfoxtec.Identity.Saml2.MvcCore" />
+    <PackageReference Include="QRCoder" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />

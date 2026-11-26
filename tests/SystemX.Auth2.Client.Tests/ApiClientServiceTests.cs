@@ -105,10 +105,21 @@ public class ApiClientServiceTests
     public async Task Refresh_AndLogout_UseTheTokenAndRevokeEndpoints()
     {
         var (api, server) = Start((_, _) => FakeServer.Json(HttpStatusCode.OK, """{"access_token":"a2","refresh_token":"r2","expires_in":900}"""));
-        (await api.RefreshAsync("r1")).Value!.RefreshToken.ShouldBe("r2");
+        (await api.WithTokens(null, "r1").RefreshAsync()).Value!.RefreshToken.ShouldBe("r2");
         server.Calls.Last().Body.ShouldContain("grant_type=refresh_token");
-        (await api.LogoutAsync("r2")).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens(null, "r2").LogoutAsync()).IsSuccess.ShouldBeTrue();
         (server.Calls.Last().Path, server.Calls.Last().Body.Contains("token=r2")).ShouldBe((Auth2Routes.Revoke, true));
+    }
+
+    [Fact]
+    public async Task WithoutATokenAndWithoutARequest_APersonCallIsInvalidToken_AndTheServerIsNotAsked()
+    {
+        var (api, server) = Start((_, _) => new HttpResponseMessage(HttpStatusCode.NoContent));
+        (await api.GetMeAsync()).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);
+        (await api.ChangePasswordAsync(new ChangePasswordRequest("old", "new"))).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);
+        (await api.RefreshAsync()).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidToken);
+        (await api.LogoutAsync()).IsSuccess.ShouldBeTrue();   // no refresh token: nothing to revoke
+        server.Calls.ShouldBeEmpty();
     }
 
     [Fact]
@@ -117,10 +128,10 @@ public class ApiClientServiceTests
         var (api, server) = Start((r, _) => r.RequestUri!.AbsolutePath == Auth2Routes.Me
             ? FakeServer.Json(HttpStatusCode.OK, """{"userId":"0198a1b2-0000-7000-8000-000000000009","userName":"sara","roles":["Editor"],"permissions":["a.b"],"groups":[],"scopes":["auth2.me"],"accessVersion":3}""")
             : new HttpResponseMessage(HttpStatusCode.NoContent));
-        var me = await api.GetMeAsync("user-token");
+        var me = await api.WithTokens("user-token").GetMeAsync();
         me.Value!.Permissions.ShouldBe(["a.b"]);
         server.Calls.Last().Authorization.ShouldBe("Bearer user-token");
-        (await api.ChangePasswordAsync("user-token", new ChangePasswordRequest("old", "new"))).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens("user-token").ChangePasswordAsync(new ChangePasswordRequest("old", "new"))).IsSuccess.ShouldBeTrue();
         server.Calls.ShouldNotContain(c => c.Path == "/connect/token");   // no machine token was needed
     }
 

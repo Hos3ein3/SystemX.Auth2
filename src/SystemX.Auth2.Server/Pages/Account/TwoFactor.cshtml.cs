@@ -50,7 +50,8 @@ public sealed class TwoFactorModel(IClientIdAccessor clientId, IAuthFlowResolver
         if (result.Succeeded)
         {
             TempData.Remove("TwoFactorToken");
-            await Auth2Cookie.SignInAsync(HttpContext, result.User!, Project!, Client, Effective, result.Amr, result.SessionId);
+            // the second step is a code of the authenticator app (or a recovery code): the restricted pages do not ask again at once
+            await Auth2Cookie.SignInAsync(HttpContext, result.User!, Project!, Client, Effective, result.Amr, result.SessionId, stepUpAtUtc: DateTimeOffset.UtcNow);
             return Redirect(ResolveRedirect(Settings.Redirects.RedirectAfterLogin));
         }
         if (result.ErrorCode == Auth2ErrorCodes.LockedOut) return RedirectToPage("Lockout", new { ReturnUrl, ClientId });

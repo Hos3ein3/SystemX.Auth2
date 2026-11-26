@@ -56,7 +56,7 @@ public static class Auth2Cookie
     }
 
     /// <summary>Signs the user into the hosted UI session.</summary>
-    public static async Task SignInAsync(HttpContext http, AppUser user, Project project, ClientApplicationInfo? client, EffectiveSettings effective, IEnumerable<string> amr, string? sessionId, string? identityProvider = null, IEnumerable<string>? roles = null)
+    public static async Task SignInAsync(HttpContext http, AppUser user, Project project, ClientApplicationInfo? client, EffectiveSettings effective, IEnumerable<string> amr, string? sessionId, string? identityProvider = null, IEnumerable<string>? roles = null, DateTimeOffset? stepUpAtUtc = null)
     {
         var identity = new ClaimsIdentity(Scheme, "name", "role");
         identity.AddClaim(new Claim("sub", user.Id.ToString("D")));
@@ -67,6 +67,8 @@ public static class Auth2Cookie
         if (sessionId is not null) identity.AddClaim(new Claim(Auth2Claims.SessionId, sessionId));
         foreach (var a in amr) identity.AddClaim(new Claim(Auth2Claims.Amr, a));
         if (!string.IsNullOrEmpty(identityProvider)) identity.AddClaim(new Claim(Auth2Claims.IdentityProvider, identityProvider));
+        // When the person last gave a code of the authenticator app in this session ("sudo mode", see StepUp). Kept in the session, not in the database.
+        if (stepUpAtUtc is { } stepUp) identity.AddClaim(new Claim(StepUp.Claim, stepUp.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
         // Add user roles so User.IsInRole(...) works with the cookie session
         var userManager = http.RequestServices.GetService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>();

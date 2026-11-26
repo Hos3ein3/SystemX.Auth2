@@ -43,6 +43,14 @@
   <data name="login.identifier_username_phone" xml:space="preserve"><value>Gebruikersnaam of telefoonnummer</value></data>
   <data name="login.identifier_email_phone" xml:space="preserve"><value>E-mail of telefoonnummer</value></data>
   <data name="login.identifier_all" xml:space="preserve"><value>Gebruikersnaam, e-mail of telefoonnummer</value></data>
+  <data name="verify_totp.title" xml:space="preserve"><value>Verifiëren met je authenticator-app</value></data>
+  <data name="verify_totp.subtitle" xml:space="preserve"><value>Voer de 6-cijferige code in die je authenticator-app nu toont.</value></data>
+  <data name="verify_totp.code" xml:space="preserve"><value>Authenticatorcode</value></data>
+  <data name="verify_totp.button" xml:space="preserve"><value>Verifiëren</value></data>
+  <data name="verify_totp.success" xml:space="preserve"><value>Je code is geaccepteerd.</value></data>
+  <data name="verify_totp.not_enabled" xml:space="preserve"><value>Tweestapsverificatie is niet ingeschakeld voor je account, dus er is geen code om in te voeren.</value></data>
+  <data name="verify_totp.enable_link" xml:space="preserve"><value>Tweestapsverificatie inschakelen</value></data>
+  <data name="verify_totp.hint" xml:space="preserve"><value>Een code werkt maar één keer. Is hij geweigerd, wacht dan op de volgende (ongeveer 30 seconden).</value></data>
   <data name="login.password" xml:space="preserve"><value>Wachtwoord</value></data>
   <data name="login.remember_me" xml:space="preserve"><value>Onthoud mij</value></data>
   <data name="login.forgot_password" xml:space="preserve"><value>Wachtwoord vergeten?</value></data>

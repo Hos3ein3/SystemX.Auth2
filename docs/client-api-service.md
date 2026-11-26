@@ -12,7 +12,7 @@ Two rules hold for every method:
 ## When to use it
 
 - Your **API or worker** needs to register people, sign them in with a password, or push the catalogs.
-- Your **own forms** (Self UI) need the Server to check a password; for a cookie you use `IAuth2WebService`, which calls this service and then signs the cookie in ([below](#cookies-who-puts-the-user-into-the-cookie)).
+- Your **own forms** (Self UI) need the Server to check a password; for a cookie you use `IAuth2WebClientService`, which calls this service and then signs the cookie in ([below](#cookies-who-puts-the-user-into-the-cookie)).
 - Your application shows "my account" screens (change password, user name, email, phone, two-factor) on top of the Server's API.
 
 If you use the **hosted UI** (the Server draws the pages) you usually need none of the sign-in methods: the Server does the sign-in and your app only receives the result ([client-setup.md](client-setup.md)).
@@ -24,40 +24,62 @@ If you use the **hosted UI** (the Server draws the pages) you usually need none 
 | Your application | Sign in with | Where the cookie comes from |
 |---|---|---|
 | **API** (bearer tokens) | `IAuth2ApiClientService.LoginAsync` | No cookie. You give the tokens to your caller |
-| **Cookie app, hosted UI** (`UseHostedUi()`) | You do not call a login method. `IAuth2WebService.ChallengeAsync` sends the browser to the Server | The OpenID Connect callback of the package makes the cookie |
-| **Cookie app, your own forms** (`UseSelfUi()`) | `IAuth2WebService.LoginAsync(HttpContext, request, isPersistent)` | `IAuth2WebService` calls `IAuth2ApiClientService.LoginAsync`, then signs the cookie in (and keeps the tokens in it when `SaveTokens` is on) |
+| **Cookie app, hosted UI** (`UseHostedUi()`) | You do not call a login method. `IAuth2WebClientService.ChallengeAsync` sends the browser to the Server | The OpenID Connect callback of the package makes the cookie |
+| **Cookie app, your own forms** (`UseSelfUi()`) | `IAuth2WebClientService.LoginAsync(request, isPersistent)` | `IAuth2WebClientService` calls `IAuth2ApiClientService.LoginAsync`, then signs the cookie in (and keeps the tokens in it when `SaveTokens` is on) |
 
-The same holds for the other two sign-in steps: `IAuth2WebService.TwoFactorLoginAsync` and `OtpLoginAsync` make the cookie; the methods of this service with the same names do not.
+The same holds for the other two sign-in steps: `IAuth2WebClientService.TwoFactorLoginAsync` and `OtpLoginAsync` make the cookie; the methods of this service with the same names do not.
 
 **After a registration.** `RegisterAsync` creates the person (or adds an existing one to this project) and answers `RegisterResponse(UserId, UserWasCreated, JoinedProject, ConfirmationRequired)`. It **never signs anybody in**, for any kind of application: the person may still have to confirm an email or phone (`ConfirmationRequired`), and registering is done with the application's own client token, not with the person's token. A cookie app that wants "register, then be signed in" does it in two calls:
 
 ```csharp
-app.MapPost("/register", async (HttpContext http, RegisterForm form, IAuth2ApiClientService api, IAuth2WebService web, CancellationToken ct) =>
+app.MapPost("/register", async (RegisterForm form, IAuth2ApiClientService api, IAuth2WebClientService web, CancellationToken ct) =>
 {
     var registered = await api.RegisterAsync(new RegisterRequest(form.UserName, form.Email, null, form.Password), ct);
     if (!registered.IsSuccess) return Results.BadRequest(registered.Error!.Code);
     if (registered.Value!.ConfirmationRequired) return Results.Ok(new { confirm = true });     // the person must confirm first
 
-    var login = await web.LoginAsync(http, new LoginRequest(form.UserName, form.Password), isPersistent: false, ct);   // this makes the cookie
+    var login = await web.LoginAsync(new LoginRequest(form.UserName, form.Password), isPersistent: false, ct);   // this makes the cookie
     return login.IsSuccess ? Results.Redirect("/") : Results.BadRequest(login.Error!.Code);
 });
 ```
 
 (An API application does the same with `api.LoginAsync` and returns the tokens.)
 
-**Using the account methods in a cookie app.** The "change my details" methods need the person's **access token**. When the cookie keeps the tokens (`SaveTokens`, on by default), take it from `IAuth2AccessTokenAccessor`:
+**Using the account methods in a cookie app or an API.** The "change my details" methods act for a person, so they need the person's **access token**. You do not pass it: the service finds it itself, in `IAuth2AccessTokenAccessor` order: the bearer header of the current request, or the token that the cookie sign-in saved (`SaveTokens`, on by default). The refresh token (for `RefreshAsync` and `LogoutAsync`) comes from the cookie the same way.
 
 ```csharp
-app.MapPost("/account/user-name", async (ChangeNameForm form, IAuth2ApiClientService api, IAuth2AccessTokenAccessor tokens, CancellationToken ct) =>
+app.MapPost("/account/user-name", async (ChangeNameForm form, IAuth2ApiClientService api, CancellationToken ct) =>
 {
-    var token = await tokens.GetAccessTokenAsync(ct);           // the bearer header, or the token saved in the cookie
-    if (token is null) return Results.Unauthorized();
-    var result = await api.ChangeUserNameAsync(token, new ChangeUserNameRequest(form.NewUserName, form.CurrentPassword), ct);
-    return result.IsSuccess ? Results.NoContent() : Results.BadRequest(new { result.Error!.Code, result.Error.Message });
+    var result = await api.ChangeUserNameAsync(new ChangeUserNameRequest(form.NewUserName, form.CurrentPassword), ct);   // the token of this request is used
+    return result.IsSuccess ? Results.NoContent() : Results.BadRequest(new { result.Error!.Code, result.Error.Message });   // invalid_token when nobody is signed in
 });
 ```
 
-The access token in the cookie is **not renewed**: it lives as long as an access token (15 minutes by default). When it has expired the call answers `invalid_token`; renew it with `RefreshAsync` (and the refresh token from the cookie) or ask the person to sign in again. See [client-current-user.md](client-current-user.md#cookie-sessions-hosted-ui-and-self-ui).
+**Where there is no request, or you hold the tokens yourself** (a background job, a console tool, a test, or an API that passes on the tokens of its caller), choose them with `WithTokens`, like `WithCulture`:
+
+```csharp
+var me = await api.WithTokens(accessToken).GetMeAsync(ct);                    // this access token
+var next = await api.WithTokens(null, refreshToken).RefreshAsync(ct);         // this refresh token (a refresh token works once: keep the new one)
+```
+
+`WithTokens` changes nothing on the injected service: use the returned copy. A value that is `null` falls back to the current request, and with no request and no token the answer is `invalid_token`.
+
+The access token in the cookie is **not renewed** by this service: it lives as long as an access token (15 minutes by default). When it has expired the call answers `invalid_token`; `IAuth2WebClientService` renews it for you (once, and saves the new tokens in the cookie), or ask the person to sign in again. See [client-current-user.md](client-current-user.md#cookie-sessions-hosted-ui-and-self-ui).
+
+## `IAuth2WebClientService` or `IAuth2ApiClientService`?
+
+| | `IAuth2WebClientService` | `IAuth2ApiClientService` (this page) |
+|---|---|---|
+| For | A **website with its own forms** (Self UI), where people sign in and get a **session cookie** | A program or any code that **handles tokens itself**: a job, an API, a mobile or SPA back end, a console tool |
+| Takes | Only the data of the call: the **current request** (`IHttpContextAccessor`) is found by the service | Only the data of the call: the access token of the **current request** is found by the service; `WithTokens` chooses another |
+| Cookie | Makes it at sign-in, keeps the tokens in it, updates it when it refreshes | Never makes a cookie, never keeps a token |
+| The signed-in person's calls (password, user name, email, phone, two-factor, `me`) | `web.ChangePasswordAsync(request)`: the access token comes from the cookie; an old one is refreshed **once** and the call is asked again | `api.ChangePasswordAsync(request)`: the token is the bearer header or the cookie token of the request; an expired one is answered `invalid_token` and you handle it |
+| People who are not signed in (register, forgot password, confirm email, one-time code) | The same methods, without a token (`web.RegisterAsync(request)`) | The same methods |
+| Handshake, sync, catalogs, `WithCulture` | Not there: use this service | Here |
+
+`IAuth2WebClientService` has every call of a person's own account that this service has, plus the cookie work. It calls this service inside, so the errors and the language of the call are the same. Details of the cookie service: [client-setup.md](client-setup.md#self-ui).
+
+**About the refresh.** When the access token in the cookie is old, a call of `IAuth2WebClientService` is answered `invalid_token` by the server (the call is refused at the door, nothing happens). The service then uses the refresh token of the cookie **once**, saves the new tokens in the cookie of that response, and asks again. A refresh token works once, so requests of one session that refresh at the same moment share **one** refresh (the answer is kept for a minute, in this process). With several instances behind a load balancer keep a session on one instance, or call `RefreshAsync(http)` from one place. If there is no refresh token, or the server refuses it, the answer is the first `invalid_token`: send the person to sign in again.
 
 ## The methods
 
@@ -65,7 +87,7 @@ Which token each call uses:
 
 - **Client token** (a client-credentials token of *your application*, made and cached for you; the scope is listed). The call is about a person but your application is the caller.
 - **Token endpoint** (`/connect/token` and `/connect/revoke`, with your client id and secret). These return tokens.
-- **User token** (the access token of the person, with the scope `auth2.me`; you pass it as the first argument).
+- **User token** (the access token of the person, with the scope `auth2.me`; found by the service: the bearer header or the cookie token of the current request, or the one you choose with `WithTokens`).
 
 ### Accounts
 
@@ -87,24 +109,24 @@ Which token each call uses:
 | `LoginAsync(LoginRequest)` | `password` | `LoginResponse` | The Server must allow it (`AllowSelfUiLogin` on the application). When two-factor is needed the result **succeeds** with `TwoFactorRequired = true` and a `TwoFactorToken`: call `TwoFactorLoginAsync` next |
 | `TwoFactorLoginAsync(TwoFactorRequest)` | `two_factor` | `LoginResponse` | The authenticator code **or** a recovery code |
 | `OtpLoginAsync(login, code)` | `otp` | `LoginResponse` | After `RequestOtpAsync` |
-| `RefreshAsync(refreshToken)` | `refresh_token` | `LoginResponse` | A refresh token works once; keep the new one. Using an old one again ends the whole chain |
-| `LogoutAsync(refreshToken)` | revoke | `Result` | Revokes the refresh token |
+| `RefreshAsync()` | `refresh_token` | `LoginResponse` | Uses the refresh token of the cookie (or of `WithTokens`). A refresh token works once; keep the new one. Using an old one again ends the whole chain |
+| `LogoutAsync()` | revoke | `Result` | Revokes the refresh token |
 
 ### The signed-in person (user token, scope `auth2.me`)
 
 | Method | Server route | Answer | Notes |
 |---|---|---|---|
-| `GetMeAsync(accessToken)` | `GET /api/auth2/me` | `CurrentUserInfo` | The person with roles, permissions and groups |
-| `ChangePasswordAsync(accessToken, ChangePasswordRequest)` | `POST /api/auth2/password/change` | `Result` | Other sessions end. With `Password.SignOutAfterChangePassword` this one ends too ([server-settings.md](server-settings.md)) |
-| `ChangeUserNameAsync(accessToken, ChangeUserNameRequest)` | `POST /api/auth2/user-name/change` | `Result` | At once. Needs the current password when the person has one |
-| `RequestEmailChangeAsync(accessToken, ChangeEmailRequest)` | `POST /api/auth2/email/change` | `Result` | A link goes to the **new** address. **Nothing changes yet** |
-| `ConfirmEmailChangeAsync(accessToken, ConfirmEmailChangeRequest)` | `POST /api/auth2/email/change/confirm` | `Result` | The new address and the token of the link. The address is replaced and confirmed |
-| `RequestPhoneChangeAsync(accessToken, ChangePhoneNumberRequest)` | `POST /api/auth2/phone/change` | `Result` | An SMS code goes to the **new** number. **Nothing changes yet** |
-| `ConfirmPhoneChangeAsync(accessToken, ConfirmPhoneChangeRequest)` | `POST /api/auth2/phone/change/confirm` | `Result` | The new number and the code. The number is replaced and confirmed |
-| `SetupTwoFactorAsync(accessToken)` | `POST /api/auth2/2fa/setup` | `TwoFactorSetupResponse` | Key and `otpauth://` URI for the authenticator app |
-| `EnableTwoFactorAsync(accessToken, TwoFactorEnableRequest)` | `POST /api/auth2/2fa/enable` | `TwoFactorEnableResponse` | The first code of the app. The recovery codes are shown **once** |
-| `DisableTwoFactorAsync(accessToken, TwoFactorDisableRequest)` | `POST /api/auth2/2fa/disable` | `Result` | The password. Refused when the application requires two-factor |
-| `RegenerateRecoveryCodesAsync(accessToken, RecoveryCodesRequest)` | `POST /api/auth2/2fa/recovery-codes` | `RecoveryCodesResponse` | A code of the app. The old codes stop working |
+| `GetMeAsync()` | `GET /api/auth2/me` | `CurrentUserInfo` | The person with roles, permissions and groups |
+| `ChangePasswordAsync(ChangePasswordRequest)` | `POST /api/auth2/password/change` | `Result` | Other sessions end. With `Password.SignOutAfterChangePassword` this one ends too ([server-settings.md](server-settings.md)) |
+| `ChangeUserNameAsync(ChangeUserNameRequest)` | `POST /api/auth2/user-name/change` | `Result` | At once. Needs the current password when the person has one |
+| `RequestEmailChangeAsync(ChangeEmailRequest)` | `POST /api/auth2/email/change` | `Result` | A link goes to the **new** address. **Nothing changes yet** |
+| `ConfirmEmailChangeAsync(ConfirmEmailChangeRequest)` | `POST /api/auth2/email/change/confirm` | `Result` | The new address and the token of the link. The address is replaced and confirmed |
+| `RequestPhoneChangeAsync(ChangePhoneNumberRequest)` | `POST /api/auth2/phone/change` | `Result` | An SMS code goes to the **new** number. **Nothing changes yet** |
+| `ConfirmPhoneChangeAsync(ConfirmPhoneChangeRequest)` | `POST /api/auth2/phone/change/confirm` | `Result` | The new number and the code. The number is replaced and confirmed |
+| `SetupTwoFactorAsync()` | `POST /api/auth2/2fa/setup` | `TwoFactorSetupResponse` | Key and `otpauth://` URI for the authenticator app |
+| `EnableTwoFactorAsync(TwoFactorEnableRequest)` | `POST /api/auth2/2fa/enable` | `TwoFactorEnableResponse` | The first code of the app. The recovery codes are shown **once** |
+| `DisableTwoFactorAsync(TwoFactorDisableRequest)` | `POST /api/auth2/2fa/disable` | `Result` | The password. Refused when the application requires two-factor |
+| `RegenerateRecoveryCodesAsync(RecoveryCodesRequest)` | `POST /api/auth2/2fa/recovery-codes` | `RecoveryCodesResponse` | A code of the app. The old codes stop working |
 
 Every one of these needs the **current password** when the person has a password (a person who only signs in with an external account or a passkey has none). A wrong password counts as a failed attempt, like a sign-in: guessing it locks the account (`locked_out`). The new value is checked with the same rules as a sign-up (format, `UserName.*`, `Email.AllowedDomains` and `BlockedDomains`, `Phone.PhoneNumberRegex`, and "already taken") **before** anything is sent, so no email or SMS goes to a value that would be refused. What the Server does in each step is described with the pages that do the same: [ui-handover.md](ui-handover.md#account-change-pages-signed-in).
 
@@ -112,13 +134,13 @@ Every one of these needs the **current password** when the person has a password
 
 ```csharp
 // step 1: the person types the new address
-var sent = await api.RequestEmailChangeAsync(token, new ChangeEmailRequest("new@example.com", currentPassword), ct);   // answer 202: the mail is on its way
+var sent = await api.RequestEmailChangeAsync(new ChangeEmailRequest("new@example.com", currentPassword), ct);   // answer 202: the mail is on its way
 
 // step 2: your page receives ?email=...&token=... from the link (use the ReturnUrl of the request to bring the person back to your site)
-var done = await api.ConfirmEmailChangeAsync(token, new ConfirmEmailChangeRequest(email, emailToken), ct);
+var done = await api.ConfirmEmailChangeAsync(new ConfirmEmailChangeRequest(email, emailToken), ct);
 ```
 
-The phone works the same: `RequestPhoneChangeAsync` sends the code, the person types it, `ConfirmPhoneChangeAsync(token, new ConfirmPhoneChangeRequest(number, code))` finishes. The code works once and only for that number; a second request too soon answers `rate_limited`.
+The phone works the same: `RequestPhoneChangeAsync` sends the code, the person types it, `ConfirmPhoneChangeAsync(new ConfirmPhoneChangeRequest(number, code))` finishes. The code works once and only for that number; a second request too soon answers `rate_limited`.
 
 ### Handshake and catalogs (client token)
 
@@ -129,6 +151,41 @@ The phone works the same: `RequestPhoneChangeAsync` sends the code, the person t
 | `GetPermissionsAsync`, `GetRolesAsync`, `GetScopesAsync` | the sync scope | Pull |
 | `GetGroupsAsync` | `auth2.groups.read` | Pull |
 | `GetExternalProvidersAsync` | `auth2.client.handshake` | The sign-in providers of this application (name, display name) |
+
+### People, roles, permissions, groups and scopes (the admin calls)
+
+`IAuth2ApiClientService.Admin` and `IAuth2WebClientService.Admin` (the same type, `IAuth2AdminClientService`) manage the people, roles, permissions, groups and scopes of the project, and who has what. They call the [admin API](admin-api.md); the Server checks who is calling, the Client package only sends the call. The calls are grouped by what they work on, so the editor shows a short list at each step: `Admin.Users.`, `Admin.Roles.`, `Admin.Permissions.`, `Admin.Groups.`, `Admin.Scopes.`.
+
+- **Who may call.** A **signed-in admin**: a ProjectAdmin of the project of the application, or a GlobalAdmin. Their access token must have the scope **`auth2.admin`**, so the application must allow it (`AllowedScopes`) and the admin must ask for it when signing in (`new LoginRequest(login, password, ["openid", "offline_access", "auth2.admin"])`). The token of the application itself (client credentials) is refused: nothing in your code can change a person or a role without an admin behind it. `IAuth2WebClientService.Admin` uses the token of the cookie (`Auth2CookieOptions.SaveTokens` on; an old token is refreshed once, like the other methods); `IAuth2ApiClientService.Admin` takes the token of the current request (the bearer header or the cookie), or the one you choose with `api.WithTokens(adminToken).Admin`.
+- **Project.** The calls work on the project of the application (from the handshake). A GlobalAdmin can work on another project with `Admin.ForProject(projectId)`; for a ProjectAdmin that is `not_found`.
+- **Ids.** Items are named by their id (`AdminRoleDto.Id`, `UserDto.Id`, ...): create returns the new item with its id, `ListAsync` returns pages (`PageRequest(Page, PageSize, Search, Descending)`). A permission in a link is named by its **key**.
+- **Results.** Like every method here: a `Result`, never an exception. Codes: `not_found` (no such id, or another project), `forbidden` (a built-in or system role, a global permission, a scope change by a ProjectAdmin, a token that is not an admin's), `insufficient_scope` (no `auth2.admin`), `conflict` (the name exists, a scope in use), `validation_failed`, `invalid_permission_key`, `invalid_token`. Adding a link that exists, or removing one that does not, succeeds.
+
+| Part | Methods |
+|---|---|
+| `Users` | `ListAsync(page, lockedOut)`, `GetAsync`, `CreateAsync` (an existing person is only joined to the project), `UpdateAsync` (`null` keeps a value), `DeleteAsync` (removes the person from the project) |
+| | `LockAsync(id, untilUtc)`, `UnlockAsync`, `ResetTwoFactorAsync`, `ListSessionsAsync`, `RevokeSessionAsync`, `RevokeAllSessionsAsync` |
+| | `GetAccessAsync` (what the person has now), `AssignRoleAsync`, `RemoveRoleAsync`, `MakeProjectAdminAsync`, `GrantPermissionAsync`, `RevokePermissionAsync`, `AddToGroupAsync`, `RemoveFromGroupAsync` |
+| `Roles` | `ListAsync`, `GetAsync`, `CreateAsync`, `UpdateAsync` (the description; the name never changes), `DeleteAsync`, and the permissions of a role: `ListPermissionsAsync`, `AddPermissionAsync`, `RemovePermissionAsync` |
+| `Permissions` | `ListAsync`, `GetAsync`, `CreateAsync`, `UpdateAsync` (display name, description, group), `SetObsoleteAsync`, `DeleteAsync` |
+| `Groups` | `ListAsync`, `GetAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`; its roles: `AddRoleAsync`, `RemoveRoleAsync`; its permissions: `AddPermissionAsync`, `RemovePermissionAsync`; its members: `ListMembersAsync`, `AddMemberAsync`, `RemoveMemberAsync` |
+| `Scopes` | `ListAsync`, `GetAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync` (**GlobalAdmin** changes; every admin reads) |
+
+```csharp
+// an admin page of your own: the admin signed in with the scope auth2.admin, the cookie keeps the tokens
+app.MapPost("/admin/people", async (IAuth2WebClientService web, NewPerson form) =>
+{
+    var created = await web.Admin.Users.CreateAsync(new AdminCreateUserRequest(form.UserName, form.Email, null, form.Password));
+    if (!created.IsSuccess) return Results.Problem(created.Error!.Message, statusCode: 400);
+
+    var role = await web.Admin.Roles.CreateAsync(new CreateRoleRequest("Editor", "Edits articles"));   // returns the new item with its id
+    await web.Admin.Roles.AddPermissionAsync(role.Value!.Id, "articles.write");
+    await web.Admin.Users.AssignRoleAsync(created.Value!.UserId, role.Value.Id);
+    return Results.Ok(created.Value);
+});
+```
+
+The sync of permissions, roles and groups from code ([permission-sync.md](permission-sync.md)) is a different thing: it uses the token of the application and only adds. The calls here are for people (admin pages, scripts) and use the token of an admin.
 
 ## Language of the calls
 
@@ -144,7 +201,7 @@ The Server writes every answer in the language of the call: the `message` of an 
 var result = await api.LoginAsync(new LoginRequest("sara", password));
 
 // or choose it
-var persian = await api.WithCulture("fa").RequestEmailChangeAsync(token, new ChangeEmailRequest("new@example.com", password));
+var persian = await api.WithCulture("fa").RequestEmailChangeAsync(new ChangeEmailRequest("new@example.com", password));
 // the email arrives in Persian, and a failure says why in Persian: result.Error.Message
 
 var persianApi = api.WithCulture("fa");        // use this instance for several calls
@@ -177,10 +234,11 @@ var again = persianApi.WithCulture(null);      // null or empty = the language o
 
 | Problem | Cause |
 |---|---|
-| I called `RegisterAsync` and the person is not signed in | By design. Sign in with `IAuth2WebService.LoginAsync` (cookie) or `IAuth2ApiClientService.LoginAsync` (tokens), after the person has confirmed what is needed ([above](#cookies-who-puts-the-user-into-the-cookie)) |
-| `LoginAsync` works but there is no cookie | `IAuth2ApiClientService` never makes a cookie. Use `IAuth2WebService.LoginAsync(HttpContext, ...)` |
+| I called `RegisterAsync` and the person is not signed in | By design. Sign in with `IAuth2WebClientService.LoginAsync` (cookie) or `IAuth2ApiClientService.LoginAsync` (tokens), after the person has confirmed what is needed ([above](#cookies-who-puts-the-user-into-the-cookie)) |
+| `LoginAsync` works but there is no cookie | `IAuth2ApiClientService` never makes a cookie. Use `IAuth2WebClientService.LoginAsync(...)` |
 | `invalid_token` from a change method | The access token is missing, expired or has no `auth2.me` scope. Ask for `auth2.me` at sign-in and renew the token |
-| `forbidden` from a change method | You passed a client token. These methods need the **person's** token |
+| `forbidden` from a change method | The token found for this request is a client token (machine) or none was found. These methods need the **person's** token |
+| `insufficient_scope` or `forbidden` from `Admin` | The token has no `auth2.admin` scope (add it to `AllowedScopes` and to the sign-in), or the person is not a ProjectAdmin or GlobalAdmin, or the change is for a GlobalAdmin only (scopes) |
 | `invalid_credentials` from a change method | The current password is wrong (it counts as a failed attempt). A person without a password sends none |
 | The email or SMS of a change arrives in English | The Server has no translation, the application does not list the language in `SupportedCultures`, or the call carried no language (`SendRequestCulture` off and no `WithCulture`) |
 | I always get English messages | Your host does not set the request culture, so `CurrentUICulture` is the process culture. Add `app.UseRequestLocalization(...)` or use `WithCulture` |

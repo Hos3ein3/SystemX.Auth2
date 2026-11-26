@@ -253,7 +253,7 @@ public static class ConnectEndpoints
         }
         Add(Scopes.Profile, Claims.Name, Claims.GivenName, Claims.FamilyName, Claims.PreferredUsername, Auth2Claims.Locale);
         Add(Scopes.Email, Claims.Email, Claims.EmailVerified);
-        Add(Scopes.Phone, Claims.PhoneNumber);
+        Add(Scopes.Phone, Claims.PhoneNumber, Claims.PhoneNumberVerified);
         if (principal.HasScope(Scopes.Roles)) claims[Claims.Role] = principal.GetClaims(Claims.Role);
         return Results.Ok(claims);
     }

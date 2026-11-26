@@ -19,6 +19,37 @@ The parts:
 
 **What 2FA is not.** The one-time codes sent by email or SMS (`otp/request`, the `EmailOtp` and `PhoneOtp` login methods) are a *way to sign in*, not a second factor, and signing in with them does not ask for the authenticator code. A passkey that was unlocked by the person already counts as several factors. See [Other ways to sign in](#other-ways-to-sign-in).
 
+## The pages, and what each one is for
+
+Two-factor appears in **three different places**. They use the same authenticator app but do different jobs:
+
+| # | When | Page or rule | What it does |
+|---|---|---|---|
+| 1 | **Signing in** (after the username and password) | `/Account/TwoFactor` | The **second step of the sign-in**. The first step (`/Account/Login`, or the token endpoint of a Self UI) answered "two-factor required"; this page takes the code of the authenticator app or a recovery code and completes the sign-in (`ILoginService.CompleteTwoFactorAsync`). Applications that use the hosted sign-in get it automatically |
+| 2 | **A restricted action**, after the person is signed in | `/Account/VerifyTotp`, asked for by the restricted pages | Like GitHub's "sudo mode": deleting the account or turning two-factor off asks for a code **again**, unless the person gave one within `TwoFactor.StepUpMinutes` (default 15). See the next section |
+| 3 | **A restricted endpoint of your own application** | `WithTotp()` / `[Auth2Totp]` in the Client | The request carries a fresh code and the Server checks it, every time ([client-endpoint-metadata.md](client-endpoint-metadata.md#ask-for-a-code-of-the-authenticator-app-totp)) |
+
+Do not confuse them with **`/Account/VerifyOtp`**: that page is **not** two-factor. It signs a person in with **one** code sent by **email or SMS** (the one-time-code login, `Methods.AllowedLoginMethods` with `EmailOtp` or `PhoneOtp`), instead of a password. A "TOTP" is the code of an authenticator app (changes every 30 seconds, no message is sent); an "OTP" here is the code the Server sends.
+
+And the pages where a person manages two-factor: `/Manage/TwoFactor/Enable` (turn it on with the first code, show the key and QR code, turn it off) and `/Manage/TwoFactor/RecoveryCodes`.
+
+## Sudo mode: a fresh code before a restricted page
+
+When a person has two-factor on, these Server pages ask for a code again if their last code in this session is older than `TwoFactor.StepUpMinutes`:
+
+- `/Manage/DeleteAccount` (the page and the form)
+- turning two-factor off (`/Manage/TwoFactor/Enable`, handler `Disable`)
+
+How it goes: the restricted page redirects to `/Account/VerifyTotp?ReturnUrl=<the page>`; the person types the code; the Server checks it (a code works once; wrong codes count towards the lockout; audited as `2fa.step_up`); the session remembers the time (the claim `step_up_at` of the session cookie) and the person is sent back to the page, which opens. The same session is not asked again inside the window.
+
+- The **second step of the sign-in counts**: a person who just signed in with a code is not asked again at once. So do the first code that turns two-factor on and a right code on the recovery-codes page.
+- The time belongs to **this session**: another browser or device is asked on its own.
+- A person **without** two-factor is not asked (there is no code to give); require two-factor for admins with `TwoFactor.Mode = Required`.
+- `StepUpMinutes = 0` turns the extra question off. The setting is in the project settings page (*Code Valid For Restricted Actions (minutes)*) and is for global admins only.
+- Other pages that change the account details (password, email, user name, phone) ask for the current password, as before.
+- To protect one more page of the Server: after `LoadSessionAsync()` write `if (await RequireRecentTotpAsync() is { } ask) return ask;` (`ManagePageModel`).
+- **Applications** that use the Server's hosted sign-in have **their own** session. Their restricted endpoints use `WithTotp()` / `[Auth2Totp]`, which checks a code per request.
+
 ## When to use it
 
 - You protect accounts that can do harm (admins, finance, support staff): set `TwoFactor.Mode = Required` after your people have enrolled.
@@ -136,18 +167,18 @@ POST /connect/token   grant_type=urn:systemx:auth2:grant:two_factor&two_factor_t
 With the Client package you never write that:
 
 ```csharp
-var result = await web.LoginAsync(HttpContext, new LoginRequest(model.Login, model.Password), model.RememberMe, ct);
+var result = await web.LoginAsync(new LoginRequest(model.Login, model.Password), model.RememberMe, ct);
 if (result.IsSuccess && result.Value!.TwoFactorRequired)
 {
     // no cookie yet: show your code form and keep result.Value.TwoFactorToken (a hidden field is fine; it lasts 5 minutes)
 }
 
 // when the person sends the code:
-var second = await web.TwoFactorLoginAsync(HttpContext, new TwoFactorRequest(token, Code: code), model.RememberMe, ct);
+var second = await web.TwoFactorLoginAsync(new TwoFactorRequest(token, Code: code), model.RememberMe, ct);
 // or: new TwoFactorRequest(token, RecoveryCode: recoveryCode)
 ```
 
-`IAuth2ApiClientService.LoginAsync` and `TwoFactorLoginAsync` do the same without a cookie. The Client also wraps the setup routes: `SetupTwoFactorAsync`, `EnableTwoFactorAsync`, `DisableTwoFactorAsync` and `RegenerateRecoveryCodesAsync` ([client-api-service.md](client-api-service.md#the-signed-in-person-user-token-scope-auth2me)). The sign-in is complete only when the second call succeeds; the tokens or the cookie are made then ([client-reference.md](client-reference.md#7-browser-sign-in-iauth2webservice)).
+`IAuth2ApiClientService.LoginAsync` and `TwoFactorLoginAsync` do the same without a cookie. The Client also wraps the setup routes: `SetupTwoFactorAsync`, `EnableTwoFactorAsync`, `DisableTwoFactorAsync` and `RegenerateRecoveryCodesAsync` ([client-api-service.md](client-api-service.md#the-signed-in-person-user-token-scope-auth2me)). The sign-in is complete only when the second call succeeds; the tokens or the cookie are made then ([client-reference.md](client-reference.md#7-browser-sign-in-iauth2webclientservice)).
 
 ### What the second step checks (`CompleteTwoFactorAsync`)
 
@@ -185,6 +216,19 @@ bool strong = client.Amr.Contains("mfa") || client.Amr.Contains("otp");
 
 With per-project credentials the same person has **separate** 2FA in each project: turning it on in project A does not ask for it in project B (test `Login_TwoFactorEnabledInA_IsNotAskedInB`). Details: [identity-stores.md](identity-stores.md#how-credentials-are-stored), [credential-scope.md](credential-scope.md), [database-tables.md](database-tables.md).
 
+## A fresh code before a sensitive action (step-up)
+
+Besides the sign-in, an application can ask for a code of the authenticator app **again** for one action, with `WithTotp()` / `[Auth2Totp]` ([client-endpoint-metadata.md](client-endpoint-metadata.md#ask-for-a-code-of-the-authenticator-app-totp)). The Client sends the code to `POST /api/auth2/2fa/verify` (`ITwoFactorService.VerifyAsync`). The rules:
+
+- the person has two-factor on: otherwise `totp_setup_required` (the action needs it), or success when the request says `optional` (`WithOptionalTotp()`: there is nothing to check); `TwoFactor.AllowTotp` is treated the same way;
+- no code from a person who has two-factor: `totp_required` (not counted as a wrong attempt);
+- a code can be used **once** (kept in the replay cache for three minutes, shared by all instances); the second use answers `invalid_otp` and is audited as `2fa.step_up_replayed`;
+- a wrong code calls `AccessFailedAsync`, so guesses count towards the lockout like wrong passwords (`2fa.step_up_failed`); a right code resets the count (`2fa.step_up`);
+- a locked-out person gets `locked_out`; recovery codes are not accepted;
+- the route is in the rate-limit policy `otp`.
+
+The hosted page for the same check is **`/Account/VerifyTotp`** ([ui-handover.md](ui-handover.md#account-change-pages-signed-in)): a signed-in person types the code, with the same rules, and goes on to an allowed `ReturnUrl` (or sees "your code was accepted"). Link to it from your own flows when you want the Server's page to ask for the code; `WithTotp()` / `[Auth2Totp]` is the form for checking a code **per request** in your application.
+
 ## Lockout, rate limits and audit
 
 - A wrong authenticator code, a wrong recovery code, a wrong current password (disable) and a wrong first code (enable) all count as **failed attempts** toward the project's lockout ([server-settings.md](server-settings.md#lockout)).
@@ -207,6 +251,8 @@ POST /api/auth2/admin/projects/{projectId}/users/{userId}/reset-2fa
 | `two_factor_setup_required` | `Mode = Required` and the person has not set up 2FA |
 | `two_factor_not_allowed` | `AllowTotp` is off |
 | `two_factor_not_enabled` | The person has no 2FA (disable, new recovery codes) |
+| `totp_required` | A code of the authenticator app is needed for this action and none was sent (`/2fa/verify`, `WithTotp()`) |
+| `totp_setup_required` | The action needs two-factor (`WithTotp()`) and the person has not turned it on |
 | `invalid_otp` | A wrong or used code |
 | `invalid_token` | The two-factor token is expired, damaged or for another application |
 | `conflict` | 2FA is already on (setup, enable), or no key was made yet (enable) |

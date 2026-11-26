@@ -172,20 +172,20 @@ public class ClientServicesAgainstServerTests : ClientTestBase
         tokens.AccessToken.ShouldNotBeNullOrEmpty();
         tokens.TwoFactorRequired.ShouldBeFalse();
 
-        var me = await api.GetMeAsync(tokens.AccessToken!);
+        var me = await api.WithTokens(tokens.AccessToken!).GetMeAsync();
         me.Value!.UserName.ShouldBe("sara");
 
-        var refreshed = await api.RefreshAsync(tokens.RefreshToken!);
+        var refreshed = await api.WithTokens(null, tokens.RefreshToken!).RefreshAsync();
         refreshed.IsSuccess.ShouldBeTrue(refreshed.Error?.Code);
 
-        (await api.ChangePasswordAsync(refreshed.Value!.AccessToken!, new ChangePasswordRequest(Password, "New-Pass-98765!y"))).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens(refreshed.Value!.AccessToken!).ChangePasswordAsync(new ChangePasswordRequest(Password, "New-Pass-98765!y"))).IsSuccess.ShouldBeTrue();
         (await api.LoginAsync(new LoginRequest("sara", Password))).Error!.Code.ShouldBe(Auth2ErrorCodes.InvalidCredentials);
         var again = await api.LoginAsync(new LoginRequest("sara", "New-Pass-98765!y"));
-        (await api.LogoutAsync(again.Value!.RefreshToken!)).IsSuccess.ShouldBeTrue();
-        (await api.RefreshAsync(again.Value.RefreshToken!)).IsSuccess.ShouldBeFalse();   // revoked
+        (await api.WithTokens(null, again.Value!.RefreshToken!).LogoutAsync()).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens(null, again.Value.RefreshToken!).RefreshAsync()).IsSuccess.ShouldBeFalse();   // revoked
         // Using an old refresh token again is reuse: the server ends the whole chain (that is the server's rule, see authentication-flows.md).
-        (await api.RefreshAsync(refreshed.Value!.RefreshToken!)).IsSuccess.ShouldBeTrue();
-        (await api.RefreshAsync(refreshed.Value.RefreshToken!)).IsSuccess.ShouldBeFalse();
+        (await api.WithTokens(null, refreshed.Value!.RefreshToken!).RefreshAsync()).IsSuccess.ShouldBeTrue();
+        (await api.WithTokens(null, refreshed.Value.RefreshToken!).RefreshAsync()).IsSuccess.ShouldBeFalse();
     }
 
     [Fact]

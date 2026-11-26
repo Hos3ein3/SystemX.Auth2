@@ -52,7 +52,7 @@ server-wide: key_ring, data_protection_keys, server_values, job_runs, openiddict
 ### projects
 
 **What it is.** The tenant: one product or customer (for example `PaperTrade`). `_global` is the built-in project of the developers and global admins.
-**Key columns.** `project_key` (unique, never changes, not a secret), `name`, `is_enabled` (false blocks every sign-in and token of the project), `settings_json` (jsonb: the project settings, see [server-settings.md](server-settings.md)), `settings_version` and `access_version` (raised on every settings change / access change; caches and the `pv` token claim depend on them), `xmin` (the PostgreSQL row version, used as the concurrency token).
+**Key columns.** `project_key` (unique, never changes, not a secret), `name` (**unique** without letter case and without spaces around: the index `ux_projects_name_ci` on `lower(btrim(name))`, made by the migration `UniqueProjectName`; EF Core cannot describe an index on an expression, so it is SQL and is not in the model snapshot. The migration renames old duplicates first: the oldest keeps its name, the others become `Name (2)`, `Name (3)`), `is_enabled` (false blocks every sign-in and token of the project), `settings_json` (jsonb: the project settings, see [server-settings.md](server-settings.md)), `settings_version` and `access_version` (raised on every settings change / access change; caches and the `pv` token claim depend on them), `xmin` (the PostgreSQL row version, used as the concurrency token).
 **Written by** the seeder, `create-project`, the admin API and pages. **Deleted** only by an admin; the delete cascades to all project data.
 <!-- columns:projects:start -->
 <details><summary>All columns</summary>
@@ -175,7 +175,7 @@ Primary key: `id`.
 
 ### users
 
-**What it is.** One real **person**, once on the whole server. User name and email are unique server-wide (a person with the same email in two projects is one row here and two rows in `user_projects`).
+**What it is.** One real **person**, once on the whole server. The **user name is the identity**: it is unique server-wide without letter case (the unique index `user_name_index` on `normalized_user_name`) and can be a plain name, an email address or a phone number. The email is unique too (`email_index` on `normalized_email`; empty emails are allowed). The phone number is not unique in the database. No index can compare two columns, so the validator (`Auth2UserValidator`) adds the rule that **one text never names two people**: a person's email or phone number cannot be the user name of somebody else, and the other way round. A person with the same email in two projects is one row here and two rows in `user_projects`.
 **Identity columns.** `user_name`, `normalized_user_name`, `email`, `normalized_email`, `email_confirmed`, `phone_number`, `phone_number_confirmed`, `concurrency_stamp`. **Auth2 columns.** `first_name`, `last_name`, `display_name`, `preferred_culture` (the language of emails and pages for this person), `is_active` (false disables the person everywhere), `created_at_utc`, `profile` (free jsonb).
 **Credentials.** `password_hash`, `password_changed_at_utc` (when the password was last set; used by `PasswordExpiryDays`), `security_stamp`, `two_factor_enabled`, `lockout_*` and `access_failed_count` live here **only** when credentials are shared (`CredentialScope.Shared`, and always in single mode). With the default `PerProject` scope they are in [`user_projects`](#user_projects) and these columns stay empty.
 <!-- columns:users:start -->
