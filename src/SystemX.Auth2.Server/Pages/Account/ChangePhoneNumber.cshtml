@@ -46,13 +46,7 @@ else if (Model.CodeSent)
             </p>
         </div>
 
-        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-        {
-            <a2-alert variant="danger">
-                @Model.ErrorMessage
-            </a2-alert>
-        }
-
+        @* the error is shown once, at the top of the card, by _LayoutAuth *@
         <a2-field label="@Loc["change_phone.verification_code"]" required="true" for="Input_Code">
             <a2-input id="Input_Code" name="Input.Code" value="@Model.Input.Code" required="true" autocomplete="one-time-code" placeholder="123456" data-a2-rule="@codeRule" class="text-center tracking-widest text-lg font-mono" />
         </a2-field>
@@ -80,13 +74,7 @@ else
         <input type="hidden" asp-for="ReturnUrl" />
         <input type="hidden" asp-for="ClientId" />
 
-        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-        {
-            <a2-alert variant="danger">
-                @Model.ErrorMessage
-            </a2-alert>
-        }
-
+        @* the error is shown once, at the top of the card, by _LayoutAuth *@
         @if (!string.IsNullOrEmpty(Model.CurrentPhoneNumber))
         {
             <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm">

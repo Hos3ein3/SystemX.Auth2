@@ -38,6 +38,8 @@ dotnet test
 - Admin JSON API, rate limiting, Redis, key rotation, observability.
 - Client package for APIs, cookie apps, Blazor and Self UI.
 
+The full list, with every sign-in and register method: [docs/features.md](docs/features.md).
+
 ## Documentation
 
 Start at [docs/index.md](docs/index.md) (the map of every page).

@@ -63,6 +63,27 @@ public sealed class VerifyTotpModel(IClientIdAccessor clientId, IAuthFlowResolve
         return Page();
     }
 
+    /// <summary>
+    /// Where the "back" link goes. When the page was opened by an application that asked for a step-up (the return address is its authorize request with
+    /// <see cref="Auth2AcrValues.Totp"/>), the way back is the same request <b>without</b> that value: going to the same request again would only ask for the code again.
+    /// The application then gets its sign-in, and decides by itself (a request that needs the code is refused there).
+    /// </summary>
+    public string BackUrl()
+    {
+        var next = SafeReturnUrl() ?? "/";
+        var mark = next.IndexOf('?');
+        if (mark < 0 || !next.StartsWith("/connect/authorize", StringComparison.OrdinalIgnoreCase)) return next;
+        var kept = new List<KeyValuePair<string, string?>>();
+        foreach (var (key, values) in Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(next[mark..]))
+            foreach (var value in values)
+            {
+                if (!key.Equals("acr_values", StringComparison.Ordinal)) { kept.Add(new(key, value)); continue; }
+                var rest = string.Join(' ', (value ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(v => v != Auth2AcrValues.Totp));
+                if (rest.Length > 0) kept.Add(new(key, rest));   // other values of the application stay
+            }
+        return Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(next[..mark], kept);
+    }
+
     private async Task<bool> LoadAsync()
     {
         var returnUrl = ReturnUrl;   // loading the session clears it (the session knows the application): it is checked and used here

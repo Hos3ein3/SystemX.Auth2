@@ -27,6 +27,16 @@ public static class Auth2Claims
     public const string Scope = "scope";
     /// <summary>Client id.</summary>
     public const string ClientId = "client_id";
+    /// <summary>
+    /// When the person last gave a code of the authenticator app in the sign-in session of the Server (Unix time in seconds). It is in the access token when the session has one;
+    /// the Client package uses it with <see cref="StepUpUntil"/> to know that a hosted-UI request may pass <c>WithTotp()</c> / <c>[Auth2Totp]</c> without asking for a code again.
+    /// </summary>
+    public const string StepUpAt = "step_up_at";
+    /// <summary>
+    /// Until when that code counts (Unix time in seconds): <see cref="StepUpAt"/> plus the project setting <c>TwoFactor.StepUpMinutes</c> (at least one minute) <b>as it was when the token was issued</b>.
+    /// The setting lives on the Server only; the Client package reads this claim, so there is one source of truth.
+    /// </summary>
+    public const string StepUpUntil = "step_up_until";
     /// <summary>Access version.</summary>
     public const string AccessVersion = "pv";
     /// <summary>Application id (the client that asked for the token).</summary>

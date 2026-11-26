@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
@@ -6,9 +7,11 @@ using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using SystemX.Auth2.Client.Authentication;
 using SystemX.Auth2.Client.CurrentUser;
+using SystemX.Auth2.Client.Options;
 using SystemX.Auth2.Client.Services;
 using SystemX.Auth2.Contracts.Auth;
 using SystemX.Auth2.Contracts.Constants;
+using SystemX.Auth2.Contracts.Enums;
 
 namespace SystemX.Auth2.Client.Authorization;
 
@@ -75,7 +78,8 @@ internal sealed class Auth2AuthorizationHandler(IAuth2AccessProvider access, ILo
 /// (<see cref="IAuth2ApiClientService.VerifyTotpAsync"/>), once per request: it knows whether the person has two-factor on, so it can tell "no code" from "no authenticator app",
 /// and it answers with the error code and the message in the language of the request. Everything that goes wrong is a refusal (fail closed).
 /// </summary>
-internal sealed class Auth2TotpAuthorizationHandler(IHttpContextAccessor http, IAuth2AccessTokenAccessor tokens, IAuth2ApiClientService api, ILogger<Auth2TotpAuthorizationHandler> log)
+internal sealed class Auth2TotpAuthorizationHandler(IHttpContextAccessor http, IAuth2AccessTokenAccessor tokens, IAuth2ApiClientService api, TimeProvider clock,
+    ILogger<Auth2TotpAuthorizationHandler> log)
     : AuthorizationHandler<Auth2Requirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, Auth2Requirement requirement)
@@ -95,6 +99,13 @@ internal sealed class Auth2TotpAuthorizationHandler(IHttpContextAccessor http, I
 
         // The same request is asked once: a code works once, so a second evaluation (another policy check) must not ask the Server again.
         if (request.Items[Auth2Totp.ItemsKey] is Auth2TotpOutcome known) return known;
+
+        // A person of the hosted UI who gave a code on the Server's page a moment ago (claim step_up_at in the session) is not asked again. A call of an API still carries its code.
+        if (!Auth2Http.IsApiRequest(request) && Auth2Totp.IsFresh(context.User, clock.GetUtcNow()))
+        {
+            request.Response.Cookies.Delete(Auth2Totp.StepUpGuardCookie);
+            return new(Auth2Totp.OkCode, null);
+        }
 
         var code = request.Request.Headers[Auth2Totp.HeaderName].ToString();
         if (string.IsNullOrWhiteSpace(code) && request.Request.HasFormContentType)
@@ -249,7 +260,7 @@ internal sealed class LoggingAuditSink(ILogger<LoggingAuditSink> log) : IAuth2Au
 }
 
 /// <summary>Raises the audit event, then does what ASP.NET does: continue, 401 or 403.</summary>
-internal sealed class Auth2AuthorizationResultHandler(IAuth2AuditSink sink) : IAuthorizationMiddlewareResultHandler
+internal sealed class Auth2AuthorizationResultHandler(IAuth2AuditSink sink, IOptions<Auth2AuthFlags> flags) : IAuthorizationMiddlewareResultHandler
 {
     private readonly AuthorizationMiddlewareResultHandler _default = new();
 
@@ -270,6 +281,24 @@ internal sealed class Auth2AuthorizationResultHandler(IAuth2AuditSink sink) : IA
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsJsonAsync(new { code = totp.Code, message = totp.Message });
+                return;
+            }
+
+            // A browser of the hosted UI that has no code to give: the Server asks for it on its own page and sends the person back here (an OpenID Connect step-up). A person who
+            // has not turned on two-factor goes to the same page, which tells them how. Once per round trip: a person who comes back without a code gets the plain refusal.
+            if (flags.Value.Mode == UiMode.Hosted && totp.Code is Auth2ErrorCodes.TotpRequired or Auth2ErrorCodes.TotpSetupRequired
+                && !context.Request.Cookies.ContainsKey(Auth2Totp.StepUpGuardCookie))
+            {
+                context.Response.Headers.Remove(Auth2Totp.ResponseHeader);
+                context.Response.Cookies.Append(Auth2Totp.StepUpGuardCookie, "1", new CookieOptions
+                {
+                    HttpOnly = true, IsEssential = true, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromMinutes(2), Secure = context.Request.IsHttps,
+                });
+                await context.ChallengeAsync(Auth2AuthSchemes.Oidc, new AuthenticationProperties
+                {
+                    RedirectUri = Auth2Totp.BackAfterStepUp(context.Request),
+                    Items = { [Auth2Totp.StepUpItem] = Auth2AcrValues.Totp },
+                });
                 return;
             }
         }

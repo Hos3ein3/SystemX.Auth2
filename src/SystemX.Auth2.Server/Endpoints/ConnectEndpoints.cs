@@ -72,10 +72,25 @@ public static class ConnectEndpoints
             return Results.Challenge(new AuthenticationProperties { RedirectUri = ReturnUrl(http, Parameters.Prompt) }, [Auth2Cookie.Scheme]);
         }
 
-        // Consent: none (implicit), once per user and scopes (explicit), or every time (systematic).
         var settings = await flow.GetEffectiveAsync(http.RequestAborted);
         var client = (await flow.GetClientAsync(http.RequestAborted))!;
         var scopes = request.GetScopes();
+
+        // Step-up: the application asked (acr_values) for a fresh code of the authenticator app, which it needs for [Auth2Totp] / WithTotp(). The code is asked on our own page, in
+        // this session, and the sign-in goes on from the same request. A person who has no two-factor is sent to the same page, which explains how to turn it on.
+        var stepUpAt = StepUp.LastAt(cookie.Principal!);
+        if (WantsTotp(request) && !StepUp.IsFresh(cookie.Principal!, StepUpWindow(settings.Project.TwoFactor.StepUpMinutes), http.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow()))
+        {
+            if (request.HasPromptValue(PromptValues.None))
+                return Results.Forbid(new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InteractionRequired,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "A code of the authenticator app is needed.",
+                }), [OpenIddictScheme]);
+            return Results.Redirect($"/Account/VerifyTotp?ClientId={Uri.EscapeDataString(client.ClientId)}&ReturnUrl={Uri.EscapeDataString(ReturnUrl(http))}");
+        }
+
+        // Consent: none (implicit), once per user and scopes (explicit), or every time (systematic).
         var mode = settings.ConsentMode;
         string? authorizationId = null;
         if (mode != ConsentMode.Implicit)
@@ -98,6 +113,17 @@ public static class ConnectEndpoints
         var amr = cookie.Principal!.FindAll(Auth2Claims.Amr).Select(c => c.Value).DefaultIfEmpty("pwd");
         var principal = await issuer.CreateUserPrincipalAsync(user!, scopes, amr, cookie.Principal.FindFirst(Auth2Claims.SessionId)?.Value, http.RequestAborted,
             cookie.Principal.FindFirst(Auth2Claims.IdentityProvider)?.Value);
+        if (stepUpAt is { } at)
+        {
+            // 
+            // The time of the last code, and until when it counts (the setting TwoFactor.StepUpMinutes as it is now), go into the access token only.
+            var until = at + StepUpWindow(settings.Project.TwoFactor.StepUpMinutes);
+            foreach (var (type, time) in new[] { (Auth2Claims.StepUpAt, at), (Auth2Claims.StepUpUntil, until) })
+            {
+                principal.SetClaim(type, time.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture));
+                principal.FindFirst(type)?.SetDestinations(Destinations.AccessToken);
+            }
+        }
         if (mode == ConsentMode.Explicit)
         {
             // Remember the agreement, so the user is not asked again for the same scopes. The tokens belong to this authorization.
@@ -106,6 +132,16 @@ public static class ConnectEndpoints
         }
         return Results.SignIn(principal, properties: null, OpenIddictScheme);
     }
+
+    /// <summary>
+    /// How long a code of the authenticator app counts: <c>TwoFactor.StepUpMinutes</c>, the one setting that the Server's pages and the applications share. A value of 0 turns the question
+    /// off for the Server's own restricted pages, but an application that asked for a code still gets at least one minute.
+    /// </summary>
+    private static TimeSpan StepUpWindow(int stepUpMinutes) => TimeSpan.FromMinutes(Math.Max(stepUpMinutes, 1));
+
+    /// <summary>True when the request carries <see cref="Auth2AcrValues.Totp"/> in <c>acr_values</c>.</summary>
+    private static bool WantsTotp(OpenIddictRequest request) =>
+        (request.AcrValues ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(Auth2AcrValues.Totp, StringComparer.Ordinal);
 
     /// <summary>The URL of the current authorize request, without the listed parameters.</summary>
     private static string ReturnUrl(HttpContext http, params string[] without)

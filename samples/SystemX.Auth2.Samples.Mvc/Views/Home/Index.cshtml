@@ -10,7 +10,7 @@
     <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-8 text-white shadow-lg">
         <h1 class="text-4xl font-extrabold tracking-tight mb-2">SystemX.Auth2 MVC Sample</h1>
         <p class="text-indigo-100 text-lg max-w-2xl">
-            A comprehensive sample application demonstrating authentication, role &amp; permission authorization, and API controllers using the <code class="bg-white/20 px-1.5 py-0.5 rounded font-mono text-white">SystemX.Auth2.Client</code> package.
+            A comprehensive sample application demonstrating authentication, role &amp; permission authorization, step-up TOTP verification, and API controllers using the <code class="bg-white/20 px-1.5 py-0.5 rounded font-mono text-white">SystemX.Auth2.Client</code> package.
         </p>
 
         <div class="mt-6 flex flex-wrap gap-4 items-center">
@@ -22,59 +22,98 @@
                 <a asp-controller="Home" asp-action="Dashboard" class="bg-white text-indigo-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-100 transition shadow">
                     Go to Dashboard &rarr;
                 </a>
+                <a asp-controller="Home" asp-action="Showcase" class="bg-white/10 text-white border border-white/30 hover:bg-white/20 font-semibold px-4 py-2 rounded-lg transition shadow">
+                    Rules Showcase &rarr;
+                </a>
+                <a asp-controller="Home" asp-action="Inspect" class="bg-white/10 text-white border border-white/30 hover:bg-white/20 font-semibold px-4 py-2 rounded-lg transition shadow">
+                    Inspect Token Claims &rarr;
+                </a>
             }
             else
             {
                 <a asp-controller="Account" asp-action="Login" class="bg-white text-indigo-700 font-semibold px-5 py-2.5 rounded-lg hover:bg-gray-100 transition shadow">
                     Sign In with Auth2 Server
                 </a>
+                <a asp-controller="Home" asp-action="Showcase" class="bg-white/10 text-white border border-white/30 hover:bg-white/20 font-semibold px-4 py-2 rounded-lg transition shadow">
+                    View Rules Showcase &rarr;
+                </a>
             }
         </div>
     </div>
 
+    <!-- Main Navigation & API Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- MVC Controllers Section -->
+        <!-- Core MVC Controllers Section -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
                 <span class="text-2xl">🖥️</span>
-                <h2 class="text-xl font-bold text-gray-900">MVC Controllers</h2>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900">Core MVC Pages</h2>
+                    <p class="text-gray-500 text-xs">Standard pages, dashboards, and inspection tools</p>
+                </div>
             </div>
-            <p class="text-gray-600 text-sm mb-4">
-                Demonstrates cookie authentication, Hosted UI redirects, and Razor views.
-            </p>
             <ul class="space-y-3">
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-medium text-gray-800">Home/Index</span>
-                        <span class="ml-2 text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">[AllowAnonymous]</span>
+                        <span class="ml-2 text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded font-mono">[AllowAnonymous]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Public home landing page</p>
                     </div>
                     <a asp-controller="Home" asp-action="Index" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">View</a>
                 </li>
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-medium text-gray-800">Home/Dashboard</span>
-                        <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">[Authorize]</span>
+                        <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono">[Authorize]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Authenticated user dashboard</p>
                     </div>
                     <a asp-controller="Home" asp-action="Dashboard" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Visit</a>
                 </li>
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-medium text-gray-800">Home/Orders</span>
                         <span class="ml-2 text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">[Auth2Permission("orders.read")]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Orders view requiring read permission</p>
                     </div>
                     <a asp-controller="Home" asp-action="Orders" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Visit</a>
                 </li>
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-medium text-gray-800">Home/AdminPanel</span>
                         <span class="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-mono">[Auth2Role("Admin")]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Administration panel for Admin role</p>
                     </div>
                     <a asp-controller="Home" asp-action="AdminPanel" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Visit</a>
                 </li>
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div>
+                        <span class="font-medium text-gray-800">Home/Showcase</span>
+                        <span class="ml-2 text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded font-mono">[AllowAnonymous]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Full authorization rules matrix and demo users table</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="Showcase" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div>
+                        <span class="font-medium text-gray-800">Home/Inspect</span>
+                        <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono">[Authorize]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">In-code evaluation of roles, permissions, scopes &amp; token audiences</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="Inspect" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div>
+                        <span class="font-medium text-gray-800">Home/AfterLoginRegisterRedirect</span>
+                        <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono">[Auth2Authorize]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Post-login callback inspecting IAuth2ApiClientService.GetMeAsync</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="AfterLoginRegisterRedirect" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-medium text-gray-800">Account/Profile</span>
-                        <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">[Authorize]</span>
+                        <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono">[Authorize]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">User profile with session details and claims</p>
                     </div>
                     <a asp-controller="Account" asp-action="Profile" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Visit</a>
                 </li>
@@ -85,46 +124,426 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
                 <span class="text-2xl">⚡</span>
-                <h2 class="text-xl font-bold text-gray-900">API Controllers</h2>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900">API Controllers</h2>
+                    <p class="text-gray-500 text-xs">REST endpoints with JWT Bearer / Cookie auth and Auth2 attributes</p>
+                </div>
             </div>
-            <p class="text-gray-600 text-sm mb-4">
-                Exposes REST JSON endpoints with JWT Bearer / Cookie auth and Auth2 attributes.
-            </p>
             <ul class="space-y-3">
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-mono text-xs font-semibold text-gray-800">GET /api/auth/status</span>
                         <span class="ml-2 text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">Anonymous</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Client health &amp; authentication status check</p>
                     </div>
                     <a href="/api/auth/status" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Open JSON</a>
                 </li>
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-mono text-xs font-semibold text-gray-800">GET /api/auth/me</span>
                         <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono">[Auth2Authorize]</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Returns authenticated user metadata and token details</p>
                     </div>
                     <a href="/api/auth/me" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Open JSON</a>
                 </li>
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-mono text-xs font-semibold text-gray-800">GET /api/data/public</span>
                         <span class="ml-2 text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">Anonymous</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Publicly accessible sample data</p>
                     </div>
                     <a href="/api/data/public" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Open JSON</a>
                 </li>
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-mono text-xs font-semibold text-gray-800">GET /api/data/orders</span>
                         <span class="ml-2 text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">perm: orders.read</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Orders data endpoint requiring orders.read</p>
                     </div>
                     <a href="/api/data/orders" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Open JSON</a>
                 </li>
-                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
                     <div>
                         <span class="font-mono text-xs font-semibold text-gray-800">GET /api/data/admin-only</span>
                         <span class="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-mono">role: Admin</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Administrative endpoint restricted to Admin role</p>
                     </div>
                     <a href="/api/data/admin-only" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">Open JSON</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Section Header: Rules Showcase Actions -->
+    <div class="border-t border-gray-200 pt-6">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">Authorization Rules &amp; Actions</h2>
+                <p class="text-gray-600 text-sm">
+                    Each action in <code class="font-mono bg-gray-100 px-1 rounded text-xs">HomeController</code> showcases a distinct authorization attribute or flow in the <code class="font-mono bg-gray-100 px-1 rounded text-xs">SystemX.Auth2.Client</code> package.
+                </p>
+            </div>
+            <a asp-controller="Home" asp-action="Showcase" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800 hidden sm:inline-block">
+                View Full Rules Matrix &rarr;
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Step-Up Authentication & TOTP -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">🔐</span>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Step-Up Auth &amp; TOTP</h3>
+                    <p class="text-gray-500 text-xs">Hosted UI step-up and direct authenticator verification</p>
+                </div>
+            </div>
+            <ul class="space-y-3">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/SecureArea</span>
+                            <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono">[Auth2Totp]</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Hosted UI step-up: redirects to Auth2 Server to verify authenticator code, then returns with proof in session</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="SecureArea" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/TransferForm</span>
+                            <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono">[Auth2Totp] on POST</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Transfer form posting to <code class="font-mono text-xs">Transfer</code>: triggers step-up verification flow before executing the sensitive transfer</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="TransferForm" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/TotpForm</span>
+                            <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono">TotpAction / Optional</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Direct form sending TOTP code to <code class="font-mono text-xs">TotpAction</code> ([Auth2Totp]) or <code class="font-mono text-xs">OptionalTotpAction</code> ([Auth2OptionalTotp])</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="TotpForm" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Permissions Rules -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">🛡️</span>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Permissions Rules</h3>
+                    <p class="text-gray-500 text-xs">Single, multiple (any/all), origin constraints, and audit logging</p>
+                </div>
+            </div>
+            <ul class="space-y-3">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/OrdersWrite</span>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">orders.write</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Single permission requirement: granted directly, via role, or via group</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="OrdersWrite" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/OrdersWriteOrDelete</span>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">write OR delete</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Multiple keys in attribute: ANY permission match is sufficient</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="OrdersWriteOrDelete" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/OrdersFullControl</span>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">read AND write AND delete</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">ALL permissions required: first parameter set to true</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="OrdersFullControl" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/OrdersThroughARole</span>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">[Auth2OnlyRolePermission]</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Permission must come from a role, not a direct assignment or group grant</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="OrdersThroughARole" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/OrdersGrantedToYou</span>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">[Auth2OnlyUserPermission]</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Permission must be directly granted to user, not inherited from role/group</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="OrdersGrantedToYou" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/OrdersExport</span>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">[Auth2Audit("orders.export")]</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Audited action: every attempt (allowed or denied) is logged to IAuth2AuditSink</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="OrdersExport" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Roles & Groups Rules -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">👥</span>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Roles &amp; Groups</h3>
+                    <p class="text-gray-500 text-xs">Role assignments and group membership matching</p>
+                </div>
+            </div>
+            <ul class="space-y-3">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/ManagersArea</span>
+                            <span class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-mono">Manager OR Admin</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Multiple roles (ANY): user has either Manager or Admin role</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="ManagersArea" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/AdminAndManager</span>
+                            <span class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-mono">Admin AND Manager</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Multiple roles (ALL): user must hold both roles (refused for all demo users)</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="AdminAndManager" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/FinanceTeam</span>
+                            <span class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded font-mono">group: finance</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Single group membership requirement: member of the finance group</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="FinanceTeam" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/FinanceRegions</span>
+                            <span class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded font-mono">finance-eu OR finance-us</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Multiple groups (ANY): member of finance-eu or finance-us</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="FinanceRegions" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/FinanceEurope</span>
+                            <span class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded font-mono">finance AND finance-eu</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Multiple groups (ALL): member of both finance and finance-eu</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="FinanceEurope" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Sign-in Methods & AMR -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">🔑</span>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Sign-in Methods &amp; Context</h3>
+                    <p class="text-gray-500 text-xs">AMR claim inspection and token kind restrictions</p>
+                </div>
+            </div>
+            <ul class="space-y-3">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/SignedInWithPassword</span>
+                            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-mono">amr: pwd</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Requires password sign-in (passkey-only sign-in returns 403)</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="SignedInWithPassword" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/MultiFactorOnly</span>
+                            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-mono">[Auth2MultiFactor]</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Requires more than one factor: passkey with biometric/PIN, or password + 2FA code</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="MultiFactorOnly" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/PeopleOnly</span>
+                            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-mono">[Auth2UserOnly]</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Ensures token belongs to an interactive person (machine / client credentials refused)</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="PeopleOnly" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Scopes & Client Verification -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">🌐</span>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Scopes &amp; Client Rules</h3>
+                    <p class="text-gray-500 text-xs">Application-level capabilities, chaining, and 403 test actions</p>
+                </div>
+            </div>
+            <ul class="space-y-3">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/ReportsScope</span>
+                            <span class="text-xs bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-mono">reports.read</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Validates token scope of the application (granted to all users of this client)</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="ReportsScope" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/OrdersScope</span>
+                            <span class="text-xs bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-mono">orders.read OR orders.write</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Multiple scopes (ANY): token has orders.read or orders.write</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="OrdersScope" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/ReportsScopeAndPermission</span>
+                            <span class="text-xs bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-mono">Scope AND Perm</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Chained attributes: client has scope reports.read AND user has permission reports.read</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="ReportsScopeAndPermission" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/ScopeFails</span>
+                            <span class="text-xs bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-mono">payments.refund (403)</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Missing client scope attribute: triggers standard 403 Forbidden page</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="ScopeFails" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Test 403</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/ScopeFailsInCode</span>
+                            <span class="text-xs bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-mono">scope.test (JSON 403)</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Missing scope handled in controller code, returning 403 JSON error payload</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="ScopeFailsInCode" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Test JSON</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/ScopeFailsInCode2</span>
+                            <span class="text-xs bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-mono">scope.test2 (JSON 403)</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Second missing scope test returning 403 JSON error with granted list</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="ScopeFailsInCode2" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Test JSON</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Hybrid Cross-Kind Rules (OR Logic) -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">🔀</span>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Hybrid "Any Of" Rules</h3>
+                    <p class="text-gray-500 text-xs">Combining roles, permissions, groups, and scopes with OR</p>
+                </div>
+            </div>
+            <ul class="space-y-3">
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/DeleteOrders</span>
+                            <span class="text-xs bg-violet-100 text-violet-800 px-2 py-0.5 rounded font-mono">Role OR Permission</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Cross-kind OR: user has Admin role OR orders.delete permission</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="DeleteOrders" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/BudgetReview</span>
+                            <span class="text-xs bg-violet-100 text-violet-800 px-2 py-0.5 rounded font-mono">Role OR Group</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Cross-kind OR: user has Manager role OR is in finance group</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="BudgetReview" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/ApproveOrders</span>
+                            <span class="text-xs bg-violet-100 text-violet-800 px-2 py-0.5 rounded font-mono">Permission OR Group</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Cross-kind OR: user has orders.approve permission OR is in finance group</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="ApproveOrders" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/ReportsForProgramsOrAdmins</span>
+                            <span class="text-xs bg-violet-100 text-violet-800 px-2 py-0.5 rounded font-mono">Scope OR Role</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Cross-kind OR: client has reports.read scope OR user has Admin role</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="ReportsForProgramsOrAdmins" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
+                </li>
+                <li class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/60 transition">
+                    <div class="pr-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-medium text-gray-800 text-sm">Home/AnythingGoes</span>
+                            <span class="text-xs bg-violet-100 text-violet-800 px-2 py-0.5 rounded font-mono">[Auth2AnyOf] (4 kinds)</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Any match across Admin role, orders.delete perm, support group, or orders.write scope</p>
+                    </div>
+                    <a asp-controller="Home" asp-action="AnythingGoes" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold shrink-0">Visit</a>
                 </li>
             </ul>
         </div>

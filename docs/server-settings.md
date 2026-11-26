@@ -236,7 +236,7 @@ Two-factor and OTP rules.
 | `OtpLength` | `int` | `6` | GlobalOnly | OTP length. |
 | `OtpLifetimeSeconds` | `int` | `120` | GlobalOnly | OTP lifetime in seconds. |
 | `OtpMaxAttempts` | `int` | `5` | GlobalOnly | Max wrong OTP attempts. |
-| `StepUpMinutes` | `int` | `15` | GlobalOnly | "Sudo mode": how many minutes a code of the authenticator app counts as fresh. The restricted pages (delete the account, turn two-factor off) ask a person who has two-factor on for a code again when the last one is older. The second step of the sign-in counts as a code. `0` = never ask again. 0 to 720 ([two-factor.md](two-factor.md#the-pages-and-what-each-one-is-for)). |
+| `StepUpMinutes` | `int` | `15` | GlobalOnly | "Sudo mode": how many minutes a code of the authenticator app counts as fresh. **The one window of Auth2**: the Server's restricted pages (delete the account, turn two-factor off) use it, and so do the applications: `WithTotp()` / `[Auth2Totp]` in the hosted UI reads it from the claim `step_up_until` of the token. A person who has two-factor on is asked for a code again when the last one is older. The second step of the sign-in counts as a code. `0` = the Server's own pages never ask again; an application that asked for a code still gets at least 1 minute. Change it in the admin console (Settings, Two-factor; GlobalAdmin only). 0 to 720 ([two-factor.md](two-factor.md#the-pages-and-what-each-one-is-for)). |
 | `OtpResendSeconds` | `int` | `60` | GlobalOnly | Seconds before a new OTP may be sent. |
 | `AllowPasskeys` | `bool` | `false` | GlobalOnly | Allow passkeys (experimental). |
 

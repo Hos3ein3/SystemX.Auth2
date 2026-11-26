@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using MsOptions = Microsoft.Extensions.Options.Options;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using SystemX.Auth2.Client.Authentication;
 using SystemX.Auth2.Client.Authorization;
 using SystemX.Auth2.Client.CurrentUser;
 using SystemX.Auth2.Client.Options;
@@ -346,7 +348,8 @@ public class TotpRuleTests
         var tokens = Substitute.For<IAuth2AccessTokenAccessor>();
         tokens.GetAccessTokenAsync(Arg.Any<CancellationToken>()).Returns(token);
         var api = Substitute.For<IAuth2ApiClientService>();
-        return new Setup(new Auth2TotpAuthorizationHandler(accessor, tokens, api, NullLogger<Auth2TotpAuthorizationHandler>.Instance), api, http);
+        return new Setup(new Auth2TotpAuthorizationHandler(accessor, tokens, api, TimeProvider.System,
+            NullLogger<Auth2TotpAuthorizationHandler>.Instance), api, http);
     }
 
     private static ClaimsPrincipal Person(bool machine = false) =>
@@ -451,6 +454,159 @@ public class TotpRuleTests
         await s.Api.Received(1).VerifyTotpAsync(Arg.Any<TwoFactorVerifyRequest>(), Arg.Any<CancellationToken>());
     }
 
+    // ---- hosted UI: the Server's page gives the proof, the claim step_up_at carries it
+
+    /// <summary>A person whose token says: a code was given at <paramref name="at"/>, and it counts for <paramref name="window"/> (the Server wrote both from its setting).</summary>
+    private static ClaimsPrincipal PersonSteppedUp(DateTimeOffset at, TimeSpan? window = null) =>
+        new(new ClaimsIdentity([new Claim("sub", Guid.NewGuid().ToString()), new Claim(Auth2Claims.StepUpAt, at.ToUnixTimeSeconds().ToString()),
+            new Claim(Auth2Claims.StepUpUntil, (at + (window ?? TimeSpan.FromMinutes(5))).ToUnixTimeSeconds().ToString())], "test"));
+
+    [Fact]
+    public async Task APageRequest_WithAFreshStepUp_PassesWithoutAskingTheServer_AndClearsTheGuard()
+    {
+        var s = Build();
+        (await RunAsync(s, user: PersonSteppedUp(DateTimeOffset.UtcNow.AddMinutes(-2)))).Ok.ShouldBeTrue();
+        await s.Api.DidNotReceiveWithAnyArgs().VerifyTotpAsync(default!, default);
+    }
+
+    [Theory]
+    [InlineData(-10)]    // the window that the Server wrote (5 minutes) is over
+    [InlineData(10)]     // from the future: a wrong clock or a forged claim never counts
+    public async Task AStaleOrFutureStepUp_IsNotEnough_TheServerIsAsked(int minutes)
+    {
+        var s = Build();
+        ServerSays(s, Result.Failure(Auth2ErrorCodes.TotpRequired));
+        (await RunAsync(s, user: PersonSteppedUp(DateTimeOffset.UtcNow.AddMinutes(minutes)))).ShouldBe((false, Auth2ErrorCodes.TotpRequired));
+        await s.Api.Received(1).VerifyTotpAsync(Arg.Any<TwoFactorVerifyRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TheWindowIsTheServers_NotTheClients_AndWithoutItTheClaimIsNotEnough()
+    {
+        // 20 minutes ago, and the Server said it counts for 30: it passes. The Client has no window of its own to apply.
+        var longer = Build();
+        (await RunAsync(longer, user: PersonSteppedUp(DateTimeOffset.UtcNow.AddMinutes(-20), TimeSpan.FromMinutes(30)))).Ok.ShouldBeTrue();
+
+        // 1 minute ago, and the Server said it counts for 30 seconds: over.
+        var shorter = Build();
+        ServerSays(shorter, Result.Failure(Auth2ErrorCodes.TotpRequired));
+        (await RunAsync(shorter, user: PersonSteppedUp(DateTimeOffset.UtcNow.AddMinutes(-1), TimeSpan.FromSeconds(30)))).Ok.ShouldBeFalse();
+
+        // a token from an older Server has step_up_at only: the Client does not guess a window, it asks the Server
+        var old = Build();
+        ServerSays(old, Result.Failure(Auth2ErrorCodes.TotpRequired));
+        var onlyAt = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", Guid.NewGuid().ToString()), new Claim(Auth2Claims.StepUpAt, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())], "test"));
+        (await RunAsync(old, user: onlyAt)).Ok.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task AnApiRequest_NeverUsesTheStepUpClaim_ItCarriesItsOwnCode()
+    {
+        var s = Build(h => h.Request.Headers.Accept = "application/json");
+        ServerSays(s, Result.Failure(Auth2ErrorCodes.TotpRequired));
+        (await RunAsync(s, user: PersonSteppedUp(DateTimeOffset.UtcNow))).ShouldBe((false, Auth2ErrorCodes.TotpRequired));
+    }
+
+    private static (DefaultHttpContext Http, IAuthenticationService Auth) HostedRequest(Action<DefaultHttpContext>? setup = null)
+    {
+        var auth = Substitute.For<IAuthenticationService>();
+        var http = new DefaultHttpContext { RequestServices = new ServiceCollection().AddLogging().AddSingleton(auth).BuildServiceProvider() };
+        http.Request.Method = "GET";
+        http.Request.Path = "/transfer";
+        http.Request.QueryString = new QueryString("?amount=5");
+        http.Response.Body = new MemoryStream();
+        setup?.Invoke(http);
+        return (http, auth);
+    }
+
+    private static Task RefuseAsync(HttpContext http, UiMode mode)
+    {
+        var handler = new Auth2AuthorizationResultHandler(Substitute.For<IAuth2AuditSink>(), MsOptions.Create(new Auth2AuthFlags { Mode = mode }));
+        return handler.HandleAsync(_ => Task.CompletedTask, http, new AuthorizationPolicyBuilder().RequireAssertion(_ => false).Build(),
+            Microsoft.AspNetCore.Authorization.Policy.PolicyAuthorizationResult.Forbid());
+    }
+
+    [Theory]
+    [InlineData(Auth2ErrorCodes.TotpRequired)]
+    [InlineData(Auth2ErrorCodes.TotpSetupRequired)]
+    public async Task ABrowserOfTheHostedUi_IsSentToTheServerForTheCode_AndComesBackToThisPage(string code)
+    {
+        var (http, auth) = HostedRequest();
+        http.Items[Auth2Totp.ItemsKey] = new Auth2TotpOutcome(code, "x");
+
+        await RefuseAsync(http, UiMode.Hosted);
+
+        await auth.Received(1).ChallengeAsync(http, Auth2AuthSchemes.Oidc, Arg.Is<AuthenticationProperties>(p =>
+            p.RedirectUri == "/transfer?amount=5" && p.Items[Auth2Totp.StepUpItem] == Auth2AcrValues.Totp));
+        http.Response.Headers.ContainsKey(Auth2Totp.ResponseHeader).ShouldBeFalse();
+        http.Response.Headers.SetCookie.ToString().ShouldContain(Auth2Totp.StepUpGuardCookie);
+    }
+
+    [Fact]
+    public async Task ABrowserThatCameBackWithoutACode_GetsThePlainRefusal_NotAnEndlessRoundTrip()
+    {
+        var (http, auth) = HostedRequest(h => h.Request.Headers.Cookie = Auth2Totp.StepUpGuardCookie + "=1");
+        http.Items[Auth2Totp.ItemsKey] = new Auth2TotpOutcome(Auth2ErrorCodes.TotpRequired, "x");
+
+        await RefuseAsync(http, UiMode.Hosted);
+
+        await auth.DidNotReceiveWithAnyArgs().ChallengeAsync(default!, default, default);
+        http.Response.Headers[Auth2Totp.ResponseHeader].ToString().ShouldBe("totp_required");
+    }
+
+    [Fact]
+    public async Task OnlyTheHostedUiSendsTheBrowserToTheServer_AnApiAndTheSelfUiDoNot()
+    {
+        var (self, selfAuth) = HostedRequest();
+        self.Items[Auth2Totp.ItemsKey] = new Auth2TotpOutcome(Auth2ErrorCodes.TotpRequired, "x");
+        await RefuseAsync(self, UiMode.Self);
+        await selfAuth.DidNotReceiveWithAnyArgs().ChallengeAsync(default!, default, default);   // Self UI: the page has its own code form
+
+        var (api, apiAuth) = HostedRequest(h => h.Request.Headers.Accept = "application/json");
+        api.Items[Auth2Totp.ItemsKey] = new Auth2TotpOutcome(Auth2ErrorCodes.TotpRequired, "x");
+        await RefuseAsync(api, UiMode.Hosted);
+        await apiAuth.DidNotReceiveWithAnyArgs().ChallengeAsync(default!, default, default);
+        api.Response.StatusCode.ShouldBe(403);                                                  // an API gets the JSON error
+    }
+
+    [Fact]
+    public async Task APostedForm_ComesBackToThePageItCameFrom_NotToThePostAddress()
+    {
+        var (http, auth) = HostedRequest(h =>
+        {
+            h.Request.Method = "POST";
+            h.Request.Host = new HostString("shop.test");
+            h.Request.Headers.Referer = "https://shop.test/transfer?amount=5";
+        });
+        http.Items[Auth2Totp.ItemsKey] = new Auth2TotpOutcome(Auth2ErrorCodes.TotpRequired, "x");
+        await RefuseAsync(http, UiMode.Hosted);
+        await auth.Received(1).ChallengeAsync(http, Auth2AuthSchemes.Oidc, Arg.Is<AuthenticationProperties>(p => p.RedirectUri == "/transfer?amount=5"));
+
+        var (elsewhere, auth2) = HostedRequest(h => { h.Request.Method = "POST"; h.Request.Host = new HostString("shop.test"); h.Request.Headers.Referer = "https://evil.test/x"; });
+        elsewhere.Items[Auth2Totp.ItemsKey] = new Auth2TotpOutcome(Auth2ErrorCodes.TotpRequired, "x");
+        await RefuseAsync(elsewhere, UiMode.Hosted);
+        await auth2.Received(1).ChallengeAsync(elsewhere, Auth2AuthSchemes.Oidc, Arg.Is<AuthenticationProperties>(p => p.RedirectUri == "/"));   // another site is never a way back
+    }
+
+    [Fact]
+    public async Task TheOidcRequest_CarriesTheStepUpValue_OnlyWhenTheRequestAskedForIt()
+    {
+        var ui = MsOptions.Create(new Auth2HostedUiOptions());
+        var configurator = new Auth2OidcConfigurator(MsOptions.Create(new Auth2ClientOptions { ServerUrl = "https://auth.test", ClientId = "blog" }), ui, MsOptions.Create(new Auth2CookieOptions()), null!);
+        var options = new Microsoft.AspNetCore.Authentication.OpenIdConnect.OpenIdConnectOptions();
+        configurator.Configure(Auth2AuthSchemes.Oidc, options);
+        var scheme = new AuthenticationScheme(Auth2AuthSchemes.Oidc, null, typeof(Microsoft.AspNetCore.Authentication.OpenIdConnect.OpenIdConnectHandler));
+
+        var asked = new AuthenticationProperties { Items = { [Auth2Totp.StepUpItem] = Auth2AcrValues.Totp } };
+        var withAcr = new Microsoft.AspNetCore.Authentication.OpenIdConnect.RedirectContext(new DefaultHttpContext(), scheme, options, asked) { ProtocolMessage = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectMessage() };
+        await options.Events.OnRedirectToIdentityProvider(withAcr);
+        withAcr.ProtocolMessage.AcrValues.ShouldBe(Auth2AcrValues.Totp);
+
+        var plain = new Microsoft.AspNetCore.Authentication.OpenIdConnect.RedirectContext(new DefaultHttpContext(), scheme, options, new AuthenticationProperties()) { ProtocolMessage = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectMessage() };
+        await options.Events.OnRedirectToIdentityProvider(plain);
+        plain.ProtocolMessage.AcrValues.ShouldBeNull();
+    }
+
     private static DefaultHttpContext WithServices(Action<DefaultHttpContext>? setup = null)
     {
         var services = new ServiceCollection().AddLogging().AddAuthentication("test").AddCookie("test").Services.BuildServiceProvider();
@@ -465,7 +621,7 @@ public class TotpRuleTests
     {
         var http = WithServices(h => h.Request.Headers.Accept = "application/json");
         http.Items[Auth2Totp.ItemsKey] = new Auth2TotpOutcome(Auth2ErrorCodes.TotpSetupRequired, "Turn on two-factor first.");
-        var handler = new Auth2AuthorizationResultHandler(Substitute.For<IAuth2AuditSink>());
+        var handler = new Auth2AuthorizationResultHandler(Substitute.For<IAuth2AuditSink>(), MsOptions.Create(new Auth2AuthFlags()));
         var policy = new AuthorizationPolicyBuilder().RequireAssertion(_ => false).Build();
 
         await handler.HandleAsync(_ => Task.CompletedTask, http, policy, Microsoft.AspNetCore.Authorization.Policy.PolicyAuthorizationResult.Forbid());
@@ -483,7 +639,7 @@ public class TotpRuleTests
     {
         var page = WithServices();
         page.Items[Auth2Totp.ItemsKey] = new Auth2TotpOutcome(Auth2ErrorCodes.TotpRequired, "x");
-        var handler = new Auth2AuthorizationResultHandler(Substitute.For<IAuth2AuditSink>());
+        var handler = new Auth2AuthorizationResultHandler(Substitute.For<IAuth2AuditSink>(), MsOptions.Create(new Auth2AuthFlags()));
         var policy = new AuthorizationPolicyBuilder().RequireAssertion(_ => false).Build();
         await handler.HandleAsync(_ => Task.CompletedTask, page, policy, Microsoft.AspNetCore.Authorization.Policy.PolicyAuthorizationResult.Forbid());
         page.Response.Headers[Auth2Totp.ResponseHeader].ToString().ShouldBe("totp_required");   // the page still gets the access-denied page of ASP.NET, plus the header

@@ -115,6 +115,9 @@ public class StepUpPagesTests : Phase6Base
         var page = await (await b.GetAsync(login.Location()!)).Content.ReadAsStringAsync();
         var token = System.Text.RegularExpressions.Regex.Match(page, "name=\"TwoFactorToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
         token.ShouldNotBeNullOrEmpty();
+        page.ShouldContain("data-a2-digits", Case.Sensitive);   // the code box takes digits only, at most 10 of them
+        page.ShouldContain("pattern=\"[0-9 ]*\"", Case.Sensitive);
+        page.ShouldContain("maxlength=\"10\"", Case.Sensitive);
         var second = await b.PostPageAsync(login.Location()!, new Dictionary<string, string> { ["TwoFactorToken"] = token, ["Input.Code"] = Totp.Now(key) });
         second.StatusCode.ShouldBe(HttpStatusCode.Redirect);
 

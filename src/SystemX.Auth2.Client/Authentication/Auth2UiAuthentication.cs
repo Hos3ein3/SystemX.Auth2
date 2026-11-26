@@ -196,6 +196,15 @@ internal sealed class Auth2OidcConfigurator(IOptions<Auth2ClientOptions> client,
         // We use it to keep the access version and to load the user's access data (see AccessMode).
         options.Events = new OpenIdConnectEvents
         {
+            // A request that needs a fresh code of the authenticator app (WithTotp, [Auth2Totp]) sent the person here with the property below: the Server is asked for the step-up.
+            OnRedirectToIdentityProvider = ctx =>
+            {
+                if (ctx.Properties.Items.TryGetValue(Auth2Totp.StepUpItem, out var acr) && !string.IsNullOrEmpty(acr))
+                {
+                    ctx.ProtocolMessage.AcrValues = acr;
+                }
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async ctx =>
             {
                 if (ctx.Principal is null) return;
@@ -220,7 +229,7 @@ internal sealed class Auth2OidcConfigurator(IOptions<Auth2ClientOptions> client,
 
         if (!identity.HasClaim(c => c.Type is "scope" or "scp"))
             foreach (var claim in jwt.Claims.Where(c => c.Type is "scope" or "scp")) identity.AddClaim(new Claim("scope", claim.Value));
-        foreach (var type in new[] { Auth2Claims.ClientId, Auth2Claims.ApplicationId, Auth2Claims.ProjectId, Auth2Claims.ProjectKey, Auth2Claims.SessionId })
+        foreach (var type in new[] { Auth2Claims.ClientId, Auth2Claims.ApplicationId, Auth2Claims.ProjectId, Auth2Claims.ProjectKey, Auth2Claims.SessionId, Auth2Claims.StepUpAt, Auth2Claims.StepUpUntil })
             if (!identity.HasClaim(c => c.Type == type) && jwt.Claims.FirstOrDefault(c => c.Type == type) is { } found) identity.AddClaim(new Claim(type, found.Value));
     }
 }

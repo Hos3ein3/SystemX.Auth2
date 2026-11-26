@@ -6,7 +6,7 @@
     ViewData["Subtitle"] = Loc["verify_totp.subtitle"];
     var rules = SystemX.Auth2.Server.Pages.Account.AccountFormRules.For(Model);
     var codeRule = rules.TotpCode(Loc["verify_totp.code"].Value);
-    var back = Model.SafeReturnUrl() ?? "/";
+    var back = Model.BackUrl();
 }
 
 @if (Model.Verified)
@@ -20,7 +20,7 @@
         <h2 class="text-xl font-bold text-[var(--a2-color-text,#111827)] dark:text-gray-100">@Loc["verify_totp.title"]</h2>
         <p class="text-sm text-gray-600 dark:text-gray-300">@Loc["verify_totp.success"]</p>
         <div class="pt-4">
-            <a2-link-button href="@back" variant="primary" class="w-full">@Loc["common.continue"]</a2-link-button>
+            <a2-button href="@back" variant="primary" class="w-full">@Loc["common.continue"]</a2-button>
         </div>
     </div>
 }
@@ -30,7 +30,7 @@ else if (Model.ProjectFound && (!Model.TotpAllowed || !Model.TwoFactorEnabled) &
         <a2-alert variant="warning">@Loc["verify_totp.not_enabled"]</a2-alert>
         @if (Model.TotpAllowed)
         {
-            <a2-link-button href="/Manage/TwoFactor/Enable?ClientId=@Uri.EscapeDataString(Model.ClientId ?? "")" variant="primary" class="w-full">@Loc["verify_totp.enable_link"]</a2-link-button>
+            <a2-button href="/Manage/TwoFactor/Enable?ClientId=@Uri.EscapeDataString(Model.ClientId ?? "")" variant="primary" class="w-full">@Loc["verify_totp.enable_link"]</a2-button>
         }
         <a href="@back" class="block text-sm font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">@Loc["common.back"]</a>
     </div>
@@ -42,13 +42,9 @@ else
         <input type="hidden" asp-for="ReturnUrl" />
         <input type="hidden" asp-for="ClientId" />
 
-        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-        {
-            <a2-alert variant="danger">@Model.ErrorMessage</a2-alert>
-        }
-
+        @* the error of a wrong code is shown once, at the top of the card, by _LayoutAuth *@
         <a2-field label="@Loc["verify_totp.code"]" required="true" for="Input_Code" hint="@Loc["verify_totp.hint"]">
-            <a2-input id="Input_Code" name="Input.Code" inputmode="numeric" autocomplete="one-time-code" required="true" placeholder="123456"
+            <a2-input id="Input_Code" name="Input.Code" inputmode="numeric" pattern="[0-9 ]*" maxlength="10" autocomplete="one-time-code" required="true" placeholder="123456" data-a2-digits="true"
                       class="text-center tracking-widest text-lg font-mono" data-a2-rule="@codeRule" />
         </a2-field>
 

@@ -58,6 +58,31 @@ public class RecoveryCodeDisableTests : Phase6Base
         (await TwoFactorOnAsync()).ShouldBeFalse();
     }
 
+    [Fact]
+    public async Task SigningInWithARecoveryCode_OnTheSecondStep_LandsOnTheAccountPage_NotOnNotFound()
+    {
+        var (_, codes) = await EnabledAsync();
+        var b = new Browser(Factory);
+        var login = await b.PostPageAsync("/Account/Login?ClientId=appa", new Dictionary<string, string> { ["Input.Login"] = "sara", ["Input.Password"] = PassA });
+        login.Location().ShouldStartWith("/Account/TwoFactor");
+        var page = await (await b.GetAsync(login.Location()!)).Content.ReadAsStringAsync();
+        var token = Regex.Match(page, "name=\"TwoFactorToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
+
+        var second = await b.PostPageAsync(login.Location()!, new Dictionary<string, string> { ["TwoFactorToken"] = token, ["Input.Code"] = "", ["Input.RecoveryCode"] = codes[0] });
+        second.StatusCode.ShouldBe(HttpStatusCode.Redirect, await second.Content.ReadAsStringAsync());
+        var url = second.Location()!;
+        string? last = null;
+        for (var hop = 0; hop < 6; hop++)
+        {
+            var next = await b.GetAsync(url);
+            ((int)next.StatusCode).ShouldNotBe(404, url);
+            last = url;
+            if (next.Headers.Location is null) break;
+            url = next.Headers.Location.ToString();
+        }
+        last.ShouldNotBeNull().ShouldStartWith("/Manage");   // an ordinary person ends on their own account page
+    }
+
     [Theory]
     [InlineData("lower")]
     [InlineData("spaces")]

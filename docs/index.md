@@ -15,6 +15,7 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 | [getting-started.md](getting-started.md) | Run the Server and the two samples |
 | [concepts.md](concepts.md) | Project, application, membership, settings, tokens |
 | [comparison-and-limits.md](comparison-and-limits.md) | What is and is not supported |
+| [features.md](features.md) | Every feature: sign-in methods, registration, account pages, two-factor, external identity, access model, admin, Client package |
 | [feature-status.md](feature-status.md) | What works today |
 | [roadmap.md](roadmap.md) | What is not built yet and the known limits |
 
@@ -54,6 +55,7 @@ Start with **Start here** if you are new. Use the other groups to find the page 
 | Page | Topic |
 |---|---|
 | [client-setup.md](client-setup.md) | Add the package, options, UI modes, handshake |
+| [spa-with-backend.md](spa-with-backend.md) | An Angular, React or Vue app with its own API: sign in on the hosted pages, in every layout (one host, proxy, two origins) |
 | [client-builder.md](client-builder.md) | `Auth2ClientServiceCollectionExtensions` in depth: `AddAuth2Client`, every `Enable...` and `Use...` method, every option, `UseAuth2` |
 | [access-concepts.md](access-concepts.md) | Scope, permission, role, group, direct grant, token kind: which is which and when to use each |
 | [client-endpoint-metadata.md](client-endpoint-metadata.md) | Minimal API methods and attributes: the same rules written two ways, texts, what the scanners read |

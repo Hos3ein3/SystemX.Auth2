@@ -1006,6 +1006,15 @@ Result of an operation with a value.
 ## `SystemX.Auth2.Contracts.Constants`
 
 
+### Auth2AcrValues
+
+Values of the `acr_values` parameter that an application can put on an authorize request (`/connect/authorize`) to ask the Server for more than a sign-in.
+
+| Member | What it does |
+|---|---|
+| `Totp` | "Prove now that you hold the authenticator app." The Server shows its `/Account/VerifyTotp` page when the person has not given a code in this session within the last minutes (`TwoFactor.StepUpMinutes`, the one setting that every part of Auth2 uses), and then continues the sign-in. The tokens that come back carry the claims `StepUpAt` and `StepUpUntil`. A person who has not turned on two-factor is sent to the page that explains how to turn it on. The Client package asks for this value by itself when a hosted-UI request reaches `WithTotp()` / `[Auth2Totp]` without a fresh code. |
+
+
 ### Auth2AdminRoutes
 
 The routes of the admin API (`Admin`), as **templates**. The Server maps them and the Client builds its calls from them, so they never disagree. A template has the names of the route values in braces (`{id:guid}`, `{key}`); `Fill` puts real values in. **Server level** (relative to `Admin`): `Projects`, `Project`, `Keys`, ... **Project level** (relative to `ProjectBase`, the project is in the route): users, roles, permissions, groups, scopes, audit, external identity. **Application level** (relative to `ApplicationsBase`).
@@ -1093,6 +1102,8 @@ Claim names used in tokens.
 | `Role` | Role of the project. |
 | `Scope` | Scope. |
 | `ClientId` | Client id. |
+| `StepUpAt` | When the person last gave a code of the authenticator app in the sign-in session of the Server (Unix time in seconds). It is in the access token when the session has one; the Client package uses it with `StepUpUntil` to know that a hosted-UI request may pass `WithTotp()` / `[Auth2Totp]` without asking for a code again. |
+| `StepUpUntil` | Until when that code counts (Unix time in seconds): `StepUpAt` plus the project setting `TwoFactor.StepUpMinutes` (at least one minute) **as it was when the token was issued**. The setting lives on the Server only; the Client package reads this claim, so there is one source of truth. |
 | `AccessVersion` | Access version. |
 | `ApplicationId` | Application id (the client that asked for the token). |
 | `ProjectId` | Project id (the tenant). |

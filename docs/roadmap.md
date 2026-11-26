@@ -6,7 +6,7 @@ What is not built yet, and the limits you should know. Everything that works tod
 
 ## Future work
 
-- **Admin and sign-in pages.** The admin console (`/admin/...`) covers projects, applications, users, roles, permissions, groups, assignments, scopes, authorizations, providers, sessions, audit, reports, settings, branding and email templates. Still to build: the provider and passkey buttons on the sign-in page, the join page, an admin page for the email and SMS provider settings, and a "send test email" route ([ui-handover.md](ui-handover.md)).
+- **Admin and sign-in pages.** The admin console (`/admin/...`) covers projects, applications, users, roles, permissions, groups, assignments, scopes, authorizations, providers, sessions, audit, reports, settings, branding, messaging (email and SMS, with test-send) and email templates. The sign-in page has the provider and passkey buttons, and the join page works. What is left is polish, not missing pages: the descriptions of the pages for a custom UI in [ui-handover.md](ui-handover.md) still say that these pages are not drawn, and are to be brought up to date.
 - **Real SMS provider.** Only the extension point (`ISmsTransport`) and the `logging` provider exist ([email-and-sms.md](email-and-sms.md)).
 - **Gateway package** (YARP): the project is empty ([gateway.md](gateway.md)).
 - **Commands** `convert-to-single` and `convert-to-multi` (move credentials between the two places described in [credential-scope.md](credential-scope.md)). The other commands exist ([server-setup.md](server-setup.md)).
@@ -34,6 +34,8 @@ Each limit below is a design choice or is stated in the page named next to it.
 - `Auth2:Security:UseForwardedHeaders` is off by default. Behind a proxy the operator must turn it on ([security.md](security.md), [deployment-and-scaling.md](deployment-and-scaling.md)).
 - Serilog sinks other than console and OTLP are configured by the operator through the `Serilog` section; extra sink packages are not included.
 - Two-factor has no "remember this device".
+- A fresh authenticator code (step-up, `WithTotp()` / `[Auth2Totp]`) is asked by the **hosted UI** only. A Self UI application must send the person to its own page and check `step_up_at` itself, and there is one window for all of them: `TwoFactor.StepUpMinutes` ([two-factor.md](two-factor.md), [client-endpoint-metadata.md](client-endpoint-metadata.md)).
+- Recovery codes are not "something you have" for step-up: a recovery code signs in or turns two-factor off, but it is not a fresh authenticator code for `VerifyTotp`.
 - Self UI applications cannot use redirect-based external sign-in or passkeys ([external-identity.md](external-identity.md#limits)).
 
 ## Rule for open items

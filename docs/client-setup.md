@@ -167,6 +167,7 @@ Calls that **change something** (register, login, password calls, refresh) are *
 
 ## Related pages
 
+- [A single-page app with its own API](spa-with-backend.md)
 - [machine-to-machine.md](machine-to-machine.md)
 - [handshake-and-startup.md](handshake-and-startup.md) (the server side)
 - [permission-sync.md](permission-sync.md)

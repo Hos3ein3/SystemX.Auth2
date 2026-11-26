@@ -127,6 +127,11 @@ public sealed class IndexModel : AdminPageModel
             InputSettings.Phone = CurrentSettings.Phone;
         }
 
+        // The form has no fields for these parts: they have their own pages (Branding, Messaging, external providers). Keep what is saved, or the first save of this page would put them back to the defaults.
+        InputSettings.Branding = CurrentSettings.Branding;
+        InputSettings.Messaging = CurrentSettings.Messaging;
+        InputSettings.ExternalProviders = CurrentSettings.ExternalProviders;
+
         var (result, newVersion) = await projectSvc.UpdateSettingsAsync(
             CurrentProject!.Id,
             InputSettings,

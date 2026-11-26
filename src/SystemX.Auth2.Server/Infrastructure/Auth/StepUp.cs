@@ -10,11 +10,15 @@ namespace SystemX.Auth2.Server.Infrastructure.Auth;
 public static class StepUp
 {
     /// <summary>The claim of the session cookie: Unix time in seconds of the last code.</summary>
-    public const string Claim = "step_up_at";
+    public const string Claim = SystemX.Auth2.Contracts.Constants.Auth2Claims.StepUpAt;
 
     /// <summary>When the person last gave a code in this session, or null.</summary>
     public static DateTimeOffset? LastAt(ClaimsPrincipal user) =>
         long.TryParse(user.FindFirst(Claim)?.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds) ? DateTimeOffset.FromUnixTimeSeconds(seconds) : null;
+
+    /// <summary>True when the last code is not older than <paramref name="maxAge"/>. A code from the future never counts.</summary>
+    public static bool IsFresh(ClaimsPrincipal user, TimeSpan maxAge, DateTimeOffset now) =>
+        LastAt(user) is { } at && at <= now && now - at <= maxAge;
 
     /// <summary>True when the last code is not older than <paramref name="minutes"/>. A code from the future (a wrong clock, a forged claim) never counts.</summary>
     public static bool IsFresh(ClaimsPrincipal user, int minutes, DateTimeOffset now) =>

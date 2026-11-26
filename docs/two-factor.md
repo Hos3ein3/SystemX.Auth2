@@ -48,7 +48,7 @@ How it goes: the restricted page redirects to `/Account/VerifyTotp?ReturnUrl=<th
 - `StepUpMinutes = 0` turns the extra question off. The setting is in the project settings page (*Code Valid For Restricted Actions (minutes)*) and is for global admins only.
 - Other pages that change the account details (password, email, user name, phone) ask for the current password, as before.
 - To protect one more page of the Server: after `LoadSessionAsync()` write `if (await RequireRecentTotpAsync() is { } ask) return ask;` (`ManagePageModel`).
-- **Applications** that use the Server's hosted sign-in have **their own** session. Their restricted endpoints use `WithTotp()` / `[Auth2Totp]`, which checks a code per request.
+- **Applications** that use the Server's hosted sign-in have **their own** session. Their restricted endpoints use `WithTotp()` / `[Auth2Totp]`: a browser is sent to this Server's `/Account/VerifyTotp` and comes back with a fresh proof ([client-endpoint-metadata.md](client-endpoint-metadata.md#hosted-ui-the-server-asks-for-the-code-on-its-own-page)); an API sends the code in a header.
 
 ## When to use it
 
@@ -227,7 +227,7 @@ Besides the sign-in, an application can ask for a code of the authenticator app 
 - a locked-out person gets `locked_out`; recovery codes are not accepted;
 - the route is in the rate-limit policy `otp`.
 
-The hosted page for the same check is **`/Account/VerifyTotp`** ([ui-handover.md](ui-handover.md#account-change-pages-signed-in)): a signed-in person types the code, with the same rules, and goes on to an allowed `ReturnUrl` (or sees "your code was accepted"). Link to it from your own flows when you want the Server's page to ask for the code; `WithTotp()` / `[Auth2Totp]` is the form for checking a code **per request** in your application.
+The hosted page for the same check is **`/Account/VerifyTotp`** ([ui-handover.md](ui-handover.md#account-change-pages-signed-in)): a signed-in person types the code, with the same rules, and goes on to an allowed `ReturnUrl` (or sees "your code was accepted"). The hosted UI of the Client package links to it for you: `/connect/authorize` with `acr_values=urn:systemx:auth2:acr:totp` (`Auth2AcrValues.Totp`) shows it when the session has no code of the last minutes, and the tokens that come back carry `step_up_at`. Link to it from your own flows when you want the Server's page to ask for the code; `WithTotp()` / `[Auth2Totp]` is the form for checking a code **per request** in your application.
 
 ## Lockout, rate limits and audit
 

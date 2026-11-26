@@ -242,6 +242,24 @@ app.MapPost("/api/orders", ([FromBody] CreateMinimalOrderRequest request, ICurre
     return Results.Created($"/api/orders/{newOrder.Id}", newOrder);
 }).WithPermission("orders.write").WithAuth2Audit("orders.create");
 
+// A code of the authenticator app. An API has no page to send the person to, so the caller sends the code in the header X-Auth2-Totp
+// (the person needs two-factor turned on at the Auth2 server). Without a code, with a wrong one, or without two-factor the answer is 403 with
+// the body { "code": "totp_required" | "invalid_otp" | "totp_setup_required", "message": ... } and the header X-Auth2-Totp-Status.
+app.MapPost("/api/transfers", ([FromBody] MinimalTransferRequest request, ICurrentUser user) => Results.Ok(new
+{
+    Message = $"Transfer of {request.Amount:0.##} accepted: the Server checked a code of your authenticator app just now.",
+    RequestedBy = user.UserName,
+    TimestampUtc = DateTimeOffset.UtcNow
+})).WithTotp().WithAuth2Audit("transfers.create");
+
+// The same, but only people who use two-factor are asked: a person without it passes without a code.
+app.MapPost("/api/notes", ([FromBody] MinimalNoteRequest request, ICurrentUser user) => Results.Ok(new
+{
+    Message = "Note saved.",
+    request.Text,
+    RequestedBy = user.UserName
+})).WithOptionalTotp();
+
 // Permission source enforcement
 app.MapGet("/api/orders/role-only", () => Results.Ok(new
 {
@@ -294,3 +312,5 @@ app.Run();
 // Data DTOs
 public sealed record MinimalOrderDto(Guid Id, string OrderNumber, string Item, decimal Amount, string Status);
 public sealed record CreateMinimalOrderRequest(string Item, decimal Amount);
+public sealed record MinimalTransferRequest(decimal Amount);
+public sealed record MinimalNoteRequest(string Text);

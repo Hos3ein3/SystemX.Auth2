@@ -22,13 +22,7 @@
         </p>
     </div>
 
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-    {
-        <a2-alert variant="danger">
-            @Model.ErrorMessage
-        </a2-alert>
-    }
-
+        @* the error is shown once, at the top of the card, by _LayoutAuth *@
     @if (Model.CodeSent)
     {
         <form method="post" class="space-y-4" novalidate>

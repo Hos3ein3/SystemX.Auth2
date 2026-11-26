@@ -138,7 +138,7 @@
                 </p>
 
                 <a2-field label="Verification Code" required="true">
-                    <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" />
+                    <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" inputmode="numeric" pattern="[0-9 ]*" maxlength="10" data-a2-digits="true" autocomplete="one-time-code" />
                 </a2-field>
 
                 <div class="pt-2 flex justify-end">

@@ -53,7 +53,7 @@
 
             <form method="post" class="space-y-4">
                 <a2-field label="Authenticator Code" required="true">
-                    <a2-input name="Input.Code" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" />
+                    <a2-input name="Input.Code" value="@Model.Input.Code" required="true" placeholder="123456" inputmode="numeric" pattern="[0-9 ]*" maxlength="10" data-a2-digits="true" autocomplete="one-time-code" />
                 </a2-field>
 
                 <div class="pt-2 flex justify-end">

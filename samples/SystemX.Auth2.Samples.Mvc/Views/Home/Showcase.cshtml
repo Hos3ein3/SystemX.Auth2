@@ -26,6 +26,8 @@
         ("Group (all)", "FinanceEurope", "group finance AND group finance-eu"),
         ("Sign-in method", "SignedInWithPassword", "signed in with a password (amr pwd)"),
         ("Sign-in method", "MultiFactorOnly", "more than one factor (passkey with fingerprint, or password plus code)"),
+        ("Authenticator code (hosted UI)", "SecureArea", "[Auth2Totp]: sent to the Auth2 server's page for the code, then back here"),
+        ("Authenticator code (hosted UI)", "TransferForm", "a POST with [Auth2Totp]: the same, back to the form"),
         ("Authenticator code (TOTP)", "TotpForm", "[Auth2Totp]: a fresh code of the authenticator app, once per action"),
         ("Scope that FAILS (403)", "ScopeFails", "scope payments.refund, which this application does not have"),
         ("Scope that FAILS (403, in code)", "ScopeFailsInCode", "HasScope(\"payments.refund\") answers a JSON error"),

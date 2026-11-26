@@ -4,6 +4,8 @@
     Layout = "_LayoutAuth";
     ViewData["Title"] = Loc["two_factor.title"];
     ViewData["Subtitle"] = Loc["two_factor.subtitle"];
+    var rules = SystemX.Auth2.Server.Pages.Account.AccountFormRules.For(Model);
+    var codeRule = rules.TotpCode(Loc["two_factor.code"].Value);
 }
 
 <form method="post" class="space-y-4" novalidate>
@@ -13,7 +15,7 @@
     <input type="hidden" asp-for="TwoFactorToken" />
 
     <a2-field label="@Loc["two_factor.code"]" hint="@Loc["two_factor.subtitle"]" for="Input_Code">
-        <a2-input id="Input_Code" name="Input.Code" value="@Model.Input?.Code" placeholder="123456" autocomplete="one-time-code" autofocus="true" class="text-center tracking-widest text-lg font-mono" />
+        <a2-input id="Input_Code" name="Input.Code" value="@Model.Input?.Code" placeholder="123456" inputmode="numeric" pattern="[0-9 ]*" maxlength="10" data-a2-digits="true" autocomplete="one-time-code" autofocus="true" class="text-center tracking-widest text-lg font-mono" data-a2-rule="@codeRule" />
     </a2-field>
 
     @if (Model.ShowRecoveryCode)
@@ -28,11 +30,15 @@
         </details>
     }
 
-    <div>
-        <a2-button type="submit" variant="primary" class="w-full">@Loc["two_factor.verify_button"]</a2-button>
+    <div class="pt-2">
+        <a2-button type="submit" variant="primary" class="w-full">
+            @Loc["two_factor.verify_button"]
+        </a2-button>
     </div>
 
     <div class="mt-4 text-center text-sm">
-        <a href="@Model.GetLoginUrl()" class="font-medium text-[var(--a2-color-primary,#2563eb)] hover:underline">@Loc["common.back_to_login"]</a>
+        <a2-button href="@Model.GetLoginUrl()" variant="ghost" class="w-full">
+            @Loc["common.back_to_login"]
+        </a2-button>
     </div>
 </form>

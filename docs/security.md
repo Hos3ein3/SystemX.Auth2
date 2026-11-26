@@ -59,6 +59,7 @@ Counters are in memory by default (right for **one** instance). With **Redis** t
 
 - HTTPS redirect and HSTS (one year) outside Development and Testing. Setting: `Auth2:Security:RequireHttps`.
 - Headers on every answer: `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, `Content-Security-Policy` (a strict placeholder, set `Auth2:Security:ContentSecurityPolicy` for your UI), `Permissions-Policy`. `/api` and `/connect` answers also get `Cache-Control: no-store`.
+- `form-action` of the policy names `'self'` and, on the sign-in pages, the origins of the registered redirect addresses of the application. A browser checks the whole redirect chain of a form against it, and the chain of a sign-in (login, the code of a step-up, consent) ends at the application. Only exact origins of registered addresses are added, never a wildcard. If you set your own `Auth2:Security:ContentSecurityPolicy`, keep the text `form-action 'self'` in it so the origins can be added.
 - Cookies: `HttpOnly`, `SameSite=Lax`, `Secure` outside Development.
 - Anti-forgery on all pages that post.
 - **Forwarded headers**: set `Auth2:Security:UseForwardedHeaders=true` behind a reverse proxy, and list the proxies in `KnownProxies` (or `TrustAllProxies=true` only when nobody else can reach the server). Set `Auth2:Issuer` to the public HTTPS address.

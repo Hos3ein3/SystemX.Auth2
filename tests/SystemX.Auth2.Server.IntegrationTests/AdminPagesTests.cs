@@ -183,6 +183,74 @@ public class AdminPagesTests : Phase6Base
     }
 
     [Fact]
+    public async Task SavingTheSettingsPage_KeepsWhatHasItsOwnPages_BrandingAndMessagingAndProviders()
+    {
+        var b = await GlobalAdminAsync();
+        await UpdateSettingsAsync(A, s =>
+        {
+            s.Project.Branding.PrimaryColor = "#123456";
+            s.Project.Branding.SecondaryColor = "#654321";
+            s.Project.Messaging.Email.Provider = SystemX.Auth2.Server.Domain.Settings.EmailProviders.Logging;
+        });
+
+        var page = await (await b.GetAsync("/admin/p/appa/settings?ClientId=_global")).Content.ReadAsStringAsync();
+        var version = System.Text.RegularExpressions.Regex.Match(page, "name=\"FormVersion\" value=\"(\\d+)\"").Groups[1].Value;
+        version.ShouldNotBeNullOrEmpty();
+
+        var saved = await b.PostPageAsync("/admin/p/appa/settings?ClientId=_global", new Dictionary<string, string>
+        {
+            ["FormVersion"] = version,
+            ["SelectedLoginMethods"] = "UserNamePassword",
+            ["SelectedRegisterMethods"] = "UserNamePassword",
+            ["SelectedClientTypes"] = "Web",
+            ["SupportedCulturesText"] = "en",
+            ["InputSettings.Localization.DefaultCulture"] = "en",
+            ["InputSettings.Lockout.MaxFailedAttempts"] = "7",   // a value of this page really changes
+        });
+        saved.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+
+        await using var scope = NewScope();
+        var settings = await scope.ServiceProvider.GetRequiredService<IProjectSettingsProvider>().GetAsync(A.Id);
+        settings.Lockout.MaxFailedAttempts.ShouldBe(7);                     // the page saved its own part
+        settings.Branding.PrimaryColor.ShouldBe("#123456");                 // and left the branding alone
+        settings.Branding.SecondaryColor.ShouldBe("#654321");
+        settings.Messaging.Email.Provider.ShouldBe(SystemX.Auth2.Server.Domain.Settings.EmailProviders.Logging);
+    }
+
+    [Fact]
+    public async Task SavingBrandingAndMessaging_ChangesOnlyTheirOwnPart_AndNoOtherSetting()
+    {
+        var b = await GlobalAdminAsync();
+        await UpdateSettingsAsync(A, s =>
+        {
+            s.Project.Lockout.MaxFailedAttempts = 9;
+            s.Project.Password.SignOutAfterChangePassword = true;
+            s.Project.Registration.JoinMode = SystemX.Auth2.Server.Domain.Settings.JoinMode.Closed;
+            s.Project.TwoFactor.StepUpMinutes = 7;
+        });
+
+        var saved = await b.PostPageAsync("/admin/p/appa/branding?handler=SaveTokens&ClientId=_global", new Dictionary<string, string>
+        {
+            ["BrandName"] = "Brand A",
+            ["PrimaryColor"] = "#abcdef",
+        });
+        saved.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+
+        await using var scope = NewScope();
+        var messaging = scope.ServiceProvider.GetRequiredService<SystemX.Auth2.Server.Application.IAdminMessagingService>();
+        (await messaging.UpdateProjectAsync(A.Id, new SystemX.Auth2.Server.Application.MessagingUpdate(
+            new SystemX.Auth2.Server.Application.EmailProviderUpdate(SystemX.Auth2.Server.Domain.Settings.EmailProviders.Logging, null, null, null, null, null, "from@a.test", null, null), null), null)).Succeeded.ShouldBeTrue();
+
+        var settings = await scope.ServiceProvider.GetRequiredService<IProjectSettingsProvider>().GetAsync(A.Id);
+        settings.Branding.PrimaryColor.ShouldBe("#abcdef");                 // their own parts did change
+        settings.Messaging.Email.FromAddress.ShouldBe("from@a.test");
+        settings.Lockout.MaxFailedAttempts.ShouldBe(9);                     // nothing else did
+        settings.Password.SignOutAfterChangePassword.ShouldBeTrue();
+        settings.Registration.JoinMode.ShouldBe(SystemX.Auth2.Server.Domain.Settings.JoinMode.Closed);
+        settings.TwoFactor.StepUpMinutes.ShouldBe(7);
+    }
+
+    [Fact]
     public async Task ApplicationDetail_PostUpdate_Works()
     {
         var b = await GlobalAdminAsync();

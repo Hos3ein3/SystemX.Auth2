@@ -528,3 +528,114 @@ public class HostedUiIntegrationTests : ClientAppTestBase
         await ApiClient.DisposeAsync();
     }
 }
+
+/// <summary>
+/// The hosted-UI step-up from end to end, as two browsers' worth of requests: <c>WithTotp()</c> sends the browser to the Server, the Server asks for the code on
+/// <c>/Account/VerifyTotp</c>, the sign-in goes on, the callback of the application makes a new cookie, and the person lands on the page they wanted.
+/// </summary>
+public class HostedStepUpIntegrationTests : ClientAppTestBase
+{
+    private const string Callback = "http://localhost/signin-oidc";
+
+    private static void Map(IEndpointRouteBuilder e)
+    {
+        e.MapGet("/secure", () => "secure page").WithAuth2();
+        e.MapGet("/transfer", () => "transfer page").WithTotp();
+        e.MapPost("/transfer", () => "transferred").WithTotp();
+    }
+
+    private static string PathOf(string location) => new Uri(new Uri("http://localhost"), location).PathAndQuery;
+
+    private async Task<(Jar App, Jar Srv)> StartSignedInAsync()
+    {
+        await UpdateSettingsAsync(s => { s.App.AllowSelfUiLogin = true; s.RedirectUris.Add(Callback); s.PostLogoutRedirectUris.Add("http://localhost/signout-callback-oidc"); });
+        await StartAppAsync(Map, b => b.UseHostedUi(o => o.BackchannelHandler = Server.Server.CreateHandler()).UseCookieAuthentication(o =>
+            o.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest), handshake: true);
+        await CreateUserAsync();
+        var app = new Jar(App.GetTestClient());
+        var srv = new Jar(Server.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, HandleCookies = false }));
+
+        // sign in (before two-factor exists, so nobody gave a code in this session)
+        var r1 = await app.GetAsync("/secure");
+        var r2 = await app.GetAsync(Jar.Where(r1));
+        var authorize = r2.Headers.Location!.OriginalString;
+        var r3 = await srv.GetAsync(PathOf(authorize));
+        var loginUrl = Jar.Where(r3);
+        await PostServerFormAsync(srv, loginUrl, new Dictionary<string, string> { ["Input.Login"] = "sara", ["Input.Password"] = Password });
+        var r5 = await srv.GetAsync(PathOf(authorize));
+        var r6 = await app.GetAsync(PathOf(r5.Headers.Location!.OriginalString));
+        r6.StatusCode.ShouldBe(HttpStatusCode.Redirect, await r6.Content.ReadAsStringAsync());
+        return (app, srv);
+    }
+
+    private async Task<HttpResponseMessage> PostServerFormAsync(Jar srv, string url, Dictionary<string, string> form)
+    {
+        await using var scope = Server.Services.CreateAsyncScope();
+        var ctx = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        // an anti-forgery token belongs to the signed-in person: build it as the user of the session cookie, when there is one
+        if (srv.Cookies.Count > 0)
+        {
+            ctx.Request.Headers.Cookie = string.Join("; ", srv.Cookies.Select(c => $"{c.Key}={c.Value}"));
+            var cookieName = SystemX.Auth2.Server.Infrastructure.Auth.Auth2Cookie.CookieName;
+            if (srv.Cookies.Keys.FirstOrDefault(k => k.StartsWith(cookieName + ".", StringComparison.Ordinal)) is { } named)   // the session cookie is per project
+                scope.ServiceProvider.GetRequiredService<SystemX.Auth2.Server.Application.IProjectScope>().Set(Guid.Empty, named[(cookieName.Length + 1)..]);
+            var session = await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.AuthenticateAsync(ctx, SystemX.Auth2.Server.Infrastructure.Auth.Auth2Cookie.Scheme);
+            if (session.Succeeded) ctx.User = session.Principal!;
+        }
+        var tokens = scope.ServiceProvider.GetRequiredService<IAntiforgery>().GetAndStoreTokens(ctx);
+        foreach (var cookie in ctx.Response.Headers.SetCookie) srv.Remember(cookie!);
+        form[tokens.FormFieldName] = tokens.RequestToken!;
+        return await srv.SendAsync(HttpMethod.Post, url, "text/html", new FormUrlEncodedContent(form));
+    }
+
+    private async Task<string> TurnOnTwoFactorAsync()
+    {
+        await using var scope = ServerScope();
+        var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<SystemX.Auth2.Server.Domain.Entities.AppUser>>();
+        var user = (await users.FindByNameAsync("sara"))!;
+        await users.ResetAuthenticatorKeyAsync(user);
+        var key = (await users.GetAuthenticatorKeyAsync(user))!;
+        (await users.SetTwoFactorEnabledAsync(user, true)).Succeeded.ShouldBeTrue();
+        return key;
+    }
+
+    [Fact]
+    public async Task AGetPage_GoesToTheServerForTheCode_AndComesBackToTheSamePage()
+    {
+        var (app, srv) = await StartSignedInAsync();
+        var key = await TurnOnTwoFactorAsync();
+
+        // 1. the page needs a code: the browser goes to the Server's authorize endpoint with the step-up value
+        var r1 = await app.GetAsync("/transfer");
+        r1.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var authorize = r1.Headers.Location!.OriginalString;
+        authorize.ShouldStartWith("http://localhost/connect/authorize");
+        Uri.UnescapeDataString(authorize).ShouldContain("acr_values=" + SystemX.Auth2.Contracts.Constants.Auth2AcrValues.Totp);
+
+        // 2. the Server has a session but no code in it: the page that asks for the code
+        var r2 = await srv.GetAsync(PathOf(authorize));
+        r2.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var verifyUrl = Jar.Where(r2);
+        verifyUrl.ShouldStartWith("/Account/VerifyTotp?");
+        (await srv.GetAsync(verifyUrl)).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // 3. the person types the code: the sign-in goes on
+        var r3 = await PostServerFormAsync(srv, verifyUrl, new Dictionary<string, string> { ["Input.Code"] = ClientAccountApiTests.Totp.Now(key) });
+        r3.StatusCode.ShouldBe(HttpStatusCode.Redirect, await r3.Content.ReadAsStringAsync());
+        Jar.Where(r3).ShouldContain("/connect/authorize");
+        var r4 = await srv.GetAsync(PathOf(Jar.Where(r3)));
+        r4.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        r4.Headers.Location!.OriginalString.ShouldStartWith(Callback + "?");
+
+        // 4. the callback of the application makes the new cookie and sends the person back to the page
+        var r5 = await app.GetAsync(PathOf(r4.Headers.Location.OriginalString));
+        r5.StatusCode.ShouldBe(HttpStatusCode.Redirect, await r5.Content.ReadAsStringAsync());
+        Jar.Where(r5).ShouldBe("/transfer");
+
+        // 5. the proof is in the cookie: the page opens, and so does the next request (no new round trip)
+        var page = await app.GetAsync("/transfer");
+        page.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await page.Content.ReadAsStringAsync()).ShouldBe("transfer page");
+        (await app.GetAsync("/transfer")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+}

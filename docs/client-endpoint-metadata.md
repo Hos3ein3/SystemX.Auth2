@@ -192,6 +192,34 @@ For an API call: `X-Auth2-Totp: 123456` next to the `Authorization: Bearer ...` 
 3. The Server answers, and checks the code: it works **once** (a code that was copied or seen over a shoulder does not work a second time), a wrong code counts as a failed sign-in attempt (guesses lock the account), the route is rate limited, and every answer is audited (`2fa.step_up`, `2fa.step_up_failed`, `2fa.step_up_replayed`). A request **without** a code is not counted as a wrong guess.
 4. On success the request goes on. The Server is asked **once per request**, so two rules on one endpoint do not use the code twice.
 
+### Hosted UI: the Server asks for the code on its own page
+
+An application that signs in with `UseHostedUi()` has no code form of its own, and does not need one. When a **browser** request reaches `WithTotp()` / `[Auth2Totp]` (or `WithOptionalTotp()` for a person who has two-factor) without a fresh proof, the Client package sends the browser to the Auth2 server and brings it back. It is an OpenID Connect step-up:
+
+1. The Client sends the browser to `/connect/authorize` with `acr_values=urn:systemx:auth2:acr:totp` (`Auth2AcrValues.Totp`), and the page the person wanted as the place to return to. Another sign-in is not needed: the person is signed in on the Server already.
+2. The Server looks at the session of the person. If nobody gave a code of the authenticator app in it within **`TwoFactor.StepUpMinutes`** (the project setting; see below), the person is sent to **`/Account/VerifyTotp`** with the same authorize request as the way on. A person who has **not turned on two-factor** (or whose project does not allow authenticator apps) gets the same page, which says so and links to `/Manage/TwoFactor/Enable`; its "back" link goes on **without** the step-up value, so the person does not loop.
+3. A right code goes on with the authorize request. The tokens that come back carry two claims: **`step_up_at`** (`Auth2Claims.StepUpAt`: the time of the last code, Unix seconds) and **`step_up_until`** (`Auth2Claims.StepUpUntil`: until when it counts, which the Server writes from `TwoFactor.StepUpMinutes`). The cookie of your application is renewed with them.
+4. The Client sees the claims in the cookie. While `step_up_until` has not passed, the rule passes and the person is not asked again. The Server is not called. **The Client has no window of its own.**
+
+```csharp
+builder.Services.AddAuth2Client(...).UseHostedUi();     // nothing to set here: how long a code counts is the Server setting TwoFactor.StepUpMinutes
+
+[Auth2Totp]                       // GET: the browser goes to the Server's page, then comes back to this page
+public IActionResult SecureArea() => View();
+
+[Auth2Totp]                       // POST: the same, and the person comes back to the page the form was on (press the button again)
+[HttpPost]
+public IActionResult Transfer(decimal amount) => ...;
+```
+
+- **Which requests.** Only browser requests of an application with the hosted UI (`Auth2AuthFlags` mode `Hosted`). An API call (a bearer token, `Accept: application/json`, or `.AsAuth2Api()`) never uses this and never redirects: it carries its code in the header `X-Auth2-Totp` and gets the JSON error as before. A Self UI application keeps its own code form (`auth2_totp`), because its person has no session on the Server.
+- **No endless round trips.** The Client sets a short cookie (`.SystemX.Auth2.StepUp`, 2 minutes) when it sends the browser away. A browser that comes back without a code (the person pressed "back") and is refused again gets the plain `403` with the header `X-Auth2-Totp-Status`, not another redirect. The cookie is removed when the rule passes.
+- **A POST.** A form cannot be sent again from a redirect, so the browser returns to the page the form came from (the `Referer`, only when it is on your site), or to `/`. The person presses the button again.
+- **Where the window is set.** One setting for everything: **`TwoFactor.StepUpMinutes`** of the project (default 15). It is read by the Server's own restricted pages (delete the account, turn two-factor off) and, through the claim `step_up_until`, by `WithTotp()` / `[Auth2Totp]` in every application of the project. Change it in the **admin console, Settings, Two-factor** (a **GlobalAdmin** only: the setting is global-only), or with `PUT /api/auth2/admin/projects/{projectId}/settings` ([server-settings.md](server-settings.md)). `0` switches the question off for the Server's own pages; an application that asked for a code still gets **at least 1 minute**. A token carries the value from the moment it was issued, so a change reaches an application at its next sign-in or step-up.
+- **Why you may not be asked at all.** Turning on two-factor, signing in with a code, and the Server's own code page all count as "a code was given now" in the Server session. If you try the rule within `TwoFactor.StepUpMinutes` of any of them, it passes by design. To see the page, wait for the window to end, or set the setting to 1 while you test.
+- **Window, not "once".** A code on the Server's page is a proof for `TwoFactor.StepUpMinutes`, not for one request (the Client cannot spend the code: it never sees it). For a dangerous action that must not be repeated on one proof, ask for a code in the request itself (an API sends it in the header; the Self UI has its own form). The code itself still works once on the Server, and a wrong code counts towards the lockout.
+- **`prompt=none`.** A silent request with the step-up value is answered `interaction_required`.
+
 **When it is refused** the answer is `403`. The response header `X-Auth2-Totp-Status` holds the **error code**, and for an API or AJAX request the body is `{ "code": "...", "message": "..." }` (the message is written by the Server in the language of the request, `Errors.resx`). A browser page gets the normal access-denied answer plus the header.
 
 | Error code | Meaning | What to do |

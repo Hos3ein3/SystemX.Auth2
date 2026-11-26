@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Http;
+using SystemX.Auth2.Client.Authentication;
+using SystemX.Auth2.Contracts.Constants;
 using Microsoft.AspNetCore.Authorization;
 
 namespace SystemX.Auth2.Client.Authorization;
@@ -108,8 +111,38 @@ public static class Auth2Totp
 
     internal const string ItemsKey = "Auth2.Totp.Outcome";
 
+    /// <summary>The property of the sign-in request that asks the Server for a step-up (it becomes <c>acr_values</c>).</summary>
+    internal const string StepUpItem = "auth2.step_up";
+
+    /// <summary>
+    /// A short-lived cookie that says "this browser was just sent to the Server for a code". If the request is refused again after coming back (the person went back without a code),
+    /// the browser is not sent again: that would be an endless round trip.
+    /// </summary>
+    internal const string StepUpGuardCookie = ".SystemX.Auth2.StepUp";
+
     /// <summary>The code of a request that passed.</summary>
     internal const string OkCode = "ok";
+
+    /// <summary>
+    /// True when the session says that the person gave a code of the authenticator app (claim <c>step_up_at</c>, not in the future) and that it still counts (claim <c>step_up_until</c>,
+    /// which the Server wrote from its setting <c>TwoFactor.StepUpMinutes</c>). The Client has no window of its own.
+    /// </summary>
+    internal static bool IsFresh(System.Security.Claims.ClaimsPrincipal user, DateTimeOffset now) =>
+        long.TryParse(user.FindFirst(Auth2Claims.StepUpAt)?.Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var at)
+        && long.TryParse(user.FindFirst(Auth2Claims.StepUpUntil)?.Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var until)
+        && at <= now.ToUnixTimeSeconds() && now.ToUnixTimeSeconds() <= until;
+
+    /// <summary>
+    /// The page to come back to after the step-up: this page when the request was a GET, otherwise the page the person came from (a form cannot be sent again from a redirect),
+    /// otherwise the home page. Always a path of this application.
+    /// </summary>
+    internal static string BackAfterStepUp(Microsoft.AspNetCore.Http.HttpRequest request)
+    {
+        if (HttpMethods.IsGet(request.Method)) return Auth2Http.SafeReturnUrl(request.PathBase + request.Path + request.QueryString);
+        return Uri.TryCreate(request.Headers.Referer.ToString(), UriKind.Absolute, out var from) && string.Equals(from.Authority, request.Host.Value, StringComparison.OrdinalIgnoreCase)
+            ? Auth2Http.SafeReturnUrl(from.PathAndQuery)
+            : "/";
+    }
 }
 
 /// <summary>What the check of the code said, kept for the request: <see cref="Auth2Totp.OkCode"/> or an error code with the message of the Server.</summary>

@@ -63,6 +63,33 @@ public class VerifyTotpPageTests : Phase6Base
         html.ShouldContain("name=\"Input.Code\"", Case.Sensitive);
         html.ShouldContain("autocomplete=\"one-time-code\"", Case.Sensitive);
         html.ShouldContain("data-a2-rule=", Case.Sensitive);   // the rule is checked while typing
+        html.ShouldContain("data-a2-digits", Case.Sensitive);  // a2.js keeps letters out of the box
+        html.ShouldContain("pattern=\"[0-9 ]*\"", Case.Sensitive);
+        html.ShouldContain("inputmode=\"numeric\"", Case.Sensitive);
+    }
+
+    [Fact]
+    public async Task AWrongCode_ShowsItsErrorOnce()
+    {
+        var b = await SignedInAsync();
+        await TurnOnTwoFactorAsync();
+        var wrong = await b.PostPageAsync(Page, Form("000000"));
+        wrong.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var html = await wrong.Content.ReadAsStringAsync();
+        System.Text.RegularExpressions.Regex.Matches(html, "The code is wrong or has expired").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TheFormMayPostBackToTheApplication_BecauseTheRedirectAfterTheCodeEndsThere()
+    {
+        // The page is answered with a redirect that ends at the registered redirect address of the application. A browser checks that chain against form-action,
+        // so the origin is named in the policy of this page (and only this origin).
+        var b = await SignedInAsync();
+        await TurnOnTwoFactorAsync();
+        var r = await b.GetAsync(Page);
+        var csp = r.Headers.GetValues("Content-Security-Policy").Single();
+        csp.ShouldContain("form-action 'self' https://client.test", Case.Sensitive);
+        csp.ShouldNotContain("*");
     }
 
     [Fact]

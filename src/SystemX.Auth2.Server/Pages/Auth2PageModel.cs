@@ -131,6 +131,7 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
                 _clientId = Client.ClientId;
             }
             Effective = new EffectiveSettings(Settings, Client);
+            RememberFormActionOrigins();
             return true;
         }
         catch (ProjectNotFoundException)
@@ -140,6 +141,19 @@ public abstract class Auth2PageModel(IClientIdAccessor clientIdAccessor, IAuthFl
             ErrorMessage = Text.Error(ErrorCode);
             return false;
         }
+    }
+
+    /// <summary>
+    /// A form of these pages is answered with a redirect that ends at the application (login, the code of a step-up, consent: <c>/connect/authorize</c> sends the browser to its
+    /// <c>redirect_uri</c>). A browser that follows such a redirect checks every address against <c>form-action</c> of the page that was posted, so the origins of the registered redirect
+    /// addresses of this application are listed for this response (see <c>Hardening</c>). Nothing else is added.
+    /// </summary>
+    private void RememberFormActionOrigins()
+    {
+        var origins = Effective.AllowedRedirectUris
+            .Select(u => Uri.TryCreate(u, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" ? uri.GetLeftPart(UriPartial.Authority) : null)
+            .Where(o => o is not null).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (origins.Count > 0) HttpContext.Items[Infrastructure.Operations.SecurityHeadersMiddleware.FormActionItem] = origins;
     }
 
     /// <summary>Sets the error and the HTTP status code.</summary>

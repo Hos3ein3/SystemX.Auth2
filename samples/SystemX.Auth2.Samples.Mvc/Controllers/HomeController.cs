@@ -17,7 +17,7 @@ namespace SystemX.Auth2.Samples.Mvc.Controllers;
 /// OR across kinds with the "any of" family), the audit hook, the resources of scopes in the token, and checks written in code. The Showcase page lists them;
 /// docs/sample-mvc.md says who passes which one with the demo users.
 /// </summary>
-public class HomeController(ICurrentUser currentUser, ICurrentClient currentClient,IAuth2ApiClientService api,IAuth2WebClientService client,IAuth2AdminClientService admin, ILogger<HomeController> logger) : Controller
+public class HomeController(ICurrentUser currentUser, ICurrentClient currentClient,ILogger<HomeController> logger) : Controller
 {
     [AllowAnonymous]
     [HttpGet]
@@ -57,7 +57,7 @@ public class HomeController(ICurrentUser currentUser, ICurrentClient currentClie
     [HttpGet]
     public IActionResult AdminPanel()
     {
-       
+
         logger.LogInformation("Admin user {UserName} accessed AdminPanel view.", currentUser.UserName);
         return View();
     }
@@ -159,6 +159,31 @@ public class HomeController(ICurrentUser currentUser, ICurrentClient currentClie
     [Auth2MultiFactor]
     [HttpGet]
     public IActionResult MultiFactorOnly() => Rule("More than one factor", "[Auth2MultiFactor]", "Your sign-in used more than one factor: a passkey unlocked with a fingerprint, face or PIN, or a password plus a one-time code (two-factor sign-in). A password alone gets 403 here. Look at the amr values on the Inspect page.");
+
+    // ---- hosted UI: the Auth2 server asks for the code on its own page
+
+    /// <summary>
+    /// <b>The hosted UI asks for the code on the Server's page.</b> This application signs in with <c>UseHostedUi()</c>, so a person who reaches a <c>[Auth2Totp]</c> action without a fresh
+    /// code is sent to the Auth2 server (<c>/connect/authorize</c> with the step-up value, then the page <c>/Account/VerifyTotp</c>) and comes back here with the proof in the cookie
+    /// (claim <c>step_up_at</c>). A person who has not turned on two-factor sees the server page that tells how to turn it on. Nothing in this action handles a code.
+    /// </summary>
+    [Auth2Totp]
+    [HttpGet]
+    public IActionResult SecureArea() => Rule("A secure area (a code of the authenticator app)", "[Auth2Totp]",
+        "You are here because the Auth2 server checked a code of your authenticator app a moment ago (the claim step_up_at in your session). For the next minutes you are not asked again; after that the browser goes to the server's page once more. Try it with a person who has not turned on two-factor: the server page explains how to turn it on.");
+
+    /// <summary>A page with a form. The page itself is open to everybody who is signed in; the <b>post</b> is the protected action (<see cref="Transfer"/>).</summary>
+    [Authorize]
+    [HttpGet]
+    public IActionResult TransferForm() => View("TransferForm");
+
+    /// <summary>
+    /// A <b>POST</b> that needs the code: the first time the browser is sent to the Auth2 server and comes back to <see cref="TransferForm"/> (a form cannot be sent again from a redirect),
+    /// where you press the button again; now the proof is in the session and the post goes through.
+    /// </summary>
+    [Auth2Totp]
+    [HttpPost]
+    public IActionResult Transfer(decimal amount) => Rule($"Transfer of {amount:0.##} sent", "[Auth2Totp]", "The post went through because your session carries a fresh proof of the authenticator code.");
 
     /// <summary>The form that asks for a code of the authenticator app, then posts it to <see cref="TotpAction"/>.</summary>
     [HttpGet]

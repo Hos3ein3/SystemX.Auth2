@@ -13,6 +13,9 @@ namespace SystemX.Auth2.Server.Infrastructure.Operations;
 /// <summary>Adds security headers to every response (unless the endpoint already set them).</summary>
 internal sealed class SecurityHeadersMiddleware(RequestDelegate next, IOptions<Auth2ServerOptions> options)
 {
+    /// <summary><c>HttpContext.Items</c> key: the origins (a list of strings) that <c>form-action</c> may name for this response besides <c>'self'</c>.</summary>
+    internal const string FormActionItem = "Auth2.FormActionOrigins";
+
     public Task InvokeAsync(HttpContext http)
     {
         if (http.Items.ContainsKey("Auth2.CspNonce")) return next(http);
@@ -25,7 +28,12 @@ internal sealed class SecurityHeadersMiddleware(RequestDelegate next, IOptions<A
             h.TryAdd("X-Content-Type-Options", "nosniff");
             h.TryAdd("Referrer-Policy", "no-referrer");
             h.TryAdd("X-Frame-Options", "DENY");
-            h.TryAdd("Content-Security-Policy", options.Value.Security.ContentSecurityPolicy.Replace("{nonce}", nonce, StringComparison.Ordinal));
+            var csp = options.Value.Security.ContentSecurityPolicy.Replace("{nonce}", nonce, StringComparison.Ordinal);
+            // A form of a sign-in page is answered with a redirect that ends at the application. Chromium checks that whole chain against form-action, so the page names the registered
+            // redirect origins of its application (exact origins, nothing else). Without this the browser blocks the last step and the page just keeps waiting.
+            if (http.Items[FormActionItem] is List<string> origins && origins.Count > 0 && csp.Contains("form-action 'self'", StringComparison.Ordinal))
+                csp = csp.Replace("form-action 'self'", "form-action 'self' " + string.Join(' ', origins), StringComparison.Ordinal);
+            h.TryAdd("Content-Security-Policy", csp);
             h.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
             // Token and account answers must not be stored by caches.
             var path = http.Request.Path.Value ?? "";

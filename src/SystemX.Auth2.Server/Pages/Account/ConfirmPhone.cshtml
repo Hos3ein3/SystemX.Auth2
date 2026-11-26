@@ -39,7 +39,7 @@
             <input type="hidden" name="Input.Login" value="@Model.Input.Login" />
 
             <a2-field label="@Loc["change_phone.verification_code"]" required="true">
-                <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" autocomplete="one-time-code" class="text-center tracking-widest text-lg font-mono" />
+                <a2-input name="Input.Code" type="text" value="@Model.Input.Code" required="true" placeholder="123456" inputmode="numeric" pattern="[0-9 ]*" maxlength="10" data-a2-digits="true" autocomplete="one-time-code" class="text-center tracking-widest text-lg font-mono" />
             </a2-field>
 
             <a2-button type="submit" variant="primary" class="w-full">

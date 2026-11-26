@@ -15,20 +15,33 @@ public class A2ButtonTagHelper : TagHelper
     public string Type { get; set; } = "submit";
     public bool Disabled { get; set; }
     public bool Loading { get; set; }
+    public string? Href { get; set; }
 
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
-        output.TagName = "button";
+        var isLink = !string.IsNullOrEmpty(Href);
+        output.TagName = isLink ? "a" : "button";
         output.TagMode = TagMode.StartTagAndEndTag;
-        output.Attributes.SetAttribute("type", Type);
-        if (Disabled || Loading) output.Attributes.SetAttribute("disabled", "disabled");
 
-        var baseClasses = "inline-flex items-center justify-center font-medium rounded-[var(--a2-radius,0.375rem)] px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+        if (isLink)
+        {
+            output.Attributes.SetAttribute("href", Href);
+        }
+        else
+        {
+            output.Attributes.SetAttribute("type", Type);
+            if (Disabled || Loading) output.Attributes.SetAttribute("disabled", "disabled");
+        }
+
+        var baseClasses = isLink
+            ? "inline-flex items-center justify-center font-medium rounded-[var(--a2-radius,0.375rem)] px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors text-center"
+            : "inline-flex items-center justify-center font-medium rounded-[var(--a2-radius,0.375rem)] px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
         var variantClasses = Variant.ToLowerInvariant() switch
         {
             "secondary" => "bg-[var(--a2-color-surface,#ffffff)] dark:bg-gray-700 text-[var(--a2-color-text,#111827)] dark:text-gray-100 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-gray-400",
             "danger" => "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
             "ghost" => "bg-transparent text-[var(--a2-color-text,#111827)] dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-gray-300",
+            "link" => "bg-transparent text-[var(--a2-color-primary,#2563eb)] hover:underline p-0 focus:ring-0 shadow-none font-medium",
             _ => "bg-[var(--a2-color-primary,#2563eb)] text-[var(--a2-color-primary-text,#ffffff)] hover:opacity-90 focus:ring-[var(--a2-color-primary,#2563eb)]"
         };
 
@@ -61,6 +74,7 @@ public class A2LinkButtonTagHelper : TagHelper
             "secondary" => "bg-[var(--a2-color-surface,#ffffff)] dark:bg-gray-700 text-[var(--a2-color-text,#111827)] dark:text-gray-100 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-gray-400",
             "danger" => "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
             "ghost" => "bg-transparent text-[var(--a2-color-text,#111827)] dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-gray-300",
+            "link" => "bg-transparent text-[var(--a2-color-primary,#2563eb)] hover:underline p-0 focus:ring-0 shadow-none font-medium",
             _ => "bg-[var(--a2-color-primary,#2563eb)] text-[var(--a2-color-primary-text,#ffffff)] hover:opacity-90 focus:ring-[var(--a2-color-primary,#2563eb)]"
         };
 
@@ -1255,6 +1269,7 @@ public class A2CopyButtonTagHelper : TagHelper
         output.TagMode = TagMode.StartTagAndEndTag;
         output.Attributes.SetAttribute("type", "button");
         output.Attributes.SetAttribute("data-a2-copy", Value);
+        output.Attributes.SetAttribute("data-no-loader", "");
         output.Attributes.SetAttribute("aria-label", Label);
 
         var variantClasses = Variant.ToLowerInvariant() switch
@@ -1289,6 +1304,7 @@ public class A2DownloadButtonTagHelper : TagHelper
         output.Attributes.SetAttribute("type", "button");
         output.Attributes.SetAttribute("data-a2-download", Value);
         output.Attributes.SetAttribute("data-a2-filename", Filename);
+        output.Attributes.SetAttribute("data-no-loader", "");
         output.Attributes.SetAttribute("aria-label", Label);
 
         var variantClasses = Variant.ToLowerInvariant() switch

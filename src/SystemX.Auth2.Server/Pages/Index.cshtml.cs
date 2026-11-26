@@ -87,8 +87,11 @@ public sealed class IndexModel(Auth2DbContext db, IAdminJobService jobService, T
         // need a selected project, and this page has none.
         if (!IsGlobalAdmin)
         {
+            // Only a person who may open the admin pages of the project is sent there. Anybody else would get "not found" from them.
+            var isProjectAdmin = User.IsInRole("ProjectAdmin") || User.IsInRole("Admin")
+                              || User.HasClaim("role", "ProjectAdmin") || User.HasClaim("role", "Admin");
             var userProjectKey = User.FindFirst(Auth2Claims.ProjectKey)?.Value;
-            if (!string.IsNullOrEmpty(userProjectKey))
+            if (isProjectAdmin && !string.IsNullOrEmpty(userProjectKey))
             {
                 return Redirect($"/admin/p/{userProjectKey}");
             }

@@ -68,6 +68,8 @@ A tick means: the page opens. Everything else shows the access denied page. The 
 | `SignedInWithPassword` | `[Auth2SignInMethod("pwd")]` | A password sign-in passes; a passkey sign-in gets 403 |
 | `MultiFactorOnly` | `[Auth2MultiFactor]` | A verified passkey, or a password plus a one-time code, passes; a password alone gets 403 |
 | `TotpForm` (then `TotpAction`) | `[Auth2Totp]`: a **fresh code of the authenticator app**, posted in the field `auth2_totp` | You need two-factor on (`/Manage/TwoFactor/Enable`). A right code passes once; a wrong or missing code gets 403 with the header `X-Auth2-Totp-Status` |
+| `SecureArea` | `[Auth2Totp]` with the **hosted UI**: no code form in the application | The browser goes to the Auth2 server's page for the code and comes back with the proof (claim `step_up_at`). Without two-factor the server page tells how to turn it on |
+| `TransferForm` (then `Transfer`) | A POST with `[Auth2Totp]`, hosted UI | The first post sends you to the server and back to the form; press the button again |
 | `ScopeFails` | `[Auth2Scope("payments.refund")]`: a scope this application does not have | **Always 403** |
 | `ScopeFailsInCode` | `currentClient.HasScope("payments.refund")` in code | **Always 403** with `{ "error": "insufficient_scope", "required": ..., "granted": [...] }` |
 

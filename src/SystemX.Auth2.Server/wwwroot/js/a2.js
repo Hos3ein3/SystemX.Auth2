@@ -61,6 +61,7 @@
           const a = document.createElement('a');
           a.href = url;
           a.download = filename;
+          a.setAttribute('data-no-loader', '');
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -70,6 +71,7 @@
           setTimeout(() => { downloadValBtn.innerHTML = orig; }, 2000);
         } catch {}
       }
+      window.a2HideLoader();
     }
     const toggle = e.target instanceof Element ? e.target.closest('[data-toggle-password]') : null;
     if (toggle) {
@@ -391,10 +393,10 @@
   // Page Navigation Loader
   document.addEventListener('click', (e) => {
     const link = e.target instanceof Element ? e.target.closest('a[href]') : null;
-    if (!link || link.hasAttribute('data-no-loader') || link.getAttribute('target') === '_blank') return;
+    if (!link || link.hasAttribute('data-no-loader') || link.hasAttribute('download') || link.getAttribute('target') === '_blank') return;
     if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     const href = link.getAttribute('href');
-    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('blob:') || href.startsWith('data:')) return;
     try {
       const targetUrl = new URL(link.href, window.location.href);
       if (targetUrl.origin === window.location.origin && (targetUrl.pathname !== window.location.pathname || targetUrl.search !== window.location.search)) {
@@ -1511,4 +1513,14 @@
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup); else setup();
+})();
+
+// Inputs that take digits only (the code of an authenticator app). Letters never stay in the box: typed, pasted or filled in by the browser.
+(function () {
+  document.addEventListener('input', (e) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement) || !el.hasAttribute('data-a2-digits')) return;
+    const clean = el.value.replace(/[^0-9 ]/g, '');
+    if (clean !== el.value) el.value = clean;
+  });
 })();

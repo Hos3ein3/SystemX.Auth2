@@ -240,7 +240,7 @@ public class ClientAccountApiTests : ClientTestBase
         Server.Messages.LastEmailTo("sara.en@example.com")!.Subject.ShouldBe("Confirm your new email address");
     }
 
-    private static class Totp
+    internal static class Totp
     {
         public static string Now(string base32Key)
         {

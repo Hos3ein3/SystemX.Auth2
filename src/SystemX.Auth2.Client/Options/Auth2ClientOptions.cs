@@ -223,4 +223,5 @@ public sealed class Auth2HostedUiOptions
 
     /// <summary>Handler for the calls to the server (tests, proxies). Default: none.</summary>
     public HttpMessageHandler? BackchannelHandler { get; set; }
+
 }
